@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: 'PingFang TC', 'Source Sans Pro', Verdana, Geneva, 'Noto Sans TC', sans-serif,
+      '微軟正黑體';
+  }
+}
