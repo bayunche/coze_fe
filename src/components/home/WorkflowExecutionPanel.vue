@@ -16,7 +16,7 @@
         <el-empty description="从侧边栏选择一个能力或直接开始对话" />
       </div>
 
-      <template v-for="message in messages" :key="message.id">
+      <template v-for="(message, index) in displayedMessages" :key="message.id">
         <div :class="['message-item', `message-from-${message.from}`]">
           <div class="message-bubble">
             <div class="message-sender" v-if="message.from !== 'user'">
@@ -26,7 +26,7 @@
               </span>
             </div>
             <div class="message-content">
-              <StreamingMessage :text="message.content" @done="$emit('message-displayed')" />
+              <StreamingMessage :text="message.content" @done="handleMessageDisplayed(index)" />
             </div>
             <div class="message-actions" v-if="message.showViewResultButton">
               <el-button type="primary" size="small" @click="$emit('view-result-detail')">
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
+import { ref, watch, nextTick, onMounted } from 'vue'
 import StreamingMessage from './StreamingMessage.vue'
 
 const props = defineProps({
@@ -56,12 +56,42 @@ const props = defineProps({
   }
 })
 
-defineEmits(['view-result-detail', 'message-displayed'])
+defineEmits(['view-result-detail'])
 
 const messageContainer = ref(null)
+const displayedMessages = ref([])
+const isDisplaying = ref(false)
+
+const displayNextMessage = () => {
+  if (props.messages.length > displayedMessages.value.length) {
+    isDisplaying.value = true
+    const nextMessage = props.messages[displayedMessages.value.length]
+    displayedMessages.value.push(nextMessage)
+  } else {
+    isDisplaying.value = false
+  }
+}
+
+const handleMessageDisplayed = (index) => {
+  if (index === displayedMessages.value.length - 1) {
+    displayNextMessage()
+  }
+}
 
 watch(
-  () => props.messages,
+  () => props.messages.length,
+  (newLength, oldLength) => {
+    if (newLength > oldLength && !isDisplaying.value) {
+      displayNextMessage()
+    } else if (newLength === 0) {
+      displayedMessages.value = []
+      isDisplaying.value = false
+    }
+  }
+)
+
+watch(
+  displayedMessages,
   () => {
     nextTick(() => {
       if (messageContainer.value) {
@@ -71,6 +101,12 @@ watch(
   },
   { deep: true }
 )
+
+onMounted(() => {
+  if (props.messages.length > 0) {
+    displayNextMessage()
+  }
+})
 </script>
 
 <style scoped>

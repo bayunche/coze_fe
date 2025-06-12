@@ -85,9 +85,48 @@ class CozeService {
     return this._runWorkflow(workflowId, input, callbacks)
   }
 
-  runChat(input, callbacks) {
-    const workflowId = '7514492004446650422' // 问答生成 (临时使用合同解析ID)
-    return this._runWorkflow(workflowId, { input: input.query }, callbacks)
+  async runChat(input, chatflowId, callbacks) {
+    try {
+      const additional_messages = [
+        {
+          role: 'user',
+          type: 'question',
+          content: input?.query,
+          content_type: 'text'
+        }
+      ]
+      const params = {
+        workflow_id: chatflowId,
+        parameters: {},
+        app_id: '7509762183313129512',
+        additional_messages: additional_messages
+      }
+
+      const stream = await this.client.workflows.chat.stream(params)
+      // message 事件：每个迭代就是一个 message
+      for await (const message of stream) {
+        const { event, data } = message
+
+        // We are interested in 'answer' type messages and the 'done' event.
+        if (event === 'conversation.message.delta' && data.type === 'answer') {
+          if (callbacks.onMessage) callbacks.onMessage(message)
+        } else if (event === 'conversation.message.completed' && data.type === 'answer') {
+          if (callbacks.onMessage) callbacks.onMessage(message)
+        } else if (event === 'done') {
+          if (callbacks.onMessage) callbacks.onMessage(message)
+        } else if (event.startsWith('conversation.chat.')) {
+          // Pass all chat status events
+          if (callbacks.onMessage) callbacks.onMessage(message)
+        }
+        // This will filter out 'verbose' messages and other types we don't want to handle in the UI.
+      }
+      // end 事件：流结束，由调用方根据特定事件（如 'Done'）处理
+      return stream
+    } catch (error) {
+      console.error('Error starting workflow stream:', error)
+      if (callbacks.onError) callbacks.onError(error)
+      throw error
+    }
   }
 
   runAnalysis(input, callbacks) {

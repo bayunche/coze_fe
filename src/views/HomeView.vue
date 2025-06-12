@@ -443,15 +443,11 @@ const executeWorkflow = async () => {
     const fileIds = await Promise.all(uploadPromises)
     stepProgress.value = 100
     currentStepIndex.value = 1 // 文件解析
-    addMessage('正在调用Coze任务进行解析...', 'agent', {
-      id: workflow.id,
-      name: workflow.name
-    })
     let inputs = []
     fileIds.forEach((fileId) => {
       inputs.push({ file_id: fileId })
     })
-    const finalResult = []
+
     executionSessions.push({
       id: workflow.id,
       name: workflow.name,
@@ -460,6 +456,19 @@ const executeWorkflow = async () => {
       output: '正在执行，请稍候...'
     })
 
+    // 创建一个用于流式响应的消息
+    const streamingAgentMessage = {
+      id: Date.now() + Math.random(),
+      from: 'agent',
+      content: '正在进行解析...',
+      timestamp: new Date().toLocaleTimeString(),
+      sender: workflow.name,
+      workflow: { id: workflow.id, name: workflow.name },
+      isStreaming: true
+    }
+    messageQueue.push(streamingAgentMessage)
+    processMessageQueue()
+    const finalResult = []
     // 在后台运行解析，不阻塞UI
     cozeService.runContractParsing(inputs, {
       onMessage(event) {
@@ -498,23 +507,20 @@ const executeWorkflow = async () => {
             return
           }
 
-          // 显示文本内容
+          // 将文本内容附加到流式消息中
           if (displayText) {
-            addMessage(displayText, 'agent', {
-              id: workflow.id,
-              name: workflow.name
-            })
+            if (streamingAgentMessage.content === '正在进行解析...') {
+              streamingAgentMessage.content = '' // 清除初始消息
+            }
+            streamingAgentMessage.content += displayText
             finalResult.push(displayText)
             const currentSession = executionSessions.find((s) => s.id === workflow.id)
             if (currentSession) {
-              currentSession.output = finalResult.join('\n')
+              currentSession.output = streamingAgentMessage.content
             }
           }
         } else if (event.event === 'Done') {
-          addMessage('任务执行完成', 'agent', {
-            id: workflow.id,
-            name: workflow.name
-          })
+          delete streamingAgentMessage.isStreaming
           completeWorkflow({ output: finalResult.join('\n') })
         } else if (event.event === 'PING') {
           // 可选处理
@@ -804,7 +810,8 @@ const handleSendMessage = () => {
     sender: '智能体',
     workflow: null,
     details: null,
-    isStreaming: true // Flag to indicate this message is being streamed
+    isStreaming: true, // Flag to indicate this message is being streamed
+    actionTriggered: false
   }
 
   // 3. Add the agent's message placeholder to the queue.
@@ -814,25 +821,30 @@ const handleSendMessage = () => {
 
   // 4. Start the asynchronous chat service.
   // It will update the 'agentMessage' object's content reactively.
-  cozeService.runChat(
-    { query: userMessageContent },
-    {
-      onMessage(event) {
-        if (event.event === 'Message' && event.data.content_type === 'text') {
-          agentMessage.content += event.data.content
+  cozeService.runChat({ query: userMessageContent }, '7514898709852733475', {
+    onMessage(message) {
+      const { event, data } = message
+      if (event === 'conversation.message.delta' && data.type === 'answer') {
+        agentMessage.content += data.content
+        if (!agentMessage.actionTriggered && agentMessage.content.includes('解析合同')) {
+          handleFunctionSelect('contractParsing')
+          agentMessage.actionTriggered = true // 标记已触发，防止重复执行
         }
-      },
-      onError(error) {
-        agentMessage.content = `对话出错: ${error.message}`
-        delete agentMessage.isStreaming
-      },
-      onEnd() {
+      } else if (event === 'done') {
+        // The 'done' event now signals the end of the stream.
         delete agentMessage.isStreaming
         // The StreamingMessage component's @done event is responsible for
         // calling handleMessageDisplayed, so no action is needed here.
       }
+    },
+    onError(error) {
+      agentMessage.content = `对话出错: ${error.message}`
+      delete agentMessage.isStreaming
+    },
+    onEnd() {
+      // This is now handled by the 'done' event in onMessage
     }
-  )
+  })
 }
 </script>
 
