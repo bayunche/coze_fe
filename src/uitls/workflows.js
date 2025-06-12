@@ -23,34 +23,7 @@ export const functions = [
     needsFiles: true,
     allowedTypes: '.pdf,.docx,.txt'
   },
-  {
-    id: 'chat',
-    name: '智能对话',
-    icon: ChatDotRound,
-    iconClass: 'text-green-500',
-    workflows: ['问答生成', '对话摘要'],
-    params: [
-      {
-        key: 'model',
-        label: '模型选择',
-        type: 'select',
-        options: [
-          { label: 'GPT-4', value: 'gpt-4' },
-          { label: 'GPT-3.5', value: 'gpt-3.5' },
-          { label: 'Claude', value: 'claude' }
-        ]
-      },
-      { key: 'temperature', label: '创造性', type: 'number', min: 0, max: 1, step: 0.1 },
-      { key: 'maxTokens', label: '最大长度', type: 'number', min: 100, max: 4000 }
-    ],
-    steps: [
-      { name: '加载模型', description: '初始化AI对话模型' },
-      { name: '处理输入', description: '分析用户输入内容' },
-      { name: '生成回复', description: '生成智能回复内容' },
-      { name: '后处理', description: '优化输出格式' }
-    ],
-    needsFiles: false
-  },
+
   {
     id: 'analysis',
     name: '数据分析',

@@ -86,8 +86,8 @@ class CozeService {
   }
 
   runChat(input, callbacks) {
-    const workflowId = 'YOUR_CHAT_WORKFLOW_ID' // 问答生成
-    return this._runWorkflow(workflowId, input, callbacks)
+    const workflowId = '7514492004446650422' // 问答生成 (临时使用合同解析ID)
+    return this._runWorkflow(workflowId, { input: input.query }, callbacks)
   }
 
   runAnalysis(input, callbacks) {
@@ -142,13 +142,33 @@ class CozeService {
       workflow_id: workflowId,
       parameters: { modify_json: modifiedObject },
       bot_id: '7514499089367908385'
-
     }
     try {
       const workflow = await this.client.workflows.runs.create(params)
       return workflow
     } catch (error) {
       console.error('Error running edit workflow:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Runs a non-streaming workflow to confirm a single record.
+   * @param {object} parameters - The parameters for the workflow, e.g., { id: '...' }.
+   * @returns {Promise<object>} The result of the workflow run.
+   */
+  async runConfirmWorkflow(parameters) {
+    const workflowId = '7514863217953964095' // 确认工作流
+    const params = {
+      workflow_id: workflowId,
+      parameters: parameters,
+      bot_id: '7514499089367908385'
+    }
+    try {
+      const workflow = await this.client.workflows.runs.create(params)
+      return workflow
+    } catch (error) {
+      console.error('Error running confirm workflow:', error)
       throw error
     }
   }

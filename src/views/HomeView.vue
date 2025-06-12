@@ -12,7 +12,7 @@
       <!-- 顶部栏 -->
       <HeaderBar
         :current-function-name="getCurrentFunctionName()"
-        :execution-logs-count="executionLogs.length"
+        :execution-logs-count="displayedMessages.length"
         :active-function="activeFunction"
         @show-workflow-config="showWorkflowConfig = true"
       />
@@ -23,27 +23,23 @@
           <!-- 任务执行面板 -->
           <WorkflowExecutionPanel
             :current-workflow="currentWorkflow"
-            :last-execution-result="lastExecutionResult"
-            :is-executing="isExecuting"
-            :workflow-elapsed-time="workflowElapsedTime"
-            :current-step-index="currentStepIndex"
-            :step-progress="stepProgress"
-            :get-step-status="getStepStatus"
-            :get-logs-for-last-execution="getLogsForLastExecution"
-            :get-log-tag-type="getLogTagType"
-            :get-log-type-text="getLogTypeText"
-            :format-log-details="formatLogDetails"
+            :messages="displayedMessages"
             @show-workflow-config="showWorkflowConfig = true"
             @view-result-detail="handleViewResultDetail"
+            @message-displayed="handleMessageDisplayed"
           />
-
-          <!-- 执行历史 -->
-          <!-- <ExecutionHistory
-            :execution-history="executionHistory"
-            @clear-history="clearHistory"
-            @export-history="exportHistory"
-            @view-detail="viewExecutionDetail"
-          /> -->
+          <div class="chat-input-area">
+            <el-input
+              v-model="userInput"
+              placeholder="输入消息..."
+              @keyup.enter="handleSendMessage"
+              clearable
+            >
+              <template #append>
+                <el-button @click="handleSendMessage">发送</el-button>
+              </template>
+            </el-input>
+          </div>
         </div>
       </el-main>
     </el-container>
@@ -73,6 +69,7 @@
           :data="tableData"
           style="width: 100%"
           class="result-table"
+          max-height="60vh"
           :header-cell-style="{ background: '#fafafa', color: '#333' }"
         >
           <template v-for="column in tableColumns" :key="column.prop">
@@ -89,6 +86,7 @@
         <span class="dialog-footer">
           <el-button @click="showResultDetail = false">关闭</el-button>
           <el-button type="primary" @click="handleEditResult">编辑</el-button>
+          <el-button type="success" @click="handleConfirm" :loading="isConfirming">确认</el-button>
         </span>
       </template>
     </el-dialog>
@@ -104,9 +102,9 @@
         <el-collapse v-model="activeCollapse">
           <el-collapse-item
             v-for="(formModel, index) in editFormModels"
-            :key="index"
+            :key="formModel.id"
             :title="`条目 ${index + 1}: ${formModel.name || ''}`"
-            :name="index"
+            :name="formModel.id"
           >
             <template v-for="key in Object.keys(formModel)" :key="key">
               <el-form-item v-if="headerMapping[key]" :label="translateHeader(key)">
@@ -127,7 +125,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, nextTick, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 
 // 导入子组件
@@ -153,9 +151,6 @@ const currentStepIndex = ref(0)
 const stepProgress = ref(0)
 const showWorkflowConfig = ref(false)
 const executionSessions = reactive([])
-const lastExecutionResult = computed(() =>
-  executionSessions.length > 0 ? executionSessions[executionSessions.length - 1] : null
-)
 const showResultDetail = ref(false)
 const taskId = ref(null)
 const tableData = ref([])
@@ -167,6 +162,8 @@ const showEditDialog = ref(false)
 const editFormModels = ref([]) // 表单绑定的对象数组
 const activeCollapse = ref([]) // 控制折叠面板的展开
 const isSaving = ref(false)
+const isConfirming = ref(false)
+const userInput = ref('')
 
 // 表头中英文映射
 const headerMapping = {
@@ -180,14 +177,13 @@ const headerMapping = {
   linshi_rate: '临时设施费是否下浮',
   position: '职位',
   salary: '薪水',
-  hire_date: '入职日期',
+  hire_date: '入职日期'
   // ... 在这里可以添加更多的映射
-};
+}
 
 const translateHeader = (prop) => {
-  return headerMapping[prop] || prop;
-};
-
+  return headerMapping[prop] || prop
+}
 
 // 任务配置
 const workflowConfig = reactive({
@@ -219,8 +215,10 @@ const executionHistory = reactive([
   }
 ])
 
-// 执行日志
-const executionLogs = reactive([])
+// 消息队列和显示逻辑
+const messageQueue = reactive([])
+const displayedMessages = reactive([])
+const isDisplayingMessage = ref(false)
 
 let timeInterval = null
 
@@ -249,45 +247,6 @@ const getAllowedFileTypes = () => {
   return func ? func.allowedTypes || '*' : '*'
 }
 
-const getStepStatus = (index) => {
-  if (index < currentStepIndex.value) return 'finish'
-  if (index === currentStepIndex.value) return 'process'
-  return 'wait'
-}
-
-const getLogTagType = (type) => {
-  const typeMap = {
-    info: '',
-    success: 'success',
-    warning: 'warning',
-    error: 'danger',
-    separator: 'info'
-  }
-  return typeMap[type] || ''
-}
-
-const getLogTypeText = (type) => {
-  const typeMap = {
-    info: '信息',
-    success: '成功',
-    warning: '警告',
-    error: '错误',
-    separator: '系统'
-  }
-  return typeMap[type] || type
-}
-
-const getLogsForLastExecution = () => {
-  return [...executionLogs].reverse()
-}
-
-const formatLogDetails = (details) => {
-  if (typeof details === 'string') {
-    return details
-  }
-  return JSON.stringify(details, null, 2)
-}
-
 const formatDuration = (seconds) => {
   if (seconds < 0) seconds = 0
 
@@ -307,8 +266,8 @@ const formatDuration = (seconds) => {
 
 // 方法
 const handleViewResultDetail = async () => {
-  if (!lastExecutionResult.value || !lastExecutionResult.value.output|| taskId.value == null) {
-    ElMessage.warning('没有可供解析的结果。')
+  if (taskId.value == null) {
+    ElMessage.warning('没有可供解析的结果任务ID。')
     return
   }
 
@@ -318,12 +277,11 @@ const handleViewResultDetail = async () => {
   tableColumns.value = []
 
   try {
-    
     const result = await cozeService.runTableGenerationWorkflow(taskId.value)
     console.log(result)
     if (result && result.data) {
-      
-      const parsedData = JSON.parse(result.data)?.output
+      const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"')
+      const parsedData = JSON.parse(jsonString)?.output
 
       if (Array.isArray(parsedData) && parsedData.length > 0) {
         tableColumns.value = Object.keys(parsedData[0]).map((key) => ({
@@ -331,7 +289,6 @@ const handleViewResultDetail = async () => {
           label: key
         }))
         tableData.value = parsedData
-        addLog('表格数据加载成功', 'success')
       } else {
         throw new Error('解析后的数据格式不正确或为空。')
       }
@@ -340,7 +297,7 @@ const handleViewResultDetail = async () => {
     }
   } catch (error) {
     console.error('处理表格数据时出错:', error)
- 
+
     ElMessage.error(`获取表格数据失败: ${error.message}`)
   } finally {
     isFetchingDetails.value = false
@@ -356,7 +313,7 @@ const handleEditResult = () => {
   editFormModels.value = JSON.parse(JSON.stringify(tableData.value))
 
   // 默认展开所有折叠项
-  activeCollapse.value = editFormModels.value.map((_, index) => index)
+  activeCollapse.value = editFormModels.value.map((item) => item.id)
 
   showResultDetail.value = false
   showEditDialog.value = true
@@ -369,30 +326,75 @@ const cancelEdit = () => {
 
 const saveEdit = async () => {
   isSaving.value = true
-  addLog(`开始保存编辑内容，共 ${editFormModels.value.length} 条记录...`, 'info')
+  addMessage(`开始保存编辑内容，共 ${editFormModels.value.length} 条记录...`, 'system')
   try {
     const editPromises = editFormModels.value.map((item) => cozeService.runEditWorkflow(item))
-
     await Promise.all(editPromises)
-
     // 深拷贝数据以更新表格
     tableData.value = JSON.parse(JSON.stringify(editFormModels.value))
     ElMessage.success('保存成功，所有条目更新')
-    addLog('所有编辑内容已成功保存', 'success')
+    addMessage('所有编辑内容已成功保存', 'system')
     showEditDialog.value = false
     showResultDetail.value = true // 返回详情弹窗
   } catch (error) {
     console.error('保存编辑时出错:', error)
     ElMessage.error(`保存失败: ${error.message}`)
-    addLog(`保存编辑时出错: ${error.message}`, 'error', error)
+    addMessage(`保存编辑时出错: ${error.message}`, 'system')
   } finally {
     isSaving.value = false
   }
 }
 
+const handleConfirm = async () => {
+  if (!tableData.value || tableData.value.length === 0) {
+    ElMessage.warning('没有可确认的数据。')
+    return
+  }
+
+  isConfirming.value = true
+  addMessage(`开始对解析数据进行确认，共 ${tableData.value.length} 条记录...`, 'system')
+
+  try {
+    const confirmPromises = tableData.value.map((item) =>
+      cozeService.runConfirmWorkflow({ id: item.id })
+    )
+
+    const results = await Promise.allSettled(confirmPromises)
+
+    let successCount = 0
+    let failureCount = 0
+
+    results.forEach((result, index) => {
+      const item = tableData.value[index]
+      if (result.status === 'fulfilled') {
+        successCount++
+        addMessage(`条目 ${item.id} 确认成功。`, 'system')
+      } else {
+        failureCount++
+        addMessage(`条目 ${item.id} 确认失败: ${result.reason.message}`, 'system')
+        console.error(`确认失败 (ID: ${item.id}):`, result.reason)
+      }
+    })
+
+    if (failureCount > 0) {
+      ElMessage.warning(`${successCount} 条记录确认成功，${failureCount} 条失败。`)
+    } else {
+      ElMessage.success(`所有 ${successCount} 条记录均已成功确认！`)
+    }
+
+    addMessage('所有解析结果已确认。', 'system')
+    showResultDetail.value = false
+  } catch (error) {
+    console.error('执行确认工作流时发生意外错误:', error)
+    ElMessage.error(`确认过程中发生错误: ${error.message}`)
+    addMessage(`确认工作流执行时出错: ${error.message}`, 'system')
+  } finally {
+    isConfirming.value = false
+  }
+}
+
 const handleFunctionSelect = (key) => {
   activeFunction.value = key
-  addLog(`切换到功能: ${getCurrentFunctionName()}`, 'info')
   resetWorkflowConfig()
   showWorkflowConfig.value = true
 }
@@ -421,7 +423,10 @@ const executeWorkflow = async () => {
   stepProgress.value = 0
   workflowElapsedTime.value = 0
 
-  addLog(`开始执行任务: ${workflow.name}`, 'info')
+  addMessage(`开始执行任务: ${workflow.name}`, 'agent', {
+    id: workflow.id,
+    name: workflow.name
+  })
 
   timeInterval = setInterval(() => {
     const elapsed = (Date.now() - workflow.startTime) / 1000
@@ -434,14 +439,14 @@ const executeWorkflow = async () => {
 
   try {
     currentStepIndex.value = 0 // 上传文件
-    addLog(`准备上传 ${workflowConfig.files.length} 个文件...`, 'info')
     const uploadPromises = workflowConfig.files.map((file) => cozeService.uploadFile(file.raw))
     const fileIds = await Promise.all(uploadPromises)
-    addLog(`所有文件上传成功，共${fileIds.length}个文件`, 'success')
     stepProgress.value = 100
-
     currentStepIndex.value = 1 // 文件解析
-    addLog('正在调用Coze任务进行解析...', 'info')
+    addMessage('正在调用Coze任务进行解析...', 'agent', {
+      id: workflow.id,
+      name: workflow.name
+    })
     let inputs = []
     fileIds.forEach((fileId) => {
       inputs.push({ file_id: fileId })
@@ -458,62 +463,67 @@ const executeWorkflow = async () => {
     // 在后台运行解析，不阻塞UI
     cozeService.runContractParsing(inputs, {
       onMessage(event) {
-  if (event.event === 'Message' && event.data.content_type === 'text') {
-    const content = event.data.content
+        if (event.event === 'Message' && event.data.content_type === 'text') {
+          const content = event.data.content
 
-    // 统一变量
-    let taskIdCandidate = null
-    let displayText = null
+          // 统一变量
+          let taskIdCandidate = null
+          let displayText = null
 
-    // 如果是对象，尝试直接提取 task_id
-    if (typeof content === 'object' && content !== null) {
-      if ('task_id' in content) {
-        taskIdCandidate = content.task_id
-      } else {
-        displayText = JSON.stringify(content, null, 2)
-      }
-    }
+          // 如果是对象，尝试直接提取 task_id
+          if (typeof content === 'object' && content !== null) {
+            if ('task_id' in content) {
+              taskIdCandidate = content.task_id
+            } else {
+              displayText = JSON.stringify(content, null, 2)
+            }
+          }
 
-    // 如果是字符串，尝试解析为 JSON
-    else if (typeof content === 'string') {
-      try {
-        const parsed = JSON.parse(content)
-        if (parsed && typeof parsed === 'object' && 'task_id' in parsed) {
-          taskIdCandidate = parsed.task_id
+          // 如果是字符串，尝试解析为 JSON
+          else if (typeof content === 'string') {
+            try {
+              const parsed = JSON.parse(content)
+              if (parsed && typeof parsed === 'object' && 'task_id' in parsed) {
+                taskIdCandidate = parsed.task_id
+              } else {
+                displayText = content // 普通文本
+              }
+            } catch (e) {
+              displayText = content // 非 JSON 字符串
+            }
+          }
+
+          if (taskIdCandidate) {
+            taskId.value = taskIdCandidate
+            return
+          }
+
+          // 显示文本内容
+          if (displayText) {
+            addMessage(displayText, 'agent', {
+              id: workflow.id,
+              name: workflow.name
+            })
+            finalResult.push(displayText)
+            const currentSession = executionSessions.find((s) => s.id === workflow.id)
+            if (currentSession) {
+              currentSession.output = finalResult.join('\n')
+            }
+          }
+        } else if (event.event === 'Done') {
+          addMessage('任务执行完成', 'agent', {
+            id: workflow.id,
+            name: workflow.name
+          })
+          completeWorkflow({ output: finalResult.join('\n') })
+        } else if (event.event === 'PING') {
+          // 可选处理
         } else {
-          displayText = content // 普通文本
+          addMessage('未知任务事件', 'system', null, event)
         }
-      } catch (e) {
-        displayText = content // 非 JSON 字符串
-      }
-    }
-
-    if (taskIdCandidate) {
-      taskId.value = taskIdCandidate
-      return
-    }
-
-    // 显示文本内容
-    if (displayText) {
-      addLog(displayText, 'success')
-      finalResult.push(displayText)
-      const currentSession = executionSessions.find((s) => s.id === workflow.id)
-      if (currentSession) {
-        currentSession.output = finalResult.join('\n')
-      }
-    }
-
-  } else if (event.event === 'Done') {
-    addLog('任务执行完成', 'info')
-    completeWorkflow({ output: finalResult.join('\n') })
-  } else if (event.event === 'PING') {
-    // 可选处理
-  } else {
-    addLog('未知任务事件', 'warning', event)
-  }
-},
+      },
       onError(error) {
-        addLog(`任务执行出错: ${error.message}`, 'error')
+        addMessage(`任务执行出错: ${error.message}`, 'system')
         completeWorkflow({ status: 'error', output: error.message })
       },
       onEnd() {
@@ -521,7 +531,7 @@ const executeWorkflow = async () => {
       }
     })
   } catch (error) {
-    addLog(`任务执行失败: ${error.message}`, 'error')
+    addMessage(`任务执行失败: ${error.message}`, 'system')
     completeWorkflow()
   }
 }
@@ -560,15 +570,22 @@ const completeWorkflow = (resultOverride = {}) => {
   workflowElapsedTime.value = 0
 
   clearInterval(timeInterval)
-  addLog(`任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`, 'success')
-  addLog(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'separator')
+  const isSuccess = resultOverride.status !== 'error'
+  addMessage(
+    `任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`,
+    'agent',
+    { id: completedExecution.id, name: completedExecution.workflow },
+    null,
+    { showViewResultButton: isSuccess && taskId.value != null }
+  )
+  addMessage(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'system')
 }
 
 const generateMockResult = (func, duration) => {
   const baseResult = {
     status: 'success',
     duration,
-    totalSteps: func.steps.length,
+    totalSteps: func.steps ? func.steps.length : 0,
     processedItems: Math.floor(Math.random() * 1000) + 100,
     successRate: Math.floor(Math.random() * 20) + 80,
     timestamp: new Date().toLocaleString()
@@ -695,7 +712,7 @@ const resetWorkflowConfig = () => {
 
 const clearHistory = () => {
   executionHistory.splice(0)
-  addLog('执行历史已清空', 'info')
+  addMessage('执行历史已清空', 'system')
   ElMessage.success('执行历史已清空')
 }
 
@@ -708,7 +725,7 @@ const exportHistory = () => {
   a.download = `execution_history_${new Date().toISOString().slice(0, 10)}.json`
   a.click()
   URL.revokeObjectURL(url)
-  addLog('执行历史已导出', 'success')
+  addMessage('执行历史已导出', 'system')
 }
 
 const viewExecutionDetail = (row) => {
@@ -723,25 +740,44 @@ const viewExecutionDetail = (row) => {
     timestamp: row.timestamp,
     files: []
   }
-  addLog(`查看执行详情: ${row.workflow}`, 'info')
+  addMessage(`查看执行详情: ${row.workflow}`, 'system')
 }
 
-const addLog = (message, type = 'info', details = null) => {
-  const newLog = {
+const addMessage = (content, from, workflowInfo = null, details = null, options = {}) => {
+  const newMessage = {
     id: Date.now() + Math.random(),
-    message,
-    type,
-    details,
+    from, // 'user', 'agent', 'system'
+    content,
     timestamp: new Date().toLocaleTimeString(),
-    workflowId: currentWorkflow.value ? currentWorkflow.value.id : null
+    sender: from === 'agent' ? (workflowInfo ? workflowInfo.name : '智能体') : '系统',
+    workflow: workflowInfo,
+    details,
+    ...options
   }
-  executionLogs.unshift(newLog)
-  if (executionLogs.length > 500) executionLogs.pop()
+  messageQueue.push(newMessage)
+  processMessageQueue()
+}
+
+const processMessageQueue = () => {
+  if (messageQueue.length > 0 && !isDisplayingMessage.value) {
+    isDisplayingMessage.value = true
+    const nextMessage = messageQueue.shift()
+    displayedMessages.push(nextMessage)
+    if (displayedMessages.length > 500) {
+      displayedMessages.shift()
+    }
+  }
+}
+
+const handleMessageDisplayed = () => {
+  setTimeout(() => {
+    isDisplayingMessage.value = false
+    processMessageQueue()
+  }, 300) // Add a small delay before showing the next message
 }
 
 onMounted(() => {
   resetWorkflowConfig()
-  addLog('智能体系统已启动', 'success')
 })
 
 onUnmounted(() => {
@@ -749,6 +785,55 @@ onUnmounted(() => {
     clearInterval(timeInterval)
   }
 })
+
+const handleSendMessage = () => {
+  if (!userInput.value.trim()) return
+
+  const userMessageContent = userInput.value
+  userInput.value = ''
+
+  // 1. Add user message to the queue.
+  addMessage(userMessageContent, 'user')
+
+  // 2. Create a placeholder for the agent's response.
+  const agentMessage = {
+    id: Date.now() + Math.random(),
+    from: 'agent',
+    content: '',
+    timestamp: new Date().toLocaleTimeString(),
+    sender: '智能体',
+    workflow: null,
+    details: null,
+    isStreaming: true // Flag to indicate this message is being streamed
+  }
+
+  // 3. Add the agent's message placeholder to the queue.
+  // It will be processed after the user's message is displayed.
+  messageQueue.push(agentMessage)
+  processMessageQueue() // This will display the user message, then the empty agent bubble
+
+  // 4. Start the asynchronous chat service.
+  // It will update the 'agentMessage' object's content reactively.
+  cozeService.runChat(
+    { query: userMessageContent },
+    {
+      onMessage(event) {
+        if (event.event === 'Message' && event.data.content_type === 'text') {
+          agentMessage.content += event.data.content
+        }
+      },
+      onError(error) {
+        agentMessage.content = `对话出错: ${error.message}`
+        delete agentMessage.isStreaming
+      },
+      onEnd() {
+        delete agentMessage.isStreaming
+        // The StreamingMessage component's @done event is responsible for
+        // calling handleMessageDisplayed, so no action is needed here.
+      }
+    }
+  )
+}
 </script>
 
 <style>
@@ -765,10 +850,10 @@ onUnmounted(() => {
 .result-detail-dialog .el-dialog__footer {
   border-top: 1px solid #eee;
   padding: 10px 20px;
+  text-align: center;
 }
 .result-table {
   border-radius: 8px;
-  overflow: hidden;
   border: 1px solid #ebeef5;
 }
 .result-table th {
@@ -807,6 +892,13 @@ onUnmounted(() => {
   gap: 24px;
   max-width: 1300px;
   margin: 0 auto;
+}
+
+.chat-input-area {
+  padding: 16px;
+  background-color: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  border-radius: 0 0 16px 16px;
 }
 
 @media (max-width: 768px) {
