@@ -82,7 +82,8 @@ class CozeService {
   runContractParsing(fileId, callbacks) {
     const workflowId = '7514492004446650422' // 解析合同
     const input = { input: fileId }
-    return this._runWorkflow(workflowId, input, callbacks)
+    const appId = '7509762183313129512'
+    return this._runWorkflow(workflowId, input, callbacks, appId)
   }
 
   async runChat(input, chatflowId, callbacks) {

@@ -56,7 +56,7 @@ const props = defineProps({
   }
 })
 
-defineEmits(['view-result-detail'])
+const emit = defineEmits(['view-result-detail', 'message-displayed'])
 
 const messageContainer = ref(null)
 const displayedMessages = ref([])
@@ -76,6 +76,8 @@ const handleMessageDisplayed = (index) => {
   if (index === displayedMessages.value.length - 1) {
     displayNextMessage()
   }
+  // 通知父组件消息已显示，以便继续处理队列
+  emit('message-displayed')
 }
 
 watch(
