@@ -57,7 +57,11 @@
     />
 
     <!-- 智能大脑弹窗 -->
-    <SmartBrainDialog v-model:show="showSmartBrainDialog" :agents="smartAgents" />
+    <SmartBrainDialog
+      v-model:show="showSmartBrainDialog"
+      :agents="smartAgents"
+      :tasks="taskLists"
+    />
 
     <!-- 结果详情对话框 -->
     <el-dialog
@@ -169,6 +173,11 @@ const activeCollapse = ref([]) // 控制折叠面板的展开
 const isSaving = ref(false)
 const isConfirming = ref(false)
 const userInput = ref('')
+const taskLists = ref({
+  all: [],
+  completed: [],
+  inProgress: []
+})
 
 const smartAgents = ref([
   {
@@ -432,27 +441,31 @@ const handleFunctionSelect = async (key) => {
 
       const contractAgent = smartAgents.value.find((agent) => agent.id === 1)
       if (contractAgent) {
-        const getListLength = (result) => {
-          const data = result?.data
-          const output = JSON.parse(data).output
-          console.log(output)
-          if (!output) return 0
-          if (Array.isArray(output)) return output.length
-          if (typeof output === 'string') {
-            try {
+        const getTaskList = (result) => {
+          try {
+            const data = result?.data
+            if (!data) return []
+            const output = JSON.parse(data).output
+            if (!output) return []
+            if (Array.isArray(output)) return output
+            if (typeof output === 'string') {
               const parsed = JSON.parse(output)
-              return Array.isArray(parsed) ? parsed.length : 0
-            } catch (e) {
-              console.error('Failed to parse workflow output string:', e, output)
-              return 0
+              return Array.isArray(parsed) ? parsed : []
             }
+            return []
+          } catch (e) {
+            console.error('Failed to parse workflow output:', e, result?.data)
+            return []
           }
-          return 0
         }
 
-        contractAgent.tasks.inProgress = getListLength(inProgressResult)
-        contractAgent.tasks.completed = getListLength(completedResult)
-        contractAgent.tasks.total = getListLength(totalResult)
+        taskLists.value.inProgress = getTaskList(inProgressResult)
+        taskLists.value.completed = getTaskList(completedResult)
+        taskLists.value.all = getTaskList(totalResult)
+
+        contractAgent.tasks.inProgress = taskLists.value.inProgress.length
+        contractAgent.tasks.completed = taskLists.value.completed.length
+        contractAgent.tasks.total = taskLists.value.all.length
       }
 
       showSmartBrainDialog.value = true

@@ -7,7 +7,13 @@
     custom-class="smart-brain-dialog"
   >
     <div class="agent-stats-grid">
-      <el-card v-for="agent in agents" :key="agent.id" class="agent-card" shadow="hover">
+      <el-card
+        v-for="agent in agents"
+        :key="agent.id"
+        class="agent-card"
+        shadow="hover"
+        @click="openTaskParsingResultDialog(agent)"
+      >
         <template #header>
           <div class="card-header">
             <span>{{ agent.name }}</span>
@@ -38,10 +44,22 @@
       </span>
     </template>
   </el-dialog>
+  <TaskParsingResultDialog
+    v-model:show="taskParsingResultDialogVisible"
+    :tasks="tasks"
+  ></TaskParsingResultDialog>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import TaskParsingResultDialog from './TaskParsingResultDialog.vue'
+
+const taskParsingResultDialogVisible = ref(false)
+
+const openTaskParsingResultDialog = (agent) => {
+  console.log('agent: ', agent)
+  taskParsingResultDialogVisible.value = true
+}
 
 const props = defineProps({
   show: {
@@ -50,6 +68,10 @@ const props = defineProps({
   },
   agents: {
     type: Array,
+    required: true
+  },
+  tasks: {
+    type: Object,
     required: true
   }
 })
@@ -82,6 +104,7 @@ const handleClose = () => {
   border-radius: 12px;
   border: 1px solid #e5e7eb;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .agent-card:hover {
