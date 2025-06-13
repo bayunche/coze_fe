@@ -4,10 +4,21 @@ import {
   Document,
   Search,
   Lightning,
-  DocumentCopy
+  DocumentCopy,
+  Cpu
 } from '@element-plus/icons-vue'
 
 export const functions = [
+  {
+    id: 'smartBrain',
+    name: '智能大脑',
+    icon: Cpu,
+    iconClass: 'text-green-500',
+    workflows: [],
+    params: [],
+    steps: [],
+    needsFiles: false
+  },
   {
     id: 'contractParsing',
     name: '合同解析',

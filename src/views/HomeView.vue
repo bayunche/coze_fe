@@ -56,6 +56,9 @@
       @start-workflow="startWorkflowFromDialog"
     />
 
+    <!-- 智能大脑弹窗 -->
+    <SmartBrainDialog v-model:show="showSmartBrainDialog" :agents="smartAgents" />
+
     <!-- 结果详情对话框 -->
     <el-dialog
       v-model="showResultDetail"
@@ -134,6 +137,7 @@ import HeaderBar from '@/components/home/HeaderBar.vue'
 import WorkflowExecutionPanel from '@/components/home/WorkflowExecutionPanel.vue'
 import ExecutionHistory from '@/components/home/ExecutionHistory.vue'
 import WorkflowConfigDialog from '@/components/home/WorkflowConfigDialog.vue'
+import SmartBrainDialog from '@/components/home/SmartBrainDialog.vue'
 import { functions } from '@/uitls/workflows.js'
 import CozeService from '@/uitls/coze.js'
 
@@ -152,6 +156,7 @@ const stepProgress = ref(0)
 const showWorkflowConfig = ref(false)
 const executionSessions = reactive([])
 const showResultDetail = ref(false)
+const showSmartBrainDialog = ref(false)
 const taskId = ref(null)
 const tableData = ref([])
 const tableColumns = ref([])
@@ -164,6 +169,33 @@ const activeCollapse = ref([]) // 控制折叠面板的展开
 const isSaving = ref(false)
 const isConfirming = ref(false)
 const userInput = ref('')
+
+const smartAgents = ref([
+  {
+    id: 1,
+    name: '合同解析智能体',
+    status: 'online',
+    tasks: { completed: 0, inProgress: 0, total: 0 }
+  },
+  {
+    id: 2,
+    name: '数据分析智能体',
+    status: 'online',
+    tasks: { completed: 92, inProgress: 1, total: 93 }
+  },
+  {
+    id: 3,
+    name: '通用对话智能体',
+    status: 'offline',
+    tasks: { completed: 512, inProgress: 0, total: 512 }
+  },
+  {
+    id: 4,
+    name: '自动化任务智能体',
+    status: 'online',
+    tasks: { completed: 256, inProgress: 5, total: 261 }
+  }
+])
 
 // 表头中英文映射
 const headerMapping = {
@@ -326,20 +358,17 @@ const cancelEdit = () => {
 
 const saveEdit = async () => {
   isSaving.value = true
-  addMessage(`开始保存编辑内容，共 ${editFormModels.value.length} 条记录...`, 'system')
   try {
     const editPromises = editFormModels.value.map((item) => cozeService.runEditWorkflow(item))
     await Promise.all(editPromises)
     // 深拷贝数据以更新表格
     tableData.value = JSON.parse(JSON.stringify(editFormModels.value))
     ElMessage.success('保存成功，所有条目更新')
-    addMessage('所有编辑内容已成功保存', 'system')
     showEditDialog.value = false
     showResultDetail.value = true // 返回详情弹窗
   } catch (error) {
     console.error('保存编辑时出错:', error)
     ElMessage.error(`保存失败: ${error.message}`)
-    addMessage(`保存编辑时出错: ${error.message}`, 'system')
   } finally {
     isSaving.value = false
   }
@@ -352,7 +381,6 @@ const handleConfirm = async () => {
   }
 
   isConfirming.value = true
-  addMessage(`开始对解析数据进行确认，共 ${tableData.value.length} 条记录...`, 'system')
 
   try {
     const confirmPromises = tableData.value.map((item) =>
@@ -368,10 +396,8 @@ const handleConfirm = async () => {
       const item = tableData.value[index]
       if (result.status === 'fulfilled') {
         successCount++
-        addMessage(`条目 ${item.id} 确认成功。`, 'system')
       } else {
         failureCount++
-        addMessage(`条目 ${item.id} 确认失败: ${result.reason.message}`, 'system')
         console.error(`确认失败 (ID: ${item.id}):`, result.reason)
       }
     })
@@ -387,13 +413,55 @@ const handleConfirm = async () => {
   } catch (error) {
     console.error('执行确认工作流时发生意外错误:', error)
     ElMessage.error(`确认过程中发生错误: ${error.message}`)
-    addMessage(`确认工作流执行时出错: ${error.message}`, 'system')
   } finally {
     isConfirming.value = false
   }
 }
 
-const handleFunctionSelect = (key) => {
+const handleFunctionSelect = async (key) => {
+  if (key === 'smartBrain') {
+    try {
+      ElMessage.info('正在查询智能体任务数据...')
+      const workflowId = '7515227050698178599'
+
+      const [inProgressResult, completedResult, totalResult] = await Promise.all([
+        cozeService.runWorkflow(workflowId, { status: '1' }), // 进行中
+        cozeService.runWorkflow(workflowId, { status: '2' }), // 已完成
+        cozeService.runWorkflow(workflowId, { status: '' }) // 全部
+      ])
+
+      const contractAgent = smartAgents.value.find((agent) => agent.id === 1)
+      if (contractAgent) {
+        const getListLength = (result) => {
+          const data = result?.data
+          const output = JSON.parse(data).output
+          console.log(output)
+          if (!output) return 0
+          if (Array.isArray(output)) return output.length
+          if (typeof output === 'string') {
+            try {
+              const parsed = JSON.parse(output)
+              return Array.isArray(parsed) ? parsed.length : 0
+            } catch (e) {
+              console.error('Failed to parse workflow output string:', e, output)
+              return 0
+            }
+          }
+          return 0
+        }
+
+        contractAgent.tasks.inProgress = getListLength(inProgressResult)
+        contractAgent.tasks.completed = getListLength(completedResult)
+        contractAgent.tasks.total = getListLength(totalResult)
+      }
+
+      showSmartBrainDialog.value = true
+    } catch (error) {
+      console.error('查询智能大脑数据失败:', error)
+      ElMessage.error('查询智能大脑数据失败，请稍后重试。')
+    }
+    return
+  }
   activeFunction.value = key
   resetWorkflowConfig()
   showWorkflowConfig.value = true
@@ -584,7 +652,10 @@ const completeWorkflow = (resultOverride = {}) => {
     null,
     { showViewResultButton: isSuccess && taskId.value != null }
   )
-  addMessage(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'system')
+  addMessage(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'system', {
+    id: completedExecution.id,
+    name: completedExecution.workflow
+  })
 }
 
 const generateMockResult = (func, duration) => {

@@ -11,38 +11,46 @@
       </div>
     </template>
 
-    <div ref="messageContainer" class="message-container">
-      <div v-if="!messages.length" class="no-messages">
-        <el-empty description="从侧边栏选择一个能力或直接开始对话" />
-      </div>
+    <div class="card-body-wrapper">
+      <el-tabs v-model="activeTab" class="message-tabs" @tab-click="handleTabClick">
+        <el-tab-pane label="所有消息" name="all"></el-tab-pane>
+        <el-tab-pane label="合同解析" name="contract"></el-tab-pane>
+        <el-tab-pane label="对话流" name="dialogue"></el-tab-pane>
+      </el-tabs>
 
-      <template v-for="(message, index) in displayedMessages" :key="message.id">
-        <div :class="['message-item', `message-from-${message.from}`]">
-          <div class="message-bubble">
-            <div class="message-sender" v-if="message.from !== 'user'">
-              <strong>{{ message.sender }}</strong>
-              <span v-if="message.workflow" class="workflow-info-tag">
-                (智能体功能: {{ message.workflow.name }})
-              </span>
-            </div>
-            <div class="message-content">
-              <StreamingMessage :text="message.content" @done="handleMessageDisplayed(index)" />
-            </div>
-            <div class="message-actions" v-if="message.showViewResultButton">
-              <el-button type="primary" size="small" @click="$emit('view-result-detail')">
-                查看解析结果
-              </el-button>
-            </div>
-            <div class="message-timestamp">{{ message.timestamp }}</div>
-          </div>
+      <div ref="messageContainer" class="message-container">
+        <div v-if="!messagesToRender.length" class="no-messages">
+          <el-empty description="当前分类下没有消息" />
         </div>
-      </template>
+
+        <template v-for="(message, index) in messagesToRender" :key="message.id">
+          <div :class="['message-item', `message-from-${message.from}`]">
+            <div class="message-bubble">
+              <div class="message-sender" v-if="message.from !== 'user'">
+                <strong>{{ message.sender }}</strong>
+                <span v-if="message.workflow" class="workflow-info-tag">
+                  (智能体功能: {{ message.workflow.name }})
+                </span>
+              </div>
+              <div class="message-content">
+                <StreamingMessage :text="message.content" @done="handleMessageDisplayed(index)" />
+              </div>
+              <div class="message-actions" v-if="message.showViewResultButton">
+                <el-button type="primary" size="small" @click="$emit('view-result-detail')">
+                  查看解析结果
+                </el-button>
+              </div>
+              <div class="message-timestamp">{{ message.timestamp }}</div>
+            </div>
+          </div>
+        </template>
+      </div>
     </div>
   </el-card>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import StreamingMessage from './StreamingMessage.vue'
 
 const props = defineProps({
@@ -61,6 +69,29 @@ const emit = defineEmits(['view-result-detail', 'message-displayed'])
 const messageContainer = ref(null)
 const displayedMessages = ref([])
 const isDisplaying = ref(false)
+const activeTab = ref('all') // 'all', 'contract', 'dialogue'
+
+// 计算属性，根据激活的 tab 过滤要显示的消息
+const messagesToRender = computed(() => {
+  if (activeTab.value === 'all') {
+    return displayedMessages.value
+  }
+  if (activeTab.value === 'contract') {
+    return displayedMessages.value.filter((m) => m.workflow && m.workflow.name === '合同解析')
+  }
+  if (activeTab.value === 'dialogue') {
+    return displayedMessages.value.filter((m) => m.from === 'user' || !m.workflow)
+  }
+  return []
+})
+
+const handleTabClick = () => {
+  nextTick(() => {
+    if (messageContainer.value) {
+      messageContainer.value.scrollTop = messageContainer.value.scrollHeight
+    }
+  })
+}
 
 const displayNextMessage = () => {
   if (props.messages.length > displayedMessages.value.length) {
@@ -112,6 +143,22 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.card-body-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.message-tabs {
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+:deep(.el-tabs__header) {
+  margin-bottom: 0;
+}
+
 .execution-panel-card {
   border: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -151,11 +198,11 @@ onMounted(() => {
   overflow-y: auto;
   padding: 20px;
   background: #f9fafb;
-  border-radius: 12px;
+  /* border-radius: 12px; */
   display: flex;
   flex-direction: column;
   gap: 16px;
-  height: 60vh; /* Adjust as needed */
+  height: calc(60vh - 40px); /* Adjust height to account for tabs */
 }
 
 .no-messages {

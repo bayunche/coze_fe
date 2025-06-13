@@ -212,6 +212,27 @@ class CozeService {
       throw error
     }
   }
+
+  /**
+   * Runs a generic non-streaming workflow.
+   * @param {string} workflowId - The ID of the workflow to run.
+   * @param {object} parameters - The parameters for the workflow.
+   * @returns {Promise<object>} The result of the workflow run.
+   */
+  async runWorkflow(workflowId, parameters) {
+    const params = {
+      workflow_id: workflowId,
+      parameters: parameters,
+      app_id: '7509762183313129512' // Assuming a default app_id, adjust if necessary
+    }
+    try {
+      const workflow = await this.client.workflows.runs.create(params)
+      return workflow
+    } catch (error) {
+      console.error(`Error running workflow ${workflowId}:`, error)
+      throw error
+    }
+  }
 }
 
 export default CozeService
