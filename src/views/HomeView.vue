@@ -645,17 +645,20 @@ const completeWorkflow = (resultOverride = {}) => {
 
   clearInterval(timeInterval)
   const isSuccess = resultOverride.status !== 'error'
-  addMessage(
-    `任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`,
-    'agent',
-    { id: completedExecution.id, name: completedExecution.workflow },
-    null,
-    { showViewResultButton: isSuccess && taskId.value != null }
-  )
-  addMessage(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'system', {
-    id: completedExecution.id,
-    name: completedExecution.workflow
-  })
+  // 延迟输出“任务执行完成”和“执行结束”消息
+  setTimeout(() => {
+    addMessage(
+      `任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`,
+      'agent',
+      { id: completedExecution.id, name: completedExecution.workflow },
+      null,
+      { showViewResultButton: isSuccess && taskId.value != null }
+    )
+    addMessage(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'system', {
+      id: completedExecution.id,
+      name: completedExecution.workflow
+    })
+  }, 2000) // 延迟2秒输出
 }
 
 const generateMockResult = (func, duration) => {
