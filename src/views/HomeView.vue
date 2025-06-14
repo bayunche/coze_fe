@@ -75,6 +75,7 @@
           v-if="tableData.length > 0"
           :data="tableData"
           style="width: 100%"
+        stripe 
           class="result-table"
           max-height="60vh"
           :header-cell-style="{ background: '#fafafa', color: '#333' }"
@@ -83,8 +84,13 @@
             <el-table-column
               v-if="headerMapping[column.prop]"
               :prop="column.prop"
+              width="280"
               :label="translateHeader(column.prop)"
-            />
+            >
+              <template #default="scope">
+                <span>{{ formatCellValue(scope.row[column.prop]) }}</span>
+              </template>
+            </el-table-column>
           </template>
         </el-table>
         <el-empty v-else-if="!isFetchingDetails" description="没有可展示的表格数据" />
@@ -226,6 +232,16 @@ const translateHeader = (prop) => {
   return headerMapping[prop] || prop
 }
 
+const formatCellValue = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '/'
+  }
+  if (typeof value === 'boolean') {
+    return value ? '是' : '否'
+  }
+  return value
+}
+
 // 任务配置
 const workflowConfig = reactive({
   files: [],
@@ -262,6 +278,7 @@ const displayedMessages = reactive([])
 const isDisplayingMessage = ref(false)
 
 let timeInterval = null
+let loadingInterval = null
 
 // 计算属性
 const getCurrentFunctionName = () => {
@@ -504,10 +521,29 @@ const executeWorkflow = async () => {
   stepProgress.value = 0
   workflowElapsedTime.value = 0
 
-  addMessage(`开始执行任务: ${workflow.name}`, 'agent', {
-    id: workflow.id,
-    name: workflow.name
+  // 创建一个特殊的加载消息
+  const loadingMessage = reactive({
+    id: Date.now() + Math.random(),
+    from: 'agent',
+    type: 'loading',
+    content: '正在准备任务，请稍候...',
+    progress: 0,
+    timestamp: new Date().toLocaleTimeString(),
+    sender: workflow.name,
+    workflow: { id: workflow.id, name: workflow.name }
   })
+  addMessage(loadingMessage)
+
+  // 模拟加载进度
+  let progress = 0
+  loadingInterval = setInterval(() => {
+    if (progress < 99) {
+      progress += 5
+      loadingMessage.progress = Math.min(progress, 99)
+    } else {
+      clearInterval(loadingInterval)
+    }
+  }, 200)
 
   timeInterval = setInterval(() => {
     const elapsed = (Date.now() - workflow.startTime) / 1000
@@ -537,49 +573,43 @@ const executeWorkflow = async () => {
       output: '正在执行，请稍候...'
     })
 
-    // 创建一个用于流式响应的消息
     const streamingAgentMessage = {
       id: Date.now() + Math.random(),
       from: 'agent',
-      content: '正在进行解析...',
+      content: '',
       timestamp: new Date().toLocaleTimeString(),
       sender: workflow.name,
       workflow: { id: workflow.id, name: workflow.name },
       isStreaming: true
     }
-    messageQueue.push(streamingAgentMessage)
-    processMessageQueue()
+
     const finalResult = []
-    // 在后台运行解析，不阻塞UI
+    let isFirstMessage = true
+
     cozeService.runContractParsing(inputs, {
       onMessage(event) {
+        if (isFirstMessage) {
+          loadingMessage.content = '任务解析已开始，正在接收数据...'
+          messageQueue.push(streamingAgentMessage)
+          processMessageQueue()
+          isFirstMessage = false
+        }
+
         if (event.event === 'Message' && event.data.content_type === 'text') {
           const content = event.data.content
-
-          // 统一变量
           let taskIdCandidate = null
           let displayText = null
 
-          // 如果是对象，尝试直接提取 task_id
           if (typeof content === 'object' && content !== null) {
-            if ('task_id' in content) {
-              taskIdCandidate = content.task_id
-            } else {
-              displayText = JSON.stringify(content, null, 2)
-            }
-          }
-
-          // 如果是字符串，尝试解析为 JSON
-          else if (typeof content === 'string') {
+            taskIdCandidate = content.task_id
+            if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
+          } else if (typeof content === 'string') {
             try {
               const parsed = JSON.parse(content)
-              if (parsed && typeof parsed === 'object' && 'task_id' in parsed) {
-                taskIdCandidate = parsed.task_id
-              } else {
-                displayText = content // 普通文本
-              }
+              taskIdCandidate = parsed?.task_id
+              if (!taskIdCandidate) displayText = content
             } catch (e) {
-              displayText = content // 非 JSON 字符串
+              displayText = content
             }
           }
 
@@ -588,11 +618,7 @@ const executeWorkflow = async () => {
             return
           }
 
-          // 将文本内容附加到流式消息中
           if (displayText) {
-            if (streamingAgentMessage.content === '正在进行解析...') {
-              streamingAgentMessage.content = '' // 清除初始消息
-            }
             streamingAgentMessage.content += displayText
             finalResult.push(displayText)
             const currentSession = executionSessions.find((s) => s.id === workflow.id)
@@ -602,22 +628,31 @@ const executeWorkflow = async () => {
           }
         } else if (event.event === 'Done') {
           delete streamingAgentMessage.isStreaming
+          loadingMessage.progress = 100
+          loadingMessage.content = '任务执行完毕！'
+          clearInterval(loadingInterval)
           completeWorkflow({ output: finalResult.join('\n') })
         } else if (event.event === 'PING') {
-          // 可选处理
+          // Handle PING
         } else {
           addMessage('未知任务事件', 'system', null, event)
         }
       },
       onError(error) {
+        clearInterval(loadingInterval)
+        loadingMessage.content = `任务出错: ${error.message}`
+        loadingMessage.progress = 100 // Mark as complete but with error
         addMessage(`任务执行出错: ${error.message}`, 'system')
         completeWorkflow({ status: 'error', output: error.message })
       },
       onEnd() {
-        // onEnd 现在由 'Done' 事件触发，这里可以留空或用于最终清理
+        // Handled by 'Done' event
       }
     })
   } catch (error) {
+    clearInterval(loadingInterval)
+    loadingMessage.content = `任务失败: ${error.message}`
+    loadingMessage.progress = 100
     addMessage(`任务执行失败: ${error.message}`, 'system')
     completeWorkflow()
   }
@@ -625,6 +660,9 @@ const executeWorkflow = async () => {
 
 const completeWorkflow = (resultOverride = {}) => {
   if (!currentWorkflow.value) return
+
+  clearInterval(timeInterval)
+  clearInterval(loadingInterval) // Ensure loading interval is cleared
 
   const duration = formatDuration((Date.now() - currentWorkflow.value.startTime) / 1000)
   const result = generateMockResult(getCurrentFunction(), duration)
@@ -656,7 +694,6 @@ const completeWorkflow = (resultOverride = {}) => {
   stepProgress.value = 0
   workflowElapsedTime.value = 0
 
-  clearInterval(timeInterval)
   const isSuccess = resultOverride.status !== 'error'
   // 延迟输出“任务执行完成”和“执行结束”消息
   setTimeout(() => {
@@ -837,16 +874,19 @@ const viewExecutionDetail = (row) => {
 }
 
 const addMessage = (content, from, workflowInfo = null, details = null, options = {}) => {
-  const newMessage = {
-    id: Date.now() + Math.random(),
-    from, // 'user', 'agent', 'system'
-    content,
-    timestamp: new Date().toLocaleTimeString(),
-    sender: from === 'agent' ? (workflowInfo ? workflowInfo.name : '智能体') : '系统',
-    workflow: workflowInfo,
-    details,
-    ...options
-  }
+  const newMessage =
+    typeof content === 'object' && content !== null
+      ? content
+      : {
+          id: Date.now() + Math.random(),
+          from, // 'user', 'agent', 'system'
+          content,
+          timestamp: new Date().toLocaleTimeString(),
+          sender: from === 'agent' ? (workflowInfo ? workflowInfo.name : '智能体') : '系统',
+          workflow: workflowInfo,
+          details,
+          ...options
+        }
   messageQueue.push(newMessage)
   processMessageQueue()
 }

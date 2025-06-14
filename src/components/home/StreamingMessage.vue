@@ -14,6 +14,10 @@ const props = defineProps({
   isStreaming: {
     type: Boolean,
     default: false
+  },
+  skipAnimation: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -51,18 +55,27 @@ const handleTypingComplete = () => {
 watch(
   () => props.text,
   (newText, oldText) => {
+    if (props.skipAnimation) {
+      if (typingInterval) clearInterval(typingInterval)
+      displayedText.value = processText(newText)
+      handleTypingComplete()
+      return
+    }
+
     if (props.isStreaming) {
       // For streaming text, just update the display directly
       displayedText.value = processText(newText)
     } else {
-      // For non-streaming, restart the typing animation
-      if (typingInterval) clearInterval(typingInterval)
-      currentIndex = 0
-      displayedText.value = ''
-      if (newText) {
-        typingInterval = setInterval(type, 20) // Adjust typing speed here
-      } else {
-        handleTypingComplete()
+      // For non-streaming, restart the typing animation if text actually changes
+      if (newText !== oldText) {
+        if (typingInterval) clearInterval(typingInterval)
+        currentIndex = 0
+        displayedText.value = ''
+        if (newText) {
+          typingInterval = setInterval(type, 20) // Adjust typing speed here
+        } else {
+          handleTypingComplete()
+        }
       }
     }
   }
@@ -79,6 +92,12 @@ watch(
 )
 
 onMounted(() => {
+  if (props.skipAnimation) {
+    displayedText.value = processText(props.text)
+    handleTypingComplete()
+    return
+  }
+
   if (!props.isStreaming && props.text) {
     typingInterval = setInterval(type, 20)
   } else {

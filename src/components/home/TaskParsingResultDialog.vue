@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    title="任务解析结果"
+    title="智能体任务列表"
     width="60%"
     :before-close="handleClose"
     custom-class="task-parsing-result-dialog"
@@ -13,6 +13,11 @@
     </el-tabs>
     <el-table :data="paginatedData" style="width: 100%" v-loading="loading">
       <el-table-column prop="task_number" label="任务编号" width="180"></el-table-column>
+      <el-table-column prop="bstudio_create_time" label="任务创建时间" width="200">
+        <template #default="scope">
+          <span>{{ formatTimestamp(scope.row.bstudio_create_time) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column label="状态" width="120">
         <template #default="scope">
           <el-tag :type="getTaskStatus(scope.row).type" size="small">
@@ -54,8 +59,7 @@
       layout="prev, pager, next"
       :total="filteredTasks.length"
       :page-size="pageSize"
-      :current-page.sync="currentPage"
-      @current-change="handlePageChange"
+      v-model:current-page="currentPage"
       style="margin-top: 20px; text-align: right"
     >
     </el-pagination>
@@ -119,8 +123,17 @@ const handleTabClick = () => {
   currentPage.value = 1
 }
 
-const handlePageChange = (page) => {
-  currentPage.value = page
+const formatTimestamp = (timestamp) => {
+  if (!timestamp) return ''
+  const cleanTimestamp = timestamp.split(' +')[0]
+  const date = new Date(cleanTimestamp)
+  const year = date.getFullYear()
+  const month = ('0' + (date.getMonth() + 1)).slice(-2)
+  const day = ('0' + date.getDate()).slice(-2)
+  const hours = ('0' + date.getHours()).slice(-2)
+  const minutes = ('0' + date.getMinutes()).slice(-2)
+  const seconds = ('0' + date.getSeconds()).slice(-2)
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 const getTaskStatus = (task) => {

@@ -33,7 +33,21 @@
                 </span>
               </div>
               <div class="message-content">
-                <StreamingMessage :text="message.content" @done="handleMessageDisplayed(index)" />
+                <StreamingMessage
+                  :text="message.content"
+                  :is-streaming="!!message.isStreaming"
+                  :skip-animation="!message.isStreaming"
+                  @done="handleMessageDisplayed(index)"
+                />
+                <div v-if="message.type === 'loading'" class="loading-progress-container">
+                  <el-progress
+                    :percentage="message.progress"
+                    :stroke-width="8"
+                    striped
+                    striped-flow
+                    :duration="20"
+                  />
+                </div>
               </div>
               <div class="message-actions" v-if="message.showViewResultButton">
                 <el-button type="primary" size="small" @click="$emit('view-result-detail')">
@@ -241,6 +255,10 @@ onMounted(() => {
 
 .message-actions {
   margin-top: 10px;
+}
+
+.loading-progress-container {
+  margin-top: 12px;
 }
 
 .message-timestamp {
