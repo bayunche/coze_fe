@@ -12,7 +12,7 @@
         :key="agent.id"
         class="agent-card"
         shadow="hover"
-        @click="openTaskParsingResultDialog(agent)"
+        @click="openAgentDialog(agent)"
       >
         <template #header>
           <div class="card-header">
@@ -45,20 +45,42 @@
     </template>
   </el-dialog>
   <TaskParsingResultDialog
+    v-if="isContractParsing"
     v-model:show="taskParsingResultDialogVisible"
-    :tasks="tasks"
+    :tasks="selectedTasks"
   ></TaskParsingResultDialog>
+  <MaterialParsingResultDialog
+    v-if="isMaterialParsing"
+    v-model:show="materialParsingResultDialogVisible"
+    :tasks="selectedTasks"
+  ></MaterialParsingResultDialog>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, nextTick } from 'vue'
 import TaskParsingResultDialog from './TaskParsingResultDialog.vue'
+import MaterialParsingResultDialog from './MaterialParsingResultDialog.vue'
 
 const taskParsingResultDialogVisible = ref(false)
+const materialParsingResultDialogVisible = ref(false)
+const isContractParsing = ref(false)
+const isMaterialParsing = ref(false)
+const selectedTasks = ref({})
 
-const openTaskParsingResultDialog = (agent) => {
-  console.log('agent: ', agent)
-  taskParsingResultDialogVisible.value = true
+const openAgentDialog = async (agent) => {
+  isContractParsing.value = false
+  isMaterialParsing.value = false
+  selectedTasks.value = props.tasksByAgent[agent.id] || { all: [], completed: [], inProgress: [] }
+  
+  await nextTick()
+
+  if (agent.id === 'contractParsing') {
+    isContractParsing.value = true
+    taskParsingResultDialogVisible.value = true
+  } else if (agent.id === 'supplierMaterialParsing') {
+    isMaterialParsing.value = true
+    materialParsingResultDialogVisible.value = true
+  }
 }
 
 const props = defineProps({
@@ -70,7 +92,7 @@ const props = defineProps({
     type: Array,
     required: true
   },
-  tasks: {
+  tasksByAgent: {
     type: Object,
     required: true
   }

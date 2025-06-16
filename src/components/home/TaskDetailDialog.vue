@@ -8,8 +8,8 @@
   >
     <div v-loading="isFetchingDetails" class="result-detail-content">
       <el-table
-        v-if="tableData.length > 0"
-        :data="tableData"
+        v-if="editFormModels.length > 0"
+        :data="editFormModels"
         stripe
         class="result-table"
         max-height="60vh"
@@ -17,54 +17,54 @@
         <template v-for="column in tableColumns" :key="column.prop">
           <el-table-column
             v-if="headerMapping[column.prop]"
-            width="280"
             :prop="column.prop"
             :label="translateHeader(column.prop)"
           >
             <template #default="scope">
-              <span>{{ formatCellValue(scope.row[column.prop]) }}</span>
+              <span v-if="!scope.row.editing">{{ formatCellValue(scope.row[column.prop]) }}</span>
+              <template v-else>
+                <div v-if="isLongText(scope.row[column.prop])">
+                  <el-button type="primary" link size="small" @click="openEditPopup(scope.row, column.prop)">
+                    编辑长文本
+                  </el-button>
+                </div>
+                <el-input
+                  v-else
+                  v-model="scope.row[column.prop]"
+                  :placeholder="`请输入${translateHeader(column.prop)}`"
+                ></el-input>
+              </template>
             </template>
           </el-table-column>
         </template>
+        <el-table-column label="操作" width="150" fixed="right">
+          <template #default="scope">
+            <div v-if="scope.row.editing">
+              <el-button type="success" size="small" @click="saveRowEdit(scope.row)">保存</el-button>
+              <el-button size="small" @click="cancelRowEdit(scope.row)">取消</el-button>
+            </div>
+            <el-button v-else type="primary" size="small" @click="startRowEdit(scope.row)">编辑</el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <el-empty v-else-if="!isFetchingDetails" description="没有可展示的表格数据" />
     </div>
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="handleClose">关闭</el-button>
-                  <el-button type="primary" @click="handleEditResult">编辑</el-button>
-          <el-button type="success" @click="handleConfirm" :loading="isConfirming">确认</el-button>
+        <el-button type="primary" @click="handleSaveAll" :loading="savingAllEdits">提交编辑</el-button>
+        <el-button type="success" @click="handleConfirm" :loading="isConfirming">确认全部</el-button>
       </span>
     </template>
   </el-dialog>
 
-  <!-- 编辑解析结果对话框 -->
-  <el-dialog
-    v-model="showEditDialog"
-    title="编辑解析结果"
-    width="60%"
-    custom-class="edit-result-dialog"
-  >
-    <el-form label-width="120px">
-      <el-collapse v-model="activeCollapse">
-        <el-collapse-item
-          v-for="(formModel, index) in editFormModels"
-          :key="formModel.id"
-          :title="`条目 ${index + 1}: ${formModel.name || ''}`"
-          :name="formModel.id"
-        >
-          <template v-for="key in Object.keys(formModel)" :key="key">
-            <el-form-item v-if="headerMapping[key]" :label="translateHeader(key)">
-              <el-input v-model="formModel[key]" />
-            </el-form-item>
-          </template>
-        </el-collapse-item>
-      </el-collapse>
-    </el-form>
+  <!-- 编辑长文本的对话框 -->
+  <el-dialog v-model="longTextEditVisible" :title="`编辑 ${editableField}`" width="40%">
+    <el-input v-model="longTextValue" type="textarea" :rows="10" />
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="cancelEdit">取消</el-button>
-        <el-button type="primary" @click="saveEdit" :loading="isSaving">保存</el-button>
+        <el-button @click="longTextEditVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveLongText">保存</el-button>
       </span>
     </template>
   </el-dialog>
@@ -72,7 +72,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import CozeService from '@/uitls/coze.js'
 
 const props = defineProps({
@@ -93,15 +93,18 @@ const cozeService = new CozeService(
 )
 
 const isFetchingDetails = ref(false)
-const tableData = ref([])
+const tableData = ref([]) // 原始数据
 const tableColumns = ref([])
+const editFormModels = ref([]) // 用于编辑的表单数据模型
 
 // 编辑功能
-const showEditDialog = ref(false)
-const editFormModels = ref([]) // 表单绑定的对象数组
-const activeCollapse = ref([]) // 控制折叠面板的展开
-const isSaving = ref(false)
 const isConfirming = ref(false)
+const longTextEditVisible = ref(false)
+const longTextValue = ref('')
+const editableRow = ref(null)
+const editableField = ref('')
+const editableFieldProp = ref('')
+const savingAllEdits = ref(false)
 
 const dialogVisible = computed({
   get: () => props.show,
@@ -157,7 +160,10 @@ const fetchTaskDetails = async (taskId) => {
           prop: key,
           label: key
         }))
-        tableData.value = parsedData
+        const rawData = parsedData.map((item) => ({ ...item, editing: false }))
+        tableData.value = JSON.parse(JSON.stringify(rawData))
+        // 为编辑创建一个深拷贝
+        editFormModels.value = JSON.parse(JSON.stringify(rawData))
       } else {
         throw new Error('解析后的数据格式不正确或为空。')
       }
@@ -180,43 +186,94 @@ watch(
     } else {
       tableData.value = []
       tableColumns.value = []
+      editFormModels.value = []
     }
   },
   { immediate: true, deep: true }
 )
 
-const handleEditResult = () => {
-  if (!tableData.value || tableData.value.length === 0) {
-    ElMessage.warning('没有可编辑的数据。')
-    return
+const isLongText = (text) => {
+  if (typeof text !== 'string') return false
+  // 当文本行数大于3或字符数超过50时，被认为是长文本
+  const lineCount = (text.match(/\n/g) || []).length + 1
+  return lineCount > 3 || text.length > 50
+}
+
+
+const openEditPopup = (row, field) => {
+  editableRow.value = row
+  editableFieldProp.value = field
+  editableField.value = translateHeader(field)
+  longTextValue.value = row[field]
+  longTextEditVisible.value = true
+}
+
+const saveLongText = () => {
+  if (editableRow.value && editableFieldProp.value) {
+    editableRow.value[editableFieldProp.value] = longTextValue.value
   }
-  // 深拷贝数据用于编辑，避免直接修改原始数据
-  editFormModels.value = JSON.parse(JSON.stringify(tableData.value))
-
-  // 默认展开所有折叠项
-  activeCollapse.value = editFormModels.value.map((item) => item.id)
-
-  showEditDialog.value = true
+  longTextEditVisible.value = false
+  editableFieldProp.value = ''
+  editableField.value = ''
 }
 
-const cancelEdit = () => {
-  showEditDialog.value = false
+const startRowEdit = (row) => {
+  // 只需设置编辑状态，因为原始数据在 tableData 中
+  row.editing = true
 }
 
-const saveEdit = async () => {
-  isSaving.value = true
+const cancelRowEdit = (row) => {
+  const index = editFormModels.value.findIndex((item) => item.id === row.id)
+  if (index !== -1) {
+    // 从原始数据中恢复
+    const originalRow = tableData.value.find((item) => item.id === row.id)
+    if (originalRow) {
+      editFormModels.value[index] = JSON.parse(JSON.stringify(originalRow))
+      editFormModels.value[index].editing = false // 确保取消后 editing 状态也复原
+    }
+  }
+}
+
+const saveRowEdit = (row) => {
+  // 仅在本地确认更改并退出编辑模式，不调用保存服务
+  row.editing = false
+  ElMessage.info('此行更改已暂存，请点击“提交修改”以提交。')
+}
+
+const handleSaveAll = async () => {
+  savingAllEdits.value = true
   try {
-    const editPromises = editFormModels.value.map((item) => cozeService.runEditWorkflow(item))
-    await Promise.all(editPromises)
-    // 深拷贝数据以更新表格
-    tableData.value = JSON.parse(JSON.stringify(editFormModels.value))
-    ElMessage.success('保存成功，所有条目更新')
-    showEditDialog.value = false
+    // 准备要提交的数据，移除 'editing' 标志
+    const payloads = editFormModels.value.map(item => {
+      const payload = { ...item }
+      delete payload.editing
+      return payload
+    })
+
+    const editPromises = payloads.map((item) => cozeService.runEditWorkflow(item))
+
+    const results = await Promise.allSettled(editPromises)
+
+    const successCount = results.filter((r) => r.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+
+    if (failureCount > 0) {
+      ElMessage.error(`${failureCount} 个条目保存失败，请检查控制台日志。`)
+    } else {
+      ElMessage.success('全部解析结果已成功保存！')
+      // 更新原始数据
+      tableData.value = JSON.parse(JSON.stringify(editFormModels.value.map(item => {
+        const cleanItem = {...item};
+        delete cleanItem.editing;
+        return cleanItem;
+      })))
+      handleClose() // 保存成功后关闭对话框
+    }
   } catch (error) {
-    console.error('保存编辑时出错:', error)
+    console.error('保存全部时发生意外错误:', error)
     ElMessage.error(`保存失败: ${error.message}`)
   } finally {
-    isSaving.value = false
+    savingAllEdits.value = false
   }
 }
 

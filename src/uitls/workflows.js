@@ -34,6 +34,21 @@ export const functions = [
     needsFiles: true,
     allowedTypes: '.pdf,.docx,.txt'
   },
+  {
+    id: 'supplierMaterialParsing',
+    name: '乙供物资解析',
+    icon: Document,
+    iconClass: 'text-yellow-500',
+    workflows: ['解析乙供物资'],
+    params: [],
+    steps: [
+      { name: '上传文件', description: '将乙供物资Excel文件上传至服务器' },
+      { name: '文件解析', description: '调用工作流进行解析' },
+      { name: '解析完毕', description: '完成乙供物资数据提取' }
+    ],
+    needsFiles: true,
+    allowedTypes: '.xlsx,.xls'
+  },
 
   {
     id: 'analysis',

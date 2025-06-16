@@ -60,7 +60,7 @@
     <SmartBrainDialog
       v-model:show="showSmartBrainDialog"
       :agents="smartAgents"
-      :tasks="taskLists"
+      :tasks-by-agent="taskListsByAgent"
     />
 
     <!-- 结果详情对话框 -->
@@ -73,7 +73,7 @@
       <div v-loading="isFetchingDetails" class="result-detail-content">
         <el-table
           v-if="tableData.length > 0"
-          :data="tableData"
+          :data="editFormModels"
           style="width: 100%"
         stripe 
           class="result-table"
@@ -84,53 +84,53 @@
             <el-table-column
               v-if="headerMapping[column.prop]"
               :prop="column.prop"
-              width="280"
               :label="translateHeader(column.prop)"
             >
               <template #default="scope">
-                <span>{{ formatCellValue(scope.row[column.prop]) }}</span>
+                <span v-if="!scope.row.editing">{{ formatCellValue(scope.row[column.prop]) }}</span>
+                <template v-else>
+                  <div v-if="isLongText(scope.row[column.prop])">
+                    <el-button type="primary" link size="small" @click="openEditPopup(scope.row, column.prop)">
+                      编辑长文本
+                    </el-button>
+                  </div>
+                  <el-input
+                    v-else
+                    v-model="scope.row[column.prop]"
+                    :placeholder="`请输入${translateHeader(column.prop)}`"
+                  ></el-input>
+                </template>
               </template>
             </el-table-column>
           </template>
+          <el-table-column label="操作" width="150" fixed="right">
+            <template #default="scope">
+              <div v-if="scope.row.editing">
+                <el-button type="success" size="small" @click="saveRowEdit(scope.row)">保存</el-button>
+                <el-button size="small" @click="cancelRowEdit(scope.row)">取消</el-button>
+              </div>
+              <el-button v-else type="primary" size="small" @click="startRowEdit(scope.row)">编辑</el-button>
+            </template>
+          </el-table-column>
         </el-table>
         <el-empty v-else-if="!isFetchingDetails" description="没有可展示的表格数据" />
       </div>
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showResultDetail = false">关闭</el-button>
-          <el-button type="primary" @click="handleEditResult">编辑</el-button>
+          <el-button type="primary" @click="handleSaveAll" :loading="savingAllEdits">提交修改</el-button>
           <el-button type="success" @click="handleConfirm" :loading="isConfirming">确认</el-button>
         </span>
       </template>
     </el-dialog>
 
-    <!-- 编辑解析结果对话框 -->
-    <el-dialog
-      v-model="showEditDialog"
-      title="编辑解析结果"
-      width="60%"
-      custom-class="edit-result-dialog"
-    >
-      <el-form label-width="120px">
-        <el-collapse v-model="activeCollapse">
-          <el-collapse-item
-            v-for="(formModel, index) in editFormModels"
-            :key="formModel.id"
-            :title="`条目 ${index + 1}: ${formModel.name || ''}`"
-            :name="formModel.id"
-          >
-            <template v-for="key in Object.keys(formModel)" :key="key">
-              <el-form-item v-if="headerMapping[key]" :label="translateHeader(key)">
-                <el-input v-model="formModel[key]" />
-              </el-form-item>
-            </template>
-          </el-collapse-item>
-        </el-collapse>
-      </el-form>
+    <!-- 编辑长文本的对话框 -->
+    <el-dialog v-model="longTextEditVisible" :title="`编辑 ${editableField}`" width="40%">
+      <el-input v-model="longTextValue" type="textarea" :rows="10" />
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="cancelEdit">取消</el-button>
-          <el-button type="primary" @click="saveEdit" :loading="isSaving">保存</el-button>
+          <el-button @click="longTextEditVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveLongText">保存</el-button>
         </span>
       </template>
     </el-dialog>
@@ -139,7 +139,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 导入子组件
 import SidebarNav from '@/components/home/SidebarNav.vue'
@@ -168,49 +168,32 @@ const executionSessions = reactive([])
 const showResultDetail = ref(false)
 const showSmartBrainDialog = ref(false)
 const taskId = ref(null)
-const tableData = ref([])
+const tableData = ref([]) // 原始数据
 const tableColumns = ref([])
+const editFormModels = ref([]) // 用于编辑的表单数据模型
 const isFetchingDetails = ref(false)
 
 // 编辑功能
-const showEditDialog = ref(false)
-const editFormModels = ref([]) // 表单绑定的对象数组
-const activeCollapse = ref([]) // 控制折叠面板的展开
-const isSaving = ref(false)
+const longTextEditVisible = ref(false)
+const longTextValue = ref('')
+const editableRow = ref(null)
+const editableField = ref('')
+const editableFieldProp = ref('')
+const savingAllEdits = ref(false)
 const isConfirming = ref(false)
 const userInput = ref('')
-const taskLists = ref({
-  all: [],
-  completed: [],
-  inProgress: []
-})
+const taskListsByAgent = ref({})
 
-const smartAgents = ref([
-  {
-    id: 1,
-    name: '合同解析智能体',
-    status: 'online',
-    tasks: { completed: 0, inProgress: 0, total: 0 }
-  },
-  {
-    id: 2,
-    name: '数据分析智能体',
-    status: 'online',
-    tasks: { completed: 92, inProgress: 1, total: 93 }
-  },
-  {
-    id: 3,
-    name: '通用对话智能体',
-    status: 'offline',
-    tasks: { completed: 512, inProgress: 0, total: 512 }
-  },
-  {
-    id: 4,
-    name: '自动化任务智能体',
-    status: 'online',
-    tasks: { completed: 256, inProgress: 5, total: 261 }
-  }
-])
+const smartAgents = ref(
+  functions
+    .filter((f) => f.id === 'contractParsing' || f.id === 'supplierMaterialParsing')
+    .map((f) => ({
+      id: f.id,
+      name: f.name,
+      status: 'online', // Assuming all are online for now
+      tasks: { completed: 0, inProgress: 0, total: 0 }
+    }))
+)
 
 // 表头中英文映射
 const headerMapping = {
@@ -346,7 +329,10 @@ const handleViewResultDetail = async () => {
           prop: key,
           label: key
         }))
-        tableData.value = parsedData
+        const rawData = parsedData.map((item) => ({ ...item, editing: false }))
+        tableData.value = JSON.parse(JSON.stringify(rawData))
+        // 为编辑创建一个深拷贝
+        editFormModels.value = JSON.parse(JSON.stringify(rawData))
       } else {
         throw new Error('解析后的数据格式不正确或为空。')
       }
@@ -362,41 +348,88 @@ const handleViewResultDetail = async () => {
   }
 }
 
-const handleEditResult = () => {
-  if (!tableData.value || tableData.value.length === 0) {
-    ElMessage.warning('没有可编辑的数据。')
-    return
+const isLongText = (text) => {
+  if (typeof text !== 'string') return false
+  // 当文本行数大于3或字符数超过50时，被认为是长文本
+  const lineCount = (text.match(/\n/g) || []).length + 1
+  return lineCount > 3 || text.length > 50
+}
+
+
+const openEditPopup = (row, field) => {
+  editableRow.value = row
+  editableFieldProp.value = field
+  editableField.value = translateHeader(field)
+  longTextValue.value = row[field]
+  longTextEditVisible.value = true
+}
+
+const saveLongText = () => {
+  if (editableRow.value && editableFieldProp.value) {
+    editableRow.value[editableFieldProp.value] = longTextValue.value
   }
-  // 深拷贝数据用于编辑，避免直接修改原始数据
-  editFormModels.value = JSON.parse(JSON.stringify(tableData.value))
-
-  // 默认展开所有折叠项
-  activeCollapse.value = editFormModels.value.map((item) => item.id)
-
-  showResultDetail.value = false
-  showEditDialog.value = true
+  longTextEditVisible.value = false
+  editableFieldProp.value = ''
+  editableField.value = ''
 }
 
-const cancelEdit = () => {
-  showEditDialog.value = false
-  showResultDetail.value = true // 返回详情弹窗
+const startRowEdit = (row) => {
+  // 只需设置编辑状态，因为原始数据在 tableData 中
+  row.editing = true
 }
 
-const saveEdit = async () => {
-  isSaving.value = true
+const cancelRowEdit = (row) => {
+  const index = editFormModels.value.findIndex((item) => item.id === row.id)
+  if (index !== -1) {
+    // 从原始数据中恢复
+    const originalRow = tableData.value.find((item) => item.id === row.id)
+    if (originalRow) {
+      editFormModels.value[index] = JSON.parse(JSON.stringify(originalRow))
+      editFormModels.value[index].editing = false // 确保取消后 editing 状态也复原
+    }
+  }
+}
+
+const saveRowEdit = (row) => {
+  // 仅在本地确认更改并退出编辑模式，不调用保存服务
+  row.editing = false
+  ElMessage.info('此行更改已暂存，请点击“提交修改”以提交。')
+}
+
+const handleSaveAll = async () => {
+  savingAllEdits.value = true
   try {
-    const editPromises = editFormModels.value.map((item) => cozeService.runEditWorkflow(item))
-    await Promise.all(editPromises)
-    // 深拷贝数据以更新表格
-    tableData.value = JSON.parse(JSON.stringify(editFormModels.value))
-    ElMessage.success('保存成功，所有条目更新')
-    showEditDialog.value = false
-    showResultDetail.value = true // 返回详情弹窗
+    // 准备要提交的数据，移除 'editing' 标志
+    const payloads = editFormModels.value.map(item => {
+      const payload = { ...item }
+      delete payload.editing
+      return payload
+    })
+
+    const editPromises = payloads.map((item) => cozeService.runEditWorkflow(item))
+
+    const results = await Promise.allSettled(editPromises)
+
+    const successCount = results.filter((r) => r.status === 'fulfilled').length
+    const failureCount = results.length - successCount
+
+    if (failureCount > 0) {
+      ElMessage.error(`${failureCount} 个条目保存失败，请检查控制台日志。`)
+    } else {
+      ElMessage.success('全部解析结果已成功保存！')
+      // 更新原始数据
+      tableData.value = JSON.parse(JSON.stringify(editFormModels.value.map(item => {
+        const cleanItem = {...item};
+        delete cleanItem.editing;
+        return cleanItem;
+      })))
+      showResultDetail.value = false // 保存成功后关闭对话框
+    }
   } catch (error) {
-    console.error('保存编辑时出错:', error)
+    console.error('保存全部时发生意外错误:', error)
     ElMessage.error(`保存失败: ${error.message}`)
   } finally {
-    isSaving.value = false
+    savingAllEdits.value = false
   }
 }
 
@@ -450,39 +483,67 @@ const handleFunctionSelect = async (key) => {
       ElMessage.info('正在查询智能体任务数据...')
       const workflowId = '7515227050698178599'
 
-      const [inProgressResult, completedResult, totalResult] = await Promise.all([
-        cozeService.runWorkflow(workflowId, { status: '1' }), // 进行中
-        cozeService.runWorkflow(workflowId, { status: '2' }), // 已完成
-        cozeService.runWorkflow(workflowId, { status: '' }) // 全部
+      // This part needs to be updated to fetch tasks for all relevant agents.
+      // For now, we'll just open the dialog.
+      // A more robust solution would fetch tasks for each agent type.
+      const contractWorkflowId = '7515227050698178599' // Assuming this is for contracts
+      // const materialWorkflowId = 'YOUR_MATERIAL_WORKFLOW_ID' // Add the correct ID here
+
+      const [contractInProgress, contractCompleted, contractTotal] = await Promise.all([
+        cozeService.runWorkflow(contractWorkflowId, { status: '1' }),
+        cozeService.runWorkflow(contractWorkflowId, { status: '2' }),
+        cozeService.runWorkflow(contractWorkflowId, { status: '' })
       ])
 
-      const contractAgent = smartAgents.value.find((agent) => agent.id === 1)
-      if (contractAgent) {
-        const getTaskList = (result) => {
-          try {
-            const data = result?.data
-            if (!data) return []
-            const output = JSON.parse(data).output
-            if (!output) return []
-            if (Array.isArray(output)) return output
-            if (typeof output === 'string') {
-              const parsed = JSON.parse(output)
-              return Array.isArray(parsed) ? parsed : []
-            }
-            return []
-          } catch (e) {
-            console.error('Failed to parse workflow output:', e, result?.data)
-            return []
+      const getTaskList = (result) => {
+        try {
+          const data = result?.data
+          if (!data) return []
+          const output = JSON.parse(data).output
+          if (!output) return []
+          if (Array.isArray(output)) return output
+          if (typeof output === 'string') {
+            const parsed = JSON.parse(output)
+            return Array.isArray(parsed) ? parsed : []
           }
+          return []
+        } catch (e) {
+          console.error('Failed to parse workflow output:', e, result?.data)
+          return []
+        }
+      }
+
+      const contractAgent = smartAgents.value.find((agent) => agent.id === 'contractParsing')
+      if (contractAgent) {
+        const inProgress = getTaskList(contractInProgress)
+        const completed = getTaskList(contractCompleted)
+        const all = getTaskList(contractTotal)
+
+        taskListsByAgent.value['contractParsing'] = {
+          inProgress,
+          completed,
+          all
         }
 
-        taskLists.value.inProgress = getTaskList(inProgressResult)
-        taskLists.value.completed = getTaskList(completedResult)
-        taskLists.value.all = getTaskList(totalResult)
+        contractAgent.tasks.inProgress = inProgress.length
+        contractAgent.tasks.completed = completed.length
+        contractAgent.tasks.total = all.length
+      }
 
-        contractAgent.tasks.inProgress = taskLists.value.inProgress.length
-        contractAgent.tasks.completed = taskLists.value.completed.length
-        contractAgent.tasks.total = taskLists.value.all.length
+      const materialAgent = smartAgents.value.find((agent) => agent.id === 'supplierMaterialParsing')
+      if (materialAgent) {
+        const mockTasks = {
+          inProgress: [{ task_number: 'MOCK-001', bstudio_create_time: new Date().toISOString(), total_documents_count: 10, processed_documents_count: 5, error_documents_count: 0 }],
+          completed: [{ task_number: 'MOCK-002', bstudio_create_time: new Date().toISOString(), total_documents_count: 8, processed_documents_count: 8, error_documents_count: 0 }],
+          all: [
+            { task_number: 'MOCK-001', bstudio_create_time: new Date().toISOString(), total_documents_count: 10, processed_documents_count: 5, error_documents_count: 0 },
+            { task_number: 'MOCK-002', bstudio_create_time: new Date().toISOString(), total_documents_count: 8, processed_documents_count: 8, error_documents_count: 0 }
+          ]
+        }
+        taskListsByAgent.value['supplierMaterialParsing'] = mockTasks
+        materialAgent.tasks.inProgress = mockTasks.inProgress.length
+        materialAgent.tasks.completed = mockTasks.completed.length
+        materialAgent.tasks.total = mockTasks.all.length
       }
 
       showSmartBrainDialog.value = true
