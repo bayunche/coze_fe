@@ -19,7 +19,7 @@
           >
             <el-button :icon="Upload">选择文件</el-button>
             <template #tip>
-              <div class="el-upload__tip">支持 {{ allowedFileTypes }} 格式，最多上传5个文件</div>
+              <div class="el-upload__tip">支持 {{ allowedFileTypes }} 格式，最多上传10个文件，文件总大小控制50m之内</div>
             </template>
           </el-upload>
         </el-form-item>

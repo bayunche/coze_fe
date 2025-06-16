@@ -18,6 +18,10 @@ const props = defineProps({
   skipAnimation: {
     type: Boolean,
     default: false
+  },
+  forceAnimation: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -55,14 +59,14 @@ const handleTypingComplete = () => {
 watch(
   () => props.text,
   (newText, oldText) => {
-    if (props.skipAnimation) {
+    if (props.skipAnimation && !props.forceAnimation) {
       if (typingInterval) clearInterval(typingInterval)
       displayedText.value = processText(newText)
       handleTypingComplete()
       return
     }
 
-    if (props.isStreaming) {
+    if (props.isStreaming && !props.forceAnimation) {
       // For streaming text, just update the display directly
       displayedText.value = processText(newText)
     } else {
@@ -92,13 +96,13 @@ watch(
 )
 
 onMounted(() => {
-  if (props.skipAnimation) {
+  if (props.skipAnimation && !props.forceAnimation) {
     displayedText.value = processText(props.text)
     handleTypingComplete()
     return
   }
 
-  if (!props.isStreaming && props.text) {
+  if ((!props.isStreaming || props.forceAnimation) && props.text) {
     typingInterval = setInterval(type, 20)
   } else {
     displayedText.value = processText(props.text)

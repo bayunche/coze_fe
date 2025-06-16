@@ -37,6 +37,12 @@
                   :text="message.content"
                   :is-streaming="!!message.isStreaming"
                   :skip-animation="!message.isStreaming"
+                  :force-animation="
+                    message.from === 'system' &&
+                    isDisplaying &&
+                    displayedMessages.length > 0 &&
+                    message.id === displayedMessages[displayedMessages.length - 1].id
+                  "
                   @done="handleMessageDisplayed(index)"
                 />
                 <div v-if="message.type === 'loading'" class="loading-progress-container">
