@@ -75,7 +75,7 @@
           v-if="tableData.length > 0"
           :data="editFormModels"
           style="width: 100%"
-        stripe 
+          stripe
           class="result-table"
           max-height="60vh"
           :header-cell-style="{ background: '#fafafa', color: '#333' }"
@@ -90,7 +90,12 @@
                 <span v-if="!scope.row.editing">{{ formatCellValue(scope.row[column.prop]) }}</span>
                 <template v-else>
                   <div v-if="isLongText(scope.row[column.prop])">
-                    <el-button type="primary" link size="small" @click="openEditPopup(scope.row, column.prop)">
+                    <el-button
+                      type="primary"
+                      link
+                      size="small"
+                      @click="openEditPopup(scope.row, column.prop)"
+                    >
                       编辑长文本
                     </el-button>
                   </div>
@@ -106,10 +111,14 @@
           <el-table-column label="操作" width="150" fixed="right">
             <template #default="scope">
               <div v-if="scope.row.editing">
-                <el-button type="success" size="small" @click="saveRowEdit(scope.row)">保存</el-button>
+                <el-button type="success" size="small" @click="saveRowEdit(scope.row)"
+                  >保存</el-button
+                >
                 <el-button size="small" @click="cancelRowEdit(scope.row)">取消</el-button>
               </div>
-              <el-button v-else type="primary" size="small" @click="startRowEdit(scope.row)">编辑</el-button>
+              <el-button v-else type="primary" size="small" @click="startRowEdit(scope.row)"
+                >编辑</el-button
+              >
             </template>
           </el-table-column>
         </el-table>
@@ -118,7 +127,9 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="showResultDetail = false">关闭</el-button>
-          <el-button type="primary" @click="handleSaveAll" :loading="savingAllEdits">提交修改</el-button>
+          <el-button type="primary" @click="handleSaveAll" :loading="savingAllEdits"
+            >提交修改</el-button
+          >
           <el-button type="success" @click="handleConfirm" :loading="isConfirming">确认</el-button>
         </span>
       </template>
@@ -355,7 +366,6 @@ const isLongText = (text) => {
   return lineCount > 3 || text.length > 50
 }
 
-
 const openEditPopup = (row, field) => {
   editableRow.value = row
   editableFieldProp.value = field
@@ -400,7 +410,7 @@ const handleSaveAll = async () => {
   savingAllEdits.value = true
   try {
     // 准备要提交的数据，移除 'editing' 标志
-    const payloads = editFormModels.value.map(item => {
+    const payloads = editFormModels.value.map((item) => {
       const payload = { ...item }
       delete payload.editing
       return payload
@@ -418,11 +428,15 @@ const handleSaveAll = async () => {
     } else {
       ElMessage.success('全部解析结果已成功保存！')
       // 更新原始数据
-      tableData.value = JSON.parse(JSON.stringify(editFormModels.value.map(item => {
-        const cleanItem = {...item};
-        delete cleanItem.editing;
-        return cleanItem;
-      })))
+      tableData.value = JSON.parse(
+        JSON.stringify(
+          editFormModels.value.map((item) => {
+            const cleanItem = { ...item }
+            delete cleanItem.editing
+            return cleanItem
+          })
+        )
+      )
       showResultDetail.value = false // 保存成功后关闭对话框
     }
   } catch (error) {
@@ -530,14 +544,44 @@ const handleFunctionSelect = async (key) => {
         contractAgent.tasks.total = all.length
       }
 
-      const materialAgent = smartAgents.value.find((agent) => agent.id === 'supplierMaterialParsing')
+      const materialAgent = smartAgents.value.find(
+        (agent) => agent.id === 'supplierMaterialParsing'
+      )
       if (materialAgent) {
         const mockTasks = {
-          inProgress: [{ task_number: 'MOCK-001', bstudio_create_time: new Date().toISOString(), total_documents_count: 10, processed_documents_count: 5, error_documents_count: 0 }],
-          completed: [{ task_number: 'MOCK-002', bstudio_create_time: new Date().toISOString(), total_documents_count: 8, processed_documents_count: 8, error_documents_count: 0 }],
+          inProgress: [
+            {
+              task_number: 'MOCK-001',
+              bstudio_create_time: new Date().toISOString(),
+              total_documents_count: 10,
+              processed_documents_count: 5,
+              error_documents_count: 0
+            }
+          ],
+          completed: [
+            {
+              task_number: 'MOCK-002',
+              bstudio_create_time: new Date().toISOString(),
+              total_documents_count: 8,
+              processed_documents_count: 8,
+              error_documents_count: 0
+            }
+          ],
           all: [
-            { task_number: 'MOCK-001', bstudio_create_time: new Date().toISOString(), total_documents_count: 10, processed_documents_count: 5, error_documents_count: 0 },
-            { task_number: 'MOCK-002', bstudio_create_time: new Date().toISOString(), total_documents_count: 8, processed_documents_count: 8, error_documents_count: 0 }
+            {
+              task_number: 'MOCK-001',
+              bstudio_create_time: new Date().toISOString(),
+              total_documents_count: 10,
+              processed_documents_count: 5,
+              error_documents_count: 0
+            },
+            {
+              task_number: 'MOCK-002',
+              bstudio_create_time: new Date().toISOString(),
+              total_documents_count: 8,
+              processed_documents_count: 8,
+              error_documents_count: 0
+            }
           ]
         }
         taskListsByAgent.value['supplierMaterialParsing'] = mockTasks
@@ -1019,7 +1063,7 @@ const handleSendMessage = () => {
           agentMessage.actionTriggered = true // 标记已触发，防止重复执行
         } else if (
           !agentMessage.actionTriggered &&
-          agentMessage.content.includes('乙供物资解析')
+          agentMessage.content.includes('正在调用解析乙供物资功能')
         ) {
           handleFunctionSelect('supplierMaterialParsing')
           agentMessage.actionTriggered = true // 标记已触发，防止重复执行
