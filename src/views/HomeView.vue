@@ -1017,6 +1017,12 @@ const handleSendMessage = () => {
         if (!agentMessage.actionTriggered && agentMessage.content.includes('解析合同')) {
           handleFunctionSelect('contractParsing')
           agentMessage.actionTriggered = true // 标记已触发，防止重复执行
+        } else if (
+          !agentMessage.actionTriggered &&
+          agentMessage.content.includes('乙供物资解析')
+        ) {
+          handleFunctionSelect('supplierMaterialParsing')
+          agentMessage.actionTriggered = true // 标记已触发，防止重复执行
         }
       } else if (event === 'done') {
         // The 'done' event now signals the end of the stream.
