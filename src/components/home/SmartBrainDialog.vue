@@ -70,8 +70,9 @@ const selectedTasks = ref({})
 const openAgentDialog = async (agent) => {
   isContractParsing.value = false
   isMaterialParsing.value = false
+  // 直接使用 props.tasksByAgent 中已有的数据
   selectedTasks.value = props.tasksByAgent[agent.id] || { all: [], completed: [], inProgress: [] }
-  
+
   await nextTick()
 
   if (agent.id === 'contractParsing') {

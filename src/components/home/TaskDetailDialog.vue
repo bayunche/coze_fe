@@ -142,6 +142,29 @@ const dialogVisible = computed({
 // 表头中英文映射
 const headerMapping = {
   name: '合同名称',
+  number: '合同编号',
+  money: '合同金额',
+  pay_result: '付款依据',
+  sign_time: '签订时间',
+  fixed_rate: '包干率',
+  anquan_rate: '安全文明施工费是否下浮',
+  linshi_rate: '临时设施费是否下浮',
+  position: '职位',
+  salary: '薪水',
+  hire_date: '入职日期',
+  id: '编号',
+  task_id: '任务ID',
+  status: '状态',
+  created_at: '创建时间',
+  updated_at: '更新时间',
+  description: '描述',
+  result: '结果',
+  total_documents_count: '总文档数',
+  processed_documents_count: '处理文档数',
+  error_documents_count: '失败文档数',
+  progress: '进度',
+  file_count: '文件总数',
+  file_done_count: '已完成文件数量',
   contract_name: '合同名称',
   contract_number: '合同编号',
   contract_amount: '合同金额',
@@ -153,8 +176,19 @@ const headerMapping = {
   result_status: '解析状态',
   salary: '薪水',
   hire_date: '入职日期',
-  ID: 'ID'
-  // ... 在这里可以添加更多的映射
+  ID: 'ID',
+  contract_name: '合同名称',
+  contract_number: '合同编号',
+  contract_amount: '合同金额',
+  pay_result: '付款依据',
+  signing_time: '签订时间',
+  fixed_rate: '包干率',
+  safety_rate: '安全文明施工费是否下浮',
+  temporary_rate: '临时设施费是否下浮',
+  result_status: '解析状态',
+  position: '职位',
+  salary: '薪水',
+  hire_date: '入职日期'
 }
 
 const translateHeader = (prop) => {

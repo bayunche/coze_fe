@@ -231,7 +231,19 @@ const headerMapping = {
   error_documents_count: '失败文档数',
   progress: '进度',
   file_count: '文件总数',
-  file_done_count: '已完成文件数量'
+  file_done_count: '已完成文件数量',
+  contract_name: '合同名称',
+  contract_number: '合同编号',
+  contract_amount: '合同金额',
+  pay_result: '付款依据',
+  signing_time: '签订时间',
+  fixed_rate: '包干率',
+  safety_rate: '安全文明施工费是否下浮',
+  temporary_rate: '临时设施费是否下浮',
+  result_status: '解析状态',
+  salary: '薪水',
+  hire_date: '入职日期',
+  ID: 'ID'
 }
 
 const translateHeader = (prop) => {
@@ -538,17 +550,12 @@ const handleFunctionSelect = async (key) => {
     try {
       ElMessage.info('正在查询智能体任务数据...')
 
-      // This part needs to be updated to fetch tasks for all relevant agents.
-      // For now, we'll just open the dialog.
-      // A more robust solution would fetch tasks for each agent type.
-      const contractWorkflowId = '7517283953213866036' // Assuming this is for contracts
-      // const materialWorkflowId = 'YOUR_MATERIAL_WORKFLOW_ID' // Add the correct ID here
-
-      const [contractInProgress, contractCompleted, contractTotal] = await Promise.all([
-        cozeService.runWorkflow(contractWorkflowId, { status: '1' }),
-        cozeService.runWorkflow(contractWorkflowId, { status: '2' }),
-        cozeService.runWorkflow(contractWorkflowId, { status: '5' })
-      ])
+      const getTaskCountsWorkflowId = '7517560875563204627'
+      const getTaskListWorkflowId = '7517283953213866036'
+      const businessDomains = {
+        contractParsing: 'contract',
+        supplierMaterialParsing: 'y_material'
+      }
 
       const getTaskList = (result) => {
         try {
@@ -568,68 +575,65 @@ const handleFunctionSelect = async (key) => {
         }
       }
 
-      const contractAgent = smartAgents.value.find((agent) => agent.id === 'contractParsing')
-      if (contractAgent) {
-        const inProgress = getTaskList(contractInProgress)
-        const completed = getTaskList(contractCompleted)
-        const all = getTaskList(contractTotal)
+      const fetchPromises = smartAgents.value.map(async (agent) => {
+        const domain = businessDomains[agent.id]
+        if (domain) {
+          try {
+            // Fetch task counts
+            const countResult = await cozeService.runWorkflow(getTaskCountsWorkflowId, {
+              businessDomain: domain
+            })
+            if (countResult && countResult.data) {
+              try {
+                const outerParsed = JSON.parse(countResult.data)
+                if (outerParsed && outerParsed.output) {
+                  const innerParsed = JSON.parse(outerParsed.output)
+                  // Assuming innerParsed is an array with one object matching the domain
+                  const domainData = innerParsed.find((item) => item.BUSINESS_DOMAIN === domain)
+                  if (domainData) {
+                    agent.tasks.completed = parseInt(domainData.finished_count) || 0
+                    agent.tasks.inProgress = parseInt(domainData.running_count) || 0
+                    agent.tasks.total = parseInt(domainData.total_count) || 0
+                  }
+                }
+              } catch (parseError) {
+                console.error(`解析 ${agent.name} 任务数量数据失败:`, parseError, countResult.data)
+              }
+            }
 
-        taskListsByAgent.value['contractParsing'] = {
-          inProgress,
-          completed,
-          all
+            // Fetch task lists for all, in-progress, and completed
+            const [inProgressListResult, completedListResult, allListResult] = await Promise.all([
+              cozeService.runWorkflow(getTaskListWorkflowId, {
+                status: '1',
+                businessDomain: domain
+              }),
+              cozeService.runWorkflow(getTaskListWorkflowId, {
+                status: '2',
+                businessDomain: domain
+              }),
+              cozeService.runWorkflow(getTaskListWorkflowId, {
+                status: '5',
+                businessDomain: domain
+              })
+            ])
+
+            taskListsByAgent.value[agent.id] = {
+              inProgress: getTaskList(inProgressListResult),
+              completed: getTaskList(completedListResult),
+              all: getTaskList(allListResult)
+            }
+          } catch (error) {
+            console.error(`获取 ${agent.name} 数据失败:`, error)
+            // Optionally set tasks to 0 or handle error state for this agent
+            agent.tasks.completed = 0
+            agent.tasks.inProgress = 0
+            agent.tasks.total = 0
+            taskListsByAgent.value[agent.id] = { all: [], completed: [], inProgress: [] }
+          }
         }
+      })
 
-        contractAgent.tasks.inProgress = inProgress.length
-        contractAgent.tasks.completed = completed.length
-        contractAgent.tasks.total = all.length
-      }
-
-      const materialAgent = smartAgents.value.find(
-        (agent) => agent.id === 'supplierMaterialParsing'
-      )
-      if (materialAgent) {
-        const mockTasks = {
-          inProgress: [
-            {
-              task_number: 'MOCK-001',
-              bstudio_create_time: new Date().toISOString(),
-              total_documents_count: 10,
-              processed_documents_count: 5,
-              error_documents_count: 0
-            }
-          ],
-          completed: [
-            {
-              task_number: 'MOCK-002',
-              bstudio_create_time: new Date().toISOString(),
-              total_documents_count: 8,
-              processed_documents_count: 8,
-              error_documents_count: 0
-            }
-          ],
-          all: [
-            {
-              task_number: 'MOCK-001',
-              bstudio_create_time: new Date().toISOString(),
-              total_documents_count: 10,
-              processed_documents_count: 5,
-              error_documents_count: 0
-            },
-            {
-              task_number: 'MOCK-002',
-              bstudio_create_time: new Date().toISOString(),
-              total_documents_count: 8,
-              processed_documents_count: 8,
-              error_documents_count: 0
-            }
-          ]
-        }
-        taskListsByAgent.value['supplierMaterialParsing'] = mockTasks
-        materialAgent.tasks.inProgress = mockTasks.inProgress.length
-        materialAgent.tasks.completed = mockTasks.completed.length
-        materialAgent.tasks.total = mockTasks.all.length
-      }
+      await Promise.all(fetchPromises)
 
       showSmartBrainDialog.value = true
     } catch (error) {
