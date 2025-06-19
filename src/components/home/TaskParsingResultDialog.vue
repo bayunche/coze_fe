@@ -12,10 +12,10 @@
       <el-tab-pane label="进行中" name="inProgress"></el-tab-pane>
     </el-tabs>
     <el-table :data="paginatedData" style="width: 100%" v-loading="loading">
-      <el-table-column prop="task_number" label="任务编号" width="180"></el-table-column>
-      <el-table-column prop="bstudio_create_time" label="任务创建时间" width="200">
+      <el-table-column prop="ID" label="任务编号" width="180"></el-table-column>
+      <el-table-column prop="CREATED_TIME" label="任务创建时间" width="200">
         <template #default="scope">
-          <span>{{ formatTimestamp(scope.row.bstudio_create_time) }}</span>
+          <span>{{ formatTimestamp(scope.row.CREATED_TIME) }}</span>
         </template>
       </el-table-column>
       <el-table-column label="状态" width="120">
@@ -29,22 +29,18 @@
         <template #default="scope">
           <div style="display: flex; align-items: center">
             <el-progress
-              :percentage="
-                calculateProgress(
-                  scope.row.total_documents_count,
-                  scope.row.processed_documents_count
-                )
-              "
+              :percentage="calculateProgress(scope.row.file_count, scope.row.file_done_count)"
               :stroke-width="8"
               style="flex-grow: 1; margin-right: 10px"
             />
             <span style="font-size: 12px; color: #909399">
-              {{ scope.row.processed_documents_count || 0 }} / {{ scope.row.total_documents_count || 0 }}
+              {{ scope.row.file_done_count || 0 }} /
+              {{ scope.row.file_count || 0 }}
             </span>
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="error_documents_count" label="失败数" width="100"></el-table-column>
+      <el-table-column prop="file_error_count" label="失败数" width="100"></el-table-column>
       <el-table-column label="操作" width="120" fixed="right">
         <template #default="scope">
           <el-button type="primary" size="small" @click="viewTaskDetails(scope.row)"
@@ -69,11 +65,7 @@
       </span>
     </template>
   </el-dialog>
-  <TaskDetailDialog
-    v-if="selectedTask"
-    v-model:show="showTaskDetailDialog"
-    :task="selectedTask"
-  />
+  <TaskDetailDialog v-if="selectedTask" v-model:show="showTaskDetailDialog" :task="selectedTask" />
 </template>
 
 <script setup>
@@ -116,6 +108,7 @@ const filteredTasks = computed(() => {
 const paginatedData = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
+  console.log(filteredTasks.value)
   return filteredTasks.value.slice(start, end)
 })
 

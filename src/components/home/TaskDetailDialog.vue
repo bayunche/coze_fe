@@ -21,10 +21,17 @@
             :label="translateHeader(column.prop)"
           >
             <template #default="scope">
-              <span v-if="!scope.row.editing">{{ formatCellValue(scope.row[column.prop]) }}</span>
+              <span v-if="!scope.row.editing">{{
+                formatCellValue(scope.row[column.prop], column.prop)
+              }}</span>
               <template v-else>
                 <div v-if="isLongText(scope.row[column.prop])">
-                  <el-button type="primary" link size="small" @click="openEditPopup(scope.row, column.prop)">
+                  <el-button
+                    type="primary"
+                    link
+                    size="small"
+                    @click="openEditPopup(scope.row, column.prop)"
+                  >
                     编辑长文本
                   </el-button>
                 </div>
@@ -40,10 +47,19 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <div v-if="scope.row.editing">
-              <el-button type="success" size="small" @click="saveRowEdit(scope.row)">保存</el-button>
+              <el-button type="success" size="small" @click="saveRowEdit(scope.row)"
+                >保存</el-button
+              >
               <el-button size="small" @click="cancelRowEdit(scope.row)">取消</el-button>
             </div>
-            <el-button v-else type="primary" size="small" @click="startRowEdit(scope.row)">编辑</el-button>
+            <el-button
+              v-if="!scope.row.editing && scope.row.result_status == '0'"
+              type="primary"
+              size="small"
+              @click="startRowEdit(scope.row)"
+            >
+              编辑
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -52,8 +68,17 @@
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="handleClose">关闭</el-button>
-        <el-button type="primary" @click="handleSaveAll" :loading="savingAllEdits">提交编辑</el-button>
-        <el-button type="success" @click="handleConfirm" :loading="isConfirming">确认全部</el-button>
+        <el-button type="primary" @click="handleSaveAll" :loading="savingAllEdits">
+          提交编辑
+        </el-button>
+        <el-button
+          v-if="!hasResultStatusOne"
+          type="success"
+          @click="handleConfirm"
+          :loading="isConfirming"
+        >
+          确认全部
+        </el-button>
       </span>
     </template>
   </el-dialog>
@@ -88,6 +113,9 @@ const props = defineProps({
 
 const emit = defineEmits(['update:show'])
 
+const hasResultStatusOne = computed(() => {
+  return editFormModels.value.some((item) => Number(item.result_status) === 1)
+})
 const cozeService = new CozeService(
   'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
 )
@@ -114,17 +142,18 @@ const dialogVisible = computed({
 // 表头中英文映射
 const headerMapping = {
   name: '合同名称',
-  number: '合同编号',
-  money: '合同金额',
+  contract_name: '合同名称',
+  contract_number: '合同编号',
+  contract_amount: '合同金额',
   pay_result: '付款依据',
-  sign_time: '签订时间',
+  signing_time: '签订时间',
   fixed_rate: '包干率',
-  anquan_rate: '安全文明施工费是否下浮',
-  linshi_rate: '临时设施费是否下浮',
-  position: '职位',
+  safety_rate: '安全文明施工费是否下浮',
+  temporary_rate: '临时设施费是否下浮',
+  result_status: '解析状态',
   salary: '薪水',
   hire_date: '入职日期',
-  bstudio_id: 'ID',
+  ID: 'ID'
   // ... 在这里可以添加更多的映射
 }
 
@@ -132,9 +161,14 @@ const translateHeader = (prop) => {
   return headerMapping[prop] || prop
 }
 
-const formatCellValue = (value) => {
+const formatCellValue = (value, prop) => {
   if (value === null || value === undefined || value === '') {
     return '/'
+  }
+  if (prop === 'result_status') {
+    if (Number(value) === 0) return '未确认'
+    if (Number(value) === 1) return '已确认'
+    return value
   }
   if (typeof value === 'boolean') {
     return value ? '是' : '否'
@@ -156,14 +190,41 @@ const fetchTaskDetails = async (taskId) => {
       const parsedData = JSON.parse(jsonString)?.output
 
       if (Array.isArray(parsedData) && parsedData.length > 0) {
-        tableColumns.value = Object.keys(parsedData[0]).map((key) => ({
-          prop: key,
-          label: key
-        }))
-        const rawData = parsedData.map((item) => ({ ...item, editing: false }))
-        tableData.value = JSON.parse(JSON.stringify(rawData))
-        // 为编辑创建一个深拷贝
-        editFormModels.value = JSON.parse(JSON.stringify(rawData))
+        // 判断parsedData的结构是否包含result_json字段，表示表格数据多包了一层
+        let tableJsonData = null
+        if (parsedData[0].hasOwnProperty('result_json')) {
+          // 当result_json字段是字符串形式的JSON数组时，将所有解析合并为一个大数组
+          tableJsonData = []
+          for (const item of parsedData) {
+            if (item.result_json) {
+              try {
+                const parsedResult = JSON.parse(item.result_json)
+                if (Array.isArray(parsedResult)) {
+                  tableJsonData.push(...parsedResult)
+                } else if (parsedResult && typeof parsedResult === 'object') {
+                  tableJsonData.push(parsedResult)
+                }
+              } catch {
+                // 解析失败则忽略
+              }
+            }
+          }
+        } else {
+          tableJsonData = parsedData
+        }
+
+        if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
+          tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
+            prop: key,
+            label: key
+          }))
+          const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
+          tableData.value = JSON.parse(JSON.stringify(rawData))
+          // 为编辑创建一个深拷贝
+          editFormModels.value = JSON.parse(JSON.stringify(rawData))
+        } else {
+          throw new Error('解析后的result_json格式不正确或为空。')
+        }
       } else {
         throw new Error('解析后的数据格式不正确或为空。')
       }
@@ -181,8 +242,8 @@ const fetchTaskDetails = async (taskId) => {
 watch(
   () => props.task,
   (newTask) => {
-    if (newTask && newTask.task_number) {
-      fetchTaskDetails(newTask.task_number)
+    if (newTask && newTask.ID) {
+      fetchTaskDetails(newTask.ID)
     } else {
       tableData.value = []
       tableColumns.value = []
@@ -198,7 +259,6 @@ const isLongText = (text) => {
   const lineCount = (text.match(/\n/g) || []).length + 1
   return lineCount > 3 || text.length > 50
 }
-
 
 const openEditPopup = (row, field) => {
   editableRow.value = row
@@ -244,7 +304,7 @@ const handleSaveAll = async () => {
   savingAllEdits.value = true
   try {
     // 准备要提交的数据，移除 'editing' 标志
-    const payloads = editFormModels.value.map(item => {
+    const payloads = editFormModels.value.map((item) => {
       const payload = { ...item }
       delete payload.editing
       return payload
@@ -262,11 +322,15 @@ const handleSaveAll = async () => {
     } else {
       ElMessage.success('全部解析结果已成功保存！')
       // 更新原始数据
-      tableData.value = JSON.parse(JSON.stringify(editFormModels.value.map(item => {
-        const cleanItem = {...item};
-        delete cleanItem.editing;
-        return cleanItem;
-      })))
+      tableData.value = JSON.parse(
+        JSON.stringify(
+          editFormModels.value.map((item) => {
+            const cleanItem = { ...item }
+            delete cleanItem.editing
+            return cleanItem
+          })
+        )
+      )
       handleClose() // 保存成功后关闭对话框
     }
   } catch (error) {

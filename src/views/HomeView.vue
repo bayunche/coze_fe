@@ -218,8 +218,20 @@ const headerMapping = {
   linshi_rate: '临时设施费是否下浮',
   position: '职位',
   salary: '薪水',
-  hire_date: '入职日期'
-  // ... 在这里可以添加更多的映射
+  hire_date: '入职日期',
+  id: '编号',
+  task_id: '任务ID',
+  status: '状态',
+  created_at: '创建时间',
+  updated_at: '更新时间',
+  description: '描述',
+  result: '结果',
+  total_documents_count: '总文档数',
+  processed_documents_count: '处理文档数',
+  error_documents_count: '失败文档数',
+  progress: '进度',
+  file_count: '文件总数',
+  file_done_count: '已完成文件数量'
 }
 
 const translateHeader = (prop) => {
@@ -317,6 +329,35 @@ const formatDuration = (seconds) => {
 }
 
 // 方法
+function parseResultJsonData(parsedData) {
+  // 判断parsedData的结构是否包含result_json字段，表示表格数据多包了一层
+  if (!Array.isArray(parsedData) || parsedData.length === 0) {
+    return []
+  }
+  let tableJsonData = null
+  if (parsedData[0].hasOwnProperty('result_json')) {
+    // 当result_json字段是字符串形式的JSON数组时，将所有解析合并为一个大数组
+    tableJsonData = []
+    for (const item of parsedData) {
+      if (item.result_json) {
+        try {
+          const parsedResult = JSON.parse(item.result_json)
+          if (Array.isArray(parsedResult)) {
+            tableJsonData.push(...parsedResult)
+          } else if (parsedResult && typeof parsedResult === 'object') {
+            tableJsonData.push(parsedResult)
+          }
+        } catch {
+          // 解析失败则忽略
+        }
+      }
+    }
+  } else {
+    tableJsonData = parsedData
+  }
+  return tableJsonData
+}
+
 const handleViewResultDetail = async () => {
   if (taskId.value == null) {
     ElMessage.warning('没有可供解析的结果任务ID。')
@@ -330,29 +371,30 @@ const handleViewResultDetail = async () => {
 
   try {
     const result = await cozeService.runTableGenerationWorkflow(taskId.value)
-    console.log(result)
     if (result && result.data) {
       const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"')
       const parsedData = JSON.parse(jsonString)?.output
-
-      if (Array.isArray(parsedData) && parsedData.length > 0) {
-        tableColumns.value = Object.keys(parsedData[0]).map((key) => ({
+      const tableJsonData = parseResultJsonData(parsedData)
+      if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
+        tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
           prop: key,
-          label: key
+          label: translateHeader(key)
         }))
-        const rawData = parsedData.map((item) => ({ ...item, editing: false }))
+        const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
         tableData.value = JSON.parse(JSON.stringify(rawData))
         // 为编辑创建一个深拷贝
         editFormModels.value = JSON.parse(JSON.stringify(rawData))
       } else {
-        throw new Error('解析后的数据格式不正确或为空。')
+        tableColumns.value = []
+        tableData.value = []
+        editFormModels.value = []
+        ElMessage.info('结果为空或 result_json 解析后无数据，暂无数据展示。')
       }
     } else {
       throw new Error('任务未返回有效的表格数据。')
     }
   } catch (error) {
     console.error('处理表格数据时出错:', error)
-
     ElMessage.error(`获取表格数据失败: ${error.message}`)
   } finally {
     isFetchingDetails.value = false
@@ -495,18 +537,17 @@ const handleFunctionSelect = async (key) => {
   if (key === 'smartBrain') {
     try {
       ElMessage.info('正在查询智能体任务数据...')
-      const workflowId = '7515227050698178599'
 
       // This part needs to be updated to fetch tasks for all relevant agents.
       // For now, we'll just open the dialog.
       // A more robust solution would fetch tasks for each agent type.
-      const contractWorkflowId = '7515227050698178599' // Assuming this is for contracts
+      const contractWorkflowId = '7517283953213866036' // Assuming this is for contracts
       // const materialWorkflowId = 'YOUR_MATERIAL_WORKFLOW_ID' // Add the correct ID here
 
       const [contractInProgress, contractCompleted, contractTotal] = await Promise.all([
         cozeService.runWorkflow(contractWorkflowId, { status: '1' }),
         cozeService.runWorkflow(contractWorkflowId, { status: '2' }),
-        cozeService.runWorkflow(contractWorkflowId, { status: '' })
+        cozeService.runWorkflow(contractWorkflowId, { status: '5' })
       ])
 
       const getTaskList = (result) => {
@@ -648,7 +689,7 @@ const executeWorkflow = async () => {
     } else {
       clearInterval(loadingInterval)
     }
-  }, 200)
+  }, 10000)
 
   timeInterval = setInterval(() => {
     const elapsed = (Date.now() - workflow.startTime) / 1000

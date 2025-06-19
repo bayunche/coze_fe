@@ -80,7 +80,7 @@ class CozeService {
   }
 
   runContractParsing(fileId, callbacks) {
-    const workflowId = '7514492004446650422' // 解析合同
+    const workflowId = '7516796514431172642' // 解析合同
     const input = { input: fileId }
     const appId = '7509762183313129512'
     return this._runWorkflow(workflowId, input, callbacks, appId)
@@ -156,7 +156,7 @@ class CozeService {
    * @returns {Promise<object>} The result of the workflow run.
    */
   async runTableGenerationWorkflow(taskId) {
-    const workflowId = '7514499089367908386' // 表格生成工作流
+    const workflowId = '7517294942201610281' // 表格生成工作流
     const params = {
       workflow_id: workflowId,
       parameters: { task_id: taskId, keyWords: '' },
@@ -177,7 +177,7 @@ class CozeService {
    * @returns {Promise<object>} The result of the workflow run.
    */
   async runEditWorkflow(modifiedObject) {
-    const workflowId = '7514711058864259113' // 编辑工作流
+    const workflowId = '7517452946095947795' // 编辑工作流
     const params = {
       workflow_id: workflowId,
       parameters: { modify_json: modifiedObject },
@@ -198,7 +198,7 @@ class CozeService {
    * @returns {Promise<object>} The result of the workflow run.
    */
   async runConfirmWorkflow(parameters) {
-    const workflowId = '7514863217953964095' // 确认工作流
+    const workflowId = '7517473601378697254' // 确认工作流
     const params = {
       workflow_id: workflowId,
       parameters: parameters,

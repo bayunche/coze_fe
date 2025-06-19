@@ -67,8 +67,10 @@ watch(
     }
 
     if (props.isStreaming && !props.forceAnimation) {
-      // For streaming text, just update the display directly
-      displayedText.value = processText(newText)
+      // For streaming text, always update the display directly even if newText === oldText
+      if (newText !== oldText || oldText === '') {
+        displayedText.value = processText(newText)
+      }
     } else {
       // For non-streaming, restart the typing animation if text actually changes
       if (newText !== oldText) {
