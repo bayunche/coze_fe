@@ -130,9 +130,9 @@ const formatTimestamp = (timestamp) => {
 }
 
 const getTaskStatus = (task) => {
-  const total = parseInt(task.total_documents_count, 10) || 0
-  const processed = parseInt(task.processed_documents_count, 10) || 0
-  const failed = parseInt(task.error_documents_count, 10) || 0
+  const total = parseInt(task.file_count, 10) || 0
+  const processed = parseInt(task.file_done_count, 10) || 0
+  const failed = parseInt(task.file_error_count, 10) || 0
 
   if (processed < total) {
     return { text: '进行中', type: 'primary' }
