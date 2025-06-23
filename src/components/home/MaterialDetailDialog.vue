@@ -48,7 +48,7 @@
                 <el-option
                   v-for="item in scope.row.similar_matches"
                   :key="item.value"
-                  :label="`${item.name} (${item.specification}, ${item.price}元, ${item.similarity * 100}%)`"
+                  :label="formatSimilarMatchLabel(item)"
                   :value="item"
                 ></el-option>
               </el-select>
@@ -59,6 +59,18 @@
           </template>
         </el-table-column>
       </el-table>
+      <el-pagination
+        v-if="totalDetails > pageSize"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="totalDetails"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="pageSize"
+        v-model:current-page="currentPage"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
+        style="margin-top: 20px; text-align: right"
+      />
     </div>
     <template #footer>
       <span class="dialog-footer">
@@ -77,7 +89,11 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import MaterialSelectionDialog from './MaterialSelectionDialog.vue'
-// import CozeService from '@/uitls/coze.js' // Assuming you have a service to fetch data
+import CozeService from '@/uitls/coze.js'
+
+const cozeService = new CozeService(
+  'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
+)
 
 const props = defineProps({
   show: {
@@ -103,87 +119,172 @@ const tableData = ref([])
 const showSelectionDialog = ref(false)
 const currentRow = ref(null)
 
-// Mock data for now
-const mockData = [
-  {
-    id: 1,
-    material_name: '螺纹钢 HRB400E Φ12',
-    material_specification: 'HRB400E Φ12',
-    material_price: 4500,
-    matched_name: '螺纹钢 HRB400E Φ12',
-    matched_specification: 'HRB400E Φ12',
-    matched_price: 4500,
-    similarity: 1.0,
-    match_type: '精确匹配',
-    similar_matches: [],
-    editing: false
-  },
-  {
-    id: 2,
-    material_name: '普通混凝土 C30',
-    material_specification: 'C30',
-    material_price: 400,
-    matched_name: '商品混凝土 C30',
-    matched_specification: 'C30',
-    matched_price: 410,
-    similarity: 0.9,
-    match_type: '相似匹配',
-    similar_matches: [
-      { name: '商品混凝土', specification: 'C30', price: 410, similarity: 0.98, value: 'match1' },
-      { name: '泵送混凝土', specification: 'C30', price: 420, similarity: 0.95, value: 'match2' }
-    ],
-    selected_match: null,
-    editing: false
-  },
-  {
-    id: 3,
-    material_name: '未知规格水泥',
-    material_specification: '未知',
-    material_price: 500,
-    matched_name: '',
-    matched_specification: '',
-    matched_price: '',
-    similarity: 0,
-    match_type: '无匹配',
-    similar_matches: [],
-    editing: false
-  }
-]
+const allDetailIds = ref([]) // 存储所有详情ID
+const currentPage = ref(1)
+const pageSize = ref(10)
+const totalDetails = ref(0)
 
 const fetchDetails = async (taskId) => {
   if (!taskId) return
   loading.value = true
+  tableData.value = []
+
   try {
-    // Replace with actual API call
-    // const cozeService = new CozeService(...)
-    // const result = await cozeService.getMaterialParsingDetails(taskId)
-    // tableData.value = result.data
-    
-    // Using mock data for now
-    tableData.value = JSON.parse(JSON.stringify(mockData));
-    
+    // 1. 调用获取乙供物资解析详情列表id工作流
+    const detailIdsWorkflowId = '7519167663710257193'
+    const detailIdsResult = await cozeService.runWorkflow(detailIdsWorkflowId, { task_id: taskId })
+
+    if (detailIdsResult && detailIdsResult.data) {
+      const parsedOutput = JSON.parse(detailIdsResult.data)?.output
+      if (Array.isArray(parsedOutput)) {
+        allDetailIds.value = parsedOutput.map(item => JSON.parse(item).ID);
+        totalDetails.value = allDetailIds.value.length;
+      } else {
+        ElMessage.warning('未获取到有效的详情ID列表。')
+        loading.value = false
+        return
+      }
+    } else {
+      throw new Error('获取详情ID列表失败。')
+    }
+
+    // 2. 根据分页获取详情数据
+    await fetchPaginatedDetails(taskId, currentPage.value, pageSize.value);
+
   } catch (error) {
-    ElMessage.error('获取详情失败')
-    console.error(error)
+    ElMessage.error(`获取详情失败: ${error.message}`)
+    console.error('获取详情失败:', error)
   } finally {
     loading.value = false
   }
 }
 
+const fetchPaginatedDetails = async (taskId, page, size) => {
+  loading.value = true;
+  tableData.value = [];
+
+  const startIndex = (page - 1) * size;
+  const endIndex = Math.min(startIndex + size, allDetailIds.value.length);
+  const currentDetailIds = allDetailIds.value.slice(startIndex, endIndex);
+
+  if (currentDetailIds.length === 0) {
+    ElMessage.info('当前页没有数据。');
+    loading.value = false;
+    return;
+  }
+
+  const detailPromises = currentDetailIds.map(async (detailId) => {
+    const detailWorkflowId = '7519045874770657299';
+    const detailResult = await cozeService.runWorkflow(detailWorkflowId, {
+      task_id: taskId,
+      taskDetailId: detailId,
+      index: page, // 这里的index和pageSize可能需要根据实际工作流的参数定义来调整
+      pageSize: size
+    });
+    if (detailResult && detailResult.data) {
+      const parsedData = JSON.parse(detailResult.data)?.output;
+      if (Array.isArray(parsedData) && parsedData.length > 0) {
+        // test.json 的 result 字段是一个数组，直接使用
+        return parsedData.map(item => formatMaterialDetail(item));
+      }
+    }
+    return null;
+  });
+
+  const results = await Promise.all(detailPromises);
+  tableData.value = results.flat().filter(item => item !== null);
+  loading.value = false;
+};
+
+// 格式化数据以适应表格和相似匹配的显示
+const formatMaterialDetail = (item) => {
+  const matchTypeMap = {
+    0: '无匹配',
+    1: '精确匹配',
+    2: '相似匹配'
+  };
+
+  const formattedItem = {
+    id: item.id,
+    material_name: item.excelDataMaterialName,
+    material_specification: item.excelDataSpecificationModel,
+    material_price: item.excelDataPrice,
+    matched_name: item.matchedDataMaterialName,
+    matched_specification: item.matchedDataSpecificationModel,
+    matched_price: item.matchedPrice,
+    similarity: item.matchedScore !== null ? (item.matchedScore * 100).toFixed(2) + '%' : '/',
+    match_type: matchTypeMap[item.comparison_result] || '未知',
+    editing: false,
+    selected_match: null, // 用于相似匹配的选中值
+    original_item: item // 保留原始数据，方便后续操作
+  };
+
+  if (item.comparison_result === 2 && Array.isArray(item.subData)) {
+    formattedItem.similar_matches = item.subData.map(sub => ({
+      id: sub.id,
+      matched_id: sub.matched_id,
+      name: sub.matchedDataMaterialName || '未知名称', // 假设subData中也有这些字段
+      specification: sub.matchedDataSpecificationModel || '未知型号',
+      price: sub.matchedPrice || 0,
+      similarity: sub.score || 0,
+      matchedPriceQuarter: sub.matchedPriceQuarter || '未知季度', // 假设subData中包含匹配季度
+      value: sub.id // 用于el-option的value
+    }));
+  } else {
+    formattedItem.similar_matches = [];
+  }
+  return formattedItem;
+};
+
+// 处理分页变化
+const handlePageChange = (newPage) => {
+  currentPage.value = newPage;
+  fetchPaginatedDetails(props.task.ID, newPage, pageSize.value);
+};
+
+// 处理页长变化
+const handleSizeChange = (newSize) => {
+  pageSize.value = newSize;
+  currentPage.value = 1; // 页长变化后回到第一页
+  fetchPaginatedDetails(props.task.ID, currentPage.value, newSize);
+};
+
 watch(
   () => props.task,
   (newTask) => {
-    if (newTask && newTask.task_number) {
-      fetchDetails(newTask.task_number)
+    if (newTask && newTask.ID) { // 使用 newTask.ID 作为 task_id
+      fetchDetails(newTask.ID)
+    } else {
+      tableData.value = []
+      allDetailIds.value = []
+      totalDetails.value = 0
+      currentPage.value = 1
     }
   },
-  { immediate: true }
-)
+  { immediate: true, deep: true }
+);
+
+const formatSimilarMatchLabel = (item) => {
+  const name = item.name || '';
+  const specification = item.specification || '';
+  const price = item.price !== null ? `¥${item.price.toFixed(2)}` : '';
+  const similarity = item.similarity !== null ? `${(item.similarity * 100).toFixed(0)}%` : '';
+  const quarter = item.matchedPriceQuarter || '';
+
+  const parts = [];
+  if (price) parts.push(price);
+  if (similarity) parts.push(similarity);
+  if (quarter) parts.push(quarter);
+
+  const bracketContent = parts.join(',');
+  return `${name} ${specification} (${bracketContent})`;
+};
 
 const getMatchTypeTag = (type) => {
   if (type === '精确匹配') return 'success'
   if (type === '相似匹配') return 'warning'
-  return 'danger'
+  if (type === '无匹配') return 'danger'
+  return 'info' // For '未知' or other types
 }
 
 const handleSimilarMatchChange = (row, selectedMatch) => {
@@ -191,7 +292,18 @@ const handleSimilarMatchChange = (row, selectedMatch) => {
     row.matched_name = selectedMatch.name
     row.matched_specification = selectedMatch.specification
     row.matched_price = selectedMatch.price
-    row.similarity = selectedMatch.similarity
+    row.similarity = selectedMatch.similarity !== null ? (selectedMatch.similarity * 100).toFixed(2) + '%' : '/';
+    // 更新原始数据中的匹配ID，以便保存时使用
+    const originalItem = row.original_item;
+    if (originalItem) {
+      originalItem.matchedDataId = selectedMatch.matched_id;
+      originalItem.matchedDataMaterialName = selectedMatch.name;
+      originalItem.matchedDataSpecificationModel = selectedMatch.specification;
+      originalItem.matchedPrice = selectedMatch.price;
+      originalItem.matchedScore = selectedMatch.similarity;
+      originalItem.matchedPriceQuarter = selectedMatch.matchedPriceQuarter;
+      originalItem.comparison_result = 1; // 相似匹配选择后，可以视为精确匹配
+    }
   }
 }
 
@@ -224,15 +336,29 @@ const handleCancelEdit = (row) => {
 const handleSave = async () => {
   saving.value = true
   try {
-    // Replace with actual API call to save the results
-    // const cozeService = new CozeService(...)
-    // await cozeService.saveMaterialParsingResults(tableData.value)
-    console.log('Saving data:', tableData.value)
-    ElMessage.success('保存成功')
-    handleClose()
+    // 准备要提交的数据，只提交原始数据中需要修改的部分
+    const payloads = tableData.value.map((item) => {
+      const payload = { ...item.original_item }; // 使用原始数据
+      // 如果有编辑状态，这里需要处理
+      // delete payload.editing;
+      return payload;
+    });
+
+    // 假设有一个保存乙供物资解析结果的工作流
+    const saveWorkflowId = 'YOUR_SAVE_MATERIAL_PARSING_WORKFLOW_ID'; // 需要替换为实际的保存工作流ID
+    // 这里的保存逻辑可能需要根据实际工作流的参数来调整，例如是批量保存还是逐条保存
+    // 假设是批量保存，并且工作流接收一个数组
+    const saveResult = await cozeService.runWorkflow(saveWorkflowId, { material_details: payloads });
+
+    if (saveResult && saveResult.data) {
+      ElMessage.success('保存成功');
+      handleClose();
+    } else {
+      throw new Error('保存操作未返回有效结果。');
+    }
   } catch (error) {
-    ElMessage.error('保存失败')
-    console.error(error)
+    ElMessage.error(`保存失败: ${error.message}`)
+    console.error('保存失败:', error)
   } finally {
     saving.value = false
   }

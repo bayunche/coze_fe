@@ -86,6 +86,13 @@ class CozeService {
     return this._runWorkflow(workflowId, input, callbacks, appId)
   }
 
+  runSupplierMaterialParsing(fileIdList, callbacks) {
+    const workflowId = '7517934954761715721' // 乙供物资解析
+    const input = { excelFileList: fileIdList }
+    const appId = '7509762183313129512' // 假设使用相同的appId
+    return this._runWorkflow(workflowId, input, callbacks, appId)
+  }
+
   async runChat(input, chatflowId, callbacks) {
     try {
       const additional_messages = [

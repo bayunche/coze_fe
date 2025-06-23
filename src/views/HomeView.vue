@@ -179,6 +179,8 @@ const executionSessions = reactive([])
 const showResultDetail = ref(false)
 const showSmartBrainDialog = ref(false)
 const taskId = ref(null)
+const supplierFileId = ref(null) // 用于存储乙供物资解析返回的 file_id
+const supplierFileDetailIds = ref([]) // 用于存储乙供物资解析返回的 file_detail_id_list
 const tableData = ref([]) // 原始数据
 const tableColumns = ref([])
 const editFormModels = ref([]) // 用于编辑的表单数据模型
@@ -255,7 +257,15 @@ const headerMapping = {
   单位: '单位',
   单价: '单价',
   总价: '总价',
-  备注: '备注'
+  备注: '备注',
+  material_name: '乙供物资名称',
+  material_specification: '乙供物资规格型号',
+  material_price: '乙供物资价格',
+  matched_name: '匹配物资名称',
+  matched_specification: '匹配规格型号',
+  matched_price: '匹配价格',
+  similarity: '相似度',
+  match_type: '匹配类型'
 }
 
 const translateHeader = (prop) => {
@@ -816,13 +826,9 @@ const executeWorkflow = async () => {
         }
       })
     } else if (func.id === 'supplierMaterialParsing') {
-      const workflowId = '7517283953213866036' // 假设乙供物资解析的workflow ID
-      cozeService.runWorkflow(
-        workflowId,
-        {
-          file_ids: fileIds,
-          ...workflowConfig.params
-        },
+      const workflowId = '7517934954761715721' // 乙供物资解析的实际工作流ID
+      cozeService.runSupplierMaterialParsing(
+        inputs, // 传入文件ID列表
         {
           onMessage(event) {
             if (isFirstMessage) {
@@ -868,6 +874,23 @@ const executeWorkflow = async () => {
               loadingMessage.progress = 100
               loadingMessage.content = '任务执行完毕！'
               clearInterval(loadingInterval)
+
+              // 解析 Done 事件的 data，提取 file_id 和 file_detail_id_list
+              if (event.data) {
+                try {
+                  const doneData = JSON.parse(event.data); // 假设 Done 事件的 data 是 JSON 字符串
+                  if (doneData.file_id) {
+                    supplierFileId.value = doneData.file_id;
+                  }
+                  if (Array.isArray(doneData.file_detail_id_list)) {
+                    supplierFileDetailIds.value = doneData.file_detail_id_list;
+                  }
+                  ElMessage.success(`乙供物资解析完成，文件ID: ${supplierFileId.value}，详情ID数量: ${supplierFileDetailIds.value.length}`);
+                } catch (e) {
+                  console.error('解析乙供物资 Done 事件数据失败:', e, event.data);
+                  ElMessage.warning('乙供物资解析完成，但解析结果ID失败。');
+                }
+              }
               completeWorkflow({ output: finalResult.join('\n') })
             } else if (event.event === 'PING') {
               // Handle PING

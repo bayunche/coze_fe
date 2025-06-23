@@ -1,0 +1,62 @@
+{
+    "result": [
+      {
+        "comparison_result": 2,
+        "excelDataCount": 96,
+        "excelDataMaterialName": "铜端子",
+        "excelDataPrice": null,
+        "excelDataSpecificationModel": "铜端子DT-300",
+        "excelDataTaxPrice": null,
+        "excelDataUnit": "只",
+        "id": "1Dhi0ueLQodsEuPcG1wZnPifwYcAf2Je",
+        "matchedDataId": null,
+        "matchedDataMaterialName": null,
+        "matchedDataSpecificationModel": null,
+        "matchedDataUnit": null,
+        "matchedPrice": null,
+        "matchedPriceQuarter": null,
+        "matchedScore": 0.75,
+        "matched_type": 2,
+        "price_matched_status": 0,
+        "subData": [
+          {
+            "id": "7rEWRHPcfk35JYBd2nlvnU040whPKWIm",
+            "matched_id": "2122",
+            "matched_type": 2,
+            "price_matched_status": 0,
+            "score": 0.75,
+            "y_materauk_task_data_id": "1Dhi0ueLQodsEuPcG1wZnPifwYcAf2Je"
+          },
+          {
+            "id": "arV0R9couUeAlOEj2iwZh8rauLUhpiCC",
+            "matched_id": "2121",
+            "matched_type": 2,
+            "price_matched_status": 0,
+            "score": 0.75,
+            "y_materauk_task_data_id": "1Dhi0ueLQodsEuPcG1wZnPifwYcAf2Je"
+          }
+        ]
+      },
+      {
+        "comparison_result": 0,
+        "excelDataCount": 160,
+        "excelDataMaterialName": "阻燃性线槽 60*22",
+        "excelDataPrice": null,
+        "excelDataSpecificationModel": "",
+        "excelDataTaxPrice": null,
+        "excelDataUnit": "米",
+        "id": "9V2yYcXcs8OclVWMXzBMRccmptpQaLEN",
+        "matchedDataId": null,
+        "matchedDataMaterialName": null,
+        "matchedDataSpecificationModel": null,
+        "matchedDataUnit": null,
+        "matchedPrice": null,
+        "matchedPriceQuarter": null,
+        "matchedScore": null,
+        "matched_type": null,
+        "price_matched_status": null,
+        "subData": []
+      }
+    ],
+    "totalCount": 61
+  }
