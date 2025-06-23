@@ -50,26 +50,38 @@
     :tasks="selectedTasks"
   ></TaskParsingResultDialog>
   <MaterialParsingResultDialog
-    v-if="isMaterialParsing"
-    v-model:show="materialParsingResultDialogVisible"
+    v-if="isSupplierMaterialParsing"
+    v-model:show="supplierMaterialParsingResultDialogVisible"
     :tasks="selectedTasks"
   ></MaterialParsingResultDialog>
+  <OwnerMaterialParsingResultDialog
+    v-if="isOwnerMaterialParsing"
+    v-model:show="ownerMaterialParsingResultDialogVisible"
+    :tasks="selectedTasks"
+  ></OwnerMaterialParsingResultDialog>
 </template>
 
 <script setup>
 import { computed, ref, nextTick } from 'vue'
 import TaskParsingResultDialog from './TaskParsingResultDialog.vue'
 import MaterialParsingResultDialog from './MaterialParsingResultDialog.vue'
+import OwnerMaterialParsingResultDialog from './OwnerMaterialParsingResultDialog.vue' // 导入新的组件
 
 const taskParsingResultDialogVisible = ref(false)
-const materialParsingResultDialogVisible = ref(false)
+const supplierMaterialParsingResultDialogVisible = ref(false) // 乙供物资弹窗
+const ownerMaterialParsingResultDialogVisible = ref(false) // 甲供物资弹窗
+
 const isContractParsing = ref(false)
-const isMaterialParsing = ref(false)
+const isSupplierMaterialParsing = ref(false) // 乙供物资状态
+const isOwnerMaterialParsing = ref(false) // 甲供物资状态
+
 const selectedTasks = ref({})
 
 const openAgentDialog = async (agent) => {
   isContractParsing.value = false
-  isMaterialParsing.value = false
+  isSupplierMaterialParsing.value = false
+  isOwnerMaterialParsing.value = false
+
   // 直接使用 props.tasksByAgent 中已有的数据
   selectedTasks.value = props.tasksByAgent[agent.id] || { all: [], completed: [], inProgress: [] }
 
@@ -79,8 +91,11 @@ const openAgentDialog = async (agent) => {
     isContractParsing.value = true
     taskParsingResultDialogVisible.value = true
   } else if (agent.id === 'supplierMaterialParsing') {
-    isMaterialParsing.value = true
-    materialParsingResultDialogVisible.value = true
+    isSupplierMaterialParsing.value = true
+    supplierMaterialParsingResultDialogVisible.value = true
+  } else if (agent.id === 'ownerSuppliedMaterialParsing') {
+    isOwnerMaterialParsing.value = true
+    ownerMaterialParsingResultDialogVisible.value = true
   }
 }
 

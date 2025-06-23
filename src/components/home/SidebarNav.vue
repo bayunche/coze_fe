@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import { Bell } from '@element-plus/icons-vue'
+import { Bell, Upload } from '@element-plus/icons-vue'
 
 defineProps({
   functions: {

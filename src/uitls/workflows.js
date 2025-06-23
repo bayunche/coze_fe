@@ -49,7 +49,21 @@ export const functions = [
     needsFiles: true,
     allowedTypes: '.xlsx,.xls'
   },
-
+  {
+    id: 'ownerSuppliedMaterialParsing',
+    name: '甲供物资解析',
+    icon: Document, // 可以选择一个合适的图标，这里暂时用Document
+    iconClass: 'text-green-500', // 可以选择一个合适的颜色
+    workflows: ['解析甲供物资'],
+    params: [],
+    steps: [
+      { name: '上传文件', description: '将甲供物资Excel文件上传至服务器' },
+      { name: '文件解析', description: '调用工作流进行解析' },
+      { name: '解析完毕', description: '完成甲供物资数据提取' }
+    ],
+    needsFiles: true,
+    allowedTypes: '.xlsx,.xls'
+  },
   {
     id: 'analysis',
     name: '数据分析',

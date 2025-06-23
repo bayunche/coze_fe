@@ -197,7 +197,12 @@ const taskListsByAgent = ref({})
 
 const smartAgents = ref(
   functions
-    .filter((f) => f.id === 'contractParsing' || f.id === 'supplierMaterialParsing')
+    .filter(
+      (f) =>
+        f.id === 'contractParsing' ||
+        f.id === 'supplierMaterialParsing' ||
+        f.id === 'ownerSuppliedMaterialParsing'
+    )
     .map((f) => ({
       id: f.id,
       name: f.name,
@@ -243,7 +248,14 @@ const headerMapping = {
   result_status: '解析状态',
   salary: '薪水',
   hire_date: '入职日期',
-  ID: 'ID'
+  ID: 'ID',
+  物资名称: '物资名称',
+  规格型号: '规格型号',
+  数量: '数量',
+  单位: '单位',
+  单价: '单价',
+  总价: '总价',
+  备注: '备注'
 }
 
 const translateHeader = (prop) => {
@@ -554,7 +566,8 @@ const handleFunctionSelect = async (key) => {
       const getTaskListWorkflowId = '7517283953213866036'
       const businessDomains = {
         contractParsing: 'contract',
-        supplierMaterialParsing: 'y_material'
+        supplierMaterialParsing: 'y_material',
+        ownerSuppliedMaterialParsing: 'j_material' // 添加甲供物资的业务领域
       }
 
       const getTaskList = (result) => {
@@ -736,74 +749,244 @@ const executeWorkflow = async () => {
     const finalResult = []
     let isFirstMessage = true
 
-    cozeService.runContractParsing(inputs, {
-      onMessage(event) {
-        if (isFirstMessage) {
-          loadingMessage.content = '任务解析已开始，正在接收数据...'
-          messageQueue.push(streamingAgentMessage)
-          processMessageQueue()
-          isFirstMessage = false
-        }
+    // 根据功能ID调用不同的Coze服务方法
+    if (func.id === 'contractParsing') {
+      const workflowId = '7514898709852733475' // 假设合同解析的workflow ID
+      cozeService.runContractParsing(inputs, {
+        onMessage(event) {
+          if (isFirstMessage) {
+            loadingMessage.content = '任务解析已开始，正在接收数据...'
+            messageQueue.push(streamingAgentMessage)
+            processMessageQueue()
+            isFirstMessage = false
+          }
 
-        if (event.event === 'Message' && event.data.content_type === 'text') {
-          const content = event.data.content
-          let taskIdCandidate = null
-          let displayText = null
+          if (event.event === 'Message' && event.data.content_type === 'text') {
+            const content = event.data.content
+            let taskIdCandidate = null
+            let displayText = null
 
-          if (typeof content === 'object' && content !== null) {
-            taskIdCandidate = content.task_id
-            if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
-          } else if (typeof content === 'string') {
-            try {
-              const parsed = JSON.parse(content)
-              taskIdCandidate = parsed?.task_id
-              if (!taskIdCandidate) displayText = content
-            } catch (e) {
-              displayText = content
+            if (typeof content === 'object' && content !== null) {
+              taskIdCandidate = content.task_id
+              if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
+            } else if (typeof content === 'string') {
+              try {
+                const parsed = JSON.parse(content)
+                taskIdCandidate = parsed?.task_id
+                if (!taskIdCandidate) displayText = content
+              } catch (e) {
+                displayText = content
+              }
             }
-          }
 
-          if (taskIdCandidate) {
-            taskId.value = taskIdCandidate
-            return
-          }
-
-          if (displayText) {
-            streamingAgentMessage.content += displayText
-            finalResult.push(displayText)
-            const currentSession = executionSessions.find((s) => s.id === workflow.id)
-            if (currentSession) {
-              currentSession.output = streamingAgentMessage.content
+            if (taskIdCandidate) {
+              taskId.value = taskIdCandidate
+              return
             }
+
+            if (displayText) {
+              streamingAgentMessage.content += displayText
+              finalResult.push(displayText)
+              const currentSession = executionSessions.find((s) => s.id === workflow.id)
+              if (currentSession) {
+                currentSession.output = streamingAgentMessage.content
+              }
+            }
+          } else if (event.event === 'Done') {
+            delete streamingAgentMessage.isStreaming
+            loadingMessage.progress = 100
+            loadingMessage.content = '任务执行完毕！'
+            clearInterval(loadingInterval)
+            completeWorkflow({ output: finalResult.join('\n') })
+          } else if (event.event === 'PING') {
+            // Handle PING
+          } else {
+            addMessage('未知任务事件', 'system', null, event)
           }
-        } else if (event.event === 'Done') {
-          delete streamingAgentMessage.isStreaming
-          loadingMessage.progress = 100
-          loadingMessage.content = '任务执行完毕！'
+        },
+        onError(error) {
           clearInterval(loadingInterval)
-          completeWorkflow({ output: finalResult.join('\n') })
-        } else if (event.event === 'PING') {
-          // Handle PING
-        } else {
-          addMessage('未知任务事件', 'system', null, event)
+          loadingMessage.content = `任务出错: ${error.message}`
+          loadingMessage.progress = 100 // Mark as complete but with error
+          addMessage(`任务执行出错: ${error.message}`, 'system')
+          completeWorkflow({ status: 'error', output: error.message })
+        },
+        onEnd() {
+          // Handled by 'Done' event
         }
-      },
-      onError(error) {
-        clearInterval(loadingInterval)
-        loadingMessage.content = `任务出错: ${error.message}`
-        loadingMessage.progress = 100 // Mark as complete but with error
-        addMessage(`任务执行出错: ${error.message}`, 'system')
-        completeWorkflow({ status: 'error', output: error.message })
-      },
-      onEnd() {
-        // Handled by 'Done' event
-      }
-    })
+      })
+    } else if (func.id === 'supplierMaterialParsing') {
+      const workflowId = '7517283953213866036' // 假设乙供物资解析的workflow ID
+      cozeService.runWorkflow(
+        workflowId,
+        {
+          file_ids: fileIds,
+          ...workflowConfig.params
+        },
+        {
+          onMessage(event) {
+            if (isFirstMessage) {
+              loadingMessage.content = '任务解析已开始，正在接收数据...'
+              messageQueue.push(streamingAgentMessage)
+              processMessageQueue()
+              isFirstMessage = false
+            }
+
+            if (event.event === 'Message' && event.data.content_type === 'text') {
+              const content = event.data.content
+              let taskIdCandidate = null
+              let displayText = null
+
+              if (typeof content === 'object' && content !== null) {
+                taskIdCandidate = content.task_id
+                if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
+              } else if (typeof content === 'string') {
+                try {
+                  const parsed = JSON.parse(content)
+                  taskIdCandidate = parsed?.task_id
+                  if (!taskIdCandidate) displayText = content
+                } catch (e) {
+                  displayText = content
+                }
+              }
+
+              if (taskIdCandidate) {
+                taskId.value = taskIdCandidate
+                return
+              }
+
+              if (displayText) {
+                streamingAgentMessage.content += displayText
+                finalResult.push(displayText)
+                const currentSession = executionSessions.find((s) => s.id === workflow.id)
+                if (currentSession) {
+                  currentSession.output = streamingAgentMessage.content
+                }
+              }
+            } else if (event.event === 'Done') {
+              delete streamingAgentMessage.isStreaming
+              loadingMessage.progress = 100
+              loadingMessage.content = '任务执行完毕！'
+              clearInterval(loadingInterval)
+              completeWorkflow({ output: finalResult.join('\n') })
+            } else if (event.event === 'PING') {
+              // Handle PING
+            } else {
+              addMessage('未知任务事件', 'system', null, event)
+            }
+          },
+          onError(error) {
+            clearInterval(loadingInterval)
+            loadingMessage.content = `任务出错: ${error.message}`
+            loadingMessage.progress = 100 // Mark as complete but with error
+            addMessage(`任务执行出错: ${error.message}`, 'system')
+            completeWorkflow({ status: 'error', output: error.message })
+          },
+          onEnd() {
+            // Handled by 'Done' event
+          }
+        }
+      )
+    } else if (func.id === 'ownerSuppliedMaterialParsing') {
+      // 调用新的甲供物资解析工作流方法
+      executeOwnerMaterialParsingWorkflow(
+        inputs,
+        loadingMessage,
+        streamingAgentMessage,
+        finalResult,
+        workflow
+      )
+    } else {
+      // Fallback for other functions if needed, or throw an error
+      throw new Error(`Unsupported function ID: ${func.id}`)
+    }
   } catch (error) {
     clearInterval(loadingInterval)
     loadingMessage.content = `任务失败: ${error.message}`
     loadingMessage.progress = 100
     addMessage(`任务执行失败: ${error.message}`, 'system')
+    completeWorkflow()
+  }
+}
+
+// 新增的甲供物资解析工作流执行方法
+const executeOwnerMaterialParsingWorkflow = async (
+  inputs,
+  loadingMessage,
+  streamingAgentMessage,
+  finalResult,
+  workflow
+) => {
+  const workflowId = 'mock_owner_material_parsing_workflow_id' // 替换为甲供物资解析的实际工作流ID
+  try {
+    await cozeService.runWorkflow(
+      workflowId,
+      {
+        file_ids: inputs.map((input) => input.file_id),
+        ...workflowConfig.params
+      },
+      {
+        onMessage(event) {
+          if (event.event === 'Message' && event.data.content_type === 'text') {
+            const content = event.data.content
+            let taskIdCandidate = null
+            let displayText = null
+
+            if (typeof content === 'object' && content !== null) {
+              taskIdCandidate = content.task_id
+              if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
+            } else if (typeof content === 'string') {
+              try {
+                const parsed = JSON.parse(content)
+                taskIdCandidate = parsed?.task_id
+                if (!taskIdCandidate) displayText = content
+              } catch (e) {
+                displayText = content
+              }
+            }
+
+            if (taskIdCandidate) {
+              taskId.value = taskIdCandidate
+              return
+            }
+
+            if (displayText) {
+              streamingAgentMessage.content += displayText
+              finalResult.push(displayText)
+              const currentSession = executionSessions.find((s) => s.id === workflow.id)
+              if (currentSession) {
+                currentSession.output = streamingAgentMessage.content
+              }
+            }
+          } else if (event.event === 'Done') {
+            delete streamingAgentMessage.isStreaming
+            loadingMessage.progress = 100
+            loadingMessage.content = '甲供物资解析任务执行完毕！'
+            clearInterval(loadingInterval)
+            completeWorkflow({ output: finalResult.join('\n') })
+          } else if (event.event === 'PING') {
+            // Handle PING
+          } else {
+            addMessage('未知任务事件', 'system', null, event)
+          }
+        },
+        onError(error) {
+          clearInterval(loadingInterval)
+          loadingMessage.content = `甲供物资解析任务出错: ${error.message}`
+          loadingMessage.progress = 100 // Mark as complete but with error
+          addMessage(`甲供物资解析任务执行出错: ${error.message}`, 'system')
+          completeWorkflow({ status: 'error', output: error.message })
+        },
+        onEnd() {
+          // Handled by 'Done' event
+        }
+      }
+    )
+  } catch (error) {
+    clearInterval(loadingInterval)
+    loadingMessage.content = `甲供物资解析任务失败: ${error.message}`
+    loadingMessage.progress = 100
+    addMessage(`甲供物资解析任务执行失败: ${error.message}`, 'system')
     completeWorkflow()
   }
 }
@@ -940,6 +1123,44 @@ const generateMockResult = (func, duration) => {
         ]
       }
 
+    case 'ownerSuppliedMaterialParsing':
+      return {
+        ...baseResult,
+        output: [
+          {
+            物资名称: '钢筋',
+            规格型号: 'HRB400',
+            数量: 100,
+            单位: '吨',
+            单价: 4500,
+            总价: 450000,
+            备注: '模拟数据'
+          },
+          {
+            物资名称: '水泥',
+            规格型号: 'PO 42.5',
+            数量: 50,
+            单位: '吨',
+            单价: 300,
+            总价: 15000,
+            备注: '模拟数据'
+          },
+          {
+            物资名称: '砂石',
+            规格型号: '中砂',
+            数量: 200,
+            单位: '立方米',
+            单价: 120,
+            总价: 24000,
+            备注: '模拟数据'
+          }
+        ],
+        files: [
+          { name: '甲供物资解析报告.pdf', size: '1.2MB', url: '#' },
+          { name: '甲供物资清单.xlsx', size: '50KB', url: '#' }
+        ]
+      }
+
     default:
       return {
         ...baseResult,
@@ -962,7 +1183,12 @@ const startWorkflowFromDialog = () => {
   ElMessage.success('即将开始执行...')
 
   nextTick(() => {
-    executeWorkflow()
+    if (func.id === 'ownerSuppliedMaterialParsing') {
+      // 对于甲供物资解析，直接调用其特定的执行方法
+      executeWorkflow() // executeWorkflow 内部会根据 func.id 路由到 executeOwnerMaterialParsingWorkflow
+    } else {
+      executeWorkflow()
+    }
   })
 }
 
@@ -1111,6 +1337,12 @@ const handleSendMessage = () => {
           agentMessage.content.includes('正在调用解析乙供物资功能')
         ) {
           handleFunctionSelect('supplierMaterialParsing')
+          agentMessage.actionTriggered = true // 标记已触发，防止重复执行
+        } else if (
+          !agentMessage.actionTriggered &&
+          agentMessage.content.includes('正在调用甲供物资解析功能')
+        ) {
+          handleFunctionSelect('ownerSuppliedMaterialParsing')
           agentMessage.actionTriggered = true // 标记已触发，防止重复执行
         }
       } else if (event === 'done') {
