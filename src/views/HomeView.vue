@@ -44,6 +44,12 @@
       </el-main>
     </el-container>
 
+    <!-- 新增乙供物资详情弹窗组件 -->
+    <MaterialDetailDialog
+      v-model:show="supplierMaterialDialogVisible"
+      :task="supplierMaterialDialogTask"
+    />
+
     <!-- 任务配置对话框 -->
     <WorkflowConfigDialog
       v-model:show="showWorkflowConfig"
@@ -167,7 +173,6 @@ const cozeService = new CozeService(
   'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
 ) // 请替换为你的 Coze API Key
 
-// 响应式数据
 const activeFunction = ref('')
 const currentWorkflow = ref(null)
 const isExecuting = ref(false)
@@ -178,6 +183,11 @@ const showWorkflowConfig = ref(false)
 const executionSessions = reactive([])
 const showResultDetail = ref(false)
 const showSmartBrainDialog = ref(false)
+
+// 新增响应式变量，控制乙供物资解析详情弹窗显示，及其关联任务对象
+const supplierMaterialDialogVisible = ref(false)
+const supplierMaterialDialogTask = ref(null)
+
 const taskId = ref(null)
 const supplierFileId = ref(null) // 用于存储乙供物资解析返回的 file_id
 const supplierFileDetailIds = ref([]) // 用于存储乙供物资解析返回的 file_detail_id_list
@@ -392,46 +402,73 @@ function parseResultJsonData(parsedData) {
   return tableJsonData
 }
 
-const handleViewResultDetail = async () => {
+const handleViewResultDetail = async (message) => {
   if (taskId.value == null) {
     ElMessage.warning('没有可供解析的结果任务ID。')
     return
   }
 
-  showResultDetail.value = true
-  isFetchingDetails.value = true
-  tableData.value = []
-  tableColumns.value = []
+  // 判断是合同解析还是乙供物资解析
+  const isContractParsing = message?.workflow?.id === 'contractParsing'
+  const isSupplierMaterialParsing = message?.workflow?.id === 'supplierMaterialParsing'
 
-  try {
-    const result = await cozeService.runTableGenerationWorkflow(taskId.value)
-    if (result && result.data) {
-      const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"')
-      const parsedData = JSON.parse(jsonString)?.output
-      const tableJsonData = parseResultJsonData(parsedData)
-      if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
-        tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
-          prop: key,
-          label: translateHeader(key)
-        }))
-        const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
-        tableData.value = JSON.parse(JSON.stringify(rawData))
-        // 为编辑创建一个深拷贝
-        editFormModels.value = JSON.parse(JSON.stringify(rawData))
+  if (isContractParsing) {
+    // 保持现有合同解析逻辑
+    showResultDetail.value = true
+    isFetchingDetails.value = true
+    tableData.value = []
+    tableColumns.value = []
+
+    try {
+      const result = await cozeService.runTableGenerationWorkflow(taskId.value)
+      if (result && result.data) {
+        const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"')
+        const parsedData = JSON.parse(jsonString)?.output
+        const tableJsonData = parseResultJsonData(parsedData)
+        if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
+          tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
+            prop: key,
+            label: translateHeader(key)
+          }))
+          const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
+          tableData.value = JSON.parse(JSON.stringify(rawData))
+          // 为编辑创建一个深拷贝
+          editFormModels.value = JSON.parse(JSON.stringify(rawData))
+        } else {
+          tableColumns.value = []
+          tableData.value = []
+          editFormModels.value = []
+          ElMessage.info('结果为空或 result_json 解析后无数据，暂无数据展示。')
+        }
       } else {
-        tableColumns.value = []
-        tableData.value = []
-        editFormModels.value = []
-        ElMessage.info('结果为空或 result_json 解析后无数据，暂无数据展示。')
+        throw new Error('任务未返回有效的表格数据。')
       }
-    } else {
-      throw new Error('任务未返回有效的表格数据。')
+    } catch (error) {
+      console.error('处理表格数据时出错:', error)
+      ElMessage.error(`获取表格数据失败: ${error.message}`)
+    } finally {
+      isFetchingDetails.value = false
     }
-  } catch (error) {
-    console.error('处理表格数据时出错:', error)
-    ElMessage.error(`获取表格数据失败: ${error.message}`)
-  } finally {
-    isFetchingDetails.value = false
+  } else if (isSupplierMaterialParsing) {
+    // 乙供物资解析，顺序执行两个工作流，等待完成后打开弹窗
+    try {
+      // 例示两个工作流ID，假设workflow1Id和workflow2Id是需要调用的工作流ID
+      const workflow1Id = '7517934954761715721' // 使用已有乙供解析工作流ID
+      const workflow2Id = 'mock_additional_supplier_material_workflow_id' // 新的额外工作流ID，需替换为实际
+
+      // 先执行第一个乙供物资解析工作流
+      await cozeService.runWorkflow(workflow1Id, { taskId: taskId.value })
+
+      // 再顺序执行第二个工作流
+      await cozeService.runWorkflow(workflow2Id, { taskId: taskId.value })
+
+      // 执行成功后，将任务对象保存并显示弹窗
+      supplierMaterialDialogTask.value = { taskId: taskId.value }
+      supplierMaterialDialogVisible.value = true
+    } catch (error) {
+      console.error('乙供物资工作流执行失败:', error)
+      ElMessage.error(`乙供物资解析失败: ${error.message}`)
+    }
   }
 }
 
@@ -878,17 +915,19 @@ const executeWorkflow = async () => {
               // 解析 Done 事件的 data，提取 file_id 和 file_detail_id_list
               if (event.data) {
                 try {
-                  const doneData = JSON.parse(event.data); // 假设 Done 事件的 data 是 JSON 字符串
+                  const doneData = JSON.parse(event.data) // 假设 Done 事件的 data 是 JSON 字符串
                   if (doneData.file_id) {
-                    supplierFileId.value = doneData.file_id;
+                    supplierFileId.value = doneData.file_id
                   }
                   if (Array.isArray(doneData.file_detail_id_list)) {
-                    supplierFileDetailIds.value = doneData.file_detail_id_list;
+                    supplierFileDetailIds.value = doneData.file_detail_id_list
                   }
-                  ElMessage.success(`乙供物资解析完成，文件ID: ${supplierFileId.value}，详情ID数量: ${supplierFileDetailIds.value.length}`);
+                  ElMessage.success(
+                    `乙供物资解析完成，文件ID: ${supplierFileId.value}，详情ID数量: ${supplierFileDetailIds.value.length}`
+                  )
                 } catch (e) {
-                  console.error('解析乙供物资 Done 事件数据失败:', e, event.data);
-                  ElMessage.warning('乙供物资解析完成，但解析结果ID失败。');
+                  console.error('解析乙供物资 Done 事件数据失败:', e, event.data)
+                  ElMessage.warning('乙供物资解析完成，但解析结果ID失败。')
                 }
               }
               completeWorkflow({ output: finalResult.join('\n') })
@@ -1053,12 +1092,24 @@ const completeWorkflow = (resultOverride = {}) => {
   const isSuccess = resultOverride.status !== 'error'
   // 延迟输出“任务执行完成”和“执行结束”消息
   setTimeout(() => {
+    let showButton = false
+    // 如果是合同解析或乙供物资，且taskId有效，均显示结果按钮
+    if (
+      (activeFunction.value === 'contractParsing' ||
+        activeFunction.value === 'supplierMaterialParsing') &&
+      taskId.value != null
+    ) {
+      showButton = true
+    } else if (isSuccess && taskId.value != null) {
+      showButton = true
+    }
+
     addMessage(
       `任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`,
       'agent',
       { id: completedExecution.id, name: completedExecution.workflow },
       null,
-      { showViewResultButton: isSuccess && taskId.value != null }
+      { showViewResultButton: showButton }
     )
     addMessage(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'system', {
       id: completedExecution.id,
