@@ -65,17 +65,11 @@
       </span>
     </template>
   </el-dialog>
-  <!-- TODO: 需要创建 OwnerMaterialDetailDialog.vue 组件，目前暂时使用 MaterialDetailDialog.vue 作为占位符 -->
-  <MaterialDetailDialog
-    v-if="selectedTask"
-    v-model:show="showTaskDetailDialog"
-    :task="selectedTask"
-  />
+  <!-- TODO: OwnerMaterialDetailDialog.vue 组件待创建 -->
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import MaterialDetailDialog from './MaterialDetailDialog.vue' // 暂时使用 MaterialDetailDialog，待 OwnerMaterialDetailDialog 创建后替换
 
 const props = defineProps({
   show: {
@@ -161,7 +155,9 @@ const calculateProgress = (total, processed) => {
 
 const viewTaskDetails = (task) => {
   selectedTask.value = task
-  showTaskDetailDialog.value = true
+  // showTaskDetailDialog.value = true
+  alert('甲供物资详情组件（OwnerMaterialDetailDialog.vue）尚未创建。')
+  console.log('应在此处打开甲供物资详情，任务信息:', task)
 }
 
 const handleClose = () => {

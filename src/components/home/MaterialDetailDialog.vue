@@ -81,7 +81,17 @@
       </span>
     </template>
   </el-dialog>
-  <MaterialSelectionDialog v-model:show="showSelectionDialog" @select="handleMaterialSelect" />
+  <MaterialSelectionDialog
+    v-model:show="showSelectionDialog"
+    :data-list="showSelectionList"
+    :total="showSelectionTotal"
+    :page-num="showSelectionPageNum"
+    :page-size="showSelectionPageSize"
+    :loading="loading"
+    @select="handleMaterialSelect"
+    @page-change="handleSelectionPageChange"
+    @size-change="handleSelectionSizeChange"
+  />
 </template>
 
 <script setup>
@@ -117,6 +127,11 @@ const saving = ref(false)
 const tableData = ref([])
 const showSelectionDialog = ref(false)
 const currentRow = ref(null)
+
+const showSelectionPageNum = ref(1)
+const showSelectionPageSize = ref(10)
+const showSelectionList = ref([])
+const showSelectionTotal = ref(0)
 
 const allDetailIds = ref([]) // 存储所有详情ID
 const currentPage = ref(1)
@@ -211,7 +226,8 @@ const formatMaterialDetail = (item) => {
     matched_specification: item.matchedDataSpecificationModel,
     matched_price: item.matchedPrice,
     similarity: item.matchedScore !== null ? (item.matchedScore * 100).toFixed(2) + '%' : '/',
-    match_type: matchTypeMap[item.comparison_result] || '未知',
+    match_type:
+      item.confirm_type === 2 ? '精确匹配' : matchTypeMap[item.comparison_result] || '未知',
     editing: false,
     selected_match: null, // 用于相似匹配的选中值
     original_item: item, // 保留原始数据，方便后续操作
@@ -307,7 +323,8 @@ const handleSimilarMatchChange = (row, selectedMatch) => {
       originalItem.matchedScore = selectedMatch.similarity
       originalItem.matchedPriceQuarter =
         selectedMatch.matchedPriceQuarter || selectedMatch.quarter || null
-      // originalItem.comparison_result = 1 // 相似匹配选择后，可以视为精确匹配
+      originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
+      row.match_type = '精确匹配'
     }
   }
 }
@@ -347,7 +364,7 @@ const fetchSelectionList = async (pageNum, pageSize) => {
     const result = await cozeService.runWorkflow(workflowId, params)
     if (result && result.data) {
       const parsed = JSON.parse(result.data)
-      showSelectionList.value = parsed.data || parsed
+      showSelectionList.value = parsed.output || parsed
       showSelectionTotal.value = parsed.count || 0
     } else {
       showSelectionList.value = []
@@ -377,24 +394,51 @@ const handleSelectionSizeChange = async (newSize) => {
 
 const handleMaterialSelect = (selectedMaterial) => {
   if (currentRow.value && selectedMaterial) {
-    // 弹窗选择数据更新
-    currentRow.value.matched_name = selectedMaterial.ymtd_material_name || selectedMaterial.name
-    currentRow.value.matched_price = selectedMaterial.ymmr_price || selectedMaterial.price
-    currentRow.value.matched_specification =
-      selectedMaterial.ymtd_specification_model || selectedMaterial.specification
+    console.log('【诊断】更新前:', {
+      initialId: currentRow.value.initialMatchedDataId,
+      originalId: currentRow.value.original_item.matchedDataId
+    })
 
+    currentRow.value.matched_name =
+      selectedMaterial.material_name || selectedMaterial.ymtd_material_name || selectedMaterial.name
+    currentRow.value.matched_price =
+      selectedMaterial.tax_price || selectedMaterial.ymtd_tax_price || selectedMaterial.price
+    currentRow.value.matched_specification =
+      selectedMaterial.specification_model ||
+      selectedMaterial.ymtd_specification_model ||
+      selectedMaterial.specification
+    currentRow.value.similarity = '100%'
+    currentRow.value.match_type = '精确匹配'
     if (currentRow.value.original_item) {
+      currentRow.value.original_item.comparison_result = 1 // 手动选择后，视为精确匹配
       currentRow.value.original_item.matchedDataId =
-        selectedMaterial.ymmr_matched_id || selectedMaterial.id || null
+        selectedMaterial.m_id || selectedMaterial.ymmr_id || selectedMaterial.id || null
       currentRow.value.original_item.matchedPriceId =
-        selectedMaterial.ymmr_tax_price_id || selectedMaterial.priceId || null
+        selectedMaterial.p_id ||
+        selectedMaterial.ymmr_tax_price_id ||
+        selectedMaterial.priceId ||
+        null
       currentRow.value.original_item.matchedDataMaterialName =
-        selectedMaterial.ymtd_material_name || selectedMaterial.name
+        selectedMaterial.material_name ||
+        selectedMaterial.ymtd_material_name ||
+        selectedMaterial.name
       currentRow.value.original_item.matchedDataSpecificationModel =
-        selectedMaterial.ymtd_specification_model || selectedMaterial.specification
+        selectedMaterial.specification_model ||
+        selectedMaterial.ymtd_specification_model ||
+        selectedMaterial.specification
       currentRow.value.original_item.matchedPrice =
-        selectedMaterial.ymmr_price || selectedMaterial.price
+        selectedMaterial.tax_price || selectedMaterial.ymmr_price || selectedMaterial.price
       currentRow.value.original_item.matchedScore = selectedMaterial.ymmr_score || null
+      currentRow.value.original_item.matchedPriceQuarter = selectedMaterial.quarter || null
+
+      // 【错误代码已移除】不再同步修改初始快照
+      // currentRow.value.initialMatchedDataId = currentRow.value.original_item.matchedDataId
+      // currentRow.value.initialMatchedPriceId = currentRow.value.original_item.matchedPriceId
+
+      console.log('【诊断】更新后:', {
+        initialId: currentRow.value.initialMatchedDataId, // 应保持不变
+        originalId: currentRow.value.original_item.matchedDataId // 已更新
+      })
     }
   }
   showSelectionDialog.value = false
@@ -418,18 +462,28 @@ const handleSave = async () => {
     // 只保存用户编辑过变动的数据
     const updateObjList = tableData.value
       .filter((item) => {
-        // 只处理 match_type 为 '相似匹配' 或 '未知'
-        if (!(item.match_type === '相似匹配' || item.match_type === '未知')) return false
-        // 判断匹配数据id和价格id相较初始快照是否变化
-        return (
+        if (
+          !(
+            item.match_type === '相似匹配' ||
+            item.match_type === '未知' ||
+            item.match_type === '无匹配'
+          )
+        )
+          return false
+        // 对比行数据层id和快照，识别有变化的数据
+        const isModified =
           item.original_item.matchedDataId !== item.initialMatchedDataId ||
           item.original_item.matchedPriceId !== item.initialMatchedPriceId
-        )
+        // console.log(
+        //   `【诊断】保存检查: ID=${item.id}, 是否修改=${isModified}, original_item.matchedDataId=${item.original_item.matchedDataId}, initialMatchedDataId=${item.initialMatchedDataId}`
+        // )
+        return isModified
       })
       .map((item) => ({
         id: item.id,
         confirm_base_data_id: item.original_item.matchedDataId || null,
-        confirm_price_id: item.original_item.matchedPriceId || null
+        confirm_price_id: item.original_item.matchedPriceId || null,
+        confirm_type: 2
       }))
 
     if (updateObjList.length === 0) {
@@ -439,9 +493,7 @@ const handleSave = async () => {
     }
 
     const saveWorkflowId = '7519356799683919872' // 乙供物资保存工作流id
-    const saveResult = await cozeService.runWorkflow(saveWorkflowId, {
-      parameters: { updateObjList }
-    })
+    const saveResult = await cozeService.runWorkflow(saveWorkflowId, { updateObjList })
 
     if (saveResult && saveResult.data) {
       ElMessage.success('保存成功')

@@ -21,10 +21,25 @@
         height="40vh"
         highlight-current-row
       >
-        <el-table-column prop="name" label="物资名称"></el-table-column>
-        <el-table-column prop="price" label="价格" width="120"></el-table-column>
-        <el-table-column prop="specification" label="规格型号"></el-table-column>
+        <el-table-column prop="material_name" label="物资名称"></el-table-column>
+
+        <el-table-column prop="specification_model" label="规格型号"></el-table-column>
+        <el-table-column prop="tax_price" label="价格" width="120"></el-table-column>
+        <el-table-column prop="quarter" label="价格所属季度" width="120"></el-table-column>
+        <el-table-column prop="unit" label="单位"></el-table-column>
       </el-table>
+      <el-pagination
+        v-if="total > pageSize"
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        :page-sizes="[10, 20, 50, 100]"
+        :page-size="pageSize"
+        :current-page="pageNum"
+        @current-change="onPageChange"
+        @size-change="onSizeChange"
+        style="margin-top: 10px; text-align: right"
+      />
     </div>
     <template #footer>
       <span class="dialog-footer">
@@ -45,64 +60,54 @@ const props = defineProps({
   show: {
     type: Boolean,
     required: true
+  },
+  dataList: {
+    type: Array,
+    default: () => []
+  },
+  total: {
+    type: Number,
+    default: 0
+  },
+  pageNum: {
+    type: Number,
+    default: 1
+  },
+  pageSize: {
+    type: Number,
+    default: 10
+  },
+  loading: {
+    type: Boolean,
+    default: false
   }
 })
 
-const emit = defineEmits(['update:show', 'select'])
+const emit = defineEmits(['update:show', 'select', 'page-change', 'size-change'])
 
 const dialogVisible = computed({
   get: () => props.show,
   set: (value) => emit('update:show', value)
 })
 
-const loading = ref(false)
 const searchTerm = ref('')
-const allMaterials = ref([])
 const selectedMaterial = ref(null)
-
-// 模拟从数据库获取的物料列表
-const mockMaterials = [
-  { id: 101, name: '螺纹钢', price: 4600, specification: 'HRB400E Φ12' },
-  { id: 102, name: '商品混凝土', price: 410, specification: 'C30' },
-  { id: 103, name: '泵送混凝土', price: 420, specification: 'C30' },
-  { id: 104, name: '普通水泥', price: 550, specification: 'P.O 42.5' },
-  { id: 105, name: '高标号水泥', price: 600, specification: 'P.O 52.5' },
-  { id: 106, name: '粉煤灰', price: 200, specification: '一级' },
-  { id: 107, name: '建筑用砂', price: 150, specification: '中砂' },
-  { id: 108, name: '碎石', price: 120, specification: '5-20mm' }
-]
-
-const fetchMaterials = async () => {
-  loading.value = true
-  try {
-    // 在实际应用中，这里会调用API
-    // const response = await api.getMaterials();
-    // allMaterials.value = response.data;
-    await new Promise(resolve => setTimeout(resolve, 500)) // 模拟网络延迟
-    allMaterials.value = mockMaterials
-  } catch (error) {
-    ElMessage.error('获取物料列表失败')
-    console.error(error)
-  } finally {
-    loading.value = false
-  }
-}
 
 const filteredData = computed(() => {
   if (!searchTerm.value) {
-    return allMaterials.value
+    return props.dataList
   }
-  return allMaterials.value.filter((item) =>
-    item.name.toLowerCase().includes(searchTerm.value.toLowerCase())
+  return props.dataList.filter((item) =>
+    (item.ymtd_material_name || '').toLowerCase().includes(searchTerm.value.toLowerCase())
   )
 })
 
 watch(
-  () => props.show,
+  () => dialogVisible.value,
   (newVal) => {
-    if (newVal) {
-      fetchMaterials()
-      selectedMaterial.value = null // 重置选择
+    if (!newVal) {
+      searchTerm.value = ''
+      selectedMaterial.value = null
     }
   }
 )
@@ -122,6 +127,14 @@ const handleConfirm = () => {
 
 const handleClose = () => {
   dialogVisible.value = false
+}
+
+const onPageChange = (page) => {
+  emit('page-change', page)
+}
+
+const onSizeChange = (size) => {
+  emit('size-change', size)
 }
 </script>
 

@@ -26,6 +26,7 @@
             :messages="displayedMessages"
             @show-workflow-config="showWorkflowConfig = true"
             @view-result-detail="handleViewResultDetail"
+            @view-material-result-detail="handleViewMaterialResultDetail"
             @message-displayed="handleMessageDisplayed"
           />
           <div class="chat-input-area">
@@ -450,25 +451,27 @@ const handleViewResultDetail = async (message) => {
       isFetchingDetails.value = false
     }
   } else if (isSupplierMaterialParsing) {
-    // 乙供物资解析，顺序执行两个工作流，等待完成后打开弹窗
-    try {
-      // 例示两个工作流ID，假设workflow1Id和workflow2Id是需要调用的工作流ID
-      const workflow1Id = '7517934954761715721' // 使用已有乙供解析工作流ID
-      const workflow2Id = 'mock_additional_supplier_material_workflow_id' // 新的额外工作流ID，需替换为实际
+    // 乙供物资解析的逻辑已移至 handleViewMaterialResultDetail
+    // 这里可以添加一个日志或提示，表示该逻辑已转移
+    console.log('乙供物资解析的查看详情逻辑已转移到 handleViewMaterialResultDetail。')
+  }
+}
 
-      // 先执行第一个乙供物资解析工作流
-      await cozeService.runWorkflow(workflow1Id, { taskId: taskId.value })
+const handleViewMaterialResultDetail = async (messageTask) => {
+  // 使用 supplierFileId 作为 taskId
+  const currentTaskId = supplierFileId.value
 
-      // 再顺序执行第二个工作流
-      await cozeService.runWorkflow(workflow2Id, { taskId: taskId.value })
-
-      // 执行成功后，将任务对象保存并显示弹窗
-      supplierMaterialDialogTask.value = { taskId: taskId.value }
-      supplierMaterialDialogVisible.value = true
-    } catch (error) {
-      console.error('乙供物资工作流执行失败:', error)
-      ElMessage.error(`乙供物资解析失败: ${error.message}`)
-    }
+  if (!currentTaskId) {
+    ElMessage.warning('没有可供解析的乙供物资任务ID (supplierFileId 未设置)。')
+    return
+  }
+  try {
+    // MaterialDetailDialog 需要一个包含 ID 字段的 task 对象
+    supplierMaterialDialogTask.value = { ID: currentTaskId } // 确保传递正确的 ID
+    supplierMaterialDialogVisible.value = true
+  } catch (error) {
+    console.error('乙供物资工作流执行失败:', error)
+    ElMessage.error(`乙供物资解析失败: ${error.message}`)
   }
 }
 
@@ -879,17 +882,33 @@ const executeWorkflow = async () => {
               const content = event.data.content
               let taskIdCandidate = null
               let displayText = null
+              let parsedContent = null
 
-              if (typeof content === 'object' && content !== null) {
-                taskIdCandidate = content.task_id
-                if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
-              } else if (typeof content === 'string') {
+              // 始终尝试将 content 解析为 JSON
+              if (typeof content === 'string') {
                 try {
-                  const parsed = JSON.parse(content)
-                  taskIdCandidate = parsed?.task_id
-                  if (!taskIdCandidate) displayText = content
+                  parsedContent = JSON.parse(content)
                 } catch (e) {
+                  // 如果不是有效的 JSON 字符串，则按普通文本处理
                   displayText = content
+                }
+              } else if (typeof content === 'object' && content !== null) {
+                // 如果已经是对象，直接使用
+                parsedContent = content
+              }
+
+              if (parsedContent) {
+                taskIdCandidate = parsedContent?.task_id
+                // 尝试从 parsedContent 中提取 file_id 和 file_detail_id_list
+                if (parsedContent?.task_id) {
+                  supplierFileId.value = parsedContent.task_id
+                }
+                if (Array.isArray(parsedContent?.task_detail_id)) {
+                  supplierFileDetailIds.value = parsedContent.task_detail_id
+                }
+                // 如果没有 taskIdCandidate 且不是纯文本，则将其 JSON 字符串化作为 displayText
+                if (!taskIdCandidate && !displayText) {
+                  displayText = JSON.stringify(parsedContent, null, 2)
                 }
               }
 
@@ -912,24 +931,12 @@ const executeWorkflow = async () => {
               loadingMessage.content = '任务执行完毕！'
               clearInterval(loadingInterval)
 
-              // 解析 Done 事件的 data，提取 file_id 和 file_detail_id_list
-              if (event.data) {
-                try {
-                  const doneData = JSON.parse(event.data) // 假设 Done 事件的 data 是 JSON 字符串
-                  if (doneData.file_id) {
-                    supplierFileId.value = doneData.file_id
-                  }
-                  if (Array.isArray(doneData.file_detail_id_list)) {
-                    supplierFileDetailIds.value = doneData.file_detail_id_list
-                  }
-                  ElMessage.success(
-                    `乙供物资解析完成，文件ID: ${supplierFileId.value}，详情ID数量: ${supplierFileDetailIds.value.length}`
-                  )
-                } catch (e) {
-                  console.error('解析乙供物资 Done 事件数据失败:', e, event.data)
-                  ElMessage.warning('乙供物资解析完成，但解析结果ID失败。')
-                }
-              }
+              // Done 事件不再需要解析 file_id 和 file_detail_id_list，因为已在 Message 事件中处理
+              ElMessage.success(
+                `乙供物资解析完成，文件ID: ${supplierFileId.value || 'N/A'}，详情ID数量: ${
+                  supplierFileDetailIds.value.length
+                }`
+              )
               completeWorkflow({ output: finalResult.join('\n') })
             } else if (event.event === 'PING') {
               // Handle PING

@@ -15,6 +15,7 @@
       <el-tabs v-model="activeTab" class="message-tabs" @tab-click="handleTabClick">
         <el-tab-pane label="所有消息" name="all"></el-tab-pane>
         <el-tab-pane label="合同解析" name="contract"></el-tab-pane>
+        <el-tab-pane label="乙供物资解析" name="material"></el-tab-pane>
         <el-tab-pane label="对话流" name="dialogue"></el-tab-pane>
       </el-tabs>
 
@@ -56,7 +57,7 @@
                 </div>
               </div>
               <div class="message-actions" v-if="message.showViewResultButton">
-                <el-button type="primary" size="small" @click="$emit('view-result-detail')">
+                <el-button type="primary" size="small" @click="handleViewResultDetail(message)">
                   查看解析结果
                 </el-button>
               </div>
@@ -98,6 +99,9 @@ const messagesToRender = computed(() => {
   }
   if (activeTab.value === 'contract') {
     return displayedMessages.value.filter((m) => m.workflow && m.workflow.name === '合同解析')
+  }
+  if (activeTab.value === 'material') {
+    return displayedMessages.value.filter((m) => m.workflow && m.workflow.name === '乙供物资解析')
   }
   if (activeTab.value === 'dialogue') {
     return displayedMessages.value.filter((m) => m.from === 'user' || !m.workflow)
@@ -160,6 +164,17 @@ onMounted(() => {
     displayNextMessage()
   }
 })
+
+const handleViewResultDetail = (message) => {
+  // 假设 message 对象中包含 workflow 信息，并且 workflow.name 可以区分合同解析和乙供物资解析
+  if (message.workflow && message.workflow.name === '乙供物资解析') {
+    emit('view-material-result-detail', message.task) // 发送事件，传递任务数据
+  } else if (message.workflow && message.workflow.name === '合同解析') {
+    emit('view-result-detail', message.task) // 兼容原有的合同解析逻辑
+  } else {
+    emit('view-result-detail') // 其他类型的解析结果
+  }
+}
 </script>
 
 <style scoped>
