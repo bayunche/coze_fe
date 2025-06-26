@@ -66,15 +66,21 @@
     </template>
   </el-dialog>
   <MaterialDetailDialog
-    v-if="selectedTask"
-    v-model:show="showTaskDetailDialog"
-    :task="selectedTask"
+    v-model="showMaterialDetailDialog"
+    :taskId="currentTaskIdForDetail"
+    :detailId="currentDetailIdForDetail"
+  />
+  <OwnerMaterialTaskParsingDetailDialog
+    v-model="showOwnerMaterialTaskParsingDetailDialog"
+    :taskId="currentTaskIdForDetail"
+    @view-detail="handleViewDetailFromTaskParsing"
   />
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import MaterialDetailDialog from './MaterialDetailDialog.vue'
+import OwnerMaterialTaskParsingDetailDialog from './OwnerMaterialTaskParsingDetailDialog.vue'
 
 const props = defineProps({
   show: {
@@ -100,8 +106,10 @@ const dialogVisible = computed({
 })
 
 const activeTab = ref('all')
-const showTaskDetailDialog = ref(false)
-const selectedTask = ref(null)
+const showMaterialDetailDialog = ref(false)
+const currentDetailIdForDetail = ref(null)
+const showOwnerMaterialTaskParsingDetailDialog = ref(false)
+const currentTaskIdForDetail = ref(null)
 const currentPage = ref(1)
 const pageSize = ref(10)
 
@@ -159,12 +167,21 @@ const calculateProgress = (total, processed) => {
 }
 
 const viewTaskDetails = (task) => {
-  selectedTask.value = task
-  showTaskDetailDialog.value = true
+  // selectedTask.value = task; // 暂时不使用 MaterialDetailDialog
+  // showTaskDetailDialog.value = true; // 暂时不使用 MaterialDetailDialog
+  currentTaskIdForDetail.value = task.ID
+  showOwnerMaterialTaskParsingDetailDialog.value = true
+  console.log('查看详情', task.ID)
 }
 
 const handleClose = () => {
   dialogVisible.value = false
+}
+
+const handleViewDetailFromTaskParsing = ({ detailId, taskId }) => {
+  currentDetailIdForDetail.value = detailId
+  currentTaskIdForDetail.value = taskId
+  showMaterialDetailDialog.value = true
 }
 </script>
 

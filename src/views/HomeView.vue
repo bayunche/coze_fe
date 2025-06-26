@@ -45,10 +45,30 @@
       </el-main>
     </el-container>
 
+    <!-- 乙供物资解析详情弹窗组件 -->
+    <MaterialDetailDialog
+      v-model="showMaterialDetailDialog"
+      :taskId="materialDetailDialogTaskId"
+      :detailId="materialDetailDialogDetailId"
+    />
+
     <!-- 新增乙供物资详情弹窗组件 -->
     <MaterialDetailDialog
       v-model:show="supplierMaterialDialogVisible"
       :task="supplierMaterialDialogTask"
+    />
+
+    <!-- 新增物资解析结果详情弹窗组件 -->
+    <MaterialParsingResultDialog
+      v-model="showMaterialParsingResultDialog"
+      :task="materialParsingResultTask"
+    />
+
+    <!-- 乙供物资任务解析详情弹窗组件 -->
+    <OwnerMaterialTaskParsingDetailDialog
+      v-model="showOwnerMaterialTaskParsingDetailDialog"
+      :taskId="ownerMaterialTaskParsingDetailTaskId"
+      @view-detail="handleViewOwnerMaterialDetail"
     />
 
     <!-- 任务配置对话框 -->
@@ -166,6 +186,7 @@ import WorkflowExecutionPanel from '@/components/home/WorkflowExecutionPanel.vue
 import ExecutionHistory from '@/components/home/ExecutionHistory.vue'
 import WorkflowConfigDialog from '@/components/home/WorkflowConfigDialog.vue'
 import SmartBrainDialog from '@/components/home/SmartBrainDialog.vue'
+import OwnerMaterialTaskParsingDetailDialog from '@/components/home/OwnerMaterialTaskParsingDetailDialog.vue'
 import { functions } from '@/uitls/workflows.js'
 import CozeService from '@/uitls/coze.js'
 
@@ -185,9 +206,22 @@ const executionSessions = reactive([])
 const showResultDetail = ref(false)
 const showSmartBrainDialog = ref(false)
 
-// 新增响应式变量，控制乙供物资解析详情弹窗显示，及其关联任务对象
+// 新增响应式变量，控制乙供物资详情弹窗显示，及其关联任务对象
 const supplierMaterialDialogVisible = ref(false)
 const supplierMaterialDialogTask = ref(null)
+
+// 新增响应式变量，控制物资解析结果详情弹窗显示，及其关联任务对象
+const showMaterialParsingResultDialog = ref(false)
+const materialParsingResultTask = ref(null)
+
+// 新增响应式变量，控制乙供物资任务解析详情弹窗显示，及其关联任务ID
+const showOwnerMaterialTaskParsingDetailDialog = ref(false)
+const ownerMaterialTaskParsingDetailTaskId = ref(null)
+
+// 新增响应式变量，控制乙供物资解析详情弹窗（MaterialDetailDialog）显示，及其关联任务ID和详情ID
+const showMaterialDetailDialog = ref(false)
+const materialDetailDialogTaskId = ref(null)
+const materialDetailDialogDetailId = ref(null)
 
 const taskId = ref(null)
 const supplierFileId = ref(null) // 用于存储乙供物资解析返回的 file_id
@@ -447,21 +481,25 @@ const handleViewResultDetail = async (message) => {
   }
 }
 
-const handleViewMaterialResultDetail = async (messageTask) => {
-  // 使用 supplierFileId 作为 taskId
-  const currentTaskId = supplierFileId.value
-
-  if (!currentTaskId) {
-    ElMessage.warning('没有可供解析的乙供物资任务ID (supplierFileId 未设置)。')
+const handleViewMaterialResultDetail = async (message) => {
+  if (!message) {
+    // message 现在直接是 taskId
+  }
+  const taskIdToUse =
+    typeof message === 'object' && message !== null && message.id ? message.id : message
+  if (!taskIdToUse) {
+    ElMessage.warning('没有可供解析的乙供物资任务ID。')
     return
   }
   try {
-    // MaterialDetailDialog 需要一个包含 ID 字段的 task 对象
-    supplierMaterialDialogTask.value = { ID: currentTaskId } // 确保传递正确的 ID
-    supplierMaterialDialogVisible.value = true
+    // 将传入的 taskId 赋值给 ownerMaterialTaskParsingDetailTaskId
+    ownerMaterialTaskParsingDetailTaskId.value = taskIdToUse
+    // 设置 showOwnerMaterialTaskParsingDetailDialog 为 true 以显示弹窗
+    showOwnerMaterialTaskParsingDetailDialog.value = true
+    console.log('【诊断】HomeView - 触发显示乙供物资任务解析详情弹窗，任务ID:', taskIdToUse)
   } catch (error) {
-    console.error('乙供物资工作流执行失败:', error)
-    ElMessage.error(`乙供物资解析失败: ${error.message}`)
+    console.error('显示乙供物资任务解析详情弹窗失败:', error)
+    ElMessage.error(`显示乙供物资任务解析详情弹窗失败: ${error.message}`)
   }
 }
 
@@ -904,6 +942,7 @@ const executeWorkflow = async () => {
 
               if (taskIdCandidate) {
                 taskId.value = taskIdCandidate
+                streamingAgentMessage.task = taskIdCandidate // 将 taskId 赋值给 streamingAgentMessage 的 task 属性
                 return
               }
 
@@ -917,14 +956,14 @@ const executeWorkflow = async () => {
               }
             } else if (event.event === 'Done') {
               delete streamingAgentMessage.isStreaming
+              streamingAgentMessage.showViewResultButton = true // 任务完成时显示按钮
               loadingMessage.progress = 100
               loadingMessage.content = '任务执行完毕！'
               clearInterval(loadingInterval)
 
               // Done 事件不再需要解析 file_id 和 file_detail_id_list，因为已在 Message 事件中处理
               ElMessage.success(
-                `乙供物资解析完成，文件ID: ${supplierFileId.value || 'N/A'}，详情ID数量: ${
-                  supplierFileDetailIds.value.length
+                `乙供物资解析完成
                 }`
               )
               completeWorkflow({ output: finalResult.join('\n') })
@@ -1091,16 +1130,14 @@ const completeWorkflow = (resultOverride = {}) => {
   setTimeout(() => {
     let showButton = false
     // 如果是合同解析或乙供物资，且taskId有效，均显示结果按钮
-    if (
-      (activeFunction.value === 'contractParsing' ||
-        activeFunction.value === 'supplierMaterialParsing') &&
-      taskId.value != null
-    ) {
+    if (activeFunction.value === 'contractParsing' && taskId.value != null) {
       showButton = true
     } else if (isSuccess && taskId.value != null) {
       showButton = true
     }
-
+    if (activeFunction.value === 'supplierMaterialParsing') {
+      showButton = false
+    }
     addMessage(
       `任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`,
       'agent',
@@ -1431,6 +1468,12 @@ const handleSendMessage = () => {
       // This is now handled by the 'done' event in onMessage
     }
   })
+}
+const handleViewOwnerMaterialDetail = ({ detailId, taskId }) => {
+  console.log('【诊断】HomeView - 接收到 view-detail 事件，detailId:', detailId, 'taskId:', taskId)
+  materialDetailDialogTaskId.value = taskId
+  materialDetailDialogDetailId.value = detailId
+  showMaterialDetailDialog.value = true
 }
 </script>
 

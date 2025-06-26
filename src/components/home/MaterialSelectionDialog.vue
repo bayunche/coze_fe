@@ -57,7 +57,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 
 const props = defineProps({
-  show: {
+  modelValue: {
     type: Boolean,
     required: true
   },
@@ -83,11 +83,11 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:show', 'select', 'page-change', 'size-change'])
+const emit = defineEmits(['update:modelValue', 'select', 'page-change', 'size-change'])
 
 const dialogVisible = computed({
-  get: () => props.show,
-  set: (value) => emit('update:show', value)
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value)
 })
 
 const searchTerm = ref('')

@@ -62,7 +62,6 @@
         </el-table-column>
       </el-table>
       <el-pagination
-        v-if="totalDetails > pageSize"
         background
         layout="total, sizes, prev, pager, next, jumper"
         :total="totalDetails"
@@ -82,7 +81,7 @@
     </template>
   </el-dialog>
   <MaterialSelectionDialog
-    v-model:show="showSelectionDialog"
+    v-model:modelValue="showSelectionDialog"
     :data-list="showSelectionList"
     :total="showSelectionTotal"
     :page-num="showSelectionPageNum"
@@ -105,21 +104,25 @@ const cozeService = new CozeService(
 )
 
 const props = defineProps({
-  show: {
+  modelValue: {
     type: Boolean,
     required: true
   },
-  task: {
-    type: Object,
-    default: null
+  taskId: {
+    type: [String, Number],
+    required: true
+  },
+  detailId: {
+    type: [String, Number],
+    required: true
   }
 })
 
-const emit = defineEmits(['update:show'])
+const emit = defineEmits(['update:modelValue'])
 
 const dialogVisible = computed({
-  get: () => props.show,
-  set: (value) => emit('update:show', value)
+  get: () => props.modelValue,
+  set: (value) => emit('update:modelValue', value)
 })
 
 const loading = ref(false)
@@ -133,80 +136,58 @@ const showSelectionPageSize = ref(10)
 const showSelectionList = ref([])
 const showSelectionTotal = ref(0)
 
-const allDetailIds = ref([]) // 存储所有详情ID
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalDetails = ref(0)
 
-const fetchDetails = async (taskId) => {
-  if (!taskId) return
+const fetchMaterialDetail = async (page = currentPage.value, size = pageSize.value) => {
   loading.value = true
   tableData.value = []
 
   try {
-    // 1. 调用获取乙供物资解析详情列表id工作流
-    const detailIdsWorkflowId = '7519167663710257193'
-    const detailIdsResult = await cozeService.runWorkflow(detailIdsWorkflowId, { task_id: taskId })
-    console.log('detailIdsResult:', detailIdsResult)
-    if (detailIdsResult && detailIdsResult.data) {
-      const parsedOutput = JSON.parse(detailIdsResult.data)?.output
-      if (Array.isArray(parsedOutput)) {
-        allDetailIds.value = parsedOutput.map((item) => JSON.parse(item).ID)
-        totalDetails.value = allDetailIds.value.length
+    console.log('【诊断】fetchMaterialDetail - taskId:', props.taskId)
+    console.log('【诊断】fetchMaterialDetail - detailId:', props.detailId)
+    console.log('【诊断】fetchMaterialDetail - page:', page, 'size:', size)
+
+    const detailWorkflowId = '7519045874770657299'
+    const workflowParams = {
+      taskId: props.taskId,
+      task_detail_id: props.detailId,
+      index: page,
+      pageSize: size
+    }
+    console.log('【诊断】调用工作流 7519045874770657299 参数:', workflowParams)
+    const detailResult = await cozeService.runWorkflow(detailWorkflowId, workflowParams)
+    if (detailResult && detailResult.data) {
+      console.log('【诊断】工作流 7519045874770657299 原始返回数据:', detailResult.data)
+      const parsed = JSON.parse(detailResult.data)
+      const parsedData = parsed?.result
+      const totalCount = parsed?.total || (Array.isArray(parsedData) ? parsedData.length : 0)
+      console.log('【诊断】工作流 7519045874770657299 解析后数据:', { parsedData, totalCount })
+
+      if (Array.isArray(parsedData) && parsedData.length > 0) {
+        tableData.value = parsedData.map((item) => formatMaterialDetail(item))
+        totalDetails.value = totalCount
+        console.log(
+          '【诊断】MaterialDetailDialog - tableData 更新:',
+          tableData.value.length,
+          '条数据'
+        )
+        console.log('【诊断】MaterialDetailDialog - totalDetails 更新:', totalDetails.value)
       } else {
-        ElMessage.warning('未获取到有效的详情ID列表。')
-        loading.value = false
-        return
+        ElMessage.warning('未获取到有效的详情数据。')
+        tableData.value = []
+        totalDetails.value = 0
       }
     } else {
-      throw new Error('获取详情ID列表失败。')
+      throw new Error('获取详情数据失败。')
     }
-
-    // 2. 根据分页获取详情数据
-    await fetchPaginatedDetails(taskId, currentPage.value, pageSize.value)
   } catch (error) {
-    ElMessage.error(`获取详情失败: ${error.message}`)
-    console.error('获取详情失败:', error)
+    ElMessage.error(`加载详情失败: ${error.message}`)
+    console.error('加载详情失败:', error)
   } finally {
     loading.value = false
   }
-}
-
-const fetchPaginatedDetails = async (taskId, page, size) => {
-  loading.value = true
-  tableData.value = []
-
-  const startIndex = (page - 1) * size
-  const endIndex = Math.min(startIndex + size, allDetailIds.value.length)
-  const currentDetailIds = allDetailIds.value.slice(startIndex, endIndex)
-
-  if (currentDetailIds.length === 0) {
-    ElMessage.info('当前页没有数据。')
-    loading.value = false
-    return
-  }
-
-  const detailPromises = currentDetailIds.map(async (detailId) => {
-    const detailWorkflowId = '7519045874770657299'
-    const detailResult = await cozeService.runWorkflow(detailWorkflowId, {
-      taskId: taskId,
-      task_detail_id: detailId,
-      index: page, // 这里的index和pageSize可能需要根据实际工作流的参数定义来调整
-      pageSize: size
-    })
-    if (detailResult && detailResult.data) {
-      const parsedData = JSON.parse(detailResult.data)?.result
-      if (Array.isArray(parsedData) && parsedData.length > 0) {
-        // test.json 的 result 字段是一个数组，直接使用
-        return parsedData.map((item) => formatMaterialDetail(item))
-      }
-    }
-    return null
-  })
-
-  const results = await Promise.all(detailPromises)
-  tableData.value = results.flat().filter((item) => item !== null)
-  loading.value = false
 }
 
 // 格式化数据以适应表格和相似匹配的显示
@@ -256,30 +237,47 @@ const formatMaterialDetail = (item) => {
 // 处理分页变化
 const handlePageChange = (newPage) => {
   currentPage.value = newPage
-  fetchPaginatedDetails(props.task.ID, newPage, pageSize.value)
+  fetchMaterialDetail(newPage, pageSize.value)
 }
 
 // 处理页长变化
 const handleSizeChange = (newSize) => {
   pageSize.value = newSize
   currentPage.value = 1 // 页长变化后回到第一页
-  fetchPaginatedDetails(props.task.ID, currentPage.value, newSize)
+  fetchMaterialDetail(currentPage.value, newSize)
 }
 
 watch(
-  () => props.task,
-  (newTask) => {
-    if (newTask && newTask.ID) {
-      // 使用 newTask.ID 作为 task_id
-      fetchDetails(newTask.ID)
+  () => props.modelValue,
+  (newVal) => {
+    if (newVal) {
+      // 弹窗打开时，如果 taskId 和 detailId 都存在，则加载数据
+      if (props.taskId && props.detailId) {
+        currentPage.value = 1 // 每次打开弹窗都回到第一页
+        pageSize.value = 10 // 每次打开弹窗都重置 pageSize
+        fetchMaterialDetail()
+      }
     } else {
+      // 弹窗关闭时清空数据并重置分页状态
       tableData.value = []
-      allDetailIds.value = []
       totalDetails.value = 0
       currentPage.value = 1
+      pageSize.value = 10
+    }
+  }
+)
+
+watch(
+  () => [props.taskId, props.detailId],
+  ([newTaskId, newDetailId], [oldTaskId, oldDetailId]) => {
+    // 只有当 taskId 或 detailId 发生变化，并且弹窗当前是可见的，才重新加载数据
+    if (props.modelValue && (newTaskId !== oldTaskId || newDetailId !== oldDetailId)) {
+      currentPage.value = 1 // 重置分页
+      pageSize.value = 10
+      fetchMaterialDetail()
     }
   },
-  { immediate: true, deep: true }
+  { deep: true }
 )
 
 const formatSimilarMatchLabel = (item) => {
