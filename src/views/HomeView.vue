@@ -409,51 +409,41 @@ const handleViewResultDetail = async (message) => {
     return
   }
 
-  // 判断是合同解析还是乙供物资解析
-  const isContractParsing = message?.workflow?.id === 'contractParsing'
-  const isSupplierMaterialParsing = message?.workflow?.id === 'supplierMaterialParsing'
+  // 保持现有合同解析逻辑
+  showResultDetail.value = true
+  isFetchingDetails.value = true
+  tableData.value = []
+  tableColumns.value = []
 
-  if (isContractParsing) {
-    // 保持现有合同解析逻辑
-    showResultDetail.value = true
-    isFetchingDetails.value = true
-    tableData.value = []
-    tableColumns.value = []
-
-    try {
-      const result = await cozeService.runTableGenerationWorkflow(taskId.value)
-      if (result && result.data) {
-        const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"')
-        const parsedData = JSON.parse(jsonString)?.output
-        const tableJsonData = parseResultJsonData(parsedData)
-        if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
-          tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
-            prop: key,
-            label: translateHeader(key)
-          }))
-          const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
-          tableData.value = JSON.parse(JSON.stringify(rawData))
-          // 为编辑创建一个深拷贝
-          editFormModels.value = JSON.parse(JSON.stringify(rawData))
-        } else {
-          tableColumns.value = []
-          tableData.value = []
-          editFormModels.value = []
-          ElMessage.info('结果为空或 result_json 解析后无数据，暂无数据展示。')
-        }
+  try {
+    const result = await cozeService.runTableGenerationWorkflow(taskId.value)
+    if (result && result.data) {
+      const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"')
+      const parsedData = JSON.parse(jsonString)?.output
+      const tableJsonData = parseResultJsonData(parsedData)
+      if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
+        tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
+          prop: key,
+          label: translateHeader(key)
+        }))
+        const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
+        tableData.value = JSON.parse(JSON.stringify(rawData))
+        // 为编辑创建一个深拷贝
+        editFormModels.value = JSON.parse(JSON.stringify(rawData))
       } else {
-        throw new Error('任务未返回有效的表格数据。')
+        tableColumns.value = []
+        tableData.value = []
+        editFormModels.value = []
+        ElMessage.info('结果为空或 result_json 解析后无数据，暂无数据展示。')
       }
-    } catch (error) {
-      console.error('处理表格数据时出错:', error)
-      ElMessage.error(`获取表格数据失败: ${error.message}`)
-    } finally {
-      isFetchingDetails.value = false
+    } else {
+      throw new Error('任务未返回有效的表格数据。')
     }
-  } else if (isSupplierMaterialParsing) {
-    // 乙供物资解析的逻辑已移至 handleViewMaterialResultDetail
-    // 这里可以添加一个日志或提示，表示该逻辑已转移
-    console.log('乙供物资解析的查看详情逻辑已转移到 handleViewMaterialResultDetail。')
+  } catch (error) {
+    console.error('处理表格数据时出错:', error)
+    ElMessage.error(`获取表格数据失败: ${error.message}`)
+  } finally {
+    isFetchingDetails.value = false
   }
 }
 
@@ -756,7 +746,7 @@ const executeWorkflow = async () => {
     } else {
       clearInterval(loadingInterval)
     }
-  }, 10000)
+  }, 3000)
 
   timeInterval = setInterval(() => {
     const elapsed = (Date.now() - workflow.startTime) / 1000

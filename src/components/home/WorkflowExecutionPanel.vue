@@ -89,7 +89,8 @@ const emit = defineEmits(['view-result-detail', 'message-displayed'])
 
 const messageContainer = ref(null)
 const displayedMessages = ref([])
-const isDisplaying = ref(false)
+const isDisplaying = ref(false) // 控制非流式消息的逐条显示动画
+const streamingMessageId = ref(null) // 跟踪当前正在流式传输的消息ID
 const activeTab = ref('all') // 'all', 'contract', 'dialogue'
 
 // 计算属性，根据激活的 tab 过滤要显示的消息
@@ -118,17 +119,31 @@ const handleTabClick = () => {
 }
 
 const displayNextMessage = () => {
-  if (props.messages.length > displayedMessages.value.length) {
+  // 找到 props.messages 中第一个尚未在 displayedMessages 中，且不是当前流式消息的消息
+  const nextMessageInProps = props.messages.find(
+    (msg) =>
+      !displayedMessages.value.some((dMsg) => dMsg.id === msg.id) &&
+      msg.id !== streamingMessageId.value
+  )
+
+  if (nextMessageInProps) {
     isDisplaying.value = true
-    const nextMessage = props.messages[displayedMessages.value.length]
-    displayedMessages.value.push(nextMessage)
+    // 直接推送原始消息对象，以保持响应性
+    displayedMessages.value.push(nextMessageInProps)
+
+    // 如果新添加的消息是流式消息，设置 streamingMessageId
+    if (nextMessageInProps.isStreaming) {
+      streamingMessageId.value = nextMessageInProps.id
+    }
   } else {
     isDisplaying.value = false
   }
 }
 
 const handleMessageDisplayed = (index) => {
-  if (index === displayedMessages.value.length - 1) {
+  // 只有当消息不是流式消息时，才触发下一条消息的显示
+  // 流式消息的完成由 watch 逻辑处理
+  if (!displayedMessages.value[index]?.isStreaming) {
     displayNextMessage()
   }
   // 通知父组件消息已显示，以便继续处理队列
@@ -136,15 +151,75 @@ const handleMessageDisplayed = (index) => {
 }
 
 watch(
-  () => props.messages.length,
-  (newLength, oldLength) => {
-    if (newLength > oldLength && !isDisplaying.value) {
-      displayNextMessage()
-    } else if (newLength === 0) {
+  () => props.messages,
+  (newMessages, oldMessages) => {
+    // 遍历新消息，处理流式更新和新消息添加
+    newMessages.forEach((newMessage) => {
+      const existingMessageIndex = displayedMessages.value.findIndex(
+        (dMsg) => dMsg.id === newMessage.id
+      )
+
+      if (newMessage.isStreaming) {
+        // 如果是流式消息
+        if (existingMessageIndex !== -1) {
+          // 更新现有流式消息的内容和状态
+          displayedMessages.value[existingMessageIndex].content = newMessage.content
+          displayedMessages.value[existingMessageIndex].isStreaming = newMessage.isStreaming
+          displayedMessages.value[existingMessageIndex].showViewResultButton =
+            newMessage.showViewResultButton
+        } else {
+          // 如果是新的流式消息，添加到 displayedMessages
+          // 注意：这里直接添加原始消息对象，以保持响应性
+          displayedMessages.value.push(newMessage)
+          streamingMessageId.value = newMessage.id
+        }
+      } else {
+        // 非流式消息或流式结束的消息
+        if (existingMessageIndex !== -1) {
+          // 更新内容和状态，确保isStreaming为false
+          displayedMessages.value[existingMessageIndex].content = newMessage.content
+          displayedMessages.value[existingMessageIndex].isStreaming = false
+          displayedMessages.value[existingMessageIndex].showViewResultButton =
+            newMessage.showViewResultButton
+          // 如果是当前正在流式传输的消息结束，清除 streamingMessageId
+          if (streamingMessageId.value === newMessage.id) {
+            streamingMessageId.value = null
+            // 流式结束，尝试显示下一条非流式消息
+            if (!isDisplaying.value) {
+              displayNextMessage()
+            }
+          }
+        } else {
+          // 新的非流式消息，等待 displayNextMessage 处理
+          // 只有在没有流式消息进行中且没有动画进行中时才触发下一条消息显示
+          if (!isDisplaying.value && streamingMessageId.value === null) {
+            displayNextMessage()
+          }
+        }
+      }
+    })
+
+    // 移除 displayedMessages 中不再存在于 props.messages 的消息
+    // 这有助于清理旧的或被删除的消息
+    displayedMessages.value = displayedMessages.value.filter((displayedMsg) =>
+      newMessages.some((newMsg) => newMsg.id === displayedMsg.id)
+    )
+
+    // 如果 newMessages 变为空，清空 displayedMessages
+    if (newMessages.length === 0) {
       displayedMessages.value = []
       isDisplaying.value = false
+      streamingMessageId.value = null
     }
-  }
+
+    // 确保滚动到底部
+    nextTick(() => {
+      if (messageContainer.value) {
+        messageContainer.value.scrollTop = messageContainer.value.scrollHeight
+      }
+    })
+  },
+  { deep: true, immediate: true } // 深度监听，并立即执行一次
 )
 
 watch(
@@ -166,13 +241,17 @@ onMounted(() => {
 })
 
 const handleViewResultDetail = (message) => {
-  // 假设 message 对象中包含 workflow 信息，并且 workflow.name 可以区分合同解析和乙供物资解析
-  if (message.workflow && message.workflow.name === '乙供物资解析') {
-    emit('view-material-result-detail', message.task) // 发送事件，传递任务数据
-  } else if (message.workflow && message.workflow.name === '合同解析') {
-    emit('view-result-detail', message.task) // 兼容原有的合同解析逻辑
+  // 根据消息的 workflow.name 决定触发哪个事件
+  if (message.workflow && message.workflow.name === '合同解析') {
+    // 对于合同解析，触发 view-result-detail 事件，并传递 message.task (即 taskId)
+    emit('view-result-detail', message.task)
+  } else if (message.workflow && message.workflow.name === '乙供物资解析') {
+    // 对于乙供物资解析，触发 view-material-result-detail 事件，并传递 message.task (即 taskId)
+    emit('view-material-result-detail', message.task)
   } else {
-    emit('view-result-detail') // 其他类型的解析结果
+    // 对于其他未知类型的解析结果，可以触发一个默认的 view-result-detail 事件，不带参数或带通用参数
+    // 这里为了兼容性，仍然触发 view-result-detail，但不传递 task，让 HomeView 决定如何处理
+    emit('view-result-detail')
   }
 }
 </script>

@@ -462,21 +462,13 @@ const handleSave = async () => {
     // 只保存用户编辑过变动的数据
     const updateObjList = tableData.value
       .filter((item) => {
-        if (
-          !(
-            item.match_type === '相似匹配' ||
-            item.match_type === '未知' ||
-            item.match_type === '无匹配'
-          )
-        )
-          return false
         // 对比行数据层id和快照，识别有变化的数据
         const isModified =
           item.original_item.matchedDataId !== item.initialMatchedDataId ||
           item.original_item.matchedPriceId !== item.initialMatchedPriceId
-        // console.log(
-        //   `【诊断】保存检查: ID=${item.id}, 是否修改=${isModified}, original_item.matchedDataId=${item.original_item.matchedDataId}, initialMatchedDataId=${item.initialMatchedDataId}`
-        // )
+        console.log(
+          `【诊断】保存检查: ID=${item.id}, 是否修改=${isModified}, original_item.matchedDataId=${item.original_item.matchedDataId}, initialMatchedDataId=${item.initialMatchedDataId}`
+        )
         return isModified
       })
       .map((item) => ({
