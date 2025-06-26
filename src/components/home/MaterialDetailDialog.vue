@@ -225,7 +225,7 @@ const formatMaterialDetail = (item) => {
     matched_name: item.matchedDataMaterialName,
     matched_specification: item.matchedDataSpecificationModel,
     matched_price: item.matchedPrice,
-    similarity: item.matchedScore !== null ? (item.matchedScore * 100).toFixed(2) + '%' : '/',
+    similarity: item.matchedScore !== null ? item.matchedScore.toFixed(2) + '%' : '/',
     match_type:
       item.confirm_type === 2 ? '精确匹配' : matchTypeMap[item.comparison_result] || '未知',
     editing: false,
