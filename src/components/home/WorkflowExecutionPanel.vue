@@ -119,7 +119,6 @@ const handleTabClick = () => {
 }
 
 const displayNextMessage = () => {
-  // 找到 props.messages 中第一个尚未在 displayedMessages 中，且不是当前流式消息的消息
   const nextMessageInProps = props.messages.find(
     (msg) =>
       !displayedMessages.value.some((dMsg) => dMsg.id === msg.id) &&
@@ -127,27 +126,31 @@ const displayNextMessage = () => {
   )
 
   if (nextMessageInProps) {
-    isDisplaying.value = true
-    // 直接推送原始消息对象，以保持响应性
-    displayedMessages.value.push(nextMessageInProps)
+    // 只有当没有消息正在显示时才开始显示下一条
+    // 如果 isDisplaying 已经是 true，说明有消息正在动画，等待其完成
+    if (!isDisplaying.value) {
+      isDisplaying.value = true // 标记有消息正在显示/动画
+      displayedMessages.value.push(nextMessageInProps)
 
-    // 如果新添加的消息是流式消息，设置 streamingMessageId
-    if (nextMessageInProps.isStreaming) {
-      streamingMessageId.value = nextMessageInProps.id
+      if (nextMessageInProps.isStreaming) {
+        streamingMessageId.value = nextMessageInProps.id
+      }
     }
   } else {
-    isDisplaying.value = false
+    isDisplaying.value = false // 没有更多消息需要显示
   }
 }
 
 const handleMessageDisplayed = (index) => {
-  // 只有当消息不是流式消息时，才触发下一条消息的显示
-  // 流式消息的完成由 watch 逻辑处理
-  if (!displayedMessages.value[index]?.isStreaming) {
+  // 无论是否流式消息，只要 StreamingMessage 完成，就尝试显示下一条
+  isDisplaying.value = false // 当前消息显示完成，重置状态
+  streamingMessageId.value = null // 如果是流式消息，也在这里清除ID
+
+  // 延迟一小段时间，确保 DOM 更新完成，然后尝试显示下一条消息
+  nextTick(() => {
     displayNextMessage()
-  }
-  // 通知父组件消息已显示，以便继续处理队列
-  emit('message-displayed')
+    emit('message-displayed') // 通知父组件消息已显示，以便继续处理队列
+  })
 }
 
 watch(
@@ -172,6 +175,10 @@ watch(
           // 注意：这里直接添加原始消息对象，以保持响应性
           displayedMessages.value.push(newMessage)
           streamingMessageId.value = newMessage.id
+          // 新的流式消息，立即尝试显示
+          if (!isDisplaying.value) {
+            displayNextMessage()
+          }
         }
       } else {
         // 非流式消息或流式结束的消息
@@ -186,24 +193,18 @@ watch(
             streamingMessageId.value = null
             // 流式结束，尝试显示下一条非流式消息
             if (!isDisplaying.value) {
+              // 确保在流式消息结束后，如果当前没有其他消息在显示，则尝试显示下一条
               displayNextMessage()
             }
           }
         } else {
-          // 新的非流式消息，等待 displayNextMessage 处理
-          // 只有在没有流式消息进行中且没有动画进行中时才触发下一条消息显示
+          // 新的非流式消息，如果当前没有消息正在显示，则立即显示
           if (!isDisplaying.value && streamingMessageId.value === null) {
             displayNextMessage()
           }
         }
       }
     })
-
-    // 移除 displayedMessages 中不再存在于 props.messages 的消息
-    // 这有助于清理旧的或被删除的消息
-    displayedMessages.value = displayedMessages.value.filter((displayedMsg) =>
-      newMessages.some((newMsg) => newMsg.id === displayedMsg.id)
-    )
 
     // 如果 newMessages 变为空，清空 displayedMessages
     if (newMessages.length === 0) {

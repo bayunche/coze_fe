@@ -962,10 +962,7 @@ const executeWorkflow = async () => {
               clearInterval(loadingInterval)
 
               // Done 事件不再需要解析 file_id 和 file_detail_id_list，因为已在 Message 事件中处理
-              ElMessage.success(
-                `乙供物资解析完成
-                }`
-              )
+              ElMessage.success(`乙供物资解析完成`)
               completeWorkflow({ output: finalResult.join('\n') })
             } else if (event.event === 'PING') {
               // Handle PING
