@@ -71,14 +71,14 @@
         <el-button type="primary" @click="handleSaveAll" :loading="savingAllEdits">
           提交编辑
         </el-button>
-        <el-button
+        <!-- <el-button
           v-if="!hasResultStatusOne"
           type="success"
           @click="handleConfirm"
           :loading="isConfirming"
         >
           确认全部
-        </el-button>
+        </el-button> -->
       </span>
     </template>
   </el-dialog>
@@ -99,6 +99,7 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import CozeService from '@/uitls/coze.js'
+import { useChatStore } from '@/stores/chat.js'
 
 const props = defineProps({
   show: {
@@ -112,6 +113,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:show'])
+
+const chatStore = useChatStore()
 
 const hasResultStatusOne = computed(() => {
   return editFormModels.value.some((item) => Number(item.result_status) === 1)
@@ -365,6 +368,10 @@ const handleSaveAll = async () => {
           })
         )
       )
+      chatStore.addMessage(
+        `已保存 ${successCount} 个 ${props.task?.name || '未知'} 解析结果`,
+        'system'
+      )
       handleClose() // 保存成功后关闭对话框
     }
   } catch (error) {
@@ -407,6 +414,10 @@ const handleConfirm = async () => {
       ElMessage.warning(`${successCount} 条记录确认成功，${failureCount} 条失败。`)
     } else {
       ElMessage.success(`所有 ${successCount} 条记录均已成功确认！`)
+      chatStore.addMessage(
+        `已确认 ${successCount} 个 ${props.task?.name || '未知'} 解析结果`,
+        'system'
+      )
     }
     handleClose() // 关闭对话框
   } catch (error) {

@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, reactive } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { useWorkflowStore } from './workflow';
+import { useChatStore } from './chat'; // 引入 chat store
 import CozeParsingService from '@/services/CozeParsingService';
 import { translateHeader, formatCellValue } from '@/utils/helpers';
 
@@ -50,6 +51,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   const editableFieldProp = ref('');
 
   const cozeParsingService = new CozeParsingService();
+  const chatStore = useChatStore(); // 初始化 chat store
 
   // Actions
   /**
@@ -239,6 +241,9 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         ElMessage.error(`${failureCount} 个条目保存失败，请检查控制台日志。`);
       } else {
         ElMessage.success('全部解析结果已成功保存！');
+        const savedCount = successCount;
+        const resultType = '合同'; // 根据对话框标题确定类型
+        chatStore.addMessage(`已保存${savedCount}个${resultType}解析结果`, 'system');
         tableData.value = JSON.parse(
           JSON.stringify(
             editFormModels.value.map((item) => {

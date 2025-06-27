@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="showResultDetail"
-    title="解析结果详情"
+    title="合同解析结果详情"
     width="80%"
     custom-class="result-detail-dialog"
   >
@@ -65,7 +65,7 @@
         <el-button type="primary" @click="parsingResultStore.handleSaveAll" :loading="savingAllEdits"
           >提交修改</el-button
         >
-        <el-button type="success" @click="parsingResultStore.handleConfirm()" :loading="isConfirming">确认</el-button>
+        <!-- <el-button type="success" @click="parsingResultStore.handleConfirm()" :loading="isConfirming">确认</el-button> -->
       </span>
     </template>
   </el-dialog>

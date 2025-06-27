@@ -98,10 +98,13 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import MaterialSelectionDialog from './MaterialSelectionDialog.vue'
 import CozeService from '@/uitls/coze.js'
+import { useChatStore } from '@/stores/chat.js'
 
 const cozeService = new CozeService(
   'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
 )
+
+const chatStore = useChatStore()
 
 const props = defineProps({
   modelValue: {
@@ -206,7 +209,7 @@ const formatMaterialDetail = (item) => {
     matched_name: item.matchedDataMaterialName,
     matched_specification: item.matchedDataSpecificationModel,
     matched_price: item.matchedPrice,
-    similarity: item.matchedScore !== null ? item.matchedScore.toFixed(2) + '%' : '/',
+    similarity: typeof item.matchedScore === 'number' ? item.matchedScore + '%' : '/',
     match_type:
       item.confirm_type === 2 ? '精确匹配' : matchTypeMap[item.comparison_result] || '未知',
     editing: false,
@@ -308,8 +311,6 @@ const handleSimilarMatchChange = (row, selectedMatch) => {
     row.matched_name = selectedMatch.name
     row.matched_specification = selectedMatch.specification
     row.matched_price = selectedMatch.price
-    row.similarity =
-      selectedMatch.similarity !== null ? (selectedMatch.similarity * 100).toFixed(2) + '%' : '/'
     // 更新原始数据中的匹配相关字段，以便保存时使用
     const originalItem = row.original_item
     if (originalItem) {
@@ -322,7 +323,6 @@ const handleSimilarMatchChange = (row, selectedMatch) => {
       originalItem.matchedPriceQuarter =
         selectedMatch.matchedPriceQuarter || selectedMatch.quarter || null
       originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
-      row.match_type = '精确匹配'
     }
   }
 }
@@ -405,10 +405,8 @@ const handleMaterialSelect = (selectedMaterial) => {
       selectedMaterial.specification_model ||
       selectedMaterial.ymtd_specification_model ||
       selectedMaterial.specification
-    currentRow.value.similarity = '100%'
-    currentRow.value.match_type = '精确匹配'
     if (currentRow.value.original_item) {
-      currentRow.value.original_item.comparison_result = 1 // 手动选择后，视为精确匹配
+      currentRow.value.original_item.comparison_result = 3 // 手动选择后，设置为手动匹配 (假设3代表手动匹配)
       currentRow.value.original_item.matchedDataId =
         selectedMaterial.m_id || selectedMaterial.ymmr_id || selectedMaterial.id || null
       currentRow.value.original_item.matchedPriceId =
@@ -487,6 +485,9 @@ const handleSave = async () => {
 
     if (saveResult && saveResult.data) {
       ElMessage.success('保存成功')
+      const savedCount = updateObjList.length
+      const materialType = '乙供物资' // 根据对话框标题确定类型
+      chatStore.addMessage(`已保存${savedCount}个${materialType}解析结果`, 'system')
       handleClose()
     } else {
       throw new Error('保存操作未返回有效结果。')
