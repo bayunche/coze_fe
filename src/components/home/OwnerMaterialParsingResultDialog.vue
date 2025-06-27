@@ -65,11 +65,12 @@
       </span>
     </template>
   </el-dialog>
-  <!-- TODO: OwnerMaterialDetailDialog.vue 组件待创建 -->
+
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import OwnerMaterialTaskParsingDetailDialog from './OwnerMaterialTaskParsingDetailDialog.vue'
 
 const props = defineProps({
   show: {
@@ -155,8 +156,8 @@ const calculateProgress = (total, processed) => {
 
 const viewTaskDetails = (task) => {
   selectedTask.value = task
-  // showTaskDetailDialog.value = true
-  alert('甲供物资详情组件（OwnerMaterialDetailDialog.vue）尚未创建。')
+  showTaskDetailDialog.value = true
+  // alert('甲供物资详情组件（OwnerMaterialDetailDialog.vue）尚未创建。') // 移除此行
   console.log('应在此处打开甲供物资详情，任务信息:', task)
 }
 
@@ -170,3 +171,4 @@ const handleClose = () => {
   padding: 20px 30px;
 }
 </style>
+

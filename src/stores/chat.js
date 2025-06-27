@@ -35,11 +35,7 @@ export const useChatStore = defineStore('chat', () => {
   /** @type {import('vue').Ref<string>} */
   const userInput = ref('');
   /** @type {import('vue').Reactive<ChatMessage[]>} */
-  const messageQueue = reactive([]);
-  /** @type {import('vue').Reactive<ChatMessage[]>} */
   const displayedMessages = reactive([]);
-  /** @type {import('vue').Ref<boolean>} */
-  const isDisplayingMessage = ref(false);
 
   const cozeChatService = new CozeChatService(); // 实例化服务
 
@@ -66,22 +62,9 @@ export const useChatStore = defineStore('chat', () => {
             details,
             ...options,
           };
-    messageQueue.push(newMessage);
-    // 直接处理消息显示逻辑，不再需要独立的 processMessageQueue
-    if (!isDisplayingMessage.value) {
-      isDisplayingMessage.value = true;
-      const nextMessage = messageQueue.shift();
-      displayedMessages.push(nextMessage);
-      if (displayedMessages.length > 500) {
-        displayedMessages.shift();
-      }
-      setTimeout(() => {
-        isDisplayingMessage.value = false;
-        // 递归调用以处理队列中的下一条消息
-        if (messageQueue.length > 0) {
-          addMessage(messageQueue.shift()); // 重新调用 addMessage 处理下一条
-        }
-      }, 300);
+    displayedMessages.push(newMessage);
+    if (displayedMessages.length > 500) {
+      displayedMessages.shift();
     }
   };
 
@@ -112,7 +95,7 @@ export const useChatStore = defineStore('chat', () => {
       actionTriggered: false,
     };
 
-    messageQueue.push(agentMessage);
+   displayedMessages.push(agentMessage); // 直接添加到 displayedMessages
 
     try {
       await cozeChatService.runChat({ query: userMessageContent }, workflowId, { // 使用传入的 workflowId
@@ -137,12 +120,12 @@ export const useChatStore = defineStore('chat', () => {
               }
             }
           } else if (event === 'done') {
-            delete agentMessage.isStreaming;
+            agentMessage.isStreaming = false;
           }
         },
         onError(error) {
           agentMessage.content = `对话出错: ${error.message}`;
-          delete agentMessage.isStreaming;
+          agentMessage.isStreaming = false;
         },
       });
     } catch (error) {
@@ -153,8 +136,8 @@ export const useChatStore = defineStore('chat', () => {
 
   // Add default message on store initialization
   if (displayedMessages.length === 0) {
- addMessage(
-  ` 欢迎使用「五模二算」智能体服务！
+   addMessage(
+     ` 欢迎使用「五模二算」智能体服务！
 
  当前可用功能：
   1.合同解析智能体
@@ -165,16 +148,14 @@ export const useChatStore = defineStore('chat', () => {
   2.我想解析乙供物资
 
  如需更多支持，请持续关注后续功能更新。`,
-  'agent',
-  { name: '智能体' }
-);
+     'agent',
+     { name: '智能体' }
+   );
   }
 
   return {
     userInput,
-    messageQueue,
     displayedMessages,
-    isDisplayingMessage,
     addMessage,
     handleSendMessage,
   };

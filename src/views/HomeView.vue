@@ -93,7 +93,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, defineAsyncComponent } from 'vue';
+import { onMounted, onUnmounted, defineAsyncComponent, watch } from 'vue';
 import { storeToRefs } from 'pinia'; // 导入 storeToRefs
 import { ArrowRight, ArrowLeft } from '@element-plus/icons-vue'; // 导入图标
 import { useChatStore } from '@/stores/chat';
@@ -185,9 +185,12 @@ const {
   materialParsingResultTask,
   showOwnerMaterialTaskParsingDetailDialog,
   ownerMaterialTaskParsingDetailTaskId,
+} = storeToRefs(materialDialogStore); // 使用 storeToRefs 解构响应式状态
+
+const {
   handleViewMaterialResultDetail,
   handleViewOwnerMaterialDetail,
-} = materialDialogStore;
+} = materialDialogStore; // 直接解构方法
 
 let timeInterval = null;
 let loadingInterval = null;
@@ -217,6 +220,10 @@ const onConfigDialogClose = () => {
 onMounted(() => {
   resetWorkflowConfig()
 })
+
+watch(showOwnerMaterialTaskParsingDetailDialog, (newValue) => {
+  console.log('【诊断】HomeView - showOwnerMaterialTaskParsingDetailDialog 变化:', newValue);
+});
 
 onUnmounted(() => {
   if (timeInterval) {

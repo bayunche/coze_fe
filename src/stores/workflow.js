@@ -454,6 +454,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
             if (event.event === 'Message' && event.data.content_type === 'text') {
               const content = event.data.content;
+              console.log(`【诊断】workflow.js - 合同解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}`);
               let taskIdCandidate = null;
               let displayText = null;
 
@@ -472,6 +473,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
               if (taskIdCandidate) {
                 taskId.value = taskIdCandidate; // 直接设置合同解析taskId
+                console.log(`【诊断】workflow.js - 合同解析设置任务ID: ${taskIdCandidate}`);
                 return;
               }
 
@@ -484,6 +486,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
                 }
               }
             } else if (event.event === 'Done') {
+              console.log(`【诊断】workflow.js - 合同解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`);
               delete streamingAgentMessage.isStreaming;
               loadingMessage.progress = 100;
               loadingMessage.content = '任务执行完毕！';
@@ -492,10 +495,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
             } else if (event.event === 'PING') {
               // Handle PING
             } else {
+              console.log(`【诊断】workflow.js - 合同解析未知任务事件: ${JSON.stringify(event)}`);
               addMessageCallback('未知任务事件', 'system', null, event);
             }
           },
           onError(error) {
+            console.error(`【诊断】workflow.js - 合同解析任务出错: ${error.message}`);
             clearInterval(loadingInterval);
             loadingMessage.content = `任务出错: ${error.message}`;
             loadingMessage.progress = 100;
@@ -515,6 +520,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
             if (event.event === 'Message' && event.data.content_type === 'text') {
               const content = event.data.content;
+              console.log(`【诊断】workflow.js - 乙供物资解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}`);
               let taskIdCandidate = null;
               let displayText = null;
               let parsedContent = null;
@@ -533,9 +539,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
                 taskIdCandidate = parsedContent?.task_id;
                 if (parsedContent?.task_id) {
                   supplierTaskId.value = parsedContent.task_id; // 设置乙供物资taskId
+                  console.log(`【诊断】workflow.js - 乙供物资解析设置任务ID: ${parsedContent.task_id}`);
                 }
                 if (Array.isArray(parsedContent?.task_detail_id)) {
                   setSupplierFileIds(parsedContent.task_detail_id); // 使用新的 action
+                  console.log(`【诊断】workflow.js - 乙供物资解析设置文件详情ID: ${parsedContent.task_detail_id}`);
                 }
                 if (!taskIdCandidate && !displayText) {
                   displayText = JSON.stringify(parsedContent, null, 2);
@@ -556,6 +564,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
                 }
               }
             } else if (event.event === 'Done') {
+              console.log(`【诊断】workflow.js - 乙供物资解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`);
               delete streamingAgentMessage.isStreaming;
               streamingAgentMessage.showViewResultButton = true;
               loadingMessage.progress = 100;
@@ -570,6 +579,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             }
           },
           onError(error) {
+            console.error(`【诊断】workflow.js - 乙供物资解析任务出错: ${error.message}`);
             clearInterval(loadingInterval);
             loadingMessage.content = `任务出错: ${error.message}`;
             loadingMessage.progress = 100;

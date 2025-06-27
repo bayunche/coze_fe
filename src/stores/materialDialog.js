@@ -51,7 +51,8 @@ export const useMaterialDialogStore = defineStore('materialDialog', () => {
     try {
       ownerMaterialTaskParsingDetailTaskId.value = taskIdToUse;
       showOwnerMaterialTaskParsingDetailDialog.value = true;
-      console.log('【诊断】HomeView - 触发显示乙供物资任务解析详情弹窗，任务ID:', taskIdToUse);
+      console.log('【诊断】materialDialogStore - handleViewMaterialResultDetail 接收到任务ID:', taskIdToUse);
+      console.log('【诊断】materialDialogStore - showOwnerMaterialTaskParsingDetailDialog 设置为:', showOwnerMaterialTaskParsingDetailDialog.value);
     } catch (error) {
       console.error('显示乙供物资任务解析详情弹窗失败:', error);
       ElMessage.error(`显示乙供物资任务解析详情弹窗失败: ${error.message}`);

@@ -36,15 +36,9 @@
               <div class="message-content">
                 <StreamingMessage
                   :text="message.content"
-                  :is-streaming="!!message.isStreaming"
-                  :skip-animation="!message.isStreaming"
-                  :force-animation="
-                    message.from === 'system' &&
-                    isDisplaying &&
-                    displayedMessages.length > 0 &&
-                    message.id === displayedMessages[displayedMessages.length - 1].id
-                  "
-                  @done="handleMessageDisplayed(index)"
+                  :is-streaming="message.isStreaming && message.id === streamingMessageId"
+                  :skip-animation="activeTab !== 'all' || (message.id !== streamingMessageId && !message.isStreaming)"
+                  @done="handleMessageDisplayed(message.id)"
                 />
                 <div v-if="message.type === 'loading'" class="loading-progress-container">
                   <el-progress
@@ -85,143 +79,208 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['view-result-detail', 'message-displayed'])
+const emit = defineEmits(['view-result-detail', 'message-displayed', 'view-material-result-detail'])
 
 const messageContainer = ref(null)
 const displayedMessages = ref([])
-const isDisplaying = ref(false) // 控制非流式消息的逐条显示动画
+const messageQueue = ref([]) // 消息队列，用于存储待显示的消息
+const isProcessingMessage = ref(false) // 标记是否有消息正在处理（流式或非流式动画）
 const streamingMessageId = ref(null) // 跟踪当前正在流式传输的消息ID
+const isAppending = ref(false) // 标记是否正在追加消息内容
 const activeTab = ref('all') // 'all', 'contract', 'dialogue'
 
 // 计算属性，根据激活的 tab 过滤要显示的消息
 const messagesToRender = computed(() => {
   if (activeTab.value === 'all') {
-    return displayedMessages.value
+    return displayedMessages.value;
+  } else {
+    // 在非 'all' 标签页时，直接从 props.messages 过滤并显示
+    let filteredMessages = props.messages;
+    if (activeTab.value === 'contract') {
+      filteredMessages = filteredMessages.filter((m) => m.workflow && m.workflow.name === '合同解析');
+    } else if (activeTab.value === 'material') {
+      filteredMessages = filteredMessages.filter((m) => m.workflow && m.workflow.name === '乙供物资解析');
+    } else if (activeTab.value === 'dialogue') {
+      filteredMessages = filteredMessages.filter((m) => m.from === 'user' || !m.workflow);
+    }
+    // 在这些特定标签页下，消息的 isStreaming 状态应该保持其原始值，以便 StreamingMessage 能够根据实际情况进行流式或追加显示。
+    // 同时，确保在这些筛选标签页下，消息仍然是立即完整显示（非逐条动画）。
+    return filteredMessages;
   }
-  if (activeTab.value === 'contract') {
-    return displayedMessages.value.filter((m) => m.workflow && m.workflow.name === '合同解析')
-  }
-  if (activeTab.value === 'material') {
-    return displayedMessages.value.filter((m) => m.workflow && m.workflow.name === '乙供物资解析')
-  }
-  if (activeTab.value === 'dialogue') {
-    return displayedMessages.value.filter((m) => m.from === 'user' || !m.workflow)
-  }
-  return []
-})
+});
 
-const handleTabClick = () => {
+const processNextMessage = () => {
+  if (isAppending.value) {
+    console.log('【诊断】WorkflowExecutionPanel - 正在追加消息，暂停处理队列。');
+    return;
+  }
+
+  if (messageQueue.value.length > 0 && !isProcessingMessage.value) {
+    const nextMessage = messageQueue.value.shift(); // 从队列中取出下一条消息
+    console.log(`【诊断】WorkflowExecutionPanel - 处理下一条消息: ID=${nextMessage.id}, isStreaming=${nextMessage.isStreaming}`);
+
+    // 检查消息是否已存在于 displayedMessages，如果存在则更新，否则添加
+    const existingIndex = displayedMessages.value.findIndex(m => m.id === nextMessage.id);
+    if (existingIndex !== -1) {
+      // 如果消息已存在，更新其内容和流式状态
+      displayedMessages.value[existingIndex] = { ...displayedMessages.value[existingIndex], ...nextMessage };
+    } else {
+      // 新消息，添加到 displayedMessages
+      displayedMessages.value.push(nextMessage);
+    }
+
+    isProcessingMessage.value = true; // 标记为正在处理
+
+    if (nextMessage.isStreaming) {
+      streamingMessageId.value = nextMessage.id;
+      console.log(`【诊断】WorkflowExecutionPanel - 设置当前流式消息ID: ${streamingMessageId.value}`);
+    } else {
+      // 对于非流式消息，立即解除处理状态并尝试处理下一条
+      isProcessingMessage.value = false;
+      streamingMessageId.value = null;
+      console.log(`【诊断】WorkflowExecutionPanel - 非流式消息，立即解除处理状态。`);
+      nextTick(() => {
+        processNextMessage();
+      });
+    }
+  } else if (messageQueue.value.length === 0 && !streamingMessageId.value && !isAppending.value) {
+    // 如果队列为空且没有流式消息正在进行，且没有追加操作，则表示所有消息都已处理
+    isProcessingMessage.value = false;
+    console.log('【诊断】WorkflowExecutionPanel - 消息队列为空，且无流式消息/追加操作，isProcessingMessage=false');
+  } else {
+    console.log(`【诊断】WorkflowExecutionPanel - 无法处理下一条消息: 队列长度=${messageQueue.value.length}, isProcessingMessage=${isProcessingMessage.value}, streamingMessageId=${streamingMessageId.value}, isAppending=${isAppending.value}`);
+  }
+};
+
+const handleTabClick = (tab) => {
+  if (tab.paneName !== 'all') {
+    // 切换到非 'all' 标签页时，清空 displayedMessages，确保瞬间显示
+    displayedMessages.value = [];
+    messageQueue.value = []; // 清空队列
+    isProcessingMessage.value = false;
+    streamingMessageId.value = null;
+  } else {
+    // 切换回 'all' 标签页时，重新初始化队列并开始处理
+    displayedMessages.value = []; // 清空已显示的
+    messageQueue.value = [...props.messages]; // 将所有消息加入队列
+    isProcessingMessage.value = false; // 重置状态，准备开始处理
+    streamingMessageId.value = null;
+
+    processNextMessage(); // 开始处理第一条消息
+  }
   nextTick(() => {
     if (messageContainer.value) {
-      messageContainer.value.scrollTop = messageContainer.value.scrollHeight
+      messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
     }
-  })
-}
+  });
+};
 
-const displayNextMessage = () => {
-  const nextMessageInProps = props.messages.find(
-    (msg) =>
-      !displayedMessages.value.some((dMsg) => dMsg.id === msg.id) &&
-      msg.id !== streamingMessageId.value
-  )
+const handleMessageDisplayed = (messageId) => {
+  console.log(`【诊断】WorkflowExecutionPanel - 消息显示完成，消息ID: ${messageId}`);
 
-  if (nextMessageInProps) {
-    // 只有当没有消息正在显示时才开始显示下一条
-    // 如果 isDisplaying 已经是 true，说明有消息正在动画，等待其完成
-    if (!isDisplaying.value) {
-      isDisplaying.value = true // 标记有消息正在显示/动画
-      displayedMessages.value.push(nextMessageInProps)
-
-      if (nextMessageInProps.isStreaming) {
-        streamingMessageId.value = nextMessageInProps.id
-      }
-    }
-  } else {
-    isDisplaying.value = false // 没有更多消息需要显示
+  if (isAppending.value) {
+    isAppending.value = false;
+    console.log('【诊断】WorkflowExecutionPanel - 追加内容打印完成，恢复队列处理。');
+    processNextMessage(); // 恢复处理队列
+  } else if (streamingMessageId.value === messageId) {
+    // 只有当完成的消息是当前正在流式传输的消息时，才解除处理状态
+    isProcessingMessage.value = false;
+    streamingMessageId.value = null;
+    console.log(`【诊断】WorkflowExecutionPanel - 流式消息 ${messageId} 完成，解除处理状态。`);
+    nextTick(() => {
+      processNextMessage(); // 尝试处理队列中的下一条消息
+    });
   }
-}
-
-const handleMessageDisplayed = (index) => {
-  // 无论是否流式消息，只要 StreamingMessage 完成，就尝试显示下一条
-  isDisplaying.value = false // 当前消息显示完成，重置状态
-  streamingMessageId.value = null // 如果是流式消息，也在这里清除ID
-
-  // 延迟一小段时间，确保 DOM 更新完成，然后尝试显示下一条消息
-  nextTick(() => {
-    displayNextMessage()
-    emit('message-displayed') // 通知父组件消息已显示，以便继续处理队列
-  })
-}
+  emit('message-displayed'); // 通知父组件消息已显示
+};
 
 watch(
   () => props.messages,
   (newMessages, oldMessages) => {
-    // 遍历新消息，处理流式更新和新消息添加
-    newMessages.forEach((newMessage) => {
-      const existingMessageIndex = displayedMessages.value.findIndex(
-        (dMsg) => dMsg.id === newMessage.id
-      )
+    if (activeTab.value === 'all') {
+      const newMessagesToAdd = [];
+      newMessages.forEach((newMessage) => {
+        const existingDisplayedMessageIndex = displayedMessages.value.findIndex(
+          (dMsg) => dMsg.id === newMessage.id
+        );
+        const existingQueueMessageIndex = messageQueue.value.findIndex(
+          (qMsg) => qMsg.id === newMessage.id
+        );
 
-      if (newMessage.isStreaming) {
-        // 如果是流式消息
-        if (existingMessageIndex !== -1) {
-          // 更新现有流式消息的内容和状态
-          displayedMessages.value[existingMessageIndex].content = newMessage.content
-          displayedMessages.value[existingMessageIndex].isStreaming = newMessage.isStreaming
-          displayedMessages.value[existingMessageIndex].showViewResultButton =
-            newMessage.showViewResultButton
-        } else {
-          // 如果是新的流式消息，添加到 displayedMessages
-          // 注意：这里直接添加原始消息对象，以保持响应性
-          displayedMessages.value.push(newMessage)
-          streamingMessageId.value = newMessage.id
-          // 新的流式消息，立即尝试显示
-          if (!isDisplaying.value) {
-            displayNextMessage()
-          }
-        }
-      } else {
-        // 非流式消息或流式结束的消息
-        if (existingMessageIndex !== -1) {
-          // 更新内容和状态，确保isStreaming为false
-          displayedMessages.value[existingMessageIndex].content = newMessage.content
-          displayedMessages.value[existingMessageIndex].isStreaming = false
-          displayedMessages.value[existingMessageIndex].showViewResultButton =
-            newMessage.showViewResultButton
-          // 如果是当前正在流式传输的消息结束，清除 streamingMessageId
-          if (streamingMessageId.value === newMessage.id) {
-            streamingMessageId.value = null
-            // 流式结束，尝试显示下一条非流式消息
-            if (!isDisplaying.value) {
-              // 确保在流式消息结束后，如果当前没有其他消息在显示，则尝试显示下一条
-              displayNextMessage()
+        if (existingDisplayedMessageIndex !== -1) {
+          // 消息已在 displayedMessages 中，更新其内容和状态
+          const displayedMsg = displayedMessages.value[existingDisplayedMessageIndex];
+          if (displayedMsg.content !== newMessage.content) {
+            // 内容有更新，可能是追加内容
+            displayedMsg.content = newMessage.content;
+            displayedMsg.isStreaming = newMessage.isStreaming;
+            displayedMsg.showViewResultButton = newMessage.showViewResultButton;
+            if (displayedMsg.id === streamingMessageId.value) {
+              // 如果是当前正在流式传输的消息，并且内容更新，则标记为正在追加
+              isAppending.value = true;
+              console.log(`【诊断】WorkflowExecutionPanel - 消息 ${newMessage.id} 内容更新，标记为追加中。`);
             }
+          } else {
+            // 内容未更新，但状态可能更新
+            displayedMsg.isStreaming = newMessage.isStreaming;
+            displayedMsg.showViewResultButton = newMessage.showViewResultButton;
           }
+          // 如果更新的消息不再是流式传输，且是当前流式消息，则清除 streamingMessageId
+          if (!newMessage.isStreaming && streamingMessageId.value === newMessage.id) {
+            streamingMessageId.value = null;
+            isProcessingMessage.value = false; // 流式消息完成，解除处理状态
+            console.log(`【诊断】WorkflowExecutionPanel - 流式消息 ${newMessage.id} 完成，解除处理状态。`);
+            nextTick(() => processNextMessage()); // 尝试处理下一条
+          }
+        } else if (existingQueueMessageIndex !== -1) {
+          // 消息已在 messageQueue 中，更新其内容和状态
+          const queueMsg = messageQueue.value[existingQueueMessageIndex];
+          queueMsg.content = newMessage.content;
+          queueMsg.isStreaming = newMessage.isStreaming;
+          queueMsg.showViewResultButton = newMessage.showViewResultButton;
         } else {
-          // 新的非流式消息，如果当前没有消息正在显示，则立即显示
-          if (!isDisplaying.value && streamingMessageId.value === null) {
-            displayNextMessage()
-          }
+          // 全新消息，添加到待处理队列
+          newMessagesToAdd.push(newMessage);
+          console.log(`【诊断】WorkflowExecutionPanel - 新消息 ${newMessage.id} 加入队列。`);
         }
-      }
-    })
+      });
 
-    // 如果 newMessages 变为空，清空 displayedMessages
-    if (newMessages.length === 0) {
-      displayedMessages.value = []
-      isDisplaying.value = false
-      streamingMessageId.value = null
+      // 将新消息添加到队列
+      if (newMessagesToAdd.length > 0) {
+        messageQueue.value.push(...newMessagesToAdd);
+      }
+
+      // 如果 props.messages 变为空，清空所有状态
+      if (newMessages.length === 0) {
+        displayedMessages.value = [];
+        messageQueue.value = [];
+        isProcessingMessage.value = false;
+        streamingMessageId.value = null;
+        isAppending.value = false;
+        console.log('【诊断】WorkflowExecutionPanel - props.messages 为空，清空所有状态。');
+      }
+
+      // 仅当没有消息正在处理且没有追加操作时，尝试处理队列中的下一条消息
+      if (!isProcessingMessage.value && !isAppending.value) {
+        processNextMessage();
+      }
+
+      nextTick(() => {
+        if (messageContainer.value) {
+          messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
+        }
+      });
+    } else {
+      // 在非 'all' 标签页时，确保滚动到底部
+      nextTick(() => {
+        if (messageContainer.value) {
+          messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
+        }
+      });
     }
-
-    // 确保滚动到底部
-    nextTick(() => {
-      if (messageContainer.value) {
-        messageContainer.value.scrollTop = messageContainer.value.scrollHeight
-      }
-    })
   },
-  { deep: true, immediate: true } // 深度监听，并立即执行一次
-)
+  { deep: true, immediate: true }
+);
 
 watch(
   displayedMessages,
@@ -236,24 +295,61 @@ watch(
 )
 
 onMounted(() => {
-  if (props.messages.length > 0) {
-    displayNextMessage()
+  // 初始加载时，如果处于 'all' 标签页，则将所有消息添加到队列并开始处理
+  if (activeTab.value === 'all' && props.messages.length > 0) {
+    // 确保只添加新消息到队列，避免重复
+    props.messages.forEach(msg => {
+      const existingDisplayed = displayedMessages.value.some(dMsg => dMsg.id === msg.id);
+      const existingQueue = messageQueue.value.some(qMsg => qMsg.id === msg.id);
+      if (!existingDisplayed && !existingQueue) {
+        messageQueue.value.push(msg);
+      }
+    });
+    processNextMessage();
+    nextTick(() => {
+      if (messageContainer.value) {
+        messageContainer.value.scrollTop = messageContainer.value.scrollHeight;
+      }
+    });
   }
-})
+});
+
+// 新增方法：追加消息内容
+const appendMessageContent = (messageId, newContent) => {
+  const messageIndex = displayedMessages.value.findIndex(m => m.id === messageId);
+  if (messageIndex !== -1) {
+    const message = displayedMessages.value[messageIndex];
+    // 只有当新内容与旧内容不同时才更新
+    if (message.content !== newContent) {
+      message.content = newContent;
+      message.isStreaming = true; // 标记为流式，以便 StreamingMessage 继续打印
+      isAppending.value = true; // 标记正在追加
+      streamingMessageId.value = messageId; // 确保 StreamingMessage 知道是哪条消息在追加
+      isProcessingMessage.value = true; // 标记为正在处理，暂停队列
+      console.log(`【诊断】WorkflowExecutionPanel - 追加消息 ${messageId} 内容，暂停队列。`);
+    }
+  }
+};
+
+// 暴露给父组件的方法，如果需要的话
+defineExpose({
+  appendMessageContent
+});
 
 const handleViewResultDetail = (message) => {
-  console.log('【诊断】WorkflowExecutionPanel - 处理查看详情:', message);
+  console.log('【诊断】WorkflowExecutionPanel - 处理查看详情，完整消息对象:', message);
   // 根据消息的 workflow.name 决定触发哪个事件
   if (message.workflow && message.workflow.name === '合同解析') {
     // 对于合同解析，触发 view-result-detail 事件，并传递 message.task (即 taskId)
     emit('view-result-detail', message.task)
   } else if (message.workflow && message.workflow.name === '乙供物资解析') {
     // 对于乙供物资解析，触发 view-material-result-detail 事件，并传递 message.task (即 taskId)
-    console.log('【诊断】触发乙供物资解析详情事件，taskId:', message.task);
+    console.log('【诊断】WorkflowExecutionPanel - 触发乙供物资解析详情事件，传递 taskId:', message.task);
     emit('view-material-result-detail', message.task)
   } else {
     // 对于其他未知类型的解析结果，可以触发一个默认的 view-result-detail 事件，不带参数或带通用参数
     // 这里为了兼容性，仍然触发 view-result-detail，但不传递 task，让 HomeView 决定如何处理
+    console.log('【诊断】WorkflowExecutionPanel - 触发通用查看详情事件，消息:', message);
     emit('view-result-detail')
   }
 }

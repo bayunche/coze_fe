@@ -42,88 +42,82 @@ const type = () => {
   if (currentIndex < props.text.length) {
     currentIndex++
     displayedText.value = processText(props.text.substring(0, currentIndex))
-  } else if (!props.isStreaming) {
-    // 如果不是流式传输，并且已经打字完毕，则完成
-    handleTypingComplete()
+  } else {
+    // 如果打字完毕，则完成
+    handleTypingComplete();
   }
-  // 如果是流式传输，即使打字完毕也保持 interval 运行，等待新内容
-}
+};
 
 const handleTypingComplete = () => {
   if (typingInterval) {
     clearInterval(typingInterval)
     typingInterval = null
   }
-  emit('done')
-}
+  // 只有当 currentIndex 达到 props.text.length 时才触发 @done 事件
+  if (currentIndex >= props.text.length) {
+    emit('done');
+  }
+};
 
 watch(
   () => props.text,
   (newText, oldText) => {
-    if (props.skipAnimation && !props.forceAnimation) {
-      // 如果跳过动画，直接显示完整文本
-      if (typingInterval) clearInterval(typingInterval)
-      displayedText.value = processText(newText)
-      handleTypingComplete()
-      return
+    if (props.skipAnimation) {
+      // 如果跳过动画，直接显示完整文本并清除定时器
+      if (typingInterval) {
+        clearInterval(typingInterval);
+        typingInterval = null;
+      }
+      displayedText.value = processText(newText);
+      handleTypingComplete(); // 立即触发 done 事件
+      return;
     }
 
     if (props.isStreaming) {
-      // 对于流式文本，确保打字机效果持续进行
-      if (!typingInterval) {
-        currentIndex = displayedText.value.length // 从当前已显示内容的末尾开始
-        typingInterval = setInterval(type, 20)
-      }
-      // 如果新文本变短了（例如，Coze返回了修正后的内容），重置打字机
-      if (newText.length < currentIndex) {
-        currentIndex = 0
-        displayedText.value = ''
-        if (typingInterval) clearInterval(typingInterval)
-        typingInterval = setInterval(type, 20)
-      }
-      // 否则，type 函数会自然追赶新文本的长度
-    } else {
-      // 对于非流式文本，如果文本变化，重新开始打字动画
-      if (newText !== oldText) {
-        if (typingInterval) clearInterval(typingInterval)
-        currentIndex = 0
-        displayedText.value = ''
-        if (newText) {
-          typingInterval = setInterval(type, 20) // 调整打字速度
-        } else {
-          handleTypingComplete()
+      // 对于流式文本，如果新文本包含旧文本作为前缀，则继续打字
+      if (newText.startsWith(oldText || '')) {
+        currentIndex = displayedText.value.length; // 从当前已显示内容的末尾开始
+        if (!typingInterval) {
+          typingInterval = setInterval(type, 20);
         }
+      } else {
+        // 如果新文本不包含旧文本作为前缀（例如，完全不同的消息或重置），则重置打字机
+        currentIndex = 0;
+        displayedText.value = '';
+        if (typingInterval) {
+          clearInterval(typingInterval);
+        }
+        typingInterval = setInterval(type, 20);
       }
+    } else {
+      // 对于非流式文本（例如，切换标签页或非流式消息），直接显示完整文本
+      if (typingInterval) {
+        clearInterval(typingInterval);
+        typingInterval = null;
+      }
+      displayedText.value = processText(newText);
+      handleTypingComplete(); // 立即触发 done 事件
     }
   }
-)
+);
 
-watch(
-  () => props.isStreaming,
-  (isStreaming, wasStreaming) => {
-    if (wasStreaming && !isStreaming) {
-      // Stream has just finished
-      handleTypingComplete()
-    }
-  }
-)
 
 onMounted(() => {
-  if (props.skipAnimation && !props.forceAnimation) {
-    displayedText.value = processText(props.text)
-    handleTypingComplete()
-    return
+  if (props.skipAnimation) {
+    displayedText.value = processText(props.text);
+    handleTypingComplete();
+    return;
   }
 
-  // 只有当文本存在且需要动画时才启动打字机
-  if (props.text && (props.isStreaming || props.forceAnimation || !props.skipAnimation)) {
-    typingInterval = setInterval(type, 20)
+  // 只有当文本存在且需要流式动画时才启动打字机
+  if (props.text && props.isStreaming) {
+    typingInterval = setInterval(type, 20);
   } else {
-    // 如果不需要动画或者没有文本，直接显示
-    displayedText.value = processText(props.text)
-    handleTypingComplete()
+    // 如果不需要动画 (isStreaming 为 false) 或者没有文本，直接显示
+    displayedText.value = processText(props.text);
+    handleTypingComplete();
   }
-})
+});
 
 onUnmounted(() => {
   if (typingInterval) {
