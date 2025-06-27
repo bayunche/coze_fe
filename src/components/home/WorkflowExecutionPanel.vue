@@ -28,7 +28,7 @@
           <div :class="['message-item', `message-from-${message.from}`]">
             <div class="message-bubble">
               <div class="message-sender" v-if="message.from !== 'user'">
-                <strong>{{ message.sender }}</strong>
+                <strong style="font-size:18px;">{{ message.sender }}</strong>
                 <span v-if="message.workflow" class="workflow-info-tag">
                   (智能体功能: {{ message.workflow.name }})
                 </span>
@@ -242,12 +242,14 @@ onMounted(() => {
 })
 
 const handleViewResultDetail = (message) => {
+  console.log('【诊断】WorkflowExecutionPanel - 处理查看详情:', message);
   // 根据消息的 workflow.name 决定触发哪个事件
   if (message.workflow && message.workflow.name === '合同解析') {
     // 对于合同解析，触发 view-result-detail 事件，并传递 message.task (即 taskId)
     emit('view-result-detail', message.task)
   } else if (message.workflow && message.workflow.name === '乙供物资解析') {
     // 对于乙供物资解析，触发 view-material-result-detail 事件，并传递 message.task (即 taskId)
+    console.log('【诊断】触发乙供物资解析详情事件，taskId:', message.task);
     emit('view-material-result-detail', message.task)
   } else {
     // 对于其他未知类型的解析结果，可以触发一个默认的 view-result-detail 事件，不带参数或带通用参数
@@ -263,11 +265,13 @@ const handleViewResultDetail = (message) => {
   flex-direction: column;
   flex-grow: 1;
   overflow: hidden;
+  font-size: large;
 }
 
 .message-tabs {
   padding: 0 20px;
   flex-shrink: 0;
+  font-size: large;
 }
 
 :deep(.el-tabs__header) {
@@ -277,7 +281,6 @@ const handleViewResultDetail = (message) => {
 .execution-panel-card {
   border: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border-radius: 16px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -297,8 +300,8 @@ const handleViewResultDetail = (message) => {
 }
 
 .card-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: #1f2937;
 }
 
@@ -312,12 +315,16 @@ const handleViewResultDetail = (message) => {
   flex-grow: 1;
   overflow-y: auto;
   padding: 20px;
-  background: #f9fafb;
-  /* border-radius: 12px; */
+  background: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  height: calc(60vh - 40px); /* Adjust height to account for tabs */
+  gap: 24px;
+  height: calc(80vh - 40px);
+}
+/* 隐藏滚动条，保持光滑滚动 */
+.message-container::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
 }
 
 .no-messages {
@@ -329,24 +336,36 @@ const handleViewResultDetail = (message) => {
 
 .message-item {
   display: flex;
-  max-width: 85%;
+  /* 移除 width: 100%; 让子元素控制宽度 */
+}
+
+.message-from-user {
+  align-self: flex-end; /* 确保用户消息靠右对齐 */
+  max-width: 85%; /* 用户消息限制宽度 */
+}
+
+.message-from-agent,
+.message-from-system {
+  align-self: flex-start; /* 确保智能体/系统消息靠左对齐 */
+  max-width: 100%; /* 智能体和系统消息占满宽度 */
+  width: 100%; /* 确保占满宽度 */
 }
 
 .message-bubble {
-  padding: 12px 16px;
-  border-radius: 18px;
   line-height: 1.5;
-  width: fit-content;
+  /* 移除通用背景、圆角和宽度，由特定来源的消息定义 */
 }
 
 .message-sender {
-  font-size: 12px;
+  font-size: 14px;
   color: #6b7280;
   margin-bottom: 4px;
 }
 
 .workflow-info-tag {
   font-style: italic;
+  font-size: 18px;
+  color: #9ca3af;
 }
 
 .message-content {
@@ -373,21 +392,34 @@ const handleViewResultDetail = (message) => {
 .message-from-user {
   align-self: flex-end;
 }
+:deep(.el-card__body){
+  height: 100%;
+}
 .message-from-user .message-bubble {
   background: #3b82f6;
   color: white;
-  border-bottom-right-radius: 4px;
+  padding: 12px 16px; /* 用户消息的气泡内边距 */
+  border-radius: 18px; /* 用户消息的气泡圆角 */
+  width: fit-content; /* 用户消息的气泡宽度自适应 */
 }
 
 /* Agent/System messages */
 .message-from-agent,
 .message-from-system {
   align-self: flex-start;
+  /* 智能体和系统消息直接展示，不作为气泡 */
+  /* 移除 message-bubble 的背景和圆角，直接在 message-item 层面控制 */
 }
+
+
+
 .message-from-agent .message-bubble,
 .message-from-system .message-bubble {
-  background: #e5e7eb;
-  color: #1f2937;
-  border-bottom-left-radius: 4px;
+  background: transparent; /* 透明背景 */
+  color: #1f2937; /* 文本颜色 */
+  padding: 0; /* 移除气泡内边距 */
+  border-radius: 0; /* 移除圆角 */
+  box-shadow: none; /* 移除阴影 */
+  width: 100%; /* 占据可用宽度 */
 }
 </style>

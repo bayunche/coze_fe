@@ -1,5 +1,5 @@
 <template>
-  <el-aside width="280px" class="sidebar">
+  <div class="sidebar"> <!-- 将 el-aside 替换为 div -->
     <div class="sidebar-header">
       <div class="agent-info">
         <div class="agent-avatar">
@@ -19,8 +19,8 @@
         class="sidebar-menu"
         @select="handleFunctionSelect"
         background-color="transparent"
-        text-color="#d1d5db"
-        active-text-color="#60a5fa"
+        text-color="#333"
+        active-text-color="#409EFF"
       >
         <el-menu-item v-for="func in functions" :key="func.id" :index="func.id" class="menu-item">
           <el-icon :class="func.iconClass">
@@ -30,7 +30,7 @@
         </el-menu-item>
       </el-menu>
     </div>
-  </el-aside>
+  </div> <!-- 闭合 div -->
 </template>
 
 <script setup>
@@ -56,15 +56,14 @@ const handleFunctionSelect = (key) => {
 
 <style scoped>
 .sidebar {
-  background: rgba(31, 41, 55, 0.95);
-  backdrop-filter: blur(10px);
-  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
-  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  background: #F0F2F5; /* 侧边栏背景色 */
+  box-shadow: 2px 0 20px rgba(0, 0, 0, 0.05); /* 调整阴影，使其更柔和 */
+  border-right: 1px solid #e0e0e0; /* 调整边框颜色，使其与浅色背景协调 */
 }
 
 .sidebar-header {
   padding: 24px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid #e0e0e0; /* 调整边框颜色 */
 }
 
 .agent-info {
@@ -86,7 +85,7 @@ const handleFunctionSelect = (key) => {
 
 .agent-details h3 {
   margin: 0 0 4px 0;
-  color: #f9fafb;
+  color: #333; /* 调整为深色，在浅色背景上更清晰 */
   font-size: 16px;
   font-weight: 600;
 }
@@ -114,8 +113,8 @@ const handleFunctionSelect = (key) => {
 
 .section-title {
   padding: 0 20px 12px;
-  color: #9ca3af;
-  font-size: 12px;
+  color: #666; /* 调整为较深的灰色，在浅色背景上更清晰 */
+  font-size: 14px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;

@@ -104,7 +104,7 @@ defineEmits(['update:show', 'clear-logs', 'export-logs', 'view-result-detail'])
   background: #f3f4f6;
   padding: 12px;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.4;
   margin: 0;
   overflow-x: auto;

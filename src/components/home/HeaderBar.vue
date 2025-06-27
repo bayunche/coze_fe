@@ -48,7 +48,7 @@ defineEmits(['show-workflow-config'])
 
 .header-left h1 {
   margin: 0 0 4px 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 700;
   color: #1f2937;
   background: linear-gradient(135deg, #667eea, #764ba2);

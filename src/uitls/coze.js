@@ -58,6 +58,12 @@ class CozeService {
    * @returns {object} The stream object, which may have methods like `abort()`.
    */
   async _runWorkflow(workflowId, input, callbacks, appId) {
+    if (!appId) {
+      const err = new Error('appId参数不能为空');
+      if (callbacks.onError) callbacks.onError(err);
+      throw err;
+    }
+
     try {
       const params = {
         workflow_id: workflowId,
@@ -65,17 +71,26 @@ class CozeService {
         app_id: appId
       }
 
-      const stream = await this.client.workflows.runs.stream(params)
+      console.log(`Starting workflow ${workflowId} with params:`, params);
+      const stream = await this.client.workflows.runs.stream(params);
+      
       // message 事件：每个迭代就是一个 message
       for await (const message of stream) {
         if (callbacks.onMessage) callbacks.onMessage(message)
       }
-      // end 事件：流结束，由调用方根据特定事件（如 'Done'）处理
       return stream
     } catch (error) {
-      console.error('Error starting workflow stream:', error)
-      if (callbacks.onError) callbacks.onError(error)
-      throw error
+      console.error(`Error running workflow ${workflowId}:`, error)
+      // 增强错误信息
+      const enhancedError = new Error(`工作流执行失败: ${error.message}`)
+      enhancedError.workflowId = workflowId
+      enhancedError.originalError = error
+      
+      if (callbacks.onError) {
+        callbacks.onError(enhancedError)
+      } else {
+        throw enhancedError
+      }
     }
   }
 

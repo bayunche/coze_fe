@@ -5,16 +5,17 @@
     width="600px"
     draggable
     @update:model-value="$emit('update:show', $event)"
-    @close="$emit('close')"
+    @close="handleClose"
   >
     <div class="workflow-config">
       <el-form :model="config" label-width="120px">
         <el-form-item label="上传文件" v-if="needsFileUpload">
           <el-upload
+            ref="uploadRef"
             v-model:file-list="config.files"
             :auto-upload="false"
             multiple
-            :limit="5"
+            :limit="10"
             class="upload-demo"
           >
             <el-button :icon="Upload">选择文件</el-button>
@@ -63,6 +64,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import { Upload } from '@element-plus/icons-vue'
 
 defineProps({
@@ -74,7 +76,18 @@ defineProps({
   currentFunctionParams: Array
 })
 
-defineEmits(['update:show', 'close', 'start-workflow'])
+const uploadRef = ref(null);
+
+const emit = defineEmits(['update:show', 'close', 'start-workflow']);
+
+// 监听 close 事件，清除文件列表
+const handleClose = () => {
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles();
+  }
+  emit('close');
+};
+
 </script>
 
 <style scoped>
