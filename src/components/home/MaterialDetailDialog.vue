@@ -216,17 +216,20 @@ const formatMaterialDetail = (item) => {
   }
 
   if (item.comparison_result === 2 && Array.isArray(item.subData)) {
-    formattedItem.similar_matches = item.subData.map((sub) => ({
+    formattedItem.similar_matches = item.subData.map((sub) => {
+      console.log(sub)
+      return {
       id: sub.id,
       matched_id: sub.matched_id,
       matchedPriceId: sub.matchedPriceId || null,
       name: sub.matchedDataMaterialName || '未知名称', // 假设subData中也有这些字段
       specification: sub.matchedDataSpecificationModel || '未知型号',
-      price: sub.matchedPrice || 0,
+      price: sub.price || 0,
       similarity: sub.score || 0,
       matchedPriceQuarter: sub.matchedPriceQuarter || '未知季度', // 假设subData中包含匹配季度
       value: sub.matchedPriceId || sub.id // 用于el-option的value，以matchedPriceId优先
-    }))
+    }
+    })
   } else {
     formattedItem.similar_matches = []
   }
@@ -283,12 +286,12 @@ const formatSimilarMatchLabel = (item) => {
   const name = item.name || ''
   const specification = item.specification || ''
   const price = item.price !== null ? `¥${item.price.toFixed(2)}` : ''
-  const similarity = item.similarity !== null ? `${(item.similarity * 100).toFixed(0)}%` : ''
+  // const similarity = item.similarity !== null ? `${(item.similarity * 100).toFixed(0)}%` : '' // 移除百分比计算
   const quarter = item.matchedPriceQuarter || item.quarter || ''
 
   const parts = []
   if (price) parts.push(price)
-  if (similarity) parts.push(similarity)
+  // if (similarity) parts.push(similarity) // 移除百分比显示
   if (quarter) parts.push(quarter)
 
   const bracketContent = parts.join(',')

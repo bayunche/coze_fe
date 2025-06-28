@@ -447,6 +447,31 @@ const handleViewResultDetail = (message) => {
   flex-direction: column;
   gap: 24px;
   height: calc(80vh - 40px);
+  /* 响应式居中布局逻辑 */
+  --max-width-layout-container-width: 100vw;
+  --max-width-layout-large-padding: 24px;
+  --max-width-layout-small-padding: 16px;
+  --center-content-max-width: 800px; /* ✅ 你可以根据内容宽度设定这个值 */
+
+  --left-side-width: 0px;
+  --right-side-width: 0px;
+
+  --width: calc(var(--max-width-layout-container-width) - var(--left-side-width) - var(--right-side-width));
+  --center-content: min(var(--width), var(--center-content-max-width));
+  --total-side: calc(var(--max-width-layout-container-width) - var(--center-content) - var(--left-side-width) - var(--right-side-width));
+  --left-side: calc(var(--total-side) / 2);
+  --content-left: calc(var(--left-side) + var(--left-side-width));
+
+  --padding: clamp(
+    var(--max-width-layout-small-padding),
+    calc(50vw - 400px - var(--left-side-width) / 2 - var(--right-side-width) / 2),
+    var(--max-width-layout-large-padding)
+  );
+
+  padding-left: calc(var(--content-left) + var(--padding));
+  padding-right: calc(var(--left-side) + var(--padding) + var(--right-side-width) - var(--scrollbar-width, 0px));
+
+  background: #ffffff;
 }
 /* 隐藏滚动条，保持光滑滚动 */
 .message-container::-webkit-scrollbar {
@@ -521,7 +546,11 @@ const handleViewResultDetail = (message) => {
 }
 :deep(.el-card__body) {
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
 }
+
 .message-from-user .message-bubble {
   background: #3b82f6;
   color: white;

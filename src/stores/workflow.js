@@ -451,10 +451,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
               addMessageCallback(streamingAgentMessage);
               isFirstMessage = false;
             }
-
+            console.log(event)
+           
             if (event.event === 'Message' && event.data.content_type === 'text') {
               const content = event.data.content;
-              console.log(`【诊断】workflow.js - 合同解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}`);
+              // console.log(`【诊断】workflow.js - 合同解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}`);
               let taskIdCandidate = null;
               let displayText = null;
 
@@ -470,43 +471,50 @@ export const useWorkflowStore = defineStore('workflow', () => {
                   displayText = content;
                 }
               }
-
+           
               if (taskIdCandidate) {
                 taskId.value = taskIdCandidate; // 直接设置合同解析taskId
-                console.log(`【诊断】workflow.js - 合同解析设置任务ID: ${taskIdCandidate}`);
+                // console.log(`【诊断】workflow.js - 合同解析设置任务ID: ${taskIdCandidate}`);
+                if (taskIdCandidate) {
+                  streamingAgentMessage.task = taskIdCandidate;
+                  return;
+                }
                 return;
               }
-
+              console.log( `【诊断】workflow.js - 合同解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}，displayText=${displayText}`);
               if (displayText) {
                 streamingAgentMessage.content += displayText;
-                finalResult.push(displayText);
+                finalResult.push(displayText); 
+                console.log(`【诊断】workflow.js - 合同解析更新消息内容: ID=${streamingAgentMessage.id}, 追加的数据是：${displayText}`);
                 const currentSession = executionSessions.find((s) => s.id === workflow.id);
                 if (currentSession) {
                   currentSession.output = streamingAgentMessage.content;
                 }
               }
             } else if (event.event === 'Done') {
-              console.log(`【诊断】workflow.js - 合同解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`);
+              // console.log(`【诊断】workflow.js - 合同解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`);
               delete streamingAgentMessage.isStreaming;
+              // 新增正则过滤逻辑
+              if (/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+                streamingAgentMessage.showViewResultButton = false;
+              } else {
+                streamingAgentMessage.showViewResultButton = true;
+              }
               loadingMessage.progress = 100;
               loadingMessage.content = '任务执行完毕！';
               clearInterval(loadingInterval);
               completeWorkflow({ output: finalResult.join('\n') }, addMessageCallback);
             } else if (event.event === 'PING') {
               // Handle PING
-            } else {
+            } else if (event.event === 'Error') {
+              console.error(`【诊断】workflow.js - 合同解析接收到错误事件: ${event.data}`);
+              addMessageCallback('任务执行出错', 'system', null, event);
+            }else{
               console.log(`【诊断】workflow.js - 合同解析未知任务事件: ${JSON.stringify(event)}`);
               addMessageCallback('未知任务事件', 'system', null, event);
             }
           },
-          onError(error) {
-            console.error(`【诊断】workflow.js - 合同解析任务出错: ${error.message}`);
-            clearInterval(loadingInterval);
-            loadingMessage.content = `任务出错: ${error.message}`;
-            loadingMessage.progress = 100;
-            addMessageCallback(`任务执行出错: ${error.message}`, 'system');
-            completeWorkflow({ status: 'error', output: error.message }, addMessageCallback);
-          },
+         
         });
       } else if (func.id === 'supplierMaterialParsing') {
         const workflowId = '7517934954761715721'; // 乙供物资解析的实际工作流ID
@@ -566,7 +574,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
             } else if (event.event === 'Done') {
               console.log(`【诊断】workflow.js - 乙供物资解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`);
               delete streamingAgentMessage.isStreaming;
-              streamingAgentMessage.showViewResultButton = true;
+               // 新增正则过滤逻辑
+               if (/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+                streamingAgentMessage.showViewResultButton = false;
+              } else {
+                streamingAgentMessage.showViewResultButton = true;
+              }
               loadingMessage.progress = 100;
               loadingMessage.content = '任务执行完毕！';
               clearInterval(loadingInterval);
@@ -574,17 +587,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
               completeWorkflow({ output: finalResult.join('\n') }, addMessageCallback);
             } else if (event.event === 'PING') {
               // Handle PING
+            }else if (event.event === 'Error') {
+              // Handle PING
+              console.error(`【诊断】workflow.js - 乙供物资解析接收到错误事件: ${event.data}`);
+              addMessageCallback('任务执行出错', 'system', null, event);
             } else {
               addMessageCallback('未知任务事件', 'system', null, event);
             }
-          },
-          onError(error) {
-            console.error(`【诊断】workflow.js - 乙供物资解析任务出错: ${error.message}`);
-            clearInterval(loadingInterval);
-            loadingMessage.content = `任务出错: ${error.message}`;
-            loadingMessage.progress = 100;
-            addMessageCallback(`任务执行出错: ${error.message}`, 'system');
-            completeWorkflow({ status: 'error', output: error.message }, addMessageCallback);
           },
         });
       } else if (func.id === 'ownerSuppliedMaterialParsing') {
@@ -748,15 +757,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     const isSuccess = resultOverride.status !== 'error';
     setTimeout(() => {
       let showButton = false;
-      // 使用 this.taskId.value 或直接解构后的 taskId
-      if (activeFunction.value === 'contractParsing' && taskId.value != null) {
-        showButton = true;
-      } else if (isSuccess && taskId.value != null) {
-        showButton = true;
-      }
-      if (activeFunction.value === 'supplierMaterialParsing') {
-        showButton = false;
-      }
       addMessageCallback(
         `任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`,
         'agent',
