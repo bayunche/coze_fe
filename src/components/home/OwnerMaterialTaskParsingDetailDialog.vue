@@ -26,9 +26,12 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="120">
+      <el-table-column label="操作">
         <template #default="{ row }">
-          <el-button type="text" @click="handleViewDetail(row)">查看详情</el-button>
+          <div class="">
+            <el-button type="text" @click="handleViewDetail(row)">查看详情</el-button>
+            <el-button type="text" @click="downLoadFile(row)">查看源文件</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -163,6 +166,18 @@ const handleSizeChange = (val) => {
   pageSize.value = val
   currentPage.value = 1 // 改变每页大小时重置到第一页
   fetchDetailList()
+}
+const downLoadFile = (row) => {
+  console.log('下载文件:', row)
+  // 实现文件下载逻辑
+  const url =
+    row.FILE_URL ||
+    'https://p26-bot-workflow-sign.byteimg.com/tos-cn-i-mdko3gqilj/6aac8a6b025b4bd5812db0fc55de3e83.xlsx~tplv-mdko3gqilj-image.image?rk3s=81d4c505&x-expires=1782007995&x-signature=MShxLvZFXq%2FzGHhtntc73tmzQDs%3D&x-wf-file_name=LGJ2025JI011559-090000WP20220865+%E5%AE%A1%E6%A0%B8%E6%8A%A5%E5%91%8A.xlsx'
+  // if (!url) {
+  //   ElMessage.error('文件URL不存在')
+  //   return
+  // }
+  window.open(url, '_blank')
 }
 </script>
 
