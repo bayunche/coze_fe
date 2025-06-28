@@ -65,7 +65,6 @@
       </span>
     </template>
   </el-dialog>
-
 </template>
 
 <script setup>
@@ -114,7 +113,7 @@ const paginatedData = computed(() => {
 const handleTabClick = () => {
   currentPage.value = 1
 }
-
+const totalCount = ref(0)
 const formatTimestamp = (timestamp) => {
   if (!timestamp) return ''
   const cleanTimestamp = timestamp.split(' +')[0]
@@ -158,7 +157,7 @@ const viewTaskDetails = (task) => {
   selectedTask.value = task
   showTaskDetailDialog.value = true
   // alert('甲供物资详情组件（OwnerMaterialDetailDialog.vue）尚未创建。') // 移除此行
-  console.log('应在此处打开甲供物资详情，任务信息:', task)
+  // console.log('应在此处打开甲供物资详情，任务信息:', task)
 }
 
 const handleClose = () => {
@@ -171,4 +170,3 @@ const handleClose = () => {
   padding: 20px 30px;
 }
 </style>
-

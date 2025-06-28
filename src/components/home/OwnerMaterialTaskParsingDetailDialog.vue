@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    title="乙供物资任务解析详情"
+    title="乙供物资任务解析详情列表"
     v-model="dialogVisible"
     width="60%"
     :close-on-click-modal="false"

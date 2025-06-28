@@ -148,10 +148,6 @@ const fetchMaterialDetail = async (page = currentPage.value, size = pageSize.val
   tableData.value = []
 
   try {
-    console.log('【诊断】fetchMaterialDetail - taskId:', props.taskId)
-    console.log('【诊断】fetchMaterialDetail - detailId:', props.detailId)
-    console.log('【诊断】fetchMaterialDetail - page:', page, 'size:', size)
-
     const detailWorkflowId = '7519045874770657299'
     const workflowParams = {
       taskId: props.taskId,
@@ -165,7 +161,7 @@ const fetchMaterialDetail = async (page = currentPage.value, size = pageSize.val
       console.log('【诊断】工作流 7519045874770657299 原始返回数据:', detailResult.data)
       const parsed = JSON.parse(detailResult.data)
       const parsedData = parsed?.result
-      const totalCount = parsed?.total || (Array.isArray(parsedData) ? parsedData.length : 0)
+      const totalCount = parsed?.totalCount || (Array.isArray(parsedData) ? parsedData.length : 0)
       console.log('【诊断】工作流 7519045874770657299 解析后数据:', { parsedData, totalCount })
 
       if (Array.isArray(parsedData) && parsedData.length > 0) {
