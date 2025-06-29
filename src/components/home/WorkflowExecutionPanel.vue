@@ -12,12 +12,23 @@
     </template>
 
     <div class="card-body-wrapper">
-      <el-tabs v-model="activeTab" class="message-tabs" @tab-click="handleTabClick">
-        <el-tab-pane label="所有消息" name="all"></el-tab-pane>
-        <el-tab-pane label="合同解析" name="contract"></el-tab-pane>
-        <el-tab-pane label="乙供物资解析" name="material"></el-tab-pane>
-        <el-tab-pane label="对话流" name="dialogue"></el-tab-pane>
-      </el-tabs>
+      <div class="tabs-and-clear-button">
+        <el-tabs v-model="activeTab" class="message-tabs" @tab-click="handleTabClick">
+          <el-tab-pane label="所有消息" name="all"></el-tab-pane>
+          <el-tab-pane label="合同解析" name="contract"></el-tab-pane>
+          <el-tab-pane label="乙供物资解析" name="material"></el-tab-pane>
+          <el-tab-pane label="对话流" name="dialogue"></el-tab-pane>
+        </el-tabs>
+        <el-button
+          type="info"
+          :icon="Delete"
+          circle
+          plain
+          class="clear-messages-button"
+          @click="handleClearMessages"
+          title="清空所有消息"
+        />
+      </div>
 
       <div ref="messageContainer" class="message-container">
         <div v-if="!messagesToRender.length" class="no-messages">
@@ -70,6 +81,9 @@
 <script setup>
 import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import StreamingMessage from './StreamingMessage.vue'
+import { useChatStore } from '@/stores/chat' // 导入 chat store
+import { Delete } from '@element-plus/icons-vue' // 导入 Element Plus 图标
+import { ElMessage, ElMessageBox } from 'element-plus' // 导入 Element Plus 消息提示和确认框
 
 const props = defineProps({
   messages: {
@@ -384,6 +398,45 @@ const handleViewResultDetail = (message) => {
     emit('view-result-detail')
   }
 }
+
+const chatStore = useChatStore() // 使用 chat store
+
+const handleClearMessages = () => {
+  ElMessageBox.confirm('确定要清空所有消息吗？此操作不可逆。', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+    .then(() => {
+      chatStore.resetAndInitMessages() // 清空 Pinia store 中的消息并初始化默认消息
+
+      // 显式清空组件内部的消息状态
+      displayedMessages.value = []
+      messageQueue.value = []
+      isProcessingMessage.value = false
+      streamingMessageId.value = null
+      isAppending.value = false // 确保追加状态也重置
+
+      activeTab.value = 'all' // 清空后默认回到“所有消息”tab
+
+      // 重新将 chatStore 中新初始化的消息添加到组件的队列中
+      // 注意：此时 props.messages 应该已经通过 watch 机制更新为 chatStore 中的新消息
+      // 但为了确保立即处理，我们手动触发
+      nextTick(() => {
+        if (chatStore.displayedMessages.length > 0) {
+          messageQueue.value = [...chatStore.displayedMessages]
+          processNextMessage() // 开始处理新初始化的消息
+        }
+        if (messageContainer.value) {
+          messageContainer.value.scrollTop = messageContainer.value.scrollHeight
+        }
+      })
+      ElMessage.success('消息已清空并初始化。')
+    })
+    .catch(() => {
+      ElMessage.info('已取消清空操作。')
+    })
+}
 </script>
 
 <style scoped>
@@ -392,17 +445,28 @@ const handleViewResultDetail = (message) => {
   flex-direction: column;
   flex-grow: 1;
   overflow: hidden;
-  font-size: large;
+}
+
+.tabs-and-clear-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 20px;
+  flex-shrink: 0;
 }
 
 .message-tabs {
-  padding: 0 20px;
-  flex-shrink: 0;
-  font-size: large;
+  flex-grow: 1; /* 让 tabs 占据更多空间 */
 }
 
 :deep(.el-tabs__header) {
   margin-bottom: 0;
+  border-bottom: none; /* 移除默认的底部边框 */
+}
+
+.clear-messages-button {
+  margin-left: 10px; /* 与 tabs 保持一定距离 */
+  flex-shrink: 0; /* 防止按钮被压缩 */
 }
 
 .execution-panel-card {
@@ -446,7 +510,7 @@ const handleViewResultDetail = (message) => {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  height: calc(80vh - 40px);
+  height: calc(80vh - 4rem);
   /* 响应式居中布局逻辑 */
   --max-width-layout-container-width: 100vw;
   --max-width-layout-large-padding: 24px;
@@ -456,9 +520,14 @@ const handleViewResultDetail = (message) => {
   --left-side-width: 0px;
   --right-side-width: 0px;
 
-  --width: calc(var(--max-width-layout-container-width) - var(--left-side-width) - var(--right-side-width));
+  --width: calc(
+    var(--max-width-layout-container-width) - var(--left-side-width) - var(--right-side-width)
+  );
   --center-content: min(var(--width), var(--center-content-max-width));
-  --total-side: calc(var(--max-width-layout-container-width) - var(--center-content) - var(--left-side-width) - var(--right-side-width));
+  --total-side: calc(
+    var(--max-width-layout-container-width) - var(--center-content) - var(--left-side-width) -
+      var(--right-side-width)
+  );
   --left-side: calc(var(--total-side) / 2);
   --content-left: calc(var(--left-side) + var(--left-side-width));
 
@@ -469,7 +538,9 @@ const handleViewResultDetail = (message) => {
   );
 
   padding-left: calc(var(--content-left) + var(--padding));
-  padding-right: calc(var(--left-side) + var(--padding) + var(--right-side-width) - var(--scrollbar-width, 0px));
+  padding-right: calc(
+    var(--left-side) + var(--padding) + var(--right-side-width) - var(--scrollbar-width, 0px)
+  );
 
   background: #ffffff;
 }

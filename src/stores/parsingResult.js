@@ -125,22 +125,36 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
 
     try {
       const workflowId = '7517294942201610281' // 合同解析的实际工作流ID
+      console.log('【诊断】正在获取任务ID:', taskIdToFetch)
       const result = await cozeParsingService.runTableGenerationWorkflow(workflowId, taskIdToFetch)
+      console.log('【诊断】Coze API 原始返回结果:', result)
+
       if (result && result.data) {
-        // 移除 replace，因为 Coze API 返回的 ID 可能是大数字，JSON.parse 应该能处理
-        // 如果后端返回的 ID 确实是字符串，则不需要 replace
-        // const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"');
-        const parsedData = JSON.parse(result.data)?.output
+        console.log('【诊断】Coze API 返回的原始数据字符串:', result.data)
+        let parsedData = null
+        try {
+          parsedData = JSON.parse(result.data)?.output
+          console.log('【诊断】JSON.parse(result.data)?.output 结果:', parsedData)
+        } catch (e) {
+          console.error('【诊断】JSON.parse 失败:', e)
+          ElMessage.error('解析原始数据失败。')
+          return
+        }
+
         const tableJsonData = parseResultJsonData(parsedData)
-        console.log('【诊断】解析后的表格数据:', tableJsonData)
+        console.log('【诊断】parseResultJsonData 后的表格数据:', tableJsonData)
+
         if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
           tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
             prop: key,
             label: translateHeader(key)
           }))
+          console.log('【诊断】生成的 tableColumns:', tableColumns.value)
+          console.log('【诊断】headerMapping:', translateHeader) // translateHeader 内部使用了 headerMapping
           const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
           tableData.value = JSON.parse(JSON.stringify(rawData))
           editFormModels.value = JSON.parse(JSON.stringify(rawData))
+          console.log('【诊断】tableData.value 已更新:', tableData.value)
         } else {
           ElMessage.info('结果为空或解析后无数据，暂无数据展示。')
         }

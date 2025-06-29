@@ -20,18 +20,21 @@
           {{ row.end_time ? new Date(row.end_time).toLocaleString() : '未结束' }}
         </template>
       </el-table-column>
-      <el-table-column prop="TASK_DETAIL_STATUS" label="任务解析内容">
+      <el-table-column prop="TASK_DETAIL_STATUS" label="任务解析状态">
         <template #default="{ row }">
           {{ formatTaskDetailStatus(row.TASK_DETAIL_STATUS) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="ERROR_REASON" label="失败原因">
+        <template #default="{ row }">
+          {{ row.ERROR_REASON || '无' }}
         </template>
       </el-table-column>
 
       <el-table-column label="操作">
         <template #default="{ row }">
-          <div class="">
-            <el-button type="text" @click="handleViewDetail(row)">查看详情</el-button>
-            <el-button type="text" @click="downLoadFile(row)">查看源文件</el-button>
-          </div>
+          <el-button type="text" @click="handleViewDetail(row)">查看详情</el-button>
+          <el-button type="text" @click="downLoadFile(row)">查看源文件</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -77,7 +80,7 @@ const formatTaskDetailStatus = (status) => {
       return '进行中'
     case '2':
       return '已完成'
-    case '3':
+    case '-1':
       return '失败'
     default:
       return '未知状态'

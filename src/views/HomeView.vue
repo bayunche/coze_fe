@@ -93,43 +93,50 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, defineAsyncComponent, watch } from 'vue';
-import { storeToRefs } from 'pinia'; // 导入 storeToRefs
-import { ArrowRight, ArrowLeft } from '@element-plus/icons-vue'; // 导入图标
-import { useChatStore } from '@/stores/chat';
-import { useWorkflowStore } from '@/stores/workflow';
-import { useParsingResultStore } from '@/stores/parsingResult';
-import { useMaterialDialogStore } from '@/stores/materialDialog';
-import { functions } from '@/uitls/workflows.js'; // functions 仍然从这里导入
+import { onMounted, onUnmounted, defineAsyncComponent, watch } from 'vue'
+import { storeToRefs } from 'pinia' // 导入 storeToRefs
+import { ArrowRight, ArrowLeft } from '@element-plus/icons-vue' // 导入图标
+import { useChatStore } from '@/stores/chat'
+import { useWorkflowStore } from '@/stores/workflow'
+import { useParsingResultStore } from '@/stores/parsingResult'
+import { useMaterialDialogStore } from '@/stores/materialDialog'
+import { functions } from '@/uitls/workflows.js' // functions 仍然从这里导入
 // import CozeService from '@/services/CozeService'; // 移除 CozeService 导入
 
 // 导入子组件
-import SidebarNav from '@/components/home/SidebarNav.vue';
-import WorkflowExecutionPanel from '@/components/home/WorkflowExecutionPanel.vue';
+import SidebarNav from '@/components/home/SidebarNav.vue'
+import WorkflowExecutionPanel from '@/components/home/WorkflowExecutionPanel.vue'
 
 // 异步加载弹窗组件
-const WorkflowConfigDialog = defineAsyncComponent(() => import('@/components/home/WorkflowConfigDialog.vue'));
-const SmartBrainDialog = defineAsyncComponent(() => import('@/components/home/SmartBrainDialog.vue'));
-const MaterialDetailDialog = defineAsyncComponent(() => import('@/components/home/MaterialDetailDialog.vue'));
-const MaterialParsingResultDialog = defineAsyncComponent(() => import('@/components/home/MaterialParsingResultDialog.vue'));
-const OwnerMaterialTaskParsingDetailDialog = defineAsyncComponent(() => import('@/components/home/OwnerMaterialTaskParsingDetailDialog.vue'));
+const WorkflowConfigDialog = defineAsyncComponent(() =>
+  import('@/components/home/WorkflowConfigDialog.vue')
+)
+const SmartBrainDialog = defineAsyncComponent(() =>
+  import('@/components/home/SmartBrainDialog.vue')
+)
+const MaterialDetailDialog = defineAsyncComponent(() =>
+  import('@/components/home/MaterialDetailDialog.vue')
+)
+const MaterialParsingResultDialog = defineAsyncComponent(() =>
+  import('@/components/home/MaterialParsingResultDialog.vue')
+)
+const OwnerMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
+  import('@/components/home/OwnerMaterialTaskParsingDetailDialog.vue')
+)
 
 // 新拆分的组件 (暂时不引入，先处理 Pinia Store 的集成)
-import ChatInputArea from '@/components/home/ChatInputArea.vue';
-import ResultDetailTableDialog from '@/components/home/ResultDetailTableDialog.vue';
-import LongTextEditPopup from '@/components/home/LongTextEditPopup.vue';
+import ChatInputArea from '@/components/home/ChatInputArea.vue'
+import ResultDetailTableDialog from '@/components/home/ResultDetailTableDialog.vue'
+import LongTextEditPopup from '@/components/home/LongTextEditPopup.vue'
 
 // Pinia Stores
-const chatStore = useChatStore();
-const workflowStore = useWorkflowStore();
-const parsingResultStore = useParsingResultStore();
-const materialDialogStore = useMaterialDialogStore();
-
-
-
+const chatStore = useChatStore()
+const workflowStore = useWorkflowStore()
+const parsingResultStore = useParsingResultStore()
+const materialDialogStore = useMaterialDialogStore()
 
 // 从 Store 中解构状态和方法
-const { displayedMessages, addMessage } = chatStore; // 移除 userInput, handleSendMessage
+const { displayedMessages, addMessage } = chatStore // 移除 userInput, handleSendMessage
 
 // 使用 storeToRefs 解构 workflowStore 中的响应式属性
 const {
@@ -147,8 +154,8 @@ const {
   taskListsByAgent,
   lastExecutionResult,
   taskId,
-  supplierFileDetailIds,
-} = storeToRefs(workflowStore);
+  supplierFileDetailIds
+} = storeToRefs(workflowStore)
 
 // 直接解构 workflowStore 中的方法
 const {
@@ -164,15 +171,10 @@ const {
   exportHistory,
   viewExecutionDetail,
   setTaskId,
-  setSupplierFileIds,
-} = workflowStore;
+  setSupplierFileIds
+} = workflowStore
 
-const {
-  editableRow,
-  editableFieldProp,
-  isLongText,
-  openEditPopup,
-} = parsingResultStore;
+const { editableRow, editableFieldProp, isLongText, openEditPopup } = parsingResultStore
 
 const {
   showMaterialDetailDialog,
@@ -184,34 +186,25 @@ const {
   showMaterialParsingResultDialog,
   materialParsingResultTask,
   showOwnerMaterialTaskParsingDetailDialog,
-  ownerMaterialTaskParsingDetailTaskId,
-} = storeToRefs(materialDialogStore); // 使用 storeToRefs 解构响应式状态
+  ownerMaterialTaskParsingDetailTaskId
+} = storeToRefs(materialDialogStore) // 使用 storeToRefs 解构响应式状态
 
-const {
-  handleViewMaterialResultDetail,
-  handleViewOwnerMaterialDetail,
-} = materialDialogStore; // 直接解构方法
+const { handleViewMaterialResultDetail, handleViewOwnerMaterialDetail } = materialDialogStore // 直接解构方法
 
-let timeInterval = null;
-let loadingInterval = null;
-
-
+let timeInterval = null
+let loadingInterval = null
 
 // 方法
 
 const handleViewResultDetail = async (taskIdFromMessage) => {
   // 直接调用 parsingResultStore 中的 action，并使用从消息中获取的 taskId
-  await parsingResultStore.handleViewResultDetail(taskIdFromMessage);
-};
-
-
+  await parsingResultStore.handleViewResultDetail(taskIdFromMessage)
+}
 
 const executeWorkflow = async () => {
   // 直接调用 workflowStore 中的 executeWorkflow action
-  await workflowStore.executeWorkflow(addMessage);
-};
-
-
+  await workflowStore.executeWorkflow(addMessage)
+}
 
 const onConfigDialogClose = () => {
   // No action needed
@@ -222,8 +215,8 @@ onMounted(() => {
 })
 
 watch(showOwnerMaterialTaskParsingDetailDialog, (newValue) => {
-  console.log('【诊断】HomeView - showOwnerMaterialTaskParsingDetailDialog 变化:', newValue);
-});
+  console.log('【诊断】HomeView - showOwnerMaterialTaskParsingDetailDialog 变化:', newValue)
+})
 
 onUnmounted(() => {
   if (timeInterval) {
@@ -231,25 +224,23 @@ onUnmounted(() => {
   }
 })
 
-
 const toggleSidebar = () => {
   isSidebarOpen.value = !isSidebarOpen.value
 }
 </script>
-
 
 <style scoped>
 .agent-dashboard {
   display: flex;
   height: 100vh;
   background: #ffffff;
-  font-size: larger;
 }
 
 .main-container {
   flex: 1;
   display: flex;
   background: #ffffff;
+  font-size: 14px;
 }
 
 .sidebar-aside {
@@ -285,11 +276,10 @@ const toggleSidebar = () => {
 
 .input-area-wrapper {
   position: sticky;
-  bottom: 0;
+  bottom: 1.5rem;
   width: 100%;
   padding: 16px 0;
   background: #ffffff;
- 
 }
 .el-input__inner {
   border-radius: 32px !important;
@@ -316,7 +306,6 @@ const toggleSidebar = () => {
   background: transparent;
 }
 
-
 .chat-input-area-container {
   width: 100%;
   max-width: 800px;
@@ -340,7 +329,7 @@ const toggleSidebar = () => {
 <style>
 /* 全局样式，用于覆盖 Element Plus 默认样式 */
 .el-aside {
-  background-color: #F0F2F5; /* 侧边栏背景色 */
+  background-color: #f0f2f5; /* 侧边栏背景色 */
   box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
   padding: 20px;
   box-sizing: border-box;
@@ -357,4 +346,3 @@ const toggleSidebar = () => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>
-

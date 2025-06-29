@@ -7,8 +7,8 @@
   >
     <div v-loading="isFetchingDetails" class="result-detail-content">
       <el-table
-        v-if="tableData.length > 0"
-        :data="editFormModels"
+        v-if="tableData && tableData.length > 0"
+        :data="tableData"
         style="width: 100%"
         stripe
         class="result-table"
@@ -17,12 +17,13 @@
       >
         <template v-for="column in tableColumns" :key="column.prop">
           <el-table-column
-            v-if="parsingResultStore.headerMapping[column.prop]"
             :prop="column.prop"
             :label="parsingResultStore.translateHeader(column.prop)"
           >
             <template #default="scope">
-              <span v-if="!scope.row.editing">{{ parsingResultStore.formatCellValue(scope.row[column.prop]) }}</span>
+              <span v-if="!scope.row.editing">{{
+                parsingResultStore.formatCellValue(scope.row[column.prop])
+              }}</span>
               <template v-else>
                 <div v-if="parsingResultStore.isLongText(scope.row[column.prop])">
                   <el-button
@@ -46,12 +47,21 @@
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="scope">
             <div v-if="scope.row.editing">
-              <el-button type="success" size="small" @click="parsingResultStore.saveRowEdit(scope.row)"
+              <el-button
+                type="success"
+                size="small"
+                @click="parsingResultStore.saveRowEdit(scope.row)"
                 >保存</el-button
               >
-              <el-button size="small" @click="parsingResultStore.cancelRowEdit(scope.row)">取消</el-button>
+              <el-button size="small" @click="parsingResultStore.cancelRowEdit(scope.row)"
+                >取消</el-button
+              >
             </div>
-            <el-button v-else type="primary" size="small" @click="parsingResultStore.startRowEdit(scope.row)"
+            <el-button
+              v-else
+              type="primary"
+              size="small"
+              @click="parsingResultStore.startRowEdit(scope.row)"
               >编辑</el-button
             >
           </template>
@@ -62,7 +72,10 @@
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="showResultDetail = false">关闭</el-button>
-        <el-button type="primary" @click="parsingResultStore.handleSaveAll" :loading="savingAllEdits"
+        <el-button
+          type="primary"
+          @click="parsingResultStore.handleSaveAll"
+          :loading="savingAllEdits"
           >提交修改</el-button
         >
         <!-- <el-button type="success" @click="parsingResultStore.handleConfirm()" :loading="isConfirming">确认</el-button> -->
@@ -72,24 +85,39 @@
 </template>
 
 <script setup>
-import { useParsingResultStore } from '@/stores/parsingResult';
-import { computed } from 'vue';
+import { useParsingResultStore } from '@/stores/parsingResult'
+import { computed, watch, toRefs } from 'vue'
 
-const parsingResultStore = useParsingResultStore();
-
-const showResultDetail = computed({
-  get: () => parsingResultStore.showResultDetail,
-  set: (val) => parsingResultStore.showResultDetail = val
-});
-
+const parsingResultStore = useParsingResultStore()
 const {
-  tableData,
+  showResultDetail,
   tableColumns,
+  tableData, // 将 tableData 也通过 toRefs 解构
   editFormModels,
   isFetchingDetails,
   savingAllEdits,
-  isConfirming,
-} = parsingResultStore;
+  isConfirming
+} = toRefs(parsingResultStore)
+const editData = computed(() => parsingResultStore.editFormModels.value)
+// 监听 showResultDetail 的变化，当它变为 true 时调用 handleViewResultDetail
+watch(
+  showResultDetail,
+  async (newValue) => {
+    if (newValue) {
+      await parsingResultStore.handleViewResultDetail()
+      // 在数据加载完成后添加诊断日志
+      console.log('【诊断】ResultDetailTableDialog - tableColumns:', tableColumns.value)
+      console.log('【诊断】ResultDetailTableDialog - tableData:', parsingResultStore.tableData)
+    }
+  },
+  { immediate: false } // 初始不立即执行
+)
+</script>
+
+<script>
+export default {
+  name: 'ResultDetailTableDialog'
+}
 </script>
 
 <style>

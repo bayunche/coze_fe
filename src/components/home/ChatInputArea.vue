@@ -10,34 +10,33 @@
       resize="none"
       class="chat-input"
     >
-      
     </el-input>
     <el-button type="primary" @click="handleSendMessageWrapper">发送</el-button>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { storeToRefs } from 'pinia'; /* 导入 storeToRefs */
-import { useChatStore } from '@/stores/chat';
-import { useWorkflowStore } from '@/stores/workflow';
+import { ref } from 'vue'
+import { storeToRefs } from 'pinia' /* 导入 storeToRefs */
+import { useChatStore } from '@/stores/chat'
+import { useWorkflowStore } from '@/stores/workflow'
 
-const chatStore = useChatStore();
-const workflowStore = useWorkflowStore();
+const chatStore = useChatStore()
+const workflowStore = useWorkflowStore()
 
 /* 使用 storeToRefs 解构 state 中的响应式数据以保持响应性 */
-const { userInput } = storeToRefs(chatStore);
-const { activeFunction } = storeToRefs(workflowStore);
+const { userInput } = storeToRefs(chatStore)
+const { activeFunction } = storeToRefs(workflowStore)
 
 /* 直接从 store 实例中获取 actions */
-const { handleSendMessage, addMessage } = chatStore;
+const { handleSendMessage, addMessage } = chatStore
 
 const handleSendMessageWrapper = () => {
   // 这里的 '7514898709852733475' 和 handleFunctionSelect 是 HomeView.vue 中硬编码的，
   // 应该从 workflowStore 或通过 props 传递
   // 暂时保持与 HomeView.vue 现有逻辑一致，后续考虑优化
-  handleSendMessage(userInput.value, '7514898709852733475', workflowStore.handleFunctionSelect);
-};
+  handleSendMessage(userInput.value, '7514898709852733475', workflowStore.handleFunctionSelect)
+}
 </script>
 
 <style scoped>
@@ -51,10 +50,13 @@ const handleSendMessageWrapper = () => {
   margin: 0 auto;
   display: flex; /* 确保父容器是flex布局 */
   align-items: center; /* 垂直居中对齐 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
 }
 
 .chat-input {
   flex: 1;
+  background-color: #ffffff;
 }
 
 :deep(.el-textarea__inner) {
