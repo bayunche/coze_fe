@@ -337,7 +337,8 @@ watch(
 const formatSimilarMatchLabel = (item) => {
   const name = item.name || ''
   const specification = item.specification || ''
-  const price = item.price !== null ? `¥${item.price.toFixed(2)}` : ''
+  const priceValue = parseFloat(item.price)
+  const price = !isNaN(priceValue) ? `¥${priceValue.toFixed(2)}` : ''
   // const similarity = item.similarity !== null ? `${(item.similarity * 100).toFixed(0)}%` : '' // 移除百分比计算
   const quarter = item.matchedPriceQuarter || item.quarter || ''
 
