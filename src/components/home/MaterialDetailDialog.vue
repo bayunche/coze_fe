@@ -217,18 +217,28 @@ const formatMaterialDetail = (item) => {
 
   if (item.comparison_result === 2 && Array.isArray(item.subData)) {
     formattedItem.similar_matches = item.subData.map((sub) => {
-      console.log(sub)
-      return {
-      id: sub.id,
-      matched_id: sub.matched_id,
-      matchedPriceId: sub.matchedPriceId || null,
-      name: sub.matchedDataMaterialName || '未知名称', // 假设subData中也有这些字段
-      specification: sub.matchedDataSpecificationModel || '未知型号',
-      price: sub.price || 0,
-      similarity: sub.score || 0,
-      matchedPriceQuarter: sub.matchedPriceQuarter || '未知季度', // 假设subData中包含匹配季度
-      value: sub.matchedPriceId || sub.id // 用于el-option的value，以matchedPriceId优先
-    }
+      const similarMatchItem = {
+        id: sub.id,
+        matched_id: sub.matchedDataId,
+        matchedPriceId: sub.matchedPriceId || null,
+        name: sub.matchedDataMaterialName || '未知名称',
+        specification: sub.matchedDataSpecificationModel || '未知型号',
+        price: sub.matchedPrice || 0,
+        similarity: sub.score || 0,
+        matchedPriceQuarter: sub.matchedPriceQuarter || '未知季度',
+        value: sub.matchedDataId || sub.matchedPrice || sub.id // 用于el-option的value，以matchedPriceId优先
+      }
+      // 检查是否与当前匹配项一致，用于回显
+      const itemMatchedScoreNum = parseFloat(item.matchedScore) // 将百分比字符串转换为数字
+      if (
+        item.matchedDataMaterialName === similarMatchItem.name &&
+        item.matchedDataSpecificationModel === similarMatchItem.specification &&
+        item.matchedPrice === similarMatchItem.price &&
+        itemMatchedScoreNum === similarMatchItem.similarity
+      ) {
+        formattedItem.selected_match = similarMatchItem
+      }
+      return similarMatchItem
     })
   } else {
     formattedItem.similar_matches = []
@@ -310,6 +320,7 @@ const handleSimilarMatchChange = (row, selectedMatch) => {
     row.matched_name = selectedMatch.name
     row.matched_specification = selectedMatch.specification
     row.matched_price = selectedMatch.price
+    console.log('【诊断】相似匹配选择:', selectedMatch, row)
     // 更新原始数据中的匹配相关字段，以便保存时使用
     const originalItem = row.original_item
     if (originalItem) {
@@ -323,6 +334,7 @@ const handleSimilarMatchChange = (row, selectedMatch) => {
         selectedMatch.matchedPriceQuarter || selectedMatch.quarter || null
       originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
     }
+    console.log('【诊断】更新后的 row:', row)
   }
 }
 

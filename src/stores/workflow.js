@@ -211,7 +211,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const handleFunctionSelect = async (key, addMessageCallback) => {
     if (key === 'smartBrain') {
       try {
-        addMessageCallback('正在查询智能体任务数据...', 'system')
+        if (typeof addMessageCallback === 'function') {
+          addMessageCallback('正在查询智能体任务数据...', 'system')
+        }
 
         const getTaskCountsWorkflowId = '7517560875563204627'
         const getTaskListWorkflowId = '7517283953213866036'
@@ -327,6 +329,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
         ElMessage.success('智能体任务数据查询成功！')
       } catch (error) {
         console.error('查询智能大脑数据失败:', error)
+        if (typeof addMessageCallback === 'function') {
+          addMessageCallback('查询智能大脑数据失败，请稍后重试。', 'system', null, error)
+        }
         ElMessage.error('查询智能大脑数据失败，请稍后重试。')
       }
       return

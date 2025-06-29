@@ -7,7 +7,7 @@
         <SidebarNav
           :functions="functions"
           :active-function="activeFunction"
-          @select="handleFunctionSelect"
+          @select="(key) => handleFunctionSelect(key, addMessage)"
         />
       </el-aside>
       <el-container class="right-panel">
