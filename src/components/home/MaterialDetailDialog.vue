@@ -55,10 +55,32 @@
         </el-table-column>
         <el-table-column label="操作" width="200">
           <template #default="scope">
-            <div v-if="scope.row.match_type === '精确匹配'">
-              <el-button type="info" disabled>
-                {{ scope.row.isConfirmed ? '已确认精确匹配' : '已精确匹配' }}
-              </el-button>
+            <div v-if="scope.row.original_item.confirm_type === 2">
+              <!-- 如果是人工匹配，根据原始的 comparison_result 来显示下拉框或修改按钮 -->
+              <div v-if="scope.row.original_item.comparison_result === 2">
+                <el-select
+                  v-model="scope.row.selected_match"
+                  placeholder="从相似匹配中选择"
+                  value-key="matchedPriceId"
+                  @change="handleSimilarMatchChange(scope.row, $event)"
+                  :popper-append-to-body="false"
+                >
+                  <el-option
+                    v-for="item in scope.row.similar_matches"
+                    :key="item.matchedPriceId || item.id"
+                    :label="formatSimilarMatchLabel(item)"
+                    :value="item"
+                  ></el-option>
+                </el-select>
+              </div>
+              <div v-else>
+                <el-button type="primary" size="small" @click="handleEdit(scope.row)"
+                  >修改</el-button
+                >
+              </div>
+            </div>
+            <div v-else-if="scope.row.match_type === '精确匹配'">
+              <el-button type="info" disabled>已精确匹配</el-button>
             </div>
             <div v-else-if="scope.row.match_type === '相似匹配'">
               <el-select
@@ -67,7 +89,6 @@
                 value-key="matchedPriceId"
                 @change="handleSimilarMatchChange(scope.row, $event)"
                 :popper-append-to-body="false"
-                :disabled="false"
               >
                 <el-option
                   v-for="item in scope.row.similar_matches"
@@ -78,14 +99,7 @@
               </el-select>
             </div>
             <div v-else>
-              <el-button
-                type="primary"
-                size="small"
-                @click="handleEdit(scope.row)"
-                :disabled="false"
-              >
-                {{ scope.row.isConfirmed ? '已确认修改' : '修改' }}
-              </el-button>
+              <el-button type="primary" size="small" @click="handleEdit(scope.row)">修改</el-button>
             </div>
           </template>
         </el-table-column>
@@ -241,7 +255,7 @@ const formatMaterialDetail = (item) => {
     original_item: item, // 保留原始数据，方便后续操作
     initialMatchedDataId: item.matchedDataId || null, // 新增初始匹配数据ID快照
     initialMatchedPriceId: item.matchedPriceId || null, // 新增初始价格ID快照
-    isConfirmed: item.confirm_type === 2 // 新增字段，表示是否已确认
+    isUserConfirmed: false // 新增字段，标记用户是否手动确认过
   }
 
   if (item.comparison_result === 2 && Array.isArray(item.subData)) {
@@ -361,6 +375,7 @@ const handleSimilarMatchChange = (row, selectedMatch) => {
       originalItem.matchedPriceQuarter =
         selectedMatch.matchedPriceQuarter || selectedMatch.quarter || null
       originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
+      row.isUserConfirmed = true // 标记为用户已确认
     }
     console.log('【诊断】更新后的 row:', row)
   }
@@ -474,6 +489,7 @@ const handleMaterialSelect = (selectedMaterial) => {
         initialId: currentRow.value.initialMatchedDataId, // 应保持不变
         originalId: currentRow.value.original_item.matchedDataId // 已更新
       })
+      currentRow.value.isUserConfirmed = true // 标记为用户已确认
     }
   }
   showSelectionDialog.value = false
@@ -498,19 +514,14 @@ const handleSave = async () => {
     const updateObjList = tableData.value
       .filter((item) => {
         // 对比行数据层id和快照，识别有变化的数据
-        const hasIdChanged =
+        const isModified =
+          item.isUserConfirmed || // 如果用户手动确认过
           item.original_item.matchedDataId !== item.initialMatchedDataId ||
           item.original_item.matchedPriceId !== item.initialMatchedPriceId
-
-        // 对于相似匹配，如果selected_match有值且尚未被确认为confirm_type=2，也视为需要保存
-        const needsConfirmation =
-          item.match_type === '相似匹配' && item.selected_match !== null && !item.isConfirmed // 检查是否已经确认过
-
         console.log(
-          `【诊断】保存检查: ID=${item.id}, ID变化=${hasIdChanged}, 需要确认=${needsConfirmation}, original_item.matchedDataId=${item.original_item.matchedDataId}, initialMatchedDataId=${item.initialMatchedDataId}`
+          `【诊断】保存检查: ID=${item.id}, 是否修改=${isModified}, original_item.matchedDataId=${item.original_item.matchedDataId}, initialMatchedDataId=${item.initialMatchedDataId}`
         )
-        // 如果ID发生变化，或者是一个需要确认的相似匹配，则包含在保存列表中
-        return hasIdChanged || needsConfirmation
+        return isModified
       })
       .map((item) => ({
         id: item.id,
