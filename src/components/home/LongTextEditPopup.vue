@@ -11,18 +11,11 @@
 </template>
 
 <script setup>
-import { useParsingResultStore } from '@/stores/parsingResult';
-import { computed } from 'vue';
+import { useParsingResultStore } from '@/stores/parsingResult'
+import { computed } from 'vue'
+import { storeToRefs } from 'pinia' // 引入 storeToRefs
 
-const parsingResultStore = useParsingResultStore();
+const parsingResultStore = useParsingResultStore()
 
-const longTextEditVisible = computed({
-  get: () => parsingResultStore.longTextEditVisible,
-  set: (val) => parsingResultStore.longTextEditVisible = val
-});
-
-const {
-  longTextValue,
-  editableField,
-} = parsingResultStore;
+const { longTextEditVisible, longTextValue, editableField } = storeToRefs(parsingResultStore) // 使用 storeToRefs 解构响应式属性
 </script>

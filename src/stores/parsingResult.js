@@ -218,13 +218,14 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
    * @param {TableDataItem} row - 要取消编辑的行数据。
    */
   const cancelRowEdit = (row) => {
-    const index = editFormModels.value.findIndex((item) => item.id === row.id)
-    if (index !== -1) {
-      const originalRow = tableData.value.find((item) => item.id === row.id)
-      if (originalRow) {
-        editFormModels.value[index] = JSON.parse(JSON.stringify(originalRow))
-        editFormModels.value[index].editing = false
-      }
+    const indexInEditModels = editFormModels.value.findIndex((item) => item.id === row.id)
+    const indexInTableData = tableData.value.findIndex((item) => item.id === row.id)
+
+    if (indexInEditModels !== -1 && indexInTableData !== -1) {
+      const originalRow = JSON.parse(JSON.stringify(tableData.value[indexInTableData]))
+      editFormModels.value[indexInEditModels] = { ...originalRow, editing: false }
+      // 确保 tableData 中的对应项也同步更新 editing 状态
+      tableData.value[indexInTableData].editing = false
     }
   }
 
@@ -233,7 +234,17 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
    * @param {TableDataItem} row - 已编辑的行数据。
    */
   const saveRowEdit = (row) => {
-    row.editing = false
+    const indexInEditModels = editFormModels.value.findIndex((item) => item.id === row.id)
+    const indexInTableData = tableData.value.findIndex((item) => item.id === row.id)
+
+    if (indexInEditModels !== -1 && indexInTableData !== -1) {
+      // 将 editFormModels 中的最新数据同步到 tableData
+      tableData.value[indexInTableData] = JSON.parse(
+        JSON.stringify(editFormModels.value[indexInEditModels])
+      )
+      tableData.value[indexInTableData].editing = false // 确保 tableData 中的 editing 状态也更新
+    }
+    row.editing = false // 设置当前行的 editing 状态为 false
     ElMessage.info('此行更改已暂存，请点击“提交修改”以提交。')
   }
 
@@ -249,9 +260,9 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         return payload
       })
 
-      const editWorkflowId = 'your_edit_workflow_id' // 替换为实际的编辑工作流ID
+      const editWorkflowId = '7517452946095947795' // 替换为实际的编辑工作流ID
       const editPromises = payloads.map((item) =>
-        cozeParsingService.runEditWorkflow(editWorkflowId, item)
+        cozeParsingService.runEditWorkflow(editWorkflowId, { modify_json: item })
       )
 
       const results = await Promise.allSettled(editPromises)

@@ -8,7 +8,7 @@
     <div v-loading="isFetchingDetails" class="result-detail-content">
       <el-table
         v-if="tableData && tableData.length > 0"
-        :data="tableData"
+        :data="editFormModels"
         style="width: 100%"
         stripe
         class="result-table"
@@ -17,6 +17,7 @@
       >
         <template v-for="column in tableColumns" :key="column.prop">
           <el-table-column
+            v-if="parsingResultStore.translateHeader(column.prop) !== column.prop"
             :prop="column.prop"
             :label="parsingResultStore.translateHeader(column.prop)"
           >
