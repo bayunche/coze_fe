@@ -48,7 +48,7 @@ export const functions = [
     ],
     needsFiles: true,
     allowedTypes: '.xlsx,.xls'
-  },
+  }
   // {
   //   id: 'ownerSuppliedMaterialParsing',
   //   name: '甲供物资解析',
@@ -64,34 +64,34 @@ export const functions = [
   //   needsFiles: true,
   //   allowedTypes: '.xlsx,.xls'
   // },
-  {
-    id: 'analysis',
-    name: '数据分析',
-    icon: DataAnalysis,
-    iconClass: 'text-purple-500',
-    workflows: ['统计分析', '趋势预测', '异常检测'],
-    params: [
-      {
-        key: 'analysisType',
-        label: '分析类型',
-        type: 'select',
-        options: [
-          { label: '描述性分析', value: 'descriptive' },
-          { label: '预测分析', value: 'predictive' },
-          { label: '诊断分析', value: 'diagnostic' }
-        ]
-      },
-      { key: 'confidence', label: '置信度', type: 'number', min: 0.8, max: 0.99, step: 0.01 },
-      { key: 'includeVisualization', label: '生成图表', type: 'boolean' }
-    ],
-    steps: [
-      { name: '数据加载', description: '读取并验证数据文件' },
-      { name: '数据清洗', description: '处理缺失值和异常值' },
-      { name: '特征工程', description: '提取和构造特征' },
-      { name: '模型分析', description: '执行统计分析' },
-      { name: '结果生成', description: '生成分析报告' }
-    ],
-    needsFiles: true,
-    allowedTypes: '.csv,.xlsx,.json'
-  }
+  // {
+  //   id: 'analysis',
+  //   name: '数据分析',
+  //   icon: DataAnalysis,
+  //   iconClass: 'text-purple-500',
+  //   workflows: ['统计分析', '趋势预测', '异常检测'],
+  //   params: [
+  //     {
+  //       key: 'analysisType',
+  //       label: '分析类型',
+  //       type: 'select',
+  //       options: [
+  //         { label: '描述性分析', value: 'descriptive' },
+  //         { label: '预测分析', value: 'predictive' },
+  //         { label: '诊断分析', value: 'diagnostic' }
+  //       ]
+  //     },
+  //     { key: 'confidence', label: '置信度', type: 'number', min: 0.8, max: 0.99, step: 0.01 },
+  //     { key: 'includeVisualization', label: '生成图表', type: 'boolean' }
+  //   ],
+  //   steps: [
+  //     { name: '数据加载', description: '读取并验证数据文件' },
+  //     { name: '数据清洗', description: '处理缺失值和异常值' },
+  //     { name: '特征工程', description: '提取和构造特征' },
+  //     { name: '模型分析', description: '执行统计分析' },
+  //     { name: '结果生成', description: '生成分析报告' }
+  //   ],
+  //   needsFiles: true,
+  //   allowedTypes: '.csv,.xlsx,.json'
+  // }
 ]

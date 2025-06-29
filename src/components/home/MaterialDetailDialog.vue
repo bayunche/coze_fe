@@ -2,32 +2,50 @@
   <el-dialog
     v-model="dialogVisible"
     title="乙供物资解析详情"
-    width="80%"
+    width="min(1200px, 80%)"
+    destroy-on-close
+    lock-scroll
     :before-close="handleClose"
     custom-class="material-detail-dialog"
   >
     <div v-loading="loading" class="detail-content">
       <el-table :data="tableData" style="width: 100%" border>
         <el-table-column type="index" label="序号" width="60"></el-table-column>
-        <el-table-column prop="material_name" label="乙供物资名称"></el-table-column>
-        <el-table-column prop="material_specification" label="乙供物资规格型号"></el-table-column>
-        <el-table-column prop="material_price" label="乙供物资价格"></el-table-column>
+        <el-table-column prop="material_name" label="乙供物资名称">
+          <template #default="scope">
+            <span>{{ scope.row.material_name || '/' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="material_specification" label="乙供物资规格型号">
+          <template #default="scope">
+            <span>{{ scope.row.material_specification || '/' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="material_price" label="乙供物资价格">
+          <template #default="scope">
+            <span>{{ scope.row.material_price || '/' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="matched_name" label="匹配物资名称">
           <template #default="scope">
-            <span>{{ scope.row.matched_name }}</span>
+            <span>{{ scope.row.matched_name || '/' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="matched_specification" label="匹配规格型号">
           <template #default="scope">
-            <span>{{ scope.row.matched_specification }}</span>
+            <span>{{ scope.row.matched_specification || '/' }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="matched_price" label="匹配价格">
           <template #default="scope">
-            <span>{{ scope.row.matched_price }}</span>
+            <span>{{ scope.row.matched_price || '/' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="similarity" label="相似度"></el-table-column>
+        <el-table-column prop="similarity" label="相似度">
+          <template #default="scope">
+            <span>{{ scope.row.similarity || '/' }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="match_type" label="匹配类型">
           <template #default="scope">
             <el-tag :type="getMatchTypeTag(scope.row.match_type)">{{
@@ -46,6 +64,7 @@
                 placeholder="从相似匹配中选择"
                 value-key="matchedPriceId"
                 @change="handleSimilarMatchChange(scope.row, $event)"
+                :popper-append-to-body="false"
               >
                 <el-option
                   v-for="item in scope.row.similar_matches"
@@ -232,7 +251,6 @@ const formatMaterialDetail = (item) => {
       const itemMatchedScoreNum = parseFloat(item.matchedScore) // 将百分比字符串转换为数字
       if (
         item.matchedDataMaterialName === similarMatchItem.name &&
-        item.matchedDataSpecificationModel === similarMatchItem.specification &&
         item.matchedPrice === similarMatchItem.price &&
         itemMatchedScoreNum === similarMatchItem.similarity
       ) {
