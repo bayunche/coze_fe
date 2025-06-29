@@ -148,6 +148,7 @@ const {
   currentStepIndex,
   stepProgress,
   showWorkflowConfig,
+  showSmartBrainDialog, // 新增：解构 showSmartBrainDialog
   workflowConfig,
   executionHistory,
   smartAgents,

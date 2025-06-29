@@ -103,6 +103,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const stepProgress = ref(0)
   /** @type {import('vue').Ref<boolean>} */
   const showWorkflowConfig = ref(false)
+  /** @type {import('vue').Ref<boolean>} */
+  const showSmartBrainDialog = ref(false) // 新增：智能大脑弹窗显示状态
   /** @type {import('vue').Reactive<ExecutionSession[]>} */
   const executionSessions = reactive([])
   /** @type {import('vue').Reactive<CompletedExecution[]>} */
@@ -246,25 +248,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
           }
         }
 
-        /** @type {import('vue').Ref<SmartAgent[]>} */
-        const smartAgents = ref(
-          functions
-            .filter(
-              (f) =>
-                f.id === 'contractParsing' ||
-                f.id === 'supplierMaterialParsing' ||
-                f.id === 'ownerSuppliedMaterialParsing'
-            )
-            .map((f) => ({
-              id: f.id,
-              name: f.name,
-              status: 'online',
-              tasks: { completed: 0, inProgress: 0, total: 0 }
-            }))
-        )
-
-        /** @type {import('vue').Ref<Object.<string, TaskList>>} */
-        const taskListsByAgent = ref({})
+        // 移除函数内部的重复声明，直接使用顶层 smartAgents 和 taskListsByAgent
+        // smartAgents 和 taskListsByAgent 已经在 store 顶层定义
 
         const fetchPromises = smartAgents.value.map(async (agent) => {
           const domain = businessDomains[agent.id]
@@ -327,6 +312,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         await Promise.all(fetchPromises)
 
         ElMessage.success('智能体任务数据查询成功！')
+        showSmartBrainDialog.value = true // 新增：打开智能大脑弹窗
       } catch (error) {
         console.error('查询智能大脑数据失败:', error)
         if (typeof addMessageCallback === 'function') {
@@ -912,6 +898,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     taskListsByAgent,
     taskId,
     supplierFileDetailIds,
+    showSmartBrainDialog, // 暴露 showSmartBrainDialog
     getCurrentFunctionName,
     getCurrentFunction,
     getCurrentFunctionParams,
