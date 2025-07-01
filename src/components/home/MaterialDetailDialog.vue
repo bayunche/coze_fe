@@ -59,16 +59,32 @@
               <!-- 如果是人工匹配，根据原始的 comparison_result 来显示下拉框或修改按钮 -->
               <div v-if="scope.row.original_item.comparison_result === 2">
                 <el-select
-                  v-model="scope.row.selected_match"
-                  placeholder="从相似匹配中选择"
-                  value-key="matchedPriceId"
-                  @change="handleSimilarMatchChange(scope.row, $event)"
+                  v-model="scope.row.selected_material"
+                  placeholder="选择物资"
+                  value-key="matched_id"
+                  @change="handleMaterialSelectChange(scope.row, $event)"
                   :popper-append-to-body="false"
+                  style="width: 100%; margin-bottom: 5px"
                 >
                   <el-option
                     v-for="item in scope.row.similar_matches"
-                    :key="item.matchedPriceId || item.id"
-                    :label="formatSimilarMatchLabel(item)"
+                    :key="item.matched_id || item.id"
+                    :label="item.name + ' ' + item.specification"
+                    :value="item"
+                  ></el-option>
+                </el-select>
+                <el-select
+                  v-model="scope.row.selected_price_quarter"
+                  placeholder="选择价格和季度"
+                  value-key="id"
+                  @change="handlePriceQuarterChange(scope.row, $event)"
+                  :popper-append-to-body="false"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in scope.row.price_quarter_options"
+                    :key="item.id"
+                    :label="`¥${item.taxPrice} (${item.quarter})`"
                     :value="item"
                   ></el-option>
                 </el-select>
@@ -84,16 +100,32 @@
             </div>
             <div v-else-if="scope.row.match_type === '相似匹配'">
               <el-select
-                v-model="scope.row.selected_match"
-                placeholder="从相似匹配中选择"
-                value-key="matchedPriceId"
-                @change="handleSimilarMatchChange(scope.row, $event)"
+                v-model="scope.row.selected_material"
+                placeholder="选择物资"
+                value-key="matched_id"
+                @change="handleMaterialSelectChange(scope.row, $event)"
                 :popper-append-to-body="false"
+                style="width: 100%; margin-bottom: 5px"
               >
                 <el-option
                   v-for="item in scope.row.similar_matches"
-                  :key="item.matchedPriceId || item.id"
-                  :label="formatSimilarMatchLabel(item)"
+                  :key="item.matched_id || item.id"
+                  :label="item.name + ' ' + item.specification"
+                  :value="item"
+                ></el-option>
+              </el-select>
+              <el-select
+                v-model="scope.row.selected_price_quarter"
+                placeholder="选择价格和季度"
+                value-key="id"
+                @change="handlePriceQuarterChange(scope.row, $event)"
+                :popper-append-to-body="false"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in scope.row.price_quarter_options"
+                  :key="item.id"
+                  :label="`¥${item.taxPrice} (${item.quarter})`"
                   :value="item"
                 ></el-option>
               </el-select>
@@ -142,6 +174,7 @@ import { ElMessage } from 'element-plus'
 import MaterialSelectionDialog from './MaterialSelectionDialog.vue'
 import CozeService from '@/uitls/coze.js'
 import { useChatStore } from '@/stores/chat.js'
+import MaterialService from '@/services/MaterialService.js' // 引入 MaterialService
 
 const cozeService = new CozeService(
   'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
@@ -251,7 +284,9 @@ const formatMaterialDetail = (item) => {
     similarity: typeof item.matchedScore === 'number' ? item.matchedScore + '%' : '/',
     match_type: matchTypeMap[item.comparison_result] || '未知',
     editing: false,
-    selected_match: null, // 用于相似匹配的选中值
+    selected_material: null, // 用于相似匹配的选中物资
+    selected_price_quarter: null, // 用于相似匹配的选中价格和季度
+    price_quarter_options: [], // 用于存储价格和季度选项
     original_item: item, // 保留原始数据，方便后续操作
     initialMatchedDataId: item.matchedDataId || null, // 新增初始匹配数据ID快照
     initialMatchedPriceId: item.matchedPriceId || null, // 新增初始价格ID快照
@@ -260,7 +295,7 @@ const formatMaterialDetail = (item) => {
 
   if (item.comparison_result === 2 && Array.isArray(item.subData)) {
     formattedItem.similar_matches = item.subData.map((sub) => {
-      const similarMatchItem = {
+      return {
         id: sub.id,
         matched_id: sub.matchedDataId,
         matchedPriceId: sub.matchedPriceId || null,
@@ -268,24 +303,50 @@ const formatMaterialDetail = (item) => {
         specification: sub.matchedDataSpecificationModel || '未知型号',
         price: sub.matchedPrice || 0,
         similarity: sub.score || 0,
-        matchedPriceQuarter: sub.matchedPriceQuarter || '未知季度',
-        value: sub.matchedDataId || sub.matchedPrice || sub.id // 用于el-option的value，以matchedPriceId优先
+        matchedPriceQuarter: sub.matchedPriceQuarter || '未知季度'
       }
-      // 检查是否与当前匹配项一致，用于回显
-      const itemMatchedScoreNum = parseFloat(item.matchedScore) // 将百分比字符串转换为数字
-      if (
-        item.matchedDataMaterialName === similarMatchItem.name &&
-        item.matchedPrice === similarMatchItem.price &&
-        itemMatchedScoreNum === similarMatchItem.similarity
-      ) {
-        formattedItem.selected_match = similarMatchItem
-      }
-      return similarMatchItem
     })
+
+    // 尝试回显当前匹配的物资和价格季度
+    const currentMatchedMaterial = formattedItem.similar_matches.find(
+      (sub) => sub.matched_id === item.matchedDataId
+    )
+
+    if (currentMatchedMaterial) {
+      formattedItem.selected_material = currentMatchedMaterial
+      // 立即获取并设置价格季度选项
+      fetchPriceInfoList(currentMatchedMaterial.matched_id).then((prices) => {
+        formattedItem.price_quarter_options = prices
+        const currentMatchedPriceQuarter = prices.find(
+          (priceItem) => priceItem.id === item.matchedPriceId
+        )
+        if (currentMatchedPriceQuarter) {
+          formattedItem.selected_price_quarter = currentMatchedPriceQuarter
+        } else if (prices.length > 0) {
+          // 如果当前匹配的价格季度不存在，但有其他价格选项，则默认选中第一个
+          formattedItem.selected_price_quarter = prices[0]
+        }
+      })
+    } else if (formattedItem.similar_matches.length > 0) {
+      // 如果没有精确匹配的物资，但有相似物资，则默认选中第一个相似物资
+      formattedItem.selected_material = formattedItem.similar_matches[0]
+      fetchPriceInfoList(formattedItem.selected_material.matched_id).then((prices) => {
+        formattedItem.price_quarter_options = prices
+        if (prices.length > 0) {
+          formattedItem.selected_price_quarter = prices[0]
+        }
+      })
+    }
   } else {
     formattedItem.similar_matches = []
+    formattedItem.price_quarter_options = []
   }
   return formattedItem
+}
+
+// 获取价格和季度信息
+const fetchPriceInfoList = async (baseMaterialsDataId) => {
+  return await MaterialService.queryPriceInfoList(baseMaterialsDataId)
 }
 
 // 处理分页变化
@@ -334,23 +395,6 @@ watch(
   { deep: true }
 )
 
-const formatSimilarMatchLabel = (item) => {
-  const name = item.name || ''
-  const specification = item.specification || ''
-  const priceValue = parseFloat(item.price)
-  const price = !isNaN(priceValue) ? `¥${priceValue.toFixed(2)}` : ''
-  // const similarity = item.similarity !== null ? `${(item.similarity * 100).toFixed(0)}%` : '' // 移除百分比计算
-  const quarter = item.matchedPriceQuarter || item.quarter || ''
-
-  const parts = []
-  if (price) parts.push(price)
-  // if (similarity) parts.push(similarity) // 移除百分比显示
-  if (quarter) parts.push(quarter)
-
-  const bracketContent = parts.join(',')
-  return `${name} ${specification} (${bracketContent})`
-}
-
 const getMatchTypeTag = (type) => {
   if (type === '精确匹配') return 'success'
   if (type === '相似匹配') return 'warning'
@@ -358,28 +402,59 @@ const getMatchTypeTag = (type) => {
   return 'info' // For '未知' or other types
 }
 
-const handleSimilarMatchChange = (row, selectedMatch) => {
-  if (row && selectedMatch) {
-    row.matched_name = selectedMatch.name
-    row.matched_specification = selectedMatch.specification
-    row.matched_price = selectedMatch.price
-    console.log('【诊断】相似匹配选择:', selectedMatch, row)
-    // 更新原始数据中的匹配相关字段，以便保存时使用
-    const originalItem = row.original_item
-    if (originalItem) {
-      originalItem.matchedDataId = selectedMatch.matched_id || null
-      originalItem.matchedPriceId = selectedMatch.matchedPriceId || null
-      originalItem.matchedDataMaterialName = selectedMatch.name
-      originalItem.matchedDataSpecificationModel = selectedMatch.specification
-      originalItem.matchedPrice = selectedMatch.price
-      originalItem.matchedScore = selectedMatch.similarity
-      originalItem.matchedPriceQuarter =
-        selectedMatch.matchedPriceQuarter || selectedMatch.quarter || null
-      originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
-      row.isUserConfirmed = true // 标记为用户已确认
+// 处理物资选择下拉框变化
+const handleMaterialSelectChange = async (row, selectedMaterial) => {
+  row.selected_material = selectedMaterial
+  row.selected_price_quarter = null // 重置价格季度选择
+  row.price_quarter_options = [] // 清空价格季度选项
+
+  if (selectedMaterial && selectedMaterial.matched_id) {
+    const prices = await fetchPriceInfoList(selectedMaterial.matched_id)
+    row.price_quarter_options = prices
+    // 如果只有一个价格选项，则自动选中
+    if (prices.length === 1) {
+      row.selected_price_quarter = prices[0]
+      handlePriceQuarterChange(row, prices[0]) // 自动触发价格季度变化处理
     }
-    console.log('【诊断】更新后的 row:', row)
   }
+  // 标记为用户已确认，因为用户手动选择了物资
+  row.isUserConfirmed = true
+}
+
+// 处理价格和季度下拉框变化
+const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
+  row.selected_price_quarter = selectedPriceQuarter
+
+  // 更新表格显示数据
+  if (row.selected_material) {
+    row.matched_name = row.selected_material.name
+    row.matched_specification = row.selected_material.specification
+  }
+  if (selectedPriceQuarter) {
+    row.matched_price = selectedPriceQuarter.taxPrice
+    // 相似度只由物资信息控制，不在此处修改
+    // 假设 matchedPriceQuarter 字段需要更新
+    row.original_item.matchedPriceQuarter = selectedPriceQuarter.quarter
+  } else {
+    row.matched_price = null
+    // 相似度只由物资信息控制，不在此处修改
+    row.original_item.matchedPriceQuarter = null
+  }
+
+  // 更新原始数据中的匹配相关字段，以便保存时使用
+  const originalItem = row.original_item
+  if (originalItem) {
+    originalItem.matchedDataId = row.selected_material?.matched_id || null
+    originalItem.matchedPriceId = selectedPriceQuarter?.id || null
+    originalItem.matchedDataMaterialName = row.selected_material?.name || null
+    originalItem.matchedDataSpecificationModel = row.selected_material?.specification || null
+    originalItem.matchedPrice = selectedPriceQuarter?.taxPrice || null
+    // originalItem.matchedScore = row.selected_material?.similarity || null // 相似度只由物资信息控制，不在此处修改
+    originalItem.matchedPriceQuarter = selectedPriceQuarter?.quarter || null
+    originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
+    row.isUserConfirmed = true // 标记为用户已确认
+  }
+  console.log('【诊断】更新后的 row:', row)
 }
 
 /**

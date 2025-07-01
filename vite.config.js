@@ -36,5 +36,14 @@ export default defineConfig({
         additionalData: `@use "@/assets/style/element/index.scss" as *;`
       }
     }
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://159.75.127.84:1207',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
   }
 })
