@@ -98,7 +98,7 @@
             <div v-else-if="scope.row.match_type === '精确匹配'">
               <el-button type="info" disabled>已精确匹配</el-button>
             </div>
-            <div v-else-if="scope.row.match_type === '相似匹配'">
+            <div v-else-if="['相似匹配', '历史匹配'].includes(scope.row.match_type)">
               <el-select
                 v-model="scope.row.selected_material"
                 placeholder="选择物资"
@@ -130,6 +130,7 @@
                 ></el-option>
               </el-select>
             </div>
+
             <div v-else>
               <el-button type="primary" size="small" @click="handleEdit(scope.row)">修改</el-button>
             </div>
@@ -270,7 +271,8 @@ const formatMaterialDetail = (item) => {
   const matchTypeMap = {
     0: '无匹配',
     1: '精确匹配',
-    2: '相似匹配'
+    2: '相似匹配',
+    3: '历史匹配'
   }
 
   const formattedItem = {
@@ -293,7 +295,7 @@ const formatMaterialDetail = (item) => {
     isUserConfirmed: false // 新增字段，标记用户是否手动确认过
   }
 
-  if (item.comparison_result === 2 && Array.isArray(item.subData)) {
+  if ([2, 3].includes(item.comparison_result) && Array.isArray(item.subData)) {
     formattedItem.similar_matches = item.subData.map((sub) => {
       return {
         id: sub.id,
@@ -317,14 +319,23 @@ const formatMaterialDetail = (item) => {
       // 立即获取并设置价格季度选项
       fetchPriceInfoList(currentMatchedMaterial.matched_id).then((prices) => {
         formattedItem.price_quarter_options = prices
-        const currentMatchedPriceQuarter = prices.find(
-          (priceItem) => priceItem.id === item.matchedPriceId
-        )
-        if (currentMatchedPriceQuarter) {
-          formattedItem.selected_price_quarter = currentMatchedPriceQuarter
-        } else if (prices.length > 0) {
-          // 如果当前匹配的价格季度不存在，但有其他价格选项，则默认选中第一个
-          formattedItem.selected_price_quarter = prices[0]
+        // 如果匹配价格为空，则不默认选中任何价格季度
+        if (
+          item.matchedPrice === null ||
+          item.matchedPrice === undefined ||
+          item.matchedPrice === ''
+        ) {
+          formattedItem.selected_price_quarter = null
+        } else {
+          const currentMatchedPriceQuarter = prices.find(
+            (priceItem) => priceItem.id === item.matchedPriceId
+          )
+          if (currentMatchedPriceQuarter) {
+            formattedItem.selected_price_quarter = currentMatchedPriceQuarter
+          } else if (prices.length > 0) {
+            // 如果当前匹配的价格季度不存在，但有其他价格选项，则默认选中第一个
+            formattedItem.selected_price_quarter = prices[0]
+          }
         }
       })
     } else if (formattedItem.similar_matches.length > 0) {
@@ -332,7 +343,14 @@ const formatMaterialDetail = (item) => {
       formattedItem.selected_material = formattedItem.similar_matches[0]
       fetchPriceInfoList(formattedItem.selected_material.matched_id).then((prices) => {
         formattedItem.price_quarter_options = prices
-        if (prices.length > 0) {
+        // 默认选中第一个价格选项，除非匹配价格为空
+        if (
+          item.matchedPrice === null ||
+          item.matchedPrice === undefined ||
+          item.matchedPrice === ''
+        ) {
+          formattedItem.selected_price_quarter = null
+        } else if (prices.length > 0) {
           formattedItem.selected_price_quarter = prices[0]
         }
       })
@@ -397,7 +415,7 @@ watch(
 
 const getMatchTypeTag = (type) => {
   if (type === '精确匹配') return 'success'
-  if (type === '相似匹配') return 'warning'
+  if (type === '相似匹配' || type === '历史匹配') return 'warning'
   if (type === '无匹配') return 'danger'
   return 'info' // For '未知' or other types
 }
