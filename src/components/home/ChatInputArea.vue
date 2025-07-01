@@ -18,7 +18,6 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { storeToRefs } from 'pinia' /* 导入 storeToRefs */
 import { useChatStore } from '@/stores/chat'
 import { useWorkflowStore } from '@/stores/workflow'
