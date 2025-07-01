@@ -505,7 +505,7 @@ const handleClearMessages = () => {
 .message-container {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 20px;
+  padding: 20px 40px; /* 调整上下左右内边距 */
   background: #ffffff;
   display: flex;
   flex-direction: column;
@@ -515,7 +515,7 @@ const handleClearMessages = () => {
   --max-width-layout-container-width: 100vw;
   --max-width-layout-large-padding: 24px;
   --max-width-layout-small-padding: 16px;
-  --center-content-max-width: 800px; /* ✅ 你可以根据内容宽度设定这个值 */
+  --center-content-max-width: 1200px; /* 增加宽度 */
 
   --left-side-width: 0px;
   --right-side-width: 0px;
@@ -533,8 +533,8 @@ const handleClearMessages = () => {
 
   --padding: clamp(
     var(--max-width-layout-small-padding),
-    calc(50vw - 400px - var(--left-side-width) / 2 - var(--right-side-width) / 2),
-    var(--max-width-layout-large-padding)
+    calc(50vw - 500px - var(--left-side-width) / 2 - var(--right-side-width) / 2),
+    /* 调整此值 */ var(--max-width-layout-large-padding)
   );
 
   padding-left: calc(var(--content-left) + var(--padding));

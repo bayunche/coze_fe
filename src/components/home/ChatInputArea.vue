@@ -1,17 +1,19 @@
 <template>
   <div class="chat-input-area">
-    <el-input
-      v-model="userInput"
-      type="textarea"
-      :rows="2"
-      placeholder="输入消息..."
-      @keyup.enter="handleSendMessageWrapper"
-      clearable
-      resize="none"
-      class="chat-input"
-    >
-    </el-input>
-    <el-button type="primary" @click="handleSendMessageWrapper">发送</el-button>
+    <div class="input-area">
+      <el-input
+        v-model="userInput"
+        type="textarea"
+        :rows="2"
+        placeholder="输入消息..."
+        @keyup.enter="handleSendMessageWrapper"
+        clearable
+        resize="none"
+        class="chat-input"
+      >
+      </el-input>
+      <el-button type="primary" @click="handleSendMessageWrapper">发送</el-button>
+    </div>
   </div>
 </template>
 
@@ -42,18 +44,59 @@ const handleSendMessageWrapper = () => {
 <style scoped>
 .chat-input-area {
   width: 100%;
-  max-width: 800px;
   max-height: 168px;
-  padding: 12px 16px;
   background-color: #ffffff;
   box-sizing: border-box;
   margin: 0 auto;
   display: flex; /* 确保父容器是flex布局 */
   align-items: center; /* 垂直居中对齐 */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+
   border-radius: 12px;
+
+  /* 引入响应式居中布局逻辑，与 message-container 保持一致 */
+  --max-width-layout-container-width: 100vw;
+  --max-width-layout-large-padding: 24px;
+  --max-width-layout-small-padding: 16px;
+  --center-content-max-width: 1200px; /* 与 message-container 保持一致 */
+
+  --left-side-width: 0px;
+  --right-side-width: 0px;
+
+  --width: calc(
+    var(--max-width-layout-container-width) - var(--left-side-width) - var(--right-side-width)
+  );
+  /* chat-input-area 的最大宽度比 message-container 的中心内容宽度小 200px */
+  --chat-input-area-content-max-width: calc(var(--center-content-max-width) - 200px);
+  --center-content: min(var(--width), var(--chat-input-area-content-max-width));
+
+  --total-side: calc(
+    var(--max-width-layout-container-width) - var(--center-content) - var(--left-side-width) -
+      var(--right-side-width)
+  );
+  --left-side: calc(var(--total-side) / 2);
+  --content-left: calc(var(--left-side) + var(--left-side-width));
+
+  --padding: clamp(
+    var(--max-width-layout-small-padding),
+    calc(50vw - 500px - var(--left-side-width) / 2 - var(--right-side-width) / 2),
+    var(--max-width-layout-large-padding)
+  );
+
+  padding-left: calc(var(--content-left) + var(--padding));
+  padding-right: calc(
+    var(--left-side) + var(--padding) + var(--right-side-width) - var(--scrollbar-width, 0px)
+  );
 }
 
+.input-area {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  background-color: #ffffff;
+}
 .chat-input {
   flex: 1;
   background-color: #ffffff;
