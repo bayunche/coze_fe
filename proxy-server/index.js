@@ -4,7 +4,7 @@ const cors = require('cors')
 const path = require('path')
 
 const app = express()
-const PORT = 3000 // 前端和代理服务器监听的端口
+const PORT = 3001 // 前端和代理服务器监听的端口
 const BACKEND_TARGET = 'http://159.75.127.84:1207' // 后端实际地址
 
 // 允许所有来源的跨域请求
