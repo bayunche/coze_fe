@@ -1,7 +1,5 @@
 import request from '@/utils/request.js'
 
-const BASE_URL = '/api'
-
 class MaterialService {
   /**
    * 查询物资价格信息列表
@@ -15,7 +13,7 @@ class MaterialService {
     }
     try {
       const response = await request.get(
-        `${BASE_URL}/materials/priceinfo/queryPriceInfoList?baseMaterialsDataId=${baseMaterialsDataId}`
+        `/materials/priceinfo/queryPriceInfoList?baseMaterialsDataId=${baseMaterialsDataId}`
       )
       if (response && response.data) {
         return response.data
