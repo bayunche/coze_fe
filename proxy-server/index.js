@@ -21,6 +21,9 @@ app.use(
   createProxyMiddleware({
     target: BACKEND_TARGET,
     changeOrigin: true,
+    pathRewrite: {
+      '^/materials': '/materials'
+    },
     onProxyReq: (proxyReq, req, res) => {
       // 可以添加或修改请求头
     },
