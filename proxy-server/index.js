@@ -17,7 +17,8 @@ app.use(express.static(frontendDistPath))
 
 // 配置代理
 app.use(
-  createProxyMiddleware('/materials', {
+  '/materials',
+  createProxyMiddleware({
     target: BACKEND_TARGET,
     changeOrigin: true,
     onProxyReq: (proxyReq, req, res) => {
