@@ -10,12 +10,21 @@ const BACKEND_TARGET = 'http://159.75.127.84:1207' // 后端实际地址
 // 允许所有来源的跨域请求
 app.use(cors())
 
+// 提供前端静态文件
+// 假设前端打包后的文件在项目根目录的 'dist' 文件夹中
+const frontendDistPath = path.join(__dirname, '..', 'dist')
+app.use(express.static(frontendDistPath))
+
 // 配置代理
 app.use(
-  '/materials',
+  '/',
   createProxyMiddleware({
     target: BACKEND_TARGET,
     changeOrigin: true,
+    filter: (pathname, req) => {
+      // 只代理以 /materials 开头的请求
+      return pathname.startsWith('/materials')
+    },
     onProxyReq: (proxyReq, req, res) => {
       // 可以添加或修改请求头
     },
@@ -28,11 +37,6 @@ app.use(
     }
   })
 )
-
-// 提供前端静态文件
-// 假设前端打包后的文件在项目根目录的 'dist' 文件夹中
-const frontendDistPath = path.join(__dirname, '..', 'dist')
-app.use(express.static(frontendDistPath))
 
 // 对于所有未匹配的路由，返回 index.html，以支持单页应用路由
 app.get('*', (req, res) => {
