@@ -17,14 +17,9 @@ app.use(express.static(frontendDistPath))
 
 // 配置代理
 app.use(
-  '/',
-  createProxyMiddleware({
+  createProxyMiddleware('/materials', {
     target: BACKEND_TARGET,
     changeOrigin: true,
-    filter: (pathname, req) => {
-      // 只代理以 /materials 开头的请求
-      return pathname.startsWith('/materials')
-    },
     onProxyReq: (proxyReq, req, res) => {
       // 可以添加或修改请求头
     },
