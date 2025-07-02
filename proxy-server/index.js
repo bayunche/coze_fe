@@ -22,9 +22,10 @@ app.use(
     target: BACKEND_TARGET,
     changeOrigin: true,
     pathRewrite: {
-      '^/materials': '/materials'
+      '^/materials': '/'
     },
     onProxyReq: (proxyReq, req, res) => {
+      console.log('Proxying request to:', proxyReq.path)
       // 可以添加或修改请求头
     },
     onProxyRes: (proxyRes, req, res) => {
