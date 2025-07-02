@@ -5,7 +5,7 @@ const path = require('path')
 
 const app = express()
 const PORT = 3000 // 前端和代理服务器监听的端口
-const BACKEND_TARGET = 'http://159.75.127.84:1207/materials' // 后端实际地址
+const BACKEND_TARGET = 'http://159.75.127.84:1207' // 后端实际地址
 
 // 允许所有来源的跨域请求
 app.use(cors())
@@ -22,10 +22,12 @@ app.use(
     target: BACKEND_TARGET,
     changeOrigin: true,
     pathRewrite: {
-      '^/materials': '/'
+      '^/materials': '/materials'
     },
     onProxyReq: (proxyReq, req, res) => {
-      console.log('Proxying request to:', proxyReq.path)
+      console.log(
+        `Proxying request from ${req.originalUrl} to ${proxyReq.protocol}//${proxyReq.host}${proxyReq.path}`
+      )
       // 可以添加或修改请求头
     },
     onProxyRes: (proxyRes, req, res) => {
