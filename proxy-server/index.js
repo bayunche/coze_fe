@@ -17,12 +17,12 @@ app.use(express.static(frontendDistPath))
 
 // 配置代理
 app.use(
-  '/materials',
+  '/api',
   createProxyMiddleware({
     target: BACKEND_TARGET,
     changeOrigin: true,
     pathRewrite: {
-      '^/materials': '/materials'
+      '^/api': ''
     },
     onProxyReq: (proxyReq, req, res) => {
       console.log(
@@ -49,5 +49,5 @@ app.get('*', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Frontend and proxy server listening on port ${PORT}`)
   console.log(`Serving frontend from: ${frontendDistPath}`)
-  console.log(`Proxying requests for /materials to ${BACKEND_TARGET}`)
+  console.log(`Proxying requests for /api to ${BACKEND_TARGET}`)
 })
