@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
-import { ElMessage } from 'element-plus';
+import { defineStore } from 'pinia'
+import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 
 /**
  * @typedef {Object} MaterialTask
@@ -11,30 +11,23 @@ import { ElMessage } from 'element-plus';
 
 export const useMaterialDialogStore = defineStore('materialDialog', () => {
   /** @type {import('vue').Ref<boolean>} */
-  const showMaterialDetailDialog = ref(false);
-  /** @type {import('vue').Ref<string | null>} */
-  const materialDetailDialogTaskId = ref(null);
-  /** @type {import('vue').Ref<string | null>} */
-  const materialDetailDialogDetailId = ref(null);
-
-  /** @type {import('vue').Ref<boolean>} */
-  const supplierMaterialDialogVisible = ref(false);
+  const supplierMaterialDialogVisible = ref(false)
   /** @type {import('vue').Ref<MaterialTask | null>} */
-  const supplierMaterialDialogTask = ref(null);
+  const supplierMaterialDialogTask = ref(null)
   /** @type {import('vue').Ref<string | null>} */
-  const supplierFileId = ref(null); // 新增乙供物资文件ID
+  const supplierFileId = ref(null) // 新增乙供物资文件ID
   /** @type {import('vue').Ref<string[]>} */
-  const supplierFileDetailIds = ref([]); // 新增乙供物资详情ID列表
+  const supplierFileDetailIds = ref([]) // 新增乙供物资详情ID列表
 
   /** @type {import('vue').Ref<boolean>} */
-  const showMaterialParsingResultDialog = ref(false);
+  const showMaterialParsingResultDialog = ref(false)
   /** @type {import('vue').Ref<MaterialTask | null>} */
-  const materialParsingResultTask = ref(null);
+  const materialParsingResultTask = ref(null)
 
   /** @type {import('vue').Ref<boolean>} */
-  const showOwnerMaterialTaskParsingDetailDialog = ref(false);
+  const showOwnerMaterialTaskParsingDetailDialog = ref(false)
   /** @type {import('vue').Ref<string | null>} */
-  const ownerMaterialTaskParsingDetailTaskId = ref(null);
+  const ownerMaterialTaskParsingDetailTaskId = ref(null)
 
   // Actions
   /**
@@ -43,46 +36,37 @@ export const useMaterialDialogStore = defineStore('materialDialog', () => {
    */
   const handleViewMaterialResultDetail = (message) => {
     const taskIdToUse =
-      typeof message === 'object' && message !== null && message.id ? message.id : message;
+      typeof message === 'object' && message !== null && message.id ? message.id : message
     if (!taskIdToUse) {
-      ElMessage.warning('没有可供解析的乙供物资任务ID。');
-      return;
+      ElMessage.warning('没有可供解析的乙供物资任务ID。')
+      return
     }
     try {
-      ownerMaterialTaskParsingDetailTaskId.value = taskIdToUse;
-      showOwnerMaterialTaskParsingDetailDialog.value = true;
-      console.log('【诊断】materialDialogStore - handleViewMaterialResultDetail 接收到任务ID:', taskIdToUse);
-      console.log('【诊断】materialDialogStore - showOwnerMaterialTaskParsingDetailDialog 设置为:', showOwnerMaterialTaskParsingDetailDialog.value);
+      materialParsingResultTask.value = { id: taskIdToUse }
+      showMaterialParsingResultDialog.value = true
+      console.log(
+        '【诊断】materialDialogStore - handleViewMaterialResultDetail 接收到任务ID:',
+        taskIdToUse
+      )
+      console.log(
+        '【诊断】materialDialogStore - showMaterialParsingResultDialog 设置为:',
+        showMaterialParsingResultDialog.value
+      )
     } catch (error) {
-      console.error('显示乙供物资任务解析详情弹窗失败:', error);
-      ElMessage.error(`显示乙供物资任务解析详情弹窗失败: ${error.message}`);
+      console.error('显示乙供物资解析结果弹窗失败:', error)
+      ElMessage.error(`显示乙供物资解析结果弹窗失败: ${error.message}`)
     }
-  };
-
-  /**
-   * 处理查看甲供物资详情的逻辑。
-   * @param {Object} payload - 包含 detailId 和 taskId 的对象。
-   * @param {string} payload.detailId - 详情ID。
-   * @param {string} payload.taskId - 任务ID。
-   */
-  const handleViewOwnerMaterialDetail = ({ detailId, taskId }) => {
-    console.log('【诊断】HomeView - 接收到 view-detail 事件，detailId:', detailId, 'taskId:', taskId);
-    materialDetailDialogTaskId.value = taskId;
-    materialDetailDialogDetailId.value = detailId;
-    showMaterialDetailDialog.value = true;
-  };
+  }
 
   return {
-    showMaterialDetailDialog,
-    materialDetailDialogTaskId,
-    materialDetailDialogDetailId,
     supplierMaterialDialogVisible,
     supplierMaterialDialogTask,
+    supplierFileId,
+    supplierFileDetailIds,
     showMaterialParsingResultDialog,
     materialParsingResultTask,
     showOwnerMaterialTaskParsingDetailDialog,
     ownerMaterialTaskParsingDetailTaskId,
-    handleViewMaterialResultDetail,
-    handleViewOwnerMaterialDetail,
-  };
-});
+    handleViewMaterialResultDetail
+  }
+})

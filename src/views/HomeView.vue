@@ -29,17 +29,6 @@
     </el-container>
 
     <!-- 乙供物资解析详情弹窗组件 -->
-    <MaterialDetailDialog
-      v-model="showMaterialDetailDialog"
-      :taskId="materialDetailDialogTaskId"
-      :detailId="materialDetailDialogDetailId"
-    />
-
-    <!-- 新增乙供物资详情弹窗组件 -->
-    <MaterialDetailDialog
-      v-model:show="supplierMaterialDialogVisible"
-      :task="supplierMaterialDialogTask"
-    />
 
     <!-- 新增物资解析结果详情弹窗组件 -->
     <MaterialParsingResultDialog
@@ -96,6 +85,7 @@
 import { onMounted, onUnmounted, defineAsyncComponent, watch } from 'vue'
 import { storeToRefs } from 'pinia' // 导入 storeToRefs
 import { ArrowRight, ArrowLeft } from '@element-plus/icons-vue' // 导入图标
+import { useRouter } from 'vue-router' // 导入 useRouter
 import { useChatStore } from '@/stores/chat'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useParsingResultStore } from '@/stores/parsingResult'
@@ -113,9 +103,6 @@ const WorkflowConfigDialog = defineAsyncComponent(() =>
 )
 const SmartBrainDialog = defineAsyncComponent(() =>
   import('@/components/home/SmartBrainDialog.vue')
-)
-const MaterialDetailDialog = defineAsyncComponent(() =>
-  import('@/components/home/MaterialDetailDialog.vue')
 )
 const MaterialParsingResultDialog = defineAsyncComponent(() =>
   import('@/components/home/MaterialParsingResultDialog.vue')
@@ -178,9 +165,6 @@ const {
 const { editableRow, editableFieldProp, isLongText, openEditPopup } = parsingResultStore
 
 const {
-  showMaterialDetailDialog,
-  materialDetailDialogTaskId,
-  materialDetailDialogDetailId,
   supplierMaterialDialogVisible,
   supplierMaterialDialogTask,
   supplierFileId, // 新增解构 supplierFileId
@@ -190,16 +174,18 @@ const {
   ownerMaterialTaskParsingDetailTaskId
 } = storeToRefs(materialDialogStore) // 使用 storeToRefs 解构响应式状态
 
-const { handleViewMaterialResultDetail, handleViewOwnerMaterialDetail } = materialDialogStore // 直接解构方法
-
 let timeInterval = null
 let loadingInterval = null
 
 // 方法
-
 const handleViewResultDetail = async (taskIdFromMessage) => {
   // 直接调用 parsingResultStore 中的 action，并使用从消息中获取的 taskId
   await parsingResultStore.handleViewResultDetail(taskIdFromMessage)
+}
+
+// 修改 handleViewMaterialResultDetail 方法以打开 MaterialParsingResultDialog
+const handleViewMaterialResultDetail = (taskId) => {
+  materialDialogStore.handleViewMaterialResultDetail(taskId)
 }
 
 const executeWorkflow = async () => {

@@ -1,6 +1,6 @@
 <template>
   <el-dialog
-    title="乙供物资任务解析详情列表"
+    title="乙供物资解析任务详情列表"
     v-model="dialogVisible"
     width="60%"
     :close-on-click-modal="false"
@@ -57,6 +57,7 @@
 import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import CozeService from '@/uitls/coze.js'
+import { useRouter } from 'vue-router' // 导入 useRouter
 
 const props = defineProps({
   taskId: {
@@ -138,10 +139,14 @@ const fetchDetailList = async () => {
   }
 }
 
+const router = useRouter() // 将 useRouter 移动到顶层
+
 const handleViewDetail = (row) => {
-  emit('view-detail', { detailId: row.ID, taskId: row.TASK_ID })
+  router.push({
+    path: '/material-detail',
+    query: { taskId: row.TASK_ID, detailId: row.ID }
+  })
   dialogVisible.value = false // 关闭当前弹窗
-  // 打开详情弹窗的逻辑
 }
 
 watch(

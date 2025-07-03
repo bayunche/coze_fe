@@ -1,104 +1,56 @@
 <template>
-  <el-dialog
-    v-model="dialogVisible"
-    title="乙供物资解析详情"
-    width="min(1200px, 80%)"
-    destroy-on-close
-    lock-scroll
-    :before-close="handleClose"
-    custom-class="material-detail-dialog"
-  >
-    <div v-loading="loading" class="detail-content">
-      <el-table :data="tableData" style="width: 100%" border>
-        <el-table-column type="index" label="序号" width="60"></el-table-column>
-        <el-table-column prop="material_name" label="乙供物资名称">
-          <template #default="scope">
-            <span>{{ scope.row.material_name || '/' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="material_specification" label="乙供物资规格型号">
-          <template #default="scope">
-            <span>{{ scope.row.material_specification || '/' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="material_price" label="乙供物资价格">
-          <template #default="scope">
-            <span>{{ scope.row.material_price || '/' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="matched_name" label="匹配物资名称">
-          <template #default="scope">
-            <span>{{ scope.row.matched_name || '/' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="matched_specification" label="匹配规格型号">
-          <template #default="scope">
-            <span>{{ scope.row.matched_specification || '/' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="matched_price" label="匹配价格">
-          <template #default="scope">
-            <span>{{ scope.row.matched_price || '/' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="similarity" label="相似度">
-          <template #default="scope">
-            <span>{{ scope.row.similarity || '/' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="match_type" label="匹配类型">
-          <template #default="scope">
-            <el-tag :type="getMatchTypeTag(scope.row.match_type)">{{
-              scope.row.match_type
-            }}</el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="200">
-          <template #default="scope">
-            <div v-if="scope.row.original_item.confirm_type === 2">
-              <!-- 如果是人工匹配，根据原始的 comparison_result 来显示下拉框或修改按钮 -->
-              <div v-if="scope.row.original_item.comparison_result === 2">
-                <el-select
-                  v-model="scope.row.selected_material"
-                  placeholder="选择物资"
-                  value-key="matched_id"
-                  @change="handleMaterialSelectChange(scope.row, $event)"
-                  :popper-append-to-body="false"
-                  style="width: 100%; margin-bottom: 5px"
-                >
-                  <el-option
-                    v-for="item in scope.row.similar_matches"
-                    :key="item.matched_id || item.id"
-                    :label="item.name + ' ' + item.specification"
-                    :value="item"
-                  ></el-option>
-                </el-select>
-                <el-select
-                  v-model="scope.row.selected_price_quarter"
-                  placeholder="选择价格和季度"
-                  value-key="id"
-                  @change="handlePriceQuarterChange(scope.row, $event)"
-                  :popper-append-to-body="false"
-                  style="width: 100%"
-                >
-                  <el-option
-                    v-for="item in scope.row.price_quarter_options"
-                    :key="item.id"
-                    :label="`¥${item.taxPrice} (${item.quarter})`"
-                    :value="item"
-                  ></el-option>
-                </el-select>
-              </div>
-              <div v-else>
-                <el-button type="primary" size="small" @click="handleEdit(scope.row)"
-                  >修改</el-button
-                >
-              </div>
-            </div>
-            <div v-else-if="scope.row.match_type === '精确匹配'">
-              <el-button type="info" disabled>已精确匹配</el-button>
-            </div>
-            <div v-else-if="['相似匹配', '历史匹配'].includes(scope.row.match_type)">
+  <div v-loading="loading" class="material-detail-page">
+    <div class="page-header">
+      <h2>乙供物资解析详情</h2>
+      <el-button @click="handleBack">返回</el-button>
+    </div>
+    <el-table :data="tableData" style="width: 100%" border>
+      <el-table-column type="index" label="序号" width="60"></el-table-column>
+      <el-table-column prop="material_name" label="乙供物资名称">
+        <template #default="scope">
+          <span>{{ scope.row.material_name || '/' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="material_specification" label="乙供物资规格型号">
+        <template #default="scope">
+          <span>{{ scope.row.material_specification || '/' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="material_price" label="乙供物资价格">
+        <template #default="scope">
+          <span>{{ scope.row.material_price || '/' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="matched_name" label="匹配物资名称">
+        <template #default="scope">
+          <span>{{ scope.row.matched_name || '/' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="matched_specification" label="匹配规格型号">
+        <template #default="scope">
+          <span>{{ scope.row.matched_specification || '/' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="matched_price" label="匹配价格">
+        <template #default="scope">
+          <span>{{ scope.row.matched_price || '/' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="similarity" label="相似度">
+        <template #default="scope">
+          <span>{{ scope.row.similarity || '/' }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="match_type" label="匹配类型">
+        <template #default="scope">
+          <el-tag :type="getMatchTypeTag(scope.row.match_type)">{{ scope.row.match_type }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="操作" width="200">
+        <template #default="scope">
+          <div v-if="scope.row.original_item.confirm_type === 2">
+            <!-- 如果是人工匹配，根据原始的 comparison_result 来显示下拉框或修改按钮 -->
+            <div v-if="scope.row.original_item.comparison_result === 2">
               <el-select
                 v-model="scope.row.selected_material"
                 placeholder="选择物资"
@@ -130,32 +82,68 @@
                 ></el-option>
               </el-select>
             </div>
-
             <div v-else>
               <el-button type="primary" size="small" @click="handleEdit(scope.row)">修改</el-button>
             </div>
-          </template>
-        </el-table-column>
-      </el-table>
-      <el-pagination
-        background
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="totalDetails"
-        :page-sizes="[10, 20, 50, 100]"
-        :page-size="pageSize"
-        v-model:current-page="currentPage"
-        @current-change="handlePageChange"
-        @size-change="handleSizeChange"
-        style="margin-top: 20px; text-align: right"
-      />
+          </div>
+          <div v-else-if="scope.row.match_type === '精确匹配'">
+            <el-button type="info" disabled>已精确匹配</el-button>
+          </div>
+          <div v-else-if="['相似匹配', '历史匹配'].includes(scope.row.match_type)">
+            <el-select
+              v-model="scope.row.selected_material"
+              placeholder="选择物资"
+              value-key="matched_id"
+              @change="handleMaterialSelectChange(scope.row, $event)"
+              :popper-append-to-body="false"
+              style="width: 100%; margin-bottom: 5px"
+            >
+              <el-option
+                v-for="item in scope.row.similar_matches"
+                :key="item.matched_id || item.id"
+                :label="item.name + ' ' + item.specification"
+                :value="item"
+              ></el-option>
+            </el-select>
+            <el-select
+              v-model="scope.row.selected_price_quarter"
+              placeholder="选择价格和季度"
+              value-key="id"
+              @change="handlePriceQuarterChange(scope.row, $event)"
+              :popper-append-to-body="false"
+              style="width: 100%"
+            >
+              <el-option
+                v-for="item in scope.row.price_quarter_options"
+                :key="item.id"
+                :label="`¥${item.taxPrice} (${item.quarter})`"
+                :value="item"
+              ></el-option>
+            </el-select>
+          </div>
+
+          <div v-else>
+            <el-button type="primary" size="small" @click="handleEdit(scope.row)">修改</el-button>
+          </div>
+        </template>
+      </el-table-column>
+    </el-table>
+    <el-pagination
+      background
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="totalDetails"
+      :page-sizes="[10, 20, 50, 100]"
+      :page-size="pageSize"
+      v-model:current-page="currentPage"
+      @current-change="handlePageChange"
+      @size-change="handleSizeChange"
+      style="margin-top: 20px; text-align: right"
+    />
+    <div class="page-footer">
+      <el-button @click="handleBack">关闭</el-button>
+      <el-button type="primary" @click="handleSave" :loading="saving">保存解析结果</el-button>
     </div>
-    <template #footer>
-      <span class="dialog-footer">
-        <el-button @click="handleClose">关闭</el-button>
-        <el-button type="primary" @click="handleSave" :loading="saving">保存解析结果</el-button>
-      </span>
-    </template>
-  </el-dialog>
+  </div>
   <MaterialSelectionDialog
     v-model:modelValue="showSelectionDialog"
     :data-list="showSelectionList"
@@ -170,40 +158,24 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import MaterialSelectionDialog from './MaterialSelectionDialog.vue'
+import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
 import CozeService from '@/uitls/coze.js'
 import { useChatStore } from '@/stores/chat.js'
-import MaterialService from '@/services/MaterialService.js' // 引入 MaterialService
+import MaterialService from '@/services/MaterialService.js'
+import { useRoute, useRouter } from 'vue-router'
 
 const cozeService = new CozeService(
   'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
 )
 
 const chatStore = useChatStore()
+const route = useRoute()
+const router = useRouter()
 
-const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    required: true
-  },
-  taskId: {
-    type: [String, Number],
-    required: true
-  },
-  detailId: {
-    type: [String, Number],
-    required: true
-  }
-})
-
-const emit = defineEmits(['update:modelValue'])
-
-const dialogVisible = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-})
+const taskId = ref(route.query.taskId)
+const detailId = ref(route.query.detailId)
 
 const loading = ref(false)
 const saving = ref(false)
@@ -227,8 +199,8 @@ const fetchMaterialDetail = async (page = currentPage.value, size = pageSize.val
   try {
     const detailWorkflowId = '7519045874770657299'
     const workflowParams = {
-      taskId: props.taskId,
-      task_detail_id: props.detailId,
+      taskId: taskId.value,
+      task_detail_id: detailId.value,
       index: page,
       pageSize: size
     }
@@ -245,11 +217,11 @@ const fetchMaterialDetail = async (page = currentPage.value, size = pageSize.val
         tableData.value = parsedData.map((item) => formatMaterialDetail(item))
         totalDetails.value = totalCount
         console.log(
-          '【诊断】MaterialDetailDialog - tableData 更新:',
+          '【诊断】MaterialDetailPage - tableData 更新:',
           tableData.value.length,
           '条数据'
         )
-        console.log('【诊断】MaterialDetailDialog - totalDetails 更新:', totalDetails.value)
+        console.log('【诊断】MaterialDetailPage - totalDetails 更新:', totalDetails.value)
       } else {
         ElMessage.warning('未获取到有效的详情数据。')
         tableData.value = []
@@ -266,7 +238,6 @@ const fetchMaterialDetail = async (page = currentPage.value, size = pageSize.val
   }
 }
 
-// 格式化数据以适应表格和相似匹配的显示
 const formatMaterialDetail = (item) => {
   const matchTypeMap = {
     0: '无匹配',
@@ -286,13 +257,13 @@ const formatMaterialDetail = (item) => {
     similarity: typeof item.matchedScore === 'number' ? item.matchedScore + '%' : '/',
     match_type: matchTypeMap[item.comparison_result] || '未知',
     editing: false,
-    selected_material: null, // 用于相似匹配的选中物资
-    selected_price_quarter: null, // 用于相似匹配的选中价格和季度
-    price_quarter_options: [], // 用于存储价格和季度选项
-    original_item: item, // 保留原始数据，方便后续操作
-    initialMatchedDataId: item.matchedDataId || null, // 新增初始匹配数据ID快照
-    initialMatchedPriceId: item.matchedPriceId || null, // 新增初始价格ID快照
-    isUserConfirmed: false // 新增字段，标记用户是否手动确认过
+    selected_material: null,
+    selected_price_quarter: null,
+    price_quarter_options: [],
+    original_item: item,
+    initialMatchedDataId: item.matchedDataId || null,
+    initialMatchedPriceId: item.matchedPriceId || null,
+    isUserConfirmed: false
   }
 
   if ([2, 3].includes(item.comparison_result) && Array.isArray(item.subData)) {
@@ -309,17 +280,14 @@ const formatMaterialDetail = (item) => {
       }
     })
 
-    // 尝试回显当前匹配的物资和价格季度
     const currentMatchedMaterial = formattedItem.similar_matches.find(
       (sub) => sub.matched_id === item.matchedDataId
     )
 
     if (currentMatchedMaterial) {
       formattedItem.selected_material = currentMatchedMaterial
-      // 立即获取并设置价格季度选项
       fetchPriceInfoList(currentMatchedMaterial.matched_id).then((prices) => {
         formattedItem.price_quarter_options = prices
-        // 如果匹配价格为空，则不默认选中任何价格季度
         if (
           item.matchedPrice === null ||
           item.matchedPrice === undefined ||
@@ -333,17 +301,14 @@ const formatMaterialDetail = (item) => {
           if (currentMatchedPriceQuarter) {
             formattedItem.selected_price_quarter = currentMatchedPriceQuarter
           } else if (prices.length > 0) {
-            // 如果当前匹配的价格季度不存在，但有其他价格选项，则默认选中第一个
             formattedItem.selected_price_quarter = prices[0]
           }
         }
       })
     } else if (formattedItem.similar_matches.length > 0) {
-      // 如果没有精确匹配的物资，但有相似物资，则默认选中第一个相似物资
       formattedItem.selected_material = formattedItem.similar_matches[0]
       fetchPriceInfoList(formattedItem.selected_material.matched_id).then((prices) => {
         formattedItem.price_quarter_options = prices
-        // 默认选中第一个价格选项，除非匹配价格为空
         if (
           item.matchedPrice === null ||
           item.matchedPrice === undefined ||
@@ -362,104 +327,79 @@ const formatMaterialDetail = (item) => {
   return formattedItem
 }
 
-// 获取价格和季度信息
 const fetchPriceInfoList = async (baseMaterialsDataId) => {
   return await MaterialService.queryPriceInfoList(baseMaterialsDataId)
 }
 
-// 处理分页变化
 const handlePageChange = (newPage) => {
   currentPage.value = newPage
   fetchMaterialDetail(newPage, pageSize.value)
 }
 
-// 处理页长变化
 const handleSizeChange = (newSize) => {
   pageSize.value = newSize
-  currentPage.value = 1 // 页长变化后回到第一页
+  currentPage.value = 1
   fetchMaterialDetail(currentPage.value, newSize)
 }
 
 watch(
-  () => props.modelValue,
-  (newVal) => {
-    if (newVal) {
-      // 弹窗打开时，如果 taskId 和 detailId 都存在，则加载数据
-      if (props.taskId && props.detailId) {
-        currentPage.value = 1 // 每次打开弹窗都回到第一页
-        pageSize.value = 10 // 每次打开弹窗都重置 pageSize
-        fetchMaterialDetail()
-      }
-    } else {
-      // 弹窗关闭时清空数据并重置分页状态
-      tableData.value = []
-      totalDetails.value = 0
+  () => [route.query.taskId, route.query.detailId],
+  ([newTaskId, newDetailId]) => {
+    taskId.value = newTaskId
+    detailId.value = newDetailId
+    if (newTaskId && newDetailId) {
       currentPage.value = 1
-      pageSize.value = 10
-    }
-  }
-)
-
-watch(
-  () => [props.taskId, props.detailId],
-  ([newTaskId, newDetailId], [oldTaskId, oldDetailId]) => {
-    // 只有当 taskId 或 detailId 发生变化，并且弹窗当前是可见的，才重新加载数据
-    if (props.modelValue && (newTaskId !== oldTaskId || newDetailId !== oldDetailId)) {
-      currentPage.value = 1 // 重置分页
       pageSize.value = 10
       fetchMaterialDetail()
     }
   },
-  { deep: true }
+  { immediate: true }
 )
+
+onMounted(() => {
+  if (taskId.value && detailId.value) {
+    fetchMaterialDetail()
+  }
+})
 
 const getMatchTypeTag = (type) => {
   if (type === '精确匹配') return 'success'
   if (type === '相似匹配' || type === '历史匹配') return 'warning'
   if (type === '无匹配') return 'danger'
-  return 'info' // For '未知' or other types
+  return 'info'
 }
 
-// 处理物资选择下拉框变化
 const handleMaterialSelectChange = async (row, selectedMaterial) => {
   row.selected_material = selectedMaterial
-  row.selected_price_quarter = null // 重置价格季度选择
-  row.price_quarter_options = [] // 清空价格季度选项
+  row.selected_price_quarter = null
+  row.price_quarter_options = []
 
   if (selectedMaterial && selectedMaterial.matched_id) {
     const prices = await fetchPriceInfoList(selectedMaterial.matched_id)
     row.price_quarter_options = prices
-    // 如果只有一个价格选项，则自动选中
     if (prices.length === 1) {
       row.selected_price_quarter = prices[0]
-      handlePriceQuarterChange(row, prices[0]) // 自动触发价格季度变化处理
+      handlePriceQuarterChange(row, prices[0])
     }
   }
-  // 标记为用户已确认，因为用户手动选择了物资
   row.isUserConfirmed = true
 }
 
-// 处理价格和季度下拉框变化
 const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
   row.selected_price_quarter = selectedPriceQuarter
 
-  // 更新表格显示数据
   if (row.selected_material) {
     row.matched_name = row.selected_material.name
     row.matched_specification = row.selected_material.specification
   }
   if (selectedPriceQuarter) {
     row.matched_price = selectedPriceQuarter.taxPrice
-    // 相似度只由物资信息控制，不在此处修改
-    // 假设 matchedPriceQuarter 字段需要更新
     row.original_item.matchedPriceQuarter = selectedPriceQuarter.quarter
   } else {
     row.matched_price = null
-    // 相似度只由物资信息控制，不在此处修改
     row.original_item.matchedPriceQuarter = null
   }
 
-  // 更新原始数据中的匹配相关字段，以便保存时使用
   const originalItem = row.original_item
   if (originalItem) {
     originalItem.matchedDataId = row.selected_material?.matched_id || null
@@ -467,27 +407,18 @@ const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
     originalItem.matchedDataMaterialName = row.selected_material?.name || null
     originalItem.matchedDataSpecificationModel = row.selected_material?.specification || null
     originalItem.matchedPrice = selectedPriceQuarter?.taxPrice || null
-    // originalItem.matchedScore = row.selected_material?.similarity || null // 相似度只由物资信息控制，不在此处修改
     originalItem.matchedPriceQuarter = selectedPriceQuarter?.quarter || null
-    originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
-    row.isUserConfirmed = true // 标记为用户已确认
+    originalItem.comparison_result = 1
+    row.isUserConfirmed = true
   }
   console.log('【诊断】更新后的 row:', row)
 }
 
-/**
- * 处理“修改”按钮点击事件
- * 根据不同匹配类型弹出不同选择弹窗
- * 对于“无匹配”和“未知”类型，调用分页接口获取匹配数据分页
- * 对于其他类型，直接打开弹窗（不会影响相似匹配下拉选择器）
- */
 const handleEdit = async (row) => {
   currentRow.value = row
   if (row.match_type === '无匹配' || !row.match_type || row.match_type === '未知') {
-    // 初始化弹窗分页参数
     showSelectionPageNum.value = 1
     showSelectionPageSize.value = 10
-    // 调用分页接口，获取匹配列表数据
     await fetchSelectionList(showSelectionPageNum.value, showSelectionPageSize.value)
     showSelectionDialog.value = true
   } else {
@@ -495,10 +426,6 @@ const handleEdit = async (row) => {
   }
 }
 
-/**
- * 通过传入分页参数调用分页工作流接口获取数据
- * 与相似匹配的下拉框逻辑无任何影响，使用单独状态管理
- */
 const fetchSelectionList = async (pageNum, pageSize) => {
   loading.value = true
   try {
@@ -525,13 +452,11 @@ const fetchSelectionList = async (pageNum, pageSize) => {
   }
 }
 
-// 弹窗分页页码变化事件
 const handleSelectionPageChange = async (newPage) => {
   showSelectionPageNum.value = newPage
   await fetchSelectionList(newPage, showSelectionPageSize.value)
 }
 
-// 弹窗分页页大小变化事件
 const handleSelectionSizeChange = async (newSize) => {
   showSelectionPageSize.value = newSize
   showSelectionPageNum.value = 1
@@ -554,7 +479,7 @@ const handleMaterialSelect = (selectedMaterial) => {
       selectedMaterial.ymtd_specification_model ||
       selectedMaterial.specification
     if (currentRow.value.original_item) {
-      currentRow.value.original_item.comparison_result = 3 // 手动选择后，设置为手动匹配 (假设3代表手动匹配)
+      currentRow.value.original_item.comparison_result = 3
       currentRow.value.original_item.matchedDataId =
         selectedMaterial.m_id || selectedMaterial.ymmr_id || selectedMaterial.id || null
       currentRow.value.original_item.matchedPriceId =
@@ -575,41 +500,31 @@ const handleMaterialSelect = (selectedMaterial) => {
       currentRow.value.original_item.matchedScore = selectedMaterial.ymmr_score || null
       currentRow.value.original_item.matchedPriceQuarter = selectedMaterial.quarter || null
 
-      // 【错误代码已移除】不再同步修改初始快照
-      // currentRow.value.initialMatchedDataId = currentRow.value.original_item.matchedDataId
-      // currentRow.value.initialMatchedPriceId = currentRow.value.original_item.matchedPriceId
-
       console.log('【诊断】更新后:', {
-        initialId: currentRow.value.initialMatchedDataId, // 应保持不变
-        originalId: currentRow.value.original_item.matchedDataId // 已更新
+        initialId: currentRow.value.initialMatchedDataId,
+        originalId: currentRow.value.original_item.matchedDataId
       })
-      currentRow.value.isUserConfirmed = true // 标记为用户已确认
+      currentRow.value.isUserConfirmed = true
     }
   }
   showSelectionDialog.value = false
 }
-// 保持相似匹配下拉框的选择逻辑不变
 
 const handleSaveEdit = (row) => {
   row.editing = false
-  // You might want to add validation here
-  // ElMessage.success('修改已保存')
 }
 
 const handleCancelEdit = (row) => {
   row.editing = false
-  // Here you might want to revert changes if you stored the original state
 }
 
 const handleSave = async () => {
   saving.value = true
   try {
-    // 只保存用户编辑过变动的数据
     const updateObjList = tableData.value
       .filter((item) => {
-        // 对比行数据层id和快照，识别有变化的数据
         const isModified =
-          item.isUserConfirmed || // 如果用户手动确认过
+          item.isUserConfirmed ||
           item.original_item.matchedDataId !== item.initialMatchedDataId ||
           item.original_item.matchedPriceId !== item.initialMatchedPriceId
         console.log(
@@ -630,15 +545,14 @@ const handleSave = async () => {
       return
     }
 
-    const saveWorkflowId = '7519356799683919872' // 乙供物资保存工作流id
+    const saveWorkflowId = '7519356799683919872'
     const saveResult = await cozeService.runWorkflow(saveWorkflowId, { updateObjList })
 
     if (saveResult && saveResult.data) {
       ElMessage.success('保存成功')
       const savedCount = JSON.parse(saveResult.data).output
-      const materialType = '乙供物资' // 根据对话框标题确定类型
+      const materialType = '乙供物资'
       chatStore.addMessage(`已保存${savedCount}个${materialType}解析结果`, 'system')
-      // handleClose()
     } else {
       throw new Error('保存操作未返回有效结果。')
     }
@@ -650,13 +564,36 @@ const handleSave = async () => {
   }
 }
 
-const handleClose = () => {
-  dialogVisible.value = false
+const handleBack = () => {
+  router.back()
 }
 </script>
 
 <style scoped>
-.material-detail-dialog .el-dialog__body {
+.material-detail-page {
   padding: 20px;
+  background-color: #fff;
+  min-height: 100vh;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.page-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #eee;
 }
 </style>

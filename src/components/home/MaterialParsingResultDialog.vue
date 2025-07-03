@@ -65,11 +65,6 @@
       </span>
     </template>
   </el-dialog>
-  <MaterialDetailDialog
-    v-model="showMaterialDetailDialog"
-    :taskId="currentTaskIdForDetail"
-    :detailId="currentDetailIdForDetail"
-  />
   <OwnerMaterialTaskParsingDetailDialog
     v-model="showOwnerMaterialTaskParsingDetailDialog"
     :taskId="currentTaskIdForDetail"
@@ -79,8 +74,8 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import MaterialDetailDialog from './MaterialDetailDialog.vue'
 import OwnerMaterialTaskParsingDetailDialog from './OwnerMaterialTaskParsingDetailDialog.vue'
+import { useRouter } from 'vue-router' // 导入 useRouter
 
 const props = defineProps({
   show: {
@@ -178,10 +173,13 @@ const handleClose = () => {
   dialogVisible.value = false
 }
 
+const router = useRouter() // 将 useRouter 移动到顶层
+
 const handleViewDetailFromTaskParsing = ({ detailId, taskId }) => {
-  currentDetailIdForDetail.value = detailId
-  currentTaskIdForDetail.value = taskId
-  showMaterialDetailDialog.value = true
+  router.push({
+    path: '/material-detail',
+    query: { taskId, detailId }
+  })
 }
 </script>
 
