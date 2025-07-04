@@ -53,38 +53,47 @@ const headerMapping = {
   matched_price: '匹配价格',
   similarity: '相似度',
   match_type: '匹配类型'
-};
+}
 
 export const translateHeader = (prop) => {
-  return headerMapping[prop] || prop;
-};
+  return headerMapping[prop] || prop
+}
 
 export const formatCellValue = (value) => {
   if (value === null || value === undefined || value === '') {
-    return '/';
+    return '/'
   }
+  // 将数字0和1转换为布尔值对应的“是”和“否”
+  if (typeof value === 'number') {
+    if (value === 0) {
+      return '否'
+    } else if (value === 1) {
+      return '是'
+    }
+  }
+  // 处理布尔值
   if (typeof value === 'boolean') {
-    return value ? '是' : '否';
+    return value ? '是' : '否'
   }
-  return value;
-};
+  return value
+}
 
 export const formatDuration = (seconds) => {
-  if (seconds < 0) seconds = 0;
+  if (seconds < 0) seconds = 0
 
-  const d = Math.floor(seconds / (3600 * 24));
-  const h = Math.floor((seconds % (3600 * 24)) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
+  const d = Math.floor(seconds / (3600 * 24))
+  const h = Math.floor((seconds % (3600 * 24)) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
 
-  let parts = [];
-  if (d > 0) parts.push(`${d}d`);
-  if (h > 0) parts.push(`${h}h`);
-  if (m > 0) parts.push(`${m}m`);
-  if (s > 0 || parts.length === 0) parts.push(`${s}s`);
+  let parts = []
+  if (d > 0) parts.push(`${d}d`)
+  if (h > 0) parts.push(`${h}h`)
+  if (m > 0) parts.push(`${m}m`)
+  if (s > 0 || parts.length === 0) parts.push(`${s}s`)
 
-  return parts.join(' ');
-};
+  return parts.join(' ')
+}
 
 // 模拟结果生成函数 (从 HomeView.vue 迁移过来)
 export const generateMockResult = (func, duration) => {
@@ -95,7 +104,7 @@ export const generateMockResult = (func, duration) => {
     processedItems: Math.floor(Math.random() * 1000) + 100,
     successRate: Math.floor(Math.random() * 20) + 80,
     timestamp: new Date().toLocaleString()
-  };
+  }
 
   switch (func.id) {
     case 'chat':
@@ -103,7 +112,7 @@ export const generateMockResult = (func, duration) => {
         ...baseResult,
         output: `基于您的输入，我为您生成了以下回复：\n\n这是一个智能生成的对话回复示例。AI系统已经分析了您的问题，并提供了相关的解答。本次对话处理了${baseResult.processedItems}个token，生成质量评分为${baseResult.successRate}%。`,
         files: []
-      };
+      }
 
     case 'analysis':
       return {
@@ -119,7 +128,7 @@ export const generateMockResult = (func, duration) => {
           { name: 'analysis_report.pdf', size: '2.3MB', url: '#' },
           { name: 'data_visualization.png', size: '856KB', url: '#' }
         ]
-      };
+      }
 
     case 'documents':
       return {
@@ -133,7 +142,7 @@ export const generateMockResult = (func, duration) => {
           { name: 'document_summary.txt', size: '45KB', url: '#' },
           { name: 'keywords_extracted.json', size: '12KB', url: '#' }
         ]
-      };
+      }
 
     case 'search':
       return {
@@ -145,7 +154,7 @@ export const generateMockResult = (func, duration) => {
           { 标题: '深度学习算法优化', 相关度: '85%', 来源: '技术文档' }
         ],
         files: []
-      };
+      }
 
     case 'automation':
       return {
@@ -164,7 +173,7 @@ export const generateMockResult = (func, duration) => {
           { name: 'automation_log.txt', size: '128KB', url: '#' },
           { name: 'processed_files.zip', size: '15.6MB', url: '#' }
         ]
-      };
+      }
 
     case 'ownerSuppliedMaterialParsing':
       return {
@@ -202,13 +211,13 @@ export const generateMockResult = (func, duration) => {
           { name: '甲供物资解析报告.pdf', size: '1.2MB', url: '#' },
           { name: '甲供物资清单.xlsx', size: '50KB', url: '#' }
         ]
-      };
+      }
 
     default:
       return {
         ...baseResult,
         output: '任务执行完成，结果已生成。',
         files: []
-      };
+      }
   }
-};
+}
