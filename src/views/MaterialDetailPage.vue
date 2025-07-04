@@ -31,9 +31,10 @@
           <span>{{ scope.row.matched_specification || '/' }}</span>
         </template>
       </el-table-column>
+
       <el-table-column prop="matched_price" label="匹配价格">
         <template #default="scope">
-          <span>{{ scope.row.matched_price || '/' }}</span>
+          <span>{{ getPrice(scope.row.matched_price, scope.row.matchedPriceQuarter) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="similarity" label="相似度">
@@ -276,6 +277,7 @@ const formatMaterialDetail = (item) => {
     matched_name: item.matchedDataMaterialName,
     matched_specification: item.matchedDataSpecificationModel,
     matched_price: item.matchedPrice,
+    matchedPriceQuarter: item.matchedPriceQuarter || null, // 添加 matchedPriceQuarter 属性
     similarity: typeof item.matchedScore === 'number' ? item.matchedScore + '%' : '/',
     match_type: matchTypeMap[item.comparison_result] || '未知',
     editing: false,
@@ -348,7 +350,12 @@ const formatMaterialDetail = (item) => {
   }
   return formattedItem
 }
-
+const getPrice = (price, quarter) => {
+  if (price === null || price === undefined || price === '') {
+    return '/'
+  }
+  return `¥${price} (${quarter})`
+}
 const fetchPriceInfoList = async (baseMaterialsDataId) => {
   return await MaterialService.queryPriceInfoList(baseMaterialsDataId)
 }
@@ -423,9 +430,11 @@ const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
   }
   if (selectedPriceQuarter) {
     row.matched_price = selectedPriceQuarter.taxPrice
+    row.matchedPriceQuarter = selectedPriceQuarter.quarter // 更新 row.matchedPriceQuarter
     row.original_item.matchedPriceQuarter = selectedPriceQuarter.quarter
   } else {
     row.matched_price = null
+    row.matchedPriceQuarter = null // 更新 row.matchedPriceQuarter
     row.original_item.matchedPriceQuarter = null
   }
 
