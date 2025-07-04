@@ -24,9 +24,10 @@ const router = createRouter({
       component: () => import('../views/AboutView.vue')
     },
     {
-      path: '/material-detail',
-      name: 'material-detail',
-      component: () => import('../views/MaterialDetailPage.vue')
+      path: '/material-detail/:taskId', // 添加 taskId 参数
+      name: 'MaterialDetailPage', // 路由名称与 HomeView.vue 中 router.push 的 name 保持一致
+      component: () => import('../views/MaterialDetailPage.vue'),
+      props: true // 允许组件通过 props 接收路由参数
     },
     {
       path: '/owner-material-detail',

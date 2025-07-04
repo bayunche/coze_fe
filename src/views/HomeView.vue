@@ -185,7 +185,22 @@ const handleViewResultDetail = async (taskIdFromMessage) => {
 
 // 修改 handleViewMaterialResultDetail 方法以打开 MaterialParsingResultDialog
 const handleViewMaterialResultDetail = (taskId) => {
-  materialDialogStore.handleViewMaterialResultDetail(taskId)
+  if (taskId) {
+    materialDialogStore.ownerMaterialTaskParsingDetailTaskId = taskId // 设置任务ID
+    materialDialogStore.showOwnerMaterialTaskParsingDetailDialog = true // 打开乙供物资任务详情列表弹窗
+  } else {
+    ElMessage.warning('没有可供解析的乙供物资任务ID。')
+  }
+}
+
+// 新增处理 OwnerMaterialTaskParsingDetailDialog 内部的 view-detail 事件
+const handleViewOwnerMaterialDetail = (row) => {
+  // 这个函数现在由 OwnerMaterialTaskParsingDetailDialog 内部的 router.push 替代
+  // 理论上这里不需要做任何事情，或者可以添加一些日志
+  console.log(
+    '【诊断】HomeView - 接收到 OwnerMaterialTaskParsingDetailDialog 的 view-detail 事件:',
+    row
+  )
 }
 
 const executeWorkflow = async () => {

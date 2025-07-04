@@ -59,10 +59,22 @@ export const translateHeader = (prop) => {
   return headerMapping[prop] || prop
 }
 
-export const formatCellValue = (value) => {
+export const formatCellValue = (value, prop) => {
   if (value === null || value === undefined || value === '') {
     return '/'
   }
+
+  // 特殊处理 result_status 字段
+  if (prop === 'result_status' && typeof value === 'number') {
+    if (value === 0) {
+      return '解析完成'
+    } else if (value === 1) {
+      return '解析成功'
+    } else if (value === -1) {
+      return '解析失败'
+    }
+  }
+
   // 将数字0和1转换为布尔值对应的“是”和“否”
   if (typeof value === 'number') {
     if (value === 0) {

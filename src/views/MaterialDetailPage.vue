@@ -165,17 +165,19 @@ import CozeService from '@/uitls/coze.js'
 import { useChatStore } from '@/stores/chat.js'
 import MaterialService from '@/services/MaterialService.js'
 import { useRoute, useRouter } from 'vue-router'
+import { useWorkflowStore } from '@/stores/workflow.js' // 引入 workflowStore
 
 const cozeService = new CozeService(
   'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
 )
 
 const chatStore = useChatStore()
+const workflowStore = useWorkflowStore() // 初始化 workflowStore
 const route = useRoute()
 const router = useRouter()
 
-const taskId = ref(route.query.taskId)
-const detailId = ref(route.query.detailId)
+const taskId = ref(route.params.taskId) // 从 route.params 获取 taskId
+const detailId = ref(route.query.detailId) // detailId 仍然从 query 获取，或者后续根据 taskId 动态获取
 
 const loading = ref(false)
 const saving = ref(false)
@@ -196,11 +198,31 @@ const fetchMaterialDetail = async (page = currentPage.value, size = pageSize.val
   loading.value = true
   tableData.value = []
 
+  // 确保 taskId 存在
+  if (!taskId.value) {
+    ElMessage.warning('任务ID缺失，无法加载详情。')
+    loading.value = false
+    return
+  }
+
+  // 如果 detailId 不存在，尝试从 workflowStore 中获取第一个 supplierFileDetailIds
+  let currentDetailId = detailId.value
+  if (!currentDetailId && workflowStore.supplierFileDetailIds.length > 0) {
+    currentDetailId = workflowStore.supplierFileDetailIds[0]
+    console.log('【诊断】使用 workflowStore 中的第一个 detailId:', currentDetailId)
+  }
+
+  if (!currentDetailId) {
+    ElMessage.warning('详情ID缺失，无法加载详情。')
+    loading.value = false
+    return
+  }
+
   try {
     const detailWorkflowId = '7519045874770657299'
     const workflowParams = {
       taskId: taskId.value,
-      task_detail_id: detailId.value,
+      task_detail_id: currentDetailId, // 使用处理后的 detailId
       index: page,
       pageSize: size
     }
@@ -343,11 +365,11 @@ const handleSizeChange = (newSize) => {
 }
 
 watch(
-  () => [route.query.taskId, route.query.detailId],
-  ([newTaskId, newDetailId]) => {
+  () => route.params.taskId, // 监听 route.params.taskId
+  (newTaskId) => {
     taskId.value = newTaskId
-    detailId.value = newDetailId
-    if (newTaskId && newDetailId) {
+    // detailId.value 保持不变，或者根据需要从 workflowStore 获取
+    if (newTaskId) {
       currentPage.value = 1
       pageSize.value = 10
       fetchMaterialDetail()
@@ -355,6 +377,13 @@ watch(
   },
   { immediate: true }
 )
+
+// 确保在组件挂载时，如果 taskId 存在，就尝试获取数据
+onMounted(() => {
+  if (taskId.value) {
+    fetchMaterialDetail()
+  }
+})
 
 onMounted(() => {
   if (taskId.value && detailId.value) {

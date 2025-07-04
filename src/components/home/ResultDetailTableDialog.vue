@@ -23,7 +23,7 @@
           >
             <template #default="scope">
               <span v-if="!scope.row.editing">{{
-                parsingResultStore.formatCellValue(scope.row[column.prop])
+                parsingResultStore.formatCellValue(scope.row[column.prop], column.prop)
               }}</span>
               <template v-else>
                 <div v-if="parsingResultStore.isLongText(scope.row[column.prop])">
