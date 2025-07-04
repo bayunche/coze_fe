@@ -94,9 +94,9 @@
               v-model="scope.row.selected_material"
               placeholder="选择物资"
               value-key="matched_id"
+              @change="handleMaterialSelectChange(scope.row, $event)"
               :popper-append-to-body="false"
               style="width: 100%; margin-bottom: 5px"
-              disabled
             >
               <el-option
                 v-for="item in scope.row.similar_matches"
@@ -109,9 +109,9 @@
               v-model="scope.row.selected_price_quarter"
               placeholder="选择价格和季度"
               value-key="id"
+              @change="handlePriceQuarterChange(scope.row, $event)"
               :popper-append-to-body="false"
               style="width: 100%"
-              disabled
             >
               <el-option
                 v-for="item in scope.row.price_quarter_options"
@@ -591,12 +591,17 @@ const handleMaterialSelect = (selectedMaterial) => {
 
     currentRow.value.matched_name =
       selectedMaterial.material_name || selectedMaterial.ymtd_material_name || selectedMaterial.name
-    currentRow.value.matched_price =
+    const newMatchedPrice =
       selectedMaterial.tax_price || selectedMaterial.ymtd_tax_price || selectedMaterial.price
+    const newMatchedQuarter = selectedMaterial.quarter || null // 获取季度信息
+
+    currentRow.value.matched_price = newMatchedPrice
+    currentRow.value.matchedPriceQuarter = newMatchedQuarter // 更新表格显示用的 matchedPriceQuarter
     currentRow.value.matched_specification =
       selectedMaterial.specification_model ||
       selectedMaterial.ymtd_specification_model ||
       selectedMaterial.specification
+
     if (currentRow.value.original_item) {
       currentRow.value.original_item.comparison_result = 3
       currentRow.value.original_item.matchedDataId =
@@ -614,10 +619,9 @@ const handleMaterialSelect = (selectedMaterial) => {
         selectedMaterial.specification_model ||
         selectedMaterial.ymtd_specification_model ||
         selectedMaterial.specification
-      currentRow.value.original_item.matchedPrice =
-        selectedMaterial.tax_price || selectedMaterial.ymmr_price || selectedMaterial.price
+      currentRow.value.original_item.matchedPrice = newMatchedPrice // 使用新的匹配价格
       currentRow.value.original_item.matchedScore = selectedMaterial.ymmr_score || null
-      currentRow.value.original_item.matchedPriceQuarter = selectedMaterial.quarter || null
+      currentRow.value.original_item.matchedPriceQuarter = newMatchedQuarter // 使用新的匹配季度
 
       console.log('【诊断】更新后:', {
         initialId: currentRow.value.initialMatchedDataId,
