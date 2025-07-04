@@ -88,7 +88,36 @@
             </div>
           </div>
           <div v-else-if="scope.row.match_type === '精确匹配'">
-            <el-button type="info" disabled>已精确匹配</el-button>
+            <el-select
+              v-model="scope.row.selected_material"
+              placeholder="选择物资"
+              value-key="matched_id"
+              :popper-append-to-body="false"
+              style="width: 100%; margin-bottom: 5px"
+              disabled
+            >
+              <el-option
+                v-for="item in scope.row.similar_matches"
+                :key="item.matched_id || item.id"
+                :label="item.name + ' ' + item.specification"
+                :value="item"
+              ></el-option>
+            </el-select>
+            <el-select
+              v-model="scope.row.selected_price_quarter"
+              placeholder="选择价格和季度"
+              value-key="id"
+              :popper-append-to-body="false"
+              style="width: 100%"
+              disabled
+            >
+              <el-option
+                v-for="item in scope.row.price_quarter_options"
+                :key="item.id"
+                :label="`¥${item.taxPrice} (${item.quarter})`"
+                :value="item"
+              ></el-option>
+            </el-select>
           </div>
           <div v-else-if="['相似匹配', '历史匹配'].includes(scope.row.match_type)">
             <el-select
@@ -290,6 +319,7 @@ const formatMaterialDetail = (item) => {
     isUserConfirmed: false
   }
 
+  // 处理相似匹配和历史匹配
   if ([2, 3].includes(item.comparison_result) && Array.isArray(item.subData)) {
     formattedItem.similar_matches = item.subData.map((sub) => {
       return {
@@ -344,6 +374,51 @@ const formatMaterialDetail = (item) => {
         }
       })
     }
+  } else if (item.comparison_result === 1) {
+    // 精确匹配情况，初始化 selected_material 和 selected_price_quarter
+    formattedItem.similar_matches = [
+      {
+        id: item.matchedDataId,
+        matched_id: item.matchedDataId,
+        matchedPriceId: item.matchedPriceId,
+        name: item.matchedDataMaterialName,
+        specification: item.matchedDataSpecificationModel,
+        price: item.matchedPrice,
+        similarity: item.matchedScore,
+        matchedPriceQuarter: item.matchedPriceQuarter
+      }
+    ]
+    formattedItem.selected_material = formattedItem.similar_matches[0]
+    // 对于精确匹配，直接设置 selected_price_quarter
+    if (item.matchedPrice !== null && item.matchedPriceQuarter !== null) {
+      formattedItem.selected_price_quarter = {
+        id: item.matchedPriceId,
+        taxPrice: item.matchedPrice,
+        quarter: item.matchedPriceQuarter
+      }
+      // 确保 price_quarter_options 包含这个精确匹配的价格，以便下拉框能正确回显
+      formattedItem.price_quarter_options = [formattedItem.selected_price_quarter]
+    } else {
+      formattedItem.selected_price_quarter = null
+      formattedItem.price_quarter_options = []
+    }
+    // 仍然获取所有价格选项，以便将来可能需要切换
+    fetchPriceInfoList(item.matchedDataId).then((prices) => {
+      // 合并或更新 price_quarter_options，确保精确匹配的价格始终存在
+      if (
+        formattedItem.selected_price_quarter &&
+        !prices.some(
+          (p) =>
+            p.id === formattedItem.selected_price_quarter.id &&
+            p.taxPrice === formattedItem.selected_price_quarter.taxPrice &&
+            p.quarter === formattedItem.selected_price_quarter.quarter
+        )
+      ) {
+        formattedItem.price_quarter_options = [formattedItem.selected_price_quarter, ...prices]
+      } else {
+        formattedItem.price_quarter_options = prices
+      }
+    })
   } else {
     formattedItem.similar_matches = []
     formattedItem.price_quarter_options = []
