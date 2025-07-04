@@ -63,7 +63,7 @@
                 <el-option
                   v-for="item in scope.row.similar_matches"
                   :key="item.matched_id || item.id"
-                  :label="item.name + ' ' + item.specification"
+                  :label="`${item.name || '/'} ${item.specification || '/'}`"
                   :value="item"
                 ></el-option>
               </el-select>
@@ -78,7 +78,9 @@
                 <el-option
                   v-for="item in scope.row.price_quarter_options"
                   :key="item.id"
-                  :label="`¥${item.taxPrice} (${item.quarter})`"
+                  :label="`¥${
+                    item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
+                  } (${item.quarter || '/'})`"
                   :value="item"
                 ></el-option>
               </el-select>
@@ -99,7 +101,7 @@
               <el-option
                 v-for="item in scope.row.similar_matches"
                 :key="item.matched_id || item.id"
-                :label="item.name + ' ' + item.specification"
+                :label="`${item.name || '/'} ${item.specification || '/'}`"
                 :value="item"
               ></el-option>
             </el-select>
@@ -114,7 +116,9 @@
               <el-option
                 v-for="item in scope.row.price_quarter_options"
                 :key="item.id"
-                :label="`¥${item.taxPrice} (${item.quarter})`"
+                :label="`¥${
+                  item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
+                } (${item.quarter || '/'})`"
                 :value="item"
               ></el-option>
             </el-select>
@@ -131,7 +135,7 @@
               <el-option
                 v-for="item in scope.row.similar_matches"
                 :key="item.matched_id || item.id"
-                :label="item.name + ' ' + item.specification"
+                :label="`${item.name || '/'} ${item.specification || '/'}`"
                 :value="item"
               ></el-option>
             </el-select>
@@ -146,7 +150,9 @@
               <el-option
                 v-for="item in scope.row.price_quarter_options"
                 :key="item.id"
-                :label="`¥${item.taxPrice} (${item.quarter})`"
+                :label="`¥${
+                  item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
+                } (${item.quarter || '/'})`"
                 :value="item"
               ></el-option>
             </el-select>
