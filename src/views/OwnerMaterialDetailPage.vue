@@ -19,12 +19,17 @@
     <el-table
       :data="tableData"
       :span-method="arraySpanMethod"
+      :row-class-name="tableRowClassName"
       style="width: 100%; margin-top: 20px"
       border
       stripe
       class="material-table"
     >
-      <el-table-column type="index" label="序号" width="60"></el-table-column>
+      <el-table-column label="序号" width="60">
+        <template #default="{ row, $index }">
+          <span v-if="shouldShowIndex(row, $index)">{{ getMergedIndex($index) }}</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="materialName" label="物资名称" min-width="150">
         <template #default="scope">
           <span v-if="!scope.row.editing">{{ scope.row.materialName || '/' }}</span>
@@ -93,21 +98,6 @@
           ></el-input>
         </template>
       </el-table-column>
-      <el-table-column label="操作" width="150" fixed="right">
-        <template #default="scope">
-          <div v-if="!scope.row.editing">
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)">编辑</el-button>
-          </div>
-          <div v-else>
-            <el-button type="success" size="small" @click="handleSaveEdit(scope.row)"
-              >保存</el-button
-            >
-            <el-button type="info" size="small" @click="handleCancelEdit(scope.row)"
-              >取消</el-button
-            >
-          </div>
-        </template>
-      </el-table-column>
     </el-table>
     <el-pagination
       background
@@ -139,6 +129,8 @@ const loading = ref(false)
 const saving = ref(false)
 const tableData = ref([])
 const originalData = ref([]) // 用于存储原始数据，以便进行diff
+const spanArr = ref([]) // 用于存储合并单元格的信息
+const pos = ref(0) // 用于辅助计算合并单元格
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -157,7 +149,7 @@ const mockData = [
     specifications: 'HRB400E Φ16',
     unit: '吨',
     applicationQuantity: 50,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-001',
     actualMaterialName: '螺纹钢',
     actualSpecifications: 'HRB400E Φ16',
@@ -171,7 +163,7 @@ const mockData = [
     specifications: 'HRB400E Φ16',
     unit: '吨',
     applicationQuantity: 50, // 申领数量不变，因为是针对这个规格型号的
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-002', // 不同的领料单
     actualMaterialName: '螺纹钢',
     actualSpecifications: 'HRB400E Φ16',
@@ -185,7 +177,7 @@ const mockData = [
     specifications: 'HRB400E Φ18',
     unit: '吨',
     applicationQuantity: 30,
-    matchingStatus: '未对平',
+    matchingStatus: 0, // 未退库
     actualSource: '领料单-2023-003',
     actualMaterialName: '螺纹钢',
     actualSpecifications: 'HRB400E Φ18',
@@ -199,7 +191,7 @@ const mockData = [
     specifications: 'C30',
     unit: '立方米',
     applicationQuantity: 120,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-004',
     actualMaterialName: '混凝土',
     actualSpecifications: 'C30',
@@ -213,7 +205,7 @@ const mockData = [
     specifications: 'C30',
     unit: '立方米',
     applicationQuantity: 120,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-005',
     actualMaterialName: '混凝土',
     actualSpecifications: 'C30',
@@ -227,7 +219,7 @@ const mockData = [
     specifications: 'C40',
     unit: '立方米',
     applicationQuantity: 80,
-    matchingStatus: '部分对平',
+    matchingStatus: 2, // 部分对平 -> 资料缺失
     actualSource: '领料单-2023-006',
     actualMaterialName: '混凝土',
     actualSpecifications: 'C40',
@@ -241,7 +233,7 @@ const mockData = [
     specifications: 'SBS改性沥青防水卷材 4mm',
     unit: '平方米',
     applicationQuantity: 300,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-007',
     actualMaterialName: '防水卷材',
     actualSpecifications: 'SBS改性沥青防水卷材 4mm',
@@ -255,7 +247,7 @@ const mockData = [
     specifications: '高分子防水卷材 1.5mm',
     unit: '平方米',
     applicationQuantity: 100,
-    matchingStatus: '未对平',
+    matchingStatus: 0, // 未退库
     actualSource: '领料单-2023-008',
     actualMaterialName: '防水卷材',
     actualSpecifications: '高分子防水卷材 1.5mm',
@@ -269,7 +261,7 @@ const mockData = [
     specifications: '挤塑聚苯板 XPS 50mm',
     unit: '平方米',
     applicationQuantity: 250,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-009',
     actualMaterialName: '保温板',
     actualSpecifications: '挤塑聚苯板 XPS 50mm',
@@ -283,7 +275,7 @@ const mockData = [
     specifications: '内墙乳胶漆 哑光',
     unit: '公斤',
     applicationQuantity: 80,
-    matchingStatus: '未对平',
+    matchingStatus: 0, // 未退库
     actualSource: '领料单-2023-010',
     actualMaterialName: '涂料',
     actualSpecifications: '内墙乳胶漆 哑光',
@@ -297,7 +289,7 @@ const mockData = [
     specifications: null,
     unit: null,
     applicationQuantity: null,
-    matchingStatus: '异常', // 标记为异常
+    matchingStatus: 2, // 资料缺失
     actualSource: '领料单-2023-017',
     actualMaterialName: '实际物资A',
     actualSpecifications: '实际规格A',
@@ -311,7 +303,7 @@ const mockData = [
     specifications: '',
     unit: '',
     applicationQuantity: null,
-    matchingStatus: '异常', // 标记为异常
+    matchingStatus: 2, // 资料缺失
     actualSource: '领料单-2023-018',
     actualMaterialName: '实际物资B',
     actualSpecifications: '实际规格B',
@@ -325,7 +317,7 @@ const mockData = [
     specifications: 'BV 2.5mm²',
     unit: '米',
     applicationQuantity: 1000,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-011',
     actualMaterialName: '电线',
     actualSpecifications: 'BV 2.5mm²',
@@ -339,7 +331,7 @@ const mockData = [
     specifications: 'RVV 4mm²',
     unit: '米',
     applicationQuantity: 500,
-    matchingStatus: '部分对平',
+    matchingStatus: 2, // 部分对平 -> 资料缺失
     actualSource: '领料单-2023-012',
     actualMaterialName: '电线',
     actualSpecifications: 'RVV 4mm²',
@@ -353,7 +345,7 @@ const mockData = [
     specifications: 'PPR 冷水管 DN25',
     unit: '米',
     applicationQuantity: 200,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-013',
     actualMaterialName: '水管',
     actualSpecifications: 'PPR 冷水管 DN25',
@@ -367,7 +359,7 @@ const mockData = [
     specifications: '抛光砖 800x800mm',
     unit: '平方米',
     applicationQuantity: 150,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-014',
     actualMaterialName: '瓷砖',
     actualSpecifications: '抛光砖 800x800mm',
@@ -381,7 +373,7 @@ const mockData = [
     specifications: '实木复合门 2100x900mm',
     unit: '樘',
     applicationQuantity: 10,
-    matchingStatus: '未对平',
+    matchingStatus: 0, // 未退库
     actualSource: '领料单-2023-015',
     actualMaterialName: '木门',
     actualSpecifications: '实木复合门 2100x900mm',
@@ -395,7 +387,7 @@ const mockData = [
     specifications: '钢化玻璃 8mm',
     unit: '平方米',
     applicationQuantity: 60,
-    matchingStatus: '已对平',
+    matchingStatus: 1, // 已对平
     actualSource: '领料单-2023-016',
     actualMaterialName: '玻璃',
     actualSpecifications: '钢化玻璃 8mm',
@@ -413,9 +405,14 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
     await new Promise((resolve) => setTimeout(resolve, 500))
     const start = (page - 1) * size
     const end = start + size
-    tableData.value = mockData.slice(start, end).map((item) => ({ ...item, original: { ...item } })) // 深拷贝原始数据
+    tableData.value = mockData.slice(start, end).map((item) => ({
+      ...item,
+      original: { ...item },
+      isMergedStart: false // 默认值，将在 getSpanArr 中更新
+    })) // 深拷贝原始数据
     originalData.value = mockData.slice(start, end).map((item) => ({ ...item })) // 存储原始数据副本
     totalDetails.value = mockData.length
+    getSpanArr(tableData.value) // 计算合并信息
 
     // 从路由参数获取项目信息，如果存在的话
     projectInfo.value.projectName = route.query.projectName || '项目名称占位'
@@ -520,46 +517,13 @@ const arraySpanMethod = ({ row, column, rowIndex, columnIndex }) => {
     'matchingStatus'
   ]
 
-  if (mergeColumns.includes(column.property)) {
-    const prevRow = tableData.value[rowIndex - 1]
-    const currentRow = tableData.value[rowIndex]
-
-    // 检查当前行和上一行的物资名称、规格型号、计量单位、申领数量、对平情况是否都相同
-    // 只有当这些字段都相同时，才进行合并
-    if (
-      prevRow &&
-      prevRow.materialName === currentRow.materialName &&
-      prevRow.specifications === currentRow.specifications &&
-      prevRow.unit === currentRow.unit &&
-      prevRow.applicationQuantity === currentRow.applicationQuantity &&
-      prevRow.matchingStatus === currentRow.matchingStatus
-    ) {
-      // 如果相同，则当前单元格隐藏，并向上合并
-      return {
-        rowspan: 0,
-        colspan: 0
-      }
-    } else {
-      // 否则，计算需要合并的行数
-      let rowspan = 1
-      for (let i = rowIndex + 1; i < tableData.value.length; i++) {
-        const nextRow = tableData.value[i]
-        if (
-          nextRow.materialName === currentRow.materialName &&
-          nextRow.specifications === currentRow.specifications &&
-          nextRow.unit === currentRow.unit &&
-          nextRow.applicationQuantity === currentRow.applicationQuantity &&
-          nextRow.matchingStatus === currentRow.matchingStatus
-        ) {
-          rowspan++
-        } else {
-          break
-        }
-      }
-      return {
-        rowspan: rowspan,
-        colspan: 1
-      }
+  // 如果是序号列 (columnIndex === 0) 或者需要合并的列
+  if (columnIndex === 0 || mergeColumns.includes(column.property)) {
+    const _row = spanArr.value[rowIndex]
+    const _col = _row > 0 ? 1 : 0
+    return {
+      rowspan: _row,
+      colspan: _col
     }
   }
   return {
@@ -571,17 +535,12 @@ const arraySpanMethod = ({ row, column, rowIndex, columnIndex }) => {
 // 根据对平情况返回ElTag的type
 const getMatchingStatusTagType = (status) => {
   switch (status) {
-    case '已对平':
-      return 'success' // 绿色
-    case '部分对平':
-      return 'warning' // 黄色
-    case '未对平':
-    case '异常': // 异常情况也用danger
-      return 'danger' // 红色
-    case '无匹配':
-      return 'info' // 灰色
+    case 1:
+      return 'success' // 绿色 - 已对平
+    case 0:
+      return 'warning' // 黄色 - 未退库
     default:
-      return '' // 默认
+      return 'danger' // 红色 - 资料缺失 (包括之前的 '部分对平' 和 '资料缺失')
   }
 }
 
@@ -592,6 +551,62 @@ const handleBack = () => {
 onMounted(() => {
   fetchOwnerMaterialDetail()
 })
+
+// 新增方法：为行添加类名
+const tableRowClassName = ({ row, rowIndex }) => {
+  if (row.isMergedStart) {
+    return 'merged-group-start'
+  } else if (spanArr.value[rowIndex] === 0) {
+    // 如果是合并组的一部分，但不是起始行
+    return 'merged-group-part'
+  }
+  return ''
+}
+
+// 新增方法：计算合并单元格的 spanArr
+const getSpanArr = (data) => {
+  spanArr.value = []
+  pos.value = 0
+  for (let i = 0; i < data.length; i++) {
+    if (i === 0) {
+      spanArr.value.push(1)
+      pos.value = 0
+      data[i].isMergedStart = true // 标记为合并起始行
+    } else {
+      // 判断当前行与上一行的合并条件是否满足
+      if (
+        data[i].materialName === data[i - 1].materialName &&
+        data[i].specifications === data[i - 1].specifications &&
+        data[i].unit === data[i - 1].unit &&
+        data[i].applicationQuantity === data[i - 1].applicationQuantity &&
+        data[i].matchingStatus === data[i - 1].matchingStatus
+      ) {
+        spanArr.value[pos.value] += 1
+        spanArr.value.push(0)
+        data[i].isMergedStart = false // 非起始行
+      } else {
+        spanArr.value.push(1)
+        pos.value = i
+        data[i].isMergedStart = true // 标记为合并起始行
+      }
+    }
+  }
+}
+
+// 新增方法：判断序号是否显示
+const shouldShowIndex = (row, index) => {
+  return spanArr.value[index] !== 0
+}
+
+// 新增方法：获取合并后的序号
+const getMergedIndex = (index) => {
+  // 序号应该基于当前页的起始序号
+  return (
+    (currentPage.value - 1) * pageSize.value +
+    spanArr.value.slice(0, index).filter((val) => val !== 0).length +
+    1
+  )
+}
 </script>
 
 <style scoped>
@@ -730,11 +745,33 @@ onMounted(() => {
     box-shadow 0.3s ease;
 }
 
-.material-table :deep(.el-table__row.el-table__row--striped) {
+.material-table :deep(.el-table__row.merged-group-start) {
+  background-color: rgba(0, 123, 255, 0.05) !important; /* 浅蓝色背景，区分合并组 */
+  border-top: 2px solid rgba(0, 123, 255, 0.2) !important; /* 顶部加粗边框 */
+}
+
+.material-table :deep(.el-table__row.merged-group-part) {
+  background-color: rgba(0, 123, 255, 0.05) !important; /* 与起始行相同的背景色 */
+}
+
+/* 确保条纹背景和hover效果在合并行上也能正常工作 */
+.material-table :deep(.el-table__row.el-table__row--striped.merged-group-start),
+.material-table :deep(.el-table__row.el-table__row--striped.merged-group-part) {
+  background-color: rgba(0, 123, 255, 0.05) !important; /* 覆盖条纹背景 */
+}
+
+.material-table :deep(.el-table__row.merged-group-start:hover),
+.material-table :deep(.el-table__row.merged-group-part:hover) {
+  background-color: rgba(0, 123, 255, 0.08) !important; /* 统一的hover效果 */
+}
+
+/* 原始的条纹和hover效果 */
+.material-table
+  :deep(.el-table__row.el-table__row--striped:not(.merged-group-start):not(.merged-group-part)) {
   background-color: #fcfcfc; /* 条纹背景 */
 }
 
-.material-table :deep(.el-table__row:hover) {
+.material-table :deep(.el-table__row:hover:not(.merged-group-start):not(.merged-group-part)) {
   background-color: rgba(0, 123, 255, 0.03) !important; /* hover 效果 */
   box-shadow: inset 0 0 8px rgba(0, 123, 255, 0.08);
 }
