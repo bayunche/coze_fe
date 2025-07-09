@@ -663,6 +663,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     setTaskIdCallback
   ) => {
     try {
+      // todo:需要改为调用后端接口流式返回消息
       await cozeWorkflowService.runWorkflow(
         workflowId,
         {
