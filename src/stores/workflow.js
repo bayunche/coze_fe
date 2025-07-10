@@ -5,7 +5,7 @@ import { functions } from '@/uitls/workflows.js'
 import CozeWorkflowService from '@/services/CozeWorkflowService'
 import CozeParsingService from '@/services/CozeParsingService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
-
+import { callStreamWorkflow } from '@/uitls/backendWorkflow.js'
 /**
  * @typedef {Object} FunctionParam
  * @property {string} key - 参数的键名
@@ -663,64 +663,87 @@ export const useWorkflowStore = defineStore('workflow', () => {
     setTaskIdCallback
   ) => {
     try {
-      // todo:需要改为调用后端接口流式返回消息
-      await cozeWorkflowService.runWorkflow(
-        workflowId,
+      loadingMessage.content = '任务解析已开始，正在接收数据...'
+      addMessageCallback(streamingAgentMessage)
+      streamingAgentMessage.content += '正在解析甲供物资，请稍候...\n'
+      // 这里不再调用 cozeParsingService.runOwnerMaterialParsing
+      // 改为调用后端接口流式返回消息
+      await callStreamWorkflow(
         {
-          file_ids: inputs.map((input) => input.file_id),
+          input: inputs.map((input) => input.file_id)[0],
           ...workflowConfig.params
         },
+        '1',
         {
-          onMessage(event) {
-            if (event.event === 'Message' && event.data.content_type === 'text') {
-              const content = event.data.content
+          onMessage: (event) => {
+            console.log(` 接收到消息: ${JSON.stringify(event)}`)
+            if (event.content && event.content !== '') {
+              const content = event.content
               let taskIdCandidate = null
               let displayText = null
-
-              if (typeof content === 'object' && content !== null) {
-                taskIdCandidate = content.task_id
-                if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
-              } else if (typeof content === 'string') {
+              let parsedContent = null
+              if (typeof content === 'string') {
                 try {
-                  const parsed = JSON.parse(content)
-                  taskIdCandidate = parsed?.task_id
-                  if (!taskIdCandidate) displayText = content
+                  parsedContent = JSON.parse(content)
                 } catch (e) {
                   displayText = content
+                }
+              } else if (typeof content === 'object' && content !== null) {
+                parsedContent = content
+              }
+
+              if (parsedContent) {
+                taskIdCandidate = parsedContent?.task_id
+                if (parsedContent?.task_id) {
+                  setTaskIdCallback(parsedContent.task_id) // 设置任务ID
+                }
+                if (!taskIdCandidate && !displayText) {
+                  displayText = JSON.stringify(parsedContent, null, 2)
                 }
               }
 
               if (taskIdCandidate) {
-                setTaskIdCallback(taskIdCandidate)
+                streamingAgentMessage.task = taskIdCandidate
                 return
               }
-
+              console.log(`【诊断】workflow.js - 甲供物资解析接收到消息: ${displayText}`)
               if (displayText) {
-                streamingAgentMessage.content += displayText
+                // 将 displayText 追加到 streamingAgentMessage.content（添加换行符）
+                streamingAgentMessage.content += displayText + '\n'
                 finalResult.push(displayText)
                 const currentSession = executionSessions.find((s) => s.id === workflow.id)
                 if (currentSession) {
                   currentSession.output = streamingAgentMessage.content
                 }
               }
-            } else if (event.event === 'Done') {
-              delete streamingAgentMessage.isStreaming
-              loadingMessage.progress = 100
-              loadingMessage.content = '甲供物资解析任务执行完毕！'
-              clearInterval(loadingInterval)
-              completeWorkflow({ output: finalResult.join('\n') }, addMessageCallback)
             } else if (event.event === 'PING') {
               // Handle PING
             } else {
               addMessageCallback('未知任务事件', 'system', null, event)
             }
           },
-          onError(error) {
+          onError: (error) => {
             clearInterval(loadingInterval)
             loadingMessage.content = `甲供物资解析任务出错: ${error.message}`
             loadingMessage.progress = 100
             addMessageCallback(`甲供物资解析任务执行出错: ${error.message}`, 'system')
             completeWorkflow({ status: 'error', output: error.message }, addMessageCallback)
+          },
+          onComplete: () => {
+            // 将 Done 事件的处理逻辑移动到这里
+            console.log(
+              `【诊断】workflow.js - 甲供物资解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`
+            )
+            delete streamingAgentMessage.isStreaming
+            if (/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+              streamingAgentMessage.showViewResultButton = false
+            } else {
+              streamingAgentMessage.showViewResultButton = true
+            }
+            loadingMessage.progress = 100
+            loadingMessage.content = '甲供物资解析任务执行完毕！'
+            clearInterval(loadingInterval)
+            completeWorkflow({ output: finalResult.join('\n') }, addMessageCallback)
           }
         }
       )

@@ -39,10 +39,20 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/api/backend-api': {
+        target: 'http://159.75.127.84:1202',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/backend-api/, '')
+      },
       '/api': {
         target: 'http://159.75.127.84:1207',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      '/backend-api': {
+        target: 'http://159.75.127.84:1202',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/backend-api/, '')
       }
     }
   }

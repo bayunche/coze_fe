@@ -22,6 +22,11 @@ service.interceptors.request.use(
 // response 拦截器
 service.interceptors.response.use(
   (response) => {
+    // 如果是流式响应，直接返回 response，不进行常规的错误处理
+    if (response.config.responseType === 'stream') {
+      return response
+    }
+
     const res = response.data
     // 根据实际业务逻辑判断请求是否成功
     if (res.code !== 20000 && res.code !== 200) {
