@@ -40,6 +40,30 @@ app.use(
   })
 )
 
+// 为后端工作流API添加代理
+app.use(
+  '/backend-api',
+  createProxyMiddleware({
+    target: 'http://159.75.127.84:1202', // 后端工作流的实际地址
+    changeOrigin: true,
+    pathRewrite: {
+      '^/backend-api': ''
+    },
+    onProxyReq: (proxyReq, req, res) => {
+      console.log(
+        `Proxying request from ${req.originalUrl} to ${proxyReq.protocol}//${proxyReq.host}${proxyReq.path}`
+      )
+    },
+    onProxyRes: (proxyRes, req, res) => {
+      // 可以修改响应头
+    },
+    onError: (err, req, res) => {
+      console.error('Proxy error:', err)
+      res.status(500).send('Proxy Error')
+    }
+  })
+)
+
 // 对于所有未匹配的路由，返回 index.html，以支持单页应用路由
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendDistPath, 'index.html'))
