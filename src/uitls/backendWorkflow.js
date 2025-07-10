@@ -5,7 +5,10 @@
 import request from '@/utils/request'
 import { ElMessage } from 'element-plus'
 
-const BASE_URL = '/backend-api'
+const BASE_URL =
+  import.meta.env.MODE === 'production'
+    ? import.meta.env.VITE_APP_BACKEND_WORKFLOW_API
+    : '/backend-api'
 
 /**
  * 调用流式工作流接口
