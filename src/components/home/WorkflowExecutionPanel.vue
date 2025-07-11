@@ -17,6 +17,7 @@
           <el-tab-pane label="所有消息" name="all"></el-tab-pane>
           <el-tab-pane label="合同解析" name="contract"></el-tab-pane>
           <el-tab-pane label="乙供物资解析" name="material"></el-tab-pane>
+          <el-tab-pane label="甲供物资解析" name="j_material"></el-tab-pane>
           <el-tab-pane label="对话流" name="dialogue"></el-tab-pane>
         </el-tabs>
         <el-button
@@ -84,6 +85,7 @@ import StreamingMessage from './StreamingMessage.vue'
 import { useChatStore } from '@/stores/chat' // 导入 chat store
 import { Delete } from '@element-plus/icons-vue' // 导入 Element Plus 图标
 import { ElMessage, ElMessageBox } from 'element-plus' // 导入 Element Plus 消息提示和确认框
+import { useRouter } from 'vue-router' // 导入 useRouter
 
 const props = defineProps({
   messages: {
@@ -123,6 +125,10 @@ const messagesToRender = computed(() => {
       )
     } else if (activeTab.value === 'dialogue') {
       filteredMessages = filteredMessages.filter((m) => m.from === 'user' || !m.workflow)
+    } else if (activeTab.value === 'j_material') {
+      filteredMessages = filteredMessages.filter(
+        (m) => m.workflow && m.workflow.name === '甲供物资解析'
+      )
     }
     // 在这些特定标签页下，消息的 isStreaming 状态应该保持其原始值，以便 StreamingMessage 能够根据实际情况进行流式或追加显示。
     // 同时，确保在这些筛选标签页下，消息仍然是立即完整显示（非逐条动画）。
@@ -391,6 +397,18 @@ const handleViewResultDetail = (message) => {
       message.task
     )
     emit('view-material-result-detail', message.task)
+  } else if (message.workflow && message.workflow.name === '甲供物资解析') {
+    // 对于甲供物资解析，直接跳转到 OwnerMaterialDetailPage 页面
+    if (message.task) {
+      router.push({
+        name: 'owner-material-detail', // 确保路由名称正确
+        query: { taskDetailId: message.task }
+      })
+      ElMessage.success('正在跳转到甲供物资解析详情页面...')
+    } else {
+      console.warn('【警告】WorkflowExecutionPanel - 甲供物资解析消息中缺少 task ID:', message)
+      ElMessage.warning('无法获取甲供物资解析任务ID，请检查消息内容。')
+    }
   } else {
     // 对于其他未知类型的解析结果，可以触发一个默认的 view-result-detail 事件，不带参数或带通用参数
     // 这里为了兼容性，仍然触发 view-result-detail，但不传递 task，让 HomeView 决定如何处理
@@ -398,6 +416,8 @@ const handleViewResultDetail = (message) => {
     emit('view-result-detail')
   }
 }
+
+const router = useRouter() // 在 setup 中初始化 router
 
 const chatStore = useChatStore() // 使用 chat store
 

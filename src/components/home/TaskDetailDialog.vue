@@ -368,10 +368,7 @@ const handleSaveAll = async () => {
           })
         )
       )
-      chatStore.addMessage(
-        `已保存 ${successCount} 个 ${props.task?.name || '未知'} 解析结果`,
-        'system'
-      )
+      chatStore.addMessage(`已保存 ${successCount} 个合同解析结果`, 'system')
       handleClose() // 保存成功后关闭对话框
     }
   } catch (error) {

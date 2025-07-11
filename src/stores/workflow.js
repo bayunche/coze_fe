@@ -670,10 +670,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
       // 改为调用后端接口流式返回消息
       await callStreamWorkflow(
         {
-          input: inputs.map((input) => input.file_id)[0],
+          excelFileList: inputs,
           ...workflowConfig.params
         },
-        '1',
+        '2',
         {
           onMessage: (event) => {
             console.log(` 接收到消息: ${JSON.stringify(event)}`)

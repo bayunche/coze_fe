@@ -36,10 +36,16 @@
           <el-input v-else v-model="scope.row.materialName"></el-input>
         </template>
       </el-table-column>
-      <el-table-column prop="specifications" label="规格型号" min-width="180">
+      <el-table-column prop="materialCategoryCode" label="物资品类编码" min-width="180">
+        <template #default="scope">
+          <span v-if="!scope.row.editing">{{ scope.row.materialCategoryCode || '/' }}</span>
+          <el-input v-else v-model="scope.row.materialCategoryCode"></el-input>
+        </template>
+      </el-table-column>
+      <el-table-column prop="specificationModel" label="规格型号" min-width="180">
         <template #default="scope">
           <span v-if="!scope.row.editing">{{ scope.row.specifications || '/' }}</span>
-          <el-input v-else v-model="scope.row.specifications"></el-input>
+          <el-input v-else v-model="scope.row.specificationModel"></el-input>
         </template>
       </el-table-column>
       <el-table-column prop="unit" label="计量单位" min-width="100">
@@ -48,10 +54,22 @@
           <el-input v-else v-model="scope.row.unit"></el-input>
         </template>
       </el-table-column>
-      <el-table-column prop="applicationQuantity" label="申领单申领数量" min-width="150">
+      <el-table-column prop="statisticalQuantity" label="统计数据数" min-width="100">
         <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.applicationQuantity || '/' }}</span>
-          <el-input v-else v-model.number="scope.row.applicationQuantity" type="number"></el-input>
+          <span v-if="!scope.row.editing">{{ scope.row.statisticalQuantity || '/' }}</span>
+          <el-input v-else v-model="scope.row.unit"></el-input>
+        </template>
+      </el-table-column>
+      <el-table-column prop="requisitionQuantity" label="统计后申领数" min-width="150">
+        <template #default="scope">
+          <span v-if="!scope.row.editing">{{ scope.row.requisitionQuantity || '/' }}</span>
+          <el-input v-else v-model.number="scope.row.requisitionQuantity" type="number"></el-input>
+        </template>
+      </el-table-column>
+      <el-table-column prop="supplier" label="供应商" min-width="150">
+        <template #default="scope">
+          <span v-if="!scope.row.editing">{{ scope.row.supplier || '/' }}</span>
+          <el-input v-else v-model.number="scope.row.supplier" type="number"></el-input>
         </template>
       </el-table-column>
       <el-table-column prop="matchingStatus" label="对平情况" min-width="120">
@@ -121,6 +139,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
+import OwnerMaterialService from '@/services/OwnerMaterialService'
 
 const router = useRouter()
 const route = useRoute()
@@ -141,284 +160,37 @@ const projectInfo = ref({
   projectNumber: '项目编号占位'
 })
 
-// 优化后的 Mock 数据，体现一个物资名称可能对应多个规格型号和多个实际领料单
-const mockData = [
-  {
-    id: 1,
-    materialName: '螺纹钢',
-    specifications: 'HRB400E Φ16',
-    unit: '吨',
-    applicationQuantity: 50,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-001',
-    actualMaterialName: '螺纹钢',
-    actualSpecifications: 'HRB400E Φ16',
-    actualUnit: '吨',
-    actualApplicationQuantity: 48,
-    editing: false
-  },
-  {
-    id: 2,
-    materialName: '螺纹钢',
-    specifications: 'HRB400E Φ16',
-    unit: '吨',
-    applicationQuantity: 50, // 申领数量不变，因为是针对这个规格型号的
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-002', // 不同的领料单
-    actualMaterialName: '螺纹钢',
-    actualSpecifications: 'HRB400E Φ16',
-    actualUnit: '吨',
-    actualApplicationQuantity: 2, // 不同的领料数量
-    editing: false
-  },
-  {
-    id: 3,
-    materialName: '螺纹钢',
-    specifications: 'HRB400E Φ18',
-    unit: '吨',
-    applicationQuantity: 30,
-    matchingStatus: 0, // 未退库
-    actualSource: '领料单-2023-003',
-    actualMaterialName: '螺纹钢',
-    actualSpecifications: 'HRB400E Φ18',
-    actualUnit: '吨',
-    actualApplicationQuantity: 25,
-    editing: false
-  },
-  {
-    id: 4,
-    materialName: '混凝土',
-    specifications: 'C30',
-    unit: '立方米',
-    applicationQuantity: 120,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-004',
-    actualMaterialName: '混凝土',
-    actualSpecifications: 'C30',
-    actualUnit: '立方米',
-    actualApplicationQuantity: 110,
-    editing: false
-  },
-  {
-    id: 5,
-    materialName: '混凝土',
-    specifications: 'C30',
-    unit: '立方米',
-    applicationQuantity: 120,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-005',
-    actualMaterialName: '混凝土',
-    actualSpecifications: 'C30',
-    actualUnit: '立方米',
-    actualApplicationQuantity: 5,
-    editing: false
-  },
-  {
-    id: 6,
-    materialName: '混凝土',
-    specifications: 'C40',
-    unit: '立方米',
-    applicationQuantity: 80,
-    matchingStatus: 2, // 部分对平 -> 资料缺失
-    actualSource: '领料单-2023-006',
-    actualMaterialName: '混凝土',
-    actualSpecifications: 'C40',
-    actualUnit: '立方米',
-    actualApplicationQuantity: 75,
-    editing: false
-  },
-  {
-    id: 7,
-    materialName: '防水卷材',
-    specifications: 'SBS改性沥青防水卷材 4mm',
-    unit: '平方米',
-    applicationQuantity: 300,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-007',
-    actualMaterialName: '防水卷材',
-    actualSpecifications: 'SBS改性沥青防水卷材 4mm',
-    actualUnit: '平方米',
-    actualApplicationQuantity: 280,
-    editing: false
-  },
-  {
-    id: 8,
-    materialName: '防水卷材',
-    specifications: '高分子防水卷材 1.5mm',
-    unit: '平方米',
-    applicationQuantity: 100,
-    matchingStatus: 0, // 未退库
-    actualSource: '领料单-2023-008',
-    actualMaterialName: '防水卷材',
-    actualSpecifications: '高分子防水卷材 1.5mm',
-    actualUnit: '平方米',
-    actualApplicationQuantity: 90,
-    editing: false
-  },
-  {
-    id: 9,
-    materialName: '保温板',
-    specifications: '挤塑聚苯板 XPS 50mm',
-    unit: '平方米',
-    applicationQuantity: 250,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-009',
-    actualMaterialName: '保温板',
-    actualSpecifications: '挤塑聚苯板 XPS 50mm',
-    actualUnit: '平方米',
-    actualApplicationQuantity: 250,
-    editing: false
-  },
-  {
-    id: 10,
-    materialName: '涂料',
-    specifications: '内墙乳胶漆 哑光',
-    unit: '公斤',
-    applicationQuantity: 80,
-    matchingStatus: 0, // 未退库
-    actualSource: '领料单-2023-010',
-    actualMaterialName: '涂料',
-    actualSpecifications: '内墙乳胶漆 哑光',
-    actualUnit: '公斤',
-    actualApplicationQuantity: 75,
-    editing: false
-  },
-  {
-    id: 17, // 申领单物资信息为空，但实际领料单有数据来源和部分数据
-    materialName: null,
-    specifications: null,
-    unit: null,
-    applicationQuantity: null,
-    matchingStatus: 2, // 资料缺失
-    actualSource: '领料单-2023-017',
-    actualMaterialName: '实际物资A',
-    actualSpecifications: '实际规格A',
-    actualUnit: '个',
-    actualApplicationQuantity: 10,
-    editing: false
-  },
-  {
-    id: 18, // 申领单物资信息为空，但实际领料单有数据来源和部分数据
-    materialName: '',
-    specifications: '',
-    unit: '',
-    applicationQuantity: null,
-    matchingStatus: 2, // 资料缺失
-    actualSource: '领料单-2023-018',
-    actualMaterialName: '实际物资B',
-    actualSpecifications: '实际规格B',
-    actualUnit: '个',
-    actualApplicationQuantity: 20,
-    editing: false
-  },
-  {
-    id: 11,
-    materialName: '电线',
-    specifications: 'BV 2.5mm²',
-    unit: '米',
-    applicationQuantity: 1000,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-011',
-    actualMaterialName: '电线',
-    actualSpecifications: 'BV 2.5mm²',
-    actualUnit: '米',
-    actualApplicationQuantity: 990,
-    editing: false
-  },
-  {
-    id: 12,
-    materialName: '电线',
-    specifications: 'RVV 4mm²',
-    unit: '米',
-    applicationQuantity: 500,
-    matchingStatus: 2, // 部分对平 -> 资料缺失
-    actualSource: '领料单-2023-012',
-    actualMaterialName: '电线',
-    actualSpecifications: 'RVV 4mm²',
-    actualUnit: '米',
-    actualApplicationQuantity: 480,
-    editing: false
-  },
-  {
-    id: 13,
-    materialName: '水管',
-    specifications: 'PPR 冷水管 DN25',
-    unit: '米',
-    applicationQuantity: 200,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-013',
-    actualMaterialName: '水管',
-    actualSpecifications: 'PPR 冷水管 DN25',
-    actualUnit: '米',
-    actualApplicationQuantity: 190,
-    editing: false
-  },
-  {
-    id: 14,
-    materialName: '瓷砖',
-    specifications: '抛光砖 800x800mm',
-    unit: '平方米',
-    applicationQuantity: 150,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-014',
-    actualMaterialName: '瓷砖',
-    actualSpecifications: '抛光砖 800x800mm',
-    actualUnit: '平方米',
-    actualApplicationQuantity: 150,
-    editing: false
-  },
-  {
-    id: 15,
-    materialName: '木门',
-    specifications: '实木复合门 2100x900mm',
-    unit: '樘',
-    applicationQuantity: 10,
-    matchingStatus: 0, // 未退库
-    actualSource: '领料单-2023-015',
-    actualMaterialName: '木门',
-    actualSpecifications: '实木复合门 2100x900mm',
-    actualUnit: '樘',
-    actualApplicationQuantity: 9,
-    editing: false
-  },
-  {
-    id: 16,
-    materialName: '玻璃',
-    specifications: '钢化玻璃 8mm',
-    unit: '平方米',
-    applicationQuantity: 60,
-    matchingStatus: 1, // 已对平
-    actualSource: '领料单-2023-016',
-    actualMaterialName: '玻璃',
-    actualSpecifications: '钢化玻璃 8mm',
-    actualUnit: '平方米',
-    actualApplicationQuantity: 60,
-    editing: false
-  }
-]
-
 // 获取数据占位函数
 const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSize.value) => {
   loading.value = true
   try {
-    // 模拟API请求
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    const start = (page - 1) * size
-    const end = start + size
-    tableData.value = mockData.slice(start, end).map((item) => ({
-      ...item,
-      original: { ...item },
-      isMergedStart: false // 默认值，将在 getSpanArr 中更新
-    })) // 深拷贝原始数据
-    originalData.value = mockData.slice(start, end).map((item) => ({ ...item })) // 存储原始数据副本
-    totalDetails.value = mockData.length
-    getSpanArr(tableData.value) // 计算合并信息
+    const taskDetailId = 'd34c7196-9548-44bf-8895-f882eb388217' // 从路由获取 taskDetailId，如果不存在则使用默认值
+    const response = await OwnerMaterialService.queryMaterialsApplyData({ taskDetailId })
+    console.log('接口返回的数据:', response)
+    if (response && response.length > 0) {
+      // 假设接口返回的数据就是 tableData 所需的格式
+      // 如果接口返回的数据需要进一步处理，这里需要添加转换逻辑
+      const paginatedData = response.slice((page - 1) * size, page * size)
+
+      tableData.value = paginatedData.map((item) => ({
+        ...item,
+        original: { ...item },
+        isMergedStart: false // 默认值，将在 getSpanArr 中更新
+      }))
+      originalData.value = paginatedData.map((item) => ({ ...item }))
+      totalDetails.value = response.length
+      getSpanArr(tableData.value) // 计算合并信息
+      ElMessage.success('甲供物资详情数据加载成功！')
+    } else {
+      tableData.value = []
+      originalData.value = []
+      totalDetails.value = 0
+      ElMessage.info('未获取到甲供物资详情数据。')
+    }
 
     // 从路由参数获取项目信息，如果存在的话
     projectInfo.value.projectName = route.query.projectName || '项目名称占位'
     projectInfo.value.projectNumber = route.query.projectNumber || '项目编号占位'
-
-    ElMessage.success('甲供物资详情数据加载成功！')
   } catch (error) {
     ElMessage.error(`加载详情失败: ${error.message}`)
     console.error('加载详情失败:', error)

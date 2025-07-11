@@ -30,7 +30,7 @@ const router = createRouter({
       props: true // 允许组件通过 props 接收路由参数
     },
     {
-      path: '/owner-material-detail',
+      path: '/owner-material-detail', // 移除 taskDetailId 路径参数，改为查询参数
       name: 'owner-material-detail',
       component: () => import('../views/OwnerMaterialDetailPage.vue')
     }
