@@ -119,9 +119,7 @@ const chatStore = useChatStore()
 const hasResultStatusOne = computed(() => {
   return editFormModels.value.some((item) => Number(item.result_status) === 1)
 })
-const cozeService = new CozeService(
-  'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
-)
+const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
 
 const isFetchingDetails = ref(false)
 const tableData = ref([]) // 原始数据

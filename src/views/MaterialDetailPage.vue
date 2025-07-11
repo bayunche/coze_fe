@@ -203,9 +203,7 @@ import MaterialService from '@/services/MaterialService.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflow.js' // 引入 workflowStore
 
-const cozeService = new CozeService(
-  'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
-)
+const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
 
 const chatStore = useChatStore()
 const workflowStore = useWorkflowStore() // 初始化 workflowStore

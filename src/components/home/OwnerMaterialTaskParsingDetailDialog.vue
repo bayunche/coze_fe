@@ -99,9 +99,8 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-const cozeService = new CozeService(
-  'pat_bGwPTNipEOEpfiRnILTvFipxeeRRyUrOOxSbEExv9kYPRlh5g674hTLcBSQIZj9o'
-)
+const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
+
 const fetchDetailList = async () => {
   loading.value = true
   try {
