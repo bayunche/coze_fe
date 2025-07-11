@@ -54,64 +54,115 @@ export async function callStreamWorkflow(
       buffer += value
 
       const lines = buffer.split('\n')
-      buffer = lines.pop()
+      buffer = lines.pop() // Keep the last incomplete line in the buffer
+
+      let currentMessage = {} // To store id, event, data for a single message
 
       for (const line of lines) {
-        if (line.trim() === '') continue
-
-        if (line.trim() === 'data:[DONE]') {
-          if (onComplete && typeof onComplete === 'function') {
-            onComplete()
-          }
-          break // 结束流式处理
-        }
-
-        if (line.startsWith('data:')) {
-          // 移除空格判断
-          try {
-            // 根据实际数据格式调整 substring 索引
-            const data = JSON.parse(line.substring(line.indexOf('[')))
-            if (onMessage && typeof onMessage === 'function') {
-              if (data && data.length > 0) {
-                onMessage(data[0]) // 传递数组中的第一个元素
+        if (line.trim() === '') {
+          // An empty line indicates the end of a message
+          if (currentMessage.data) {
+            try {
+              const parsedData = JSON.parse(currentMessage.data)
+              if (onMessage && typeof onMessage === 'function') {
+                if (parsedData && parsedData.length > 0) {
+                  onMessage(parsedData[0]) // Pass the first element of the array
+                }
+              }
+            } catch (e) {
+              console.error('解析流式数据失败:', e, currentMessage.data)
+              if (onError && typeof onError === 'function') {
+                onError(e)
               }
             }
-          } catch (e) {
-            console.error('解析流式数据失败:', e, line)
-            if (onError && typeof onError === 'function') {
-              onError(e)
-            }
           }
+          currentMessage = {} // Reset for the next message
+          continue
+        }
+
+        if (line.startsWith('id:')) {
+          currentMessage.id = line.substring(3).trim()
+        } else if (line.startsWith('event:')) {
+          currentMessage.event = line.substring(6).trim()
+        } else if (line.startsWith('data:')) {
+          const dataContent = line.substring(5).trim()
+          if (dataContent === '[DONE]') {
+            if (onComplete && typeof onComplete === 'function') {
+              onComplete()
+            }
+            break // End the stream processing
+          }
+          currentMessage.data = dataContent
         } else {
           console.warn('收到非标准流式数据行:', line)
         }
       }
-    }
 
-    if (buffer.trim() !== '') {
-      if (buffer.startsWith('data:')) {
-        // 移除空格判断
+      // Process any remaining data in the buffer if it forms a complete message
+      if (buffer.trim() !== '') {
+        const remainingLines = buffer.split('\n')
+        buffer = remainingLines.pop() // Update buffer with any truly incomplete part
+
+        for (const line of remainingLines) {
+          if (line.trim() === '') {
+            if (currentMessage.data) {
+              try {
+                const parsedData = JSON.parse(currentMessage.data)
+                if (onMessage && typeof onMessage === 'function') {
+                  if (parsedData && parsedData.length > 0) {
+                    onMessage(parsedData[0])
+                  }
+                }
+              } catch (e) {
+                console.error('解析剩余流式数据失败:', e, currentMessage.data)
+                if (onError && typeof onError === 'function') {
+                  onError(e)
+                }
+              }
+            }
+            currentMessage = {}
+            continue
+          }
+
+          if (line.startsWith('id:')) {
+            currentMessage.id = line.substring(3).trim()
+          } else if (line.startsWith('event:')) {
+            currentMessage.event = line.substring(6).trim()
+          } else if (line.startsWith('data:')) {
+            const dataContent = line.substring(5).trim()
+            if (dataContent === '[DONE]') {
+              if (onComplete && typeof onComplete === 'function') {
+                onComplete()
+              }
+              break
+            }
+            currentMessage.data = dataContent
+          } else {
+            console.warn('处理剩余非标准流式数据行:', line)
+          }
+        }
+      }
+
+      // If there's a pending message at the very end of the stream (after done or error)
+      if (currentMessage.data) {
         try {
-          // 根据实际数据格式调整 substring 索引
-          const data = JSON.parse(buffer.substring(buffer.indexOf('[')))
+          const parsedData = JSON.parse(currentMessage.data)
           if (onMessage && typeof onMessage === 'function') {
-            if (data && data.length > 0) {
-              onMessage(data[0]) // 传递数组中的第一个元素
+            if (parsedData && parsedData.length > 0) {
+              onMessage(parsedData[0])
             }
           }
         } catch (e) {
-          console.error('解析剩余流式数据失败:', e, buffer)
+          console.error('解析流式数据失败 (流结束前):', e, currentMessage.data)
           if (onError && typeof onError === 'function') {
             onError(e)
           }
         }
-      } else {
-        console.warn('处理剩余非标准流式数据行:', buffer)
       }
-    }
 
-    if (onComplete && typeof onComplete === 'function') {
-      onComplete()
+      if (onComplete && typeof onComplete === 'function') {
+        onComplete()
+      }
     }
   } catch (error) {
     console.error('调用流式工作流失败:', error)

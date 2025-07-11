@@ -1,3 +1,4 @@
+// src/uitls/dify.js
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
 
@@ -49,66 +50,115 @@ export async function chatGenerate(data, onMessage, onEnd, onError) {
       buffer += value
 
       const lines = buffer.split('\n')
-      buffer = lines.pop()
+      buffer = lines.pop() // Keep the last incomplete line in the buffer
+
+      let currentMessage = {} // To store id, event, data for a single message
 
       for (const line of lines) {
-        if (line.trim() === '') continue
-
-        if (line.trim() === 'data:[DONE]') {
-          if (onEnd && typeof onEnd === 'function') {
-            onEnd()
+        if (line.trim() === '') {
+          // An empty line indicates the end of a message
+          if (currentMessage.data) {
+            try {
+              const parsedData = JSON.parse(currentMessage.data)
+              if (onMessage && typeof onMessage === 'function') {
+                if (parsedData && parsedData.length > 0) {
+                  onMessage(parsedData[0]) // Pass the first element of the array
+                }
+              }
+            } catch (e) {
+              console.error('解析流式数据失败:', e, currentMessage.data)
+              if (onError && typeof onError === 'function') {
+                onError(e)
+              }
+            }
           }
-          break // 结束流式处理
+          currentMessage = {} // Reset for the next message
+          continue
         }
 
-        if (line.startsWith('data:')) {
-          try {
-            const jsonData = line.substring(line.indexOf('{')) // 假设数据从第一个 '{' 开始
-            const parsedData = JSON.parse(jsonData)
-            if (parsedData.event === 'message' && onMessage && typeof onMessage === 'function') {
-              onMessage(parsedData)
-            } else if (parsedData.event === 'done' && onEnd && typeof onEnd === 'function') {
+        if (line.startsWith('id:')) {
+          currentMessage.id = line.substring(3).trim()
+        } else if (line.startsWith('event:')) {
+          currentMessage.event = line.substring(6).trim()
+        } else if (line.startsWith('data:')) {
+          const dataContent = line.substring(5).trim()
+          if (dataContent === '[DONE]') {
+            if (onEnd && typeof onEnd === 'function') {
               onEnd()
-              reader.releaseLock() // 释放锁，允许流关闭
-              return // 结束函数执行
             }
-          } catch (e) {
-            console.error('解析流式数据失败:', e, line)
-            if (onError && typeof onError === 'function') {
-              onError(e)
-            }
+            break // End the stream processing
           }
+          currentMessage.data = dataContent
         } else {
           console.warn('收到非标准流式数据行:', line)
         }
       }
-    }
 
-    // 处理循环结束后可能剩余的buffer
-    if (buffer.trim() !== '') {
-      if (buffer.startsWith('data:')) {
+      // Process any remaining data in the buffer if it forms a complete message
+      if (buffer.trim() !== '') {
+        const remainingLines = buffer.split('\n')
+        buffer = remainingLines.pop() // Update buffer with any truly incomplete part
+
+        for (const line of remainingLines) {
+          if (line.trim() === '') {
+            if (currentMessage.data) {
+              try {
+                const parsedData = JSON.parse(currentMessage.data)
+                if (onMessage && typeof onMessage === 'function') {
+                  if (parsedData && parsedData.length > 0) {
+                    onMessage(parsedData[0])
+                  }
+                }
+              } catch (e) {
+                console.error('解析剩余流式数据失败:', e, currentMessage.data)
+                if (onError && typeof onError === 'function') {
+                  onError(e)
+                }
+              }
+            }
+            currentMessage = {}
+            continue
+          }
+
+          if (line.startsWith('id:')) {
+            currentMessage.id = line.substring(3).trim()
+          } else if (line.startsWith('event:')) {
+            currentMessage.event = line.substring(6).trim()
+          } else if (line.startsWith('data:')) {
+            const dataContent = line.substring(5).trim()
+            if (dataContent === '[DONE]') {
+              if (onEnd && typeof onEnd === 'function') {
+                onEnd()
+              }
+              break
+            }
+            currentMessage.data = dataContent
+          } else {
+            console.warn('处理剩余非标准流式数据行:', line)
+          }
+        }
+      }
+
+      // If there's a pending message at the very end of the stream (after done or error)
+      if (currentMessage.data) {
         try {
-          const jsonData = buffer.substring(buffer.indexOf('{'))
-          const parsedData = JSON.parse(jsonData)
-          if (parsedData.event === 'message' && onMessage && typeof onMessage === 'function') {
-            onMessage(parsedData)
-          } else if (parsedData.event === 'done' && onEnd && typeof onEnd === 'function') {
-            onEnd()
+          const parsedData = JSON.parse(currentMessage.data)
+          if (onMessage && typeof onMessage === 'function') {
+            if (parsedData && parsedData.length > 0) {
+              onMessage(parsedData[0])
+            }
           }
         } catch (e) {
-          console.error('解析剩余流式数据失败:', e, buffer)
+          console.error('解析流式数据失败 (流结束前):', e, currentMessage.data)
           if (onError && typeof onError === 'function') {
             onError(e)
           }
         }
-      } else {
-        console.warn('处理剩余非标准流式数据行:', buffer)
       }
-    }
 
-    // 如果流正常结束但没有收到data:[DONE]或event:done，也调用onEnd
-    if (onEnd && typeof onEnd === 'function') {
-      onEnd()
+      if (onEnd && typeof onEnd === 'function') {
+        onEnd()
+      }
     }
   } catch (error) {
     console.error('调用Dify流式工作流失败:', error)
