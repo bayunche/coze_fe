@@ -120,6 +120,8 @@ export const useChatStore = defineStore('chat', () => {
             agentMessage.content += data.content
             addMessage(agentMessage) // 更新消息内容
             // 触发功能选择的逻辑，需要从外部传入回调
+            console.log('agentMessage.content', agentMessage.content)
+            console.log(agentMessage.content.includes('正在调用甲供物资解析功能'))
             if (!agentMessage.actionTriggered) {
               if (agentMessage.content.includes('解析合同')) {
                 handleFunctionSelectCallback('contractParsing')
@@ -129,7 +131,8 @@ export const useChatStore = defineStore('chat', () => {
                 handleFunctionSelectCallback('supplierMaterialParsing')
                 agentMessage.actionTriggered = true
                 // addMessage('正在调用乙供物资解析功能...', 'system'); // 添加系统消息
-              } else if (agentMessage.content.includes('正在调用甲供物资解析功能')) {
+              } else if (agentMessage.content.includes('调用解析甲供物资功能')) {
+                console.log('正在调用甲供物资解析功能')
                 handleFunctionSelectCallback('ownerSuppliedMaterialParsing')
                 agentMessage.actionTriggered = true
                 // addMessage('正在调用甲供物资解析功能...', 'system'); // 添加系统消息

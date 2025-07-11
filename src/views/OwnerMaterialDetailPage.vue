@@ -167,7 +167,7 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
     console.log('开始加载甲供物资详情数据...')
     console.log('当前路由参数:', route.query)
     // const taskDetailId = route.query.taskDetailId || 'd34c7196-9548-44bf-8895-f882eb388217' // 从路由获取 taskDetailId，如果不存在则使用默认值
-    const taskDetailId = route.query.taskDetailId
+    const taskDetailId = 'd34c7196-9548-44bf-8895-f882eb388217'
     console.log('使用的 taskDetailId:', taskDetailId)
     const response = await OwnerMaterialService.queryMaterialsApplyData({ taskDetailId })
     console.log('接口返回的数据:', response)
@@ -576,19 +576,6 @@ const getMergedIndex = (index) => {
   letter-spacing: 0.5px;
 }
 
-.page-footer .el-button--primary {
-  background: linear-gradient(135deg, var(--accent-color), #0056b3);
-  border: 1px solid var(--accent-color);
-  box-shadow: 0 5px 15px var(--shadow-color);
-  color: #ffffff; /* 浅色文字 */
-}
-
-.page-footer .el-button--primary:hover {
-  background: linear-gradient(135deg, #0056b3, var(--accent-color));
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px var(--shadow-color);
-}
-
 /* 加载动画优化 */
 .owner-material-detail-page :deep(.el-loading-mask) {
   background-color: rgba(255, 255, 255, 0.8); /* 浅色加载背景 */
@@ -718,19 +705,6 @@ const getMergedIndex = (index) => {
   background-color: rgba(128, 128, 128, 0.3);
   border-color: rgba(128, 128, 128, 0.5);
   transform: translateY(-1px);
-}
-
-.el-button--primary {
-  background: linear-gradient(135deg, var(--accent-color), #0056b3);
-  border: 1px solid var(--accent-color);
-  box-shadow: 0 5px 15px var(--shadow-color);
-  color: #ffffff;
-}
-
-.el-button--primary:hover {
-  background: linear-gradient(135deg, #0056b3, var(--accent-color));
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px var(--shadow-color);
 }
 
 .el-button--success {

@@ -322,6 +322,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       }
       return
     }
+    console.log(`【诊断】workflow.js - 选择功能: ${key}`)
     activeFunction.value = key
     resetWorkflowConfig()
     showWorkflowConfig.value = true
@@ -618,7 +619,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
           }
         })
       } else if (func.id === 'ownerSuppliedMaterialParsing') {
-        const workflowId = 'mock_owner_material_parsing_workflow_id' // 甲供物资解析的实际工作流ID
+        const workflowId = '7517934954761715721' // 甲供物资解析的实际工作流ID
         executeOwnerMaterialParsingWorkflow(
           workflowId, // 传入 workflowId
           inputs,
