@@ -29,6 +29,11 @@ export const useMaterialDialogStore = defineStore('materialDialog', () => {
   /** @type {import('vue').Ref<string | null>} */
   const ownerMaterialTaskParsingDetailTaskId = ref(null)
 
+  /** @type {import('vue').Ref<boolean>} */
+  const showSupplierMaterialTaskParsingDetailDialog = ref(false)
+  /** @type {import('vue').Ref<string | null>} */
+  const supplierMaterialTaskParsingDetailTaskId = ref(null)
+
   // Actions
   /**
    * 处理查看乙供物资解析结果详情的逻辑。
@@ -67,6 +72,8 @@ export const useMaterialDialogStore = defineStore('materialDialog', () => {
     materialParsingResultTask,
     showOwnerMaterialTaskParsingDetailDialog,
     ownerMaterialTaskParsingDetailTaskId,
+    showSupplierMaterialTaskParsingDetailDialog,
+    supplierMaterialTaskParsingDetailTaskId,
     handleViewMaterialResultDetail
   }
 })

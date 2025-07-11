@@ -166,7 +166,9 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
   try {
     console.log('开始加载甲供物资详情数据...')
     console.log('当前路由参数:', route.query)
-    const taskDetailId = route.query.taskDetailId || 'd34c7196-9548-44bf-8895-f882eb388217' // 从路由获取 taskDetailId，如果不存在则使用默认值
+    // const taskDetailId = route.query.taskDetailId || 'd34c7196-9548-44bf-8895-f882eb388217' // 从路由获取 taskDetailId，如果不存在则使用默认值
+    const taskDetailId = route.query.taskDetailId
+    console.log('使用的 taskDetailId:', taskDetailId)
     const response = await OwnerMaterialService.queryMaterialsApplyData({ taskDetailId })
     console.log('接口返回的数据:', response)
     if (response && response.length > 0) {

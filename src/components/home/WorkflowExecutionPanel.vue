@@ -98,7 +98,12 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['view-result-detail', 'message-displayed', 'view-material-result-detail'])
+const emit = defineEmits([
+  'view-result-detail',
+  'message-displayed',
+  'view-material-result-detail',
+  'view-supplier-material-result-detail'
+])
 
 const messageContainer = ref(null)
 const displayedMessages = ref([])
@@ -398,17 +403,12 @@ const handleViewResultDetail = (message) => {
     )
     emit('view-material-result-detail', message.task)
   } else if (message.workflow && message.workflow.name === '甲供物资解析') {
-    // 对于甲供物资解析，直接跳转到 OwnerMaterialDetailPage 页面
-    if (message.task) {
-      router.push({
-        name: 'owner-material-detail', // 确保路由名称正确
-        query: { taskDetailId: message.task }
-      })
-      ElMessage.success('正在跳转到甲供物资解析详情页面...')
-    } else {
-      console.warn('【警告】WorkflowExecutionPanel - 甲供物资解析消息中缺少 task ID:', message)
-      ElMessage.warning('无法获取甲供物资解析任务ID，请检查消息内容。')
-    }
+    // 对于甲供物资解析，触发 view-supplier-material-result-detail 事件，并传递 message.task (即 taskId)
+    console.log(
+      '【诊断】WorkflowExecutionPanel - 触发甲供物资解析详情事件，传递 taskId:',
+      message.task
+    )
+    emit('view-supplier-material-result-detail', message.task)
   } else {
     // 对于其他未知类型的解析结果，可以触发一个默认的 view-result-detail 事件，不带参数或带通用参数
     // 这里为了兼容性，仍然触发 view-result-detail，但不传递 task，让 HomeView 决定如何处理

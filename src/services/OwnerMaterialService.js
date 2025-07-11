@@ -23,6 +23,29 @@ class OwnerMaterialService {
       return []
     }
   }
+
+  /**
+   * 查询甲供物资解析任务详情列表
+   * @param {object} params - 请求参数，包含 taskId
+   * @param {string} params.taskId - 任务ID
+   * @returns {Promise<Array>} 甲供物资解析任务详情列表
+   */
+  async queryMaterialsParseTaskDetailList(params) {
+    if (!params || !params.taskId) {
+      console.warn('queryMaterialsParseTaskDetailList: taskId is required.')
+      return []
+    }
+    try {
+      const response = await request.get(`/tasks/detail/${params}`)
+      if (response && response.data) {
+        return response.data
+      }
+      return []
+    } catch (error) {
+      console.error('查询甲供物资解析任务详情列表失败:', error)
+      return []
+    }
+  }
 }
 
 export default new OwnerMaterialService()

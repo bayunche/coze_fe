@@ -19,6 +19,7 @@
               @show-workflow-config="showWorkflowConfig = true"
               @view-result-detail="handleViewResultDetail"
               @view-material-result-detail="handleViewMaterialResultDetail"
+              @view-supplier-material-result-detail="handleViewSupplierMaterialResultDetail"
             />
           </div>
           <div class="input-area-wrapper">
@@ -27,8 +28,6 @@
         </div>
       </el-container>
     </el-container>
-
-    <!-- 乙供物资解析详情弹窗组件 -->
 
     <!-- 新增物资解析结果详情弹窗组件 -->
     <MaterialParsingResultDialog
@@ -41,6 +40,14 @@
       v-model="showOwnerMaterialTaskParsingDetailDialog"
       :taskId="ownerMaterialTaskParsingDetailTaskId"
       @view-detail="handleViewOwnerMaterialDetail"
+      style="z-index: 2000"
+    />
+
+    <!-- 甲供物资任务解析详情弹窗组件 -->
+    <SupplierMaterialTaskParsingDetailDialog
+      v-model="showSupplierMaterialTaskParsingDetailDialog"
+      :taskId="supplierMaterialTaskParsingDetailTaskId"
+      @view-detail="handleViewSupplierMaterialDetail"
       style="z-index: 2000"
     />
 
@@ -110,6 +117,9 @@ const MaterialParsingResultDialog = defineAsyncComponent(() =>
 const OwnerMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
   import('@/components/home/OwnerMaterialTaskParsingDetailDialog.vue')
 )
+const SupplierMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
+  import('@/components/home/SupplierMaterialTaskParsingDetailDialog.vue')
+)
 
 // 新拆分的组件 (暂时不引入，先处理 Pinia Store 的集成)
 import ChatInputArea from '@/components/home/ChatInputArea.vue'
@@ -171,7 +181,9 @@ const {
   showMaterialParsingResultDialog,
   materialParsingResultTask,
   showOwnerMaterialTaskParsingDetailDialog,
-  ownerMaterialTaskParsingDetailTaskId
+  ownerMaterialTaskParsingDetailTaskId,
+  showSupplierMaterialTaskParsingDetailDialog, // 新增：甲供物资任务详情弹窗显示状态
+  supplierMaterialTaskParsingDetailTaskId // 新增：甲供物资任务详情ID
 } = storeToRefs(materialDialogStore) // 使用 storeToRefs 解构响应式状态
 
 let timeInterval = null
@@ -199,6 +211,24 @@ const handleViewOwnerMaterialDetail = (row) => {
   // 理论上这里不需要做任何事情，或者可以添加一些日志
   console.log(
     '【诊断】HomeView - 接收到 OwnerMaterialTaskParsingDetailDialog 的 view-detail 事件:',
+    row
+  )
+}
+
+// 新增处理甲供物资任务解析详情的方法
+const handleViewSupplierMaterialResultDetail = (taskId) => {
+  if (taskId) {
+    materialDialogStore.supplierMaterialTaskParsingDetailTaskId = taskId // 设置任务ID
+    materialDialogStore.showSupplierMaterialTaskParsingDetailDialog = true // 打开甲供物资任务详情列表弹窗
+  } else {
+    ElMessage.warning('没有可供解析的甲供物资任务ID。')
+  }
+}
+
+// 新增处理 SupplierMaterialTaskParsingDetailDialog 内部的 view-detail 事件
+const handleViewSupplierMaterialDetail = (row) => {
+  console.log(
+    '【诊断】HomeView - 接收到 SupplierMaterialTaskParsingDetailDialog 的 view-detail 事件:',
     row
   )
 }
