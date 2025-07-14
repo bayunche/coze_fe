@@ -127,12 +127,20 @@
       @size-change="handleDbMaterialSizeChange"
       style="z-index: 9999"
     />
+    <!-- 新增保存按钮 -->
+    <div class="save-button-container">
+      <el-button type="primary" @click="handleSaveClick" :loading="isSaving" size="large">
+        保存物资信息
+      </el-button>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { reactive, computed, ref, watch } from 'vue'
-
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
+const router = useRouter()
 // 新增行样式方法
 const getRowClassName = ({ row }) => {
   return row.dbCode ? 'selected-row' : ''
@@ -347,6 +355,7 @@ updateAlignedStatus()
 
 const unalignedMaterials = ref([])
 const isLoading = ref(false)
+const isSaving = ref(false)
 
 function loadUnalignedMaterials() {
   return new Promise((resolve) => {
@@ -518,7 +527,28 @@ function fetchDbMaterialList() {
 
 // 保存对平物资信息
 function handleSaveMaterial() {
-  console.log('保存对平物资信息:', unalignedMaterials.value)
+  // 将弹窗中的修改同步到主数据
+  unalignedMaterials.value.forEach((updatedMaterial) => {
+    const index = requestMaterials.findIndex((m) => m.id === updatedMaterial.id)
+    if (index !== -1) {
+      // 更新主数据
+      requestMaterials[index] = {
+        ...requestMaterials[index],
+        dbCode: updatedMaterial.dbCode,
+        dbName: updatedMaterial.dbName,
+        dbSpec: updatedMaterial.dbSpec,
+        dbUnit: updatedMaterial.dbUnit,
+        dbQuantity: updatedMaterial.dbQuantity,
+        aligned: !!updatedMaterial.dbCode,
+        reasonForNotAligned: updatedMaterial.dbCode ? '' : '未选择匹配物资'
+      }
+    }
+  })
+
+  // 触发响应式更新
+  requestMaterials.splice(0, requestMaterials.length, ...requestMaterials)
+
+  ElMessage.success('物资对平信息保存成功')
   showManualConfirmDialog.value = false
 }
 
@@ -568,6 +598,34 @@ function handleDbMaterialSelect(selected) {
 watch(dbMaterialSearch, () => {
   fetchDbMaterialList()
 })
+// 检查所有物资是否已拉平
+function checkAllAligned() {
+  return requestMaterials.every((material) => material.aligned)
+}
+
+// 保存按钮点击事件
+async function handleSaveClick() {
+  if (!checkAllAligned()) {
+    await ElMessageBox.alert('存在未拉平的物资信息，请先完成所有物资拉平操作', '无法保存', {
+      confirmButtonText: '确定',
+      type: 'warning'
+    })
+    return
+  }
+
+  isSaving.value = true
+  try {
+    // 这里可以添加实际保存逻辑
+    await new Promise((resolve) => setTimeout(resolve, 1000)) // 模拟API调用
+    ElMessage.success('物资信息保存成功')
+  } catch (error) {
+    console.error('保存失败:', error)
+    ElMessage.error('保存失败: ' + error.message)
+  } finally {
+    isSaving.value = false
+  }
+  router.push('/home')
+}
 </script>
 
 <style scoped>
@@ -656,5 +714,23 @@ watch(dbMaterialSearch, () => {
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
   padding: 10px 0;
   text-align: center;
+}
+.save-button-container {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 1000;
+}
+
+.save-button-container .el-button {
+  padding: 12px 24px;
+  font-size: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.save-button-container .el-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
 }
 </style>
