@@ -65,9 +65,26 @@
                   />
                 </div>
               </div>
-              <div class="message-actions" v-if="message.showViewResultButton">
-                <el-button type="primary" size="small" @click="handleViewResultDetail(message)">
+              <div
+                class="message-actions"
+                v-if="message.showViewResultButton || (message.buttons && message.buttons.length)"
+              >
+                <el-button
+                  v-if="message.showViewResultButton"
+                  type="primary"
+                  size="small"
+                  @click="handleViewResultDetail(message)"
+                >
                   查看解析结果
+                </el-button>
+                <el-button
+                  v-for="(btn, index) in message.buttons"
+                  :key="index"
+                  type="primary"
+                  size="small"
+                  @click="handleCustomButtonClick(message, btn)"
+                >
+                  {{ btn.text }}
                 </el-button>
               </div>
               <div class="message-timestamp">{{ message.timestamp }}</div>
@@ -90,7 +107,24 @@ import { useRouter } from 'vue-router' // 导入 useRouter
 const props = defineProps({
   messages: {
     type: Array,
-    default: () => []
+    default: () => [],
+    validator: (value) => {
+      return value.every((msg) => {
+        let valid = true
+        if (msg.buttons) {
+          valid =
+            Array.isArray(msg.buttons) &&
+            msg.buttons.every(
+              (btn) =>
+                btn.text &&
+                typeof btn.text === 'string' &&
+                btn.action &&
+                typeof btn.action === 'string'
+            )
+        }
+        return valid
+      })
+    }
   },
   currentWorkflow: {
     type: Object,
@@ -420,6 +454,25 @@ const handleViewResultDetail = (message) => {
 const router = useRouter() // 在 setup 中初始化 router
 
 const chatStore = useChatStore() // 使用 chat store
+
+const handleCustomButtonClick = (message, button) => {
+  const router = useRouter()
+
+  if (button.action === 'confirm-material-alignment' && button.data?.taskId) {
+    // 跳转到物资对齐页面
+    router.push({
+      name: 'OwnerMaterialAlign',
+      query: { taskId: button.data.taskId }
+    })
+  } else {
+    // 其他自定义按钮事件
+    emit('custom-button-click', {
+      messageId: message.id,
+      action: button.action,
+      data: button.data || null
+    })
+  }
+}
 
 const handleClearMessages = () => {
   ElMessageBox.confirm('确定要清空所有消息吗？此操作不可逆。', '提示', {

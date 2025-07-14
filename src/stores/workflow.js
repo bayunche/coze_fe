@@ -716,6 +716,19 @@ export const useWorkflowStore = defineStore('workflow', () => {
                 if (currentSession) {
                   currentSession.output = streamingAgentMessage.content
                 }
+
+                // 检查是否包含"存在无法匹配的物资信息，请人工介入"
+                if (displayText.includes('存在无法匹配的物资信息，请人工介入')) {
+                  streamingAgentMessage.buttons = [
+                    {
+                      text: '物资信息确认',
+                      action: 'confirm-material-alignment',
+                      data: {
+                        taskId: taskIdCandidate || streamingAgentMessage.task
+                      }
+                    }
+                  ]
+                }
               }
             } else if (event.event === 'PING') {
               // Handle PING
