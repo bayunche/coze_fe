@@ -33,6 +33,11 @@ const router = createRouter({
       path: '/owner-material-detail', // 移除 taskDetailId 路径参数，改为查询参数
       name: 'owner-material-detail',
       component: () => import('../views/OwnerMaterialDetailPage.vue')
+    },
+    {
+      path: '/owner-material-align',
+      name: 'owner-material-align',
+      component: () => import('../views/OwnerMaterialAlignPage.vue')
     }
   ]
 })
