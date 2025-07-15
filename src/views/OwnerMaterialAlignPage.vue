@@ -134,13 +134,61 @@
       </el-button>
     </div>
   </div>
+  <!-- 自动对平结果按钮 -->
+  <el-button
+    v-if="showResultButton"
+    type="success"
+    style="position: fixed; left: 32px; bottom: 32px; z-index: 1001"
+    @click="showResultDialog = true"
+    :loading="alignLoading"
+  >
+    查看对平结果
+  </el-button>
+  <!-- 对平结果弹窗 -->
+  <el-dialog
+    v-model="showResultDialog"
+    title="物资对平结果"
+    width="600px"
+    :close-on-click-modal="false"
+  >
+    <div v-if="alignResult">
+      <div>任务ID：{{ alignResult.taskId }}</div>
+      <div>
+        对平状态：<el-tag :type="alignResult.status === 'success' ? 'success' : 'danger'">{{
+          alignResult.status === 'success' ? '成功' : '失败'
+        }}</el-tag>
+      </div>
+      <div>已对平物资数：{{ alignResult.alignedCount }}</div>
+      <div>未对平物资数：{{ alignResult.unalignedCount }}</div>
+      <el-table :data="alignResult.details" border style="margin-top: 16px">
+        <el-table-column prop="code" label="物资编码" width="120" />
+        <el-table-column prop="name" label="物资名称" width="160" />
+        <el-table-column label="对平状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.aligned ? 'success' : 'danger'">
+              {{ row.aligned ? '已对平' : '未对平' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reason" label="未对平原因" width="180" />
+      </el-table>
+    </div>
+    <div v-else-if="alignLoading" style="text-align: center; padding: 32px 0">
+      <el-icon><i class="el-icon-loading"></i></el-icon> 正在对平...
+    </div>
+    <div v-else-if="alignError" style="color: red">{{ alignError }}</div>
+    <template #footer>
+      <el-button @click="showResultDialog = false">关闭</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
-import { reactive, computed, ref, watch } from 'vue'
+import { reactive, computed, ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 const router = useRouter()
+const route = useRoute()
 // 新增行样式方法
 const getRowClassName = ({ row }) => {
   return row.dbCode ? 'selected-row' : ''
@@ -148,6 +196,61 @@ const getRowClassName = ({ row }) => {
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
 import { ElDialog } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
+
+// 自动对平相关
+const alignResult = ref(null)
+const alignLoading = ref(false)
+const alignError = ref('')
+const showResultDialog = ref(false)
+const showResultButton = ref(false)
+
+// 假定 executeOwnerMaterialAlignmentWorkflow 已全局可用或 mock
+async function executeOwnerMaterialAlignmentWorkflow(taskId) {
+  // 实际应调用后端接口，这里用模拟数据
+  alignLoading.value = true
+  alignError.value = ''
+  try {
+    // 模拟异步对平
+    await new Promise((resolve) => setTimeout(resolve, 1200))
+    // 假设返回结构如下
+    alignResult.value = {
+      taskId,
+      status: 'success',
+      alignedCount: 4,
+      unalignedCount: 1,
+      details: [
+        { code: 'M001', name: '水泥', aligned: true },
+        { code: 'M002', name: '钢筋', aligned: true },
+        { code: 'M003', name: '砂子', aligned: true },
+        { code: 'M004', name: '石灰石', aligned: true },
+        { code: 'M005', name: '砖块', aligned: false, reason: '无匹配物资' }
+      ]
+    }
+    showResultButton.value = true
+  } catch (e) {
+    alignError.value = '自动对平失败'
+    showResultButton.value = false
+  } finally {
+    alignLoading.value = false
+  }
+}
+
+// 自动检测 taskId 并自动调用
+onMounted(() => {
+  let taskId = route.query.taskId || undefined
+  // 支持 props 方式（假定父组件传递）
+  if (!taskId && typeof defineProps === 'function') {
+    try {
+      // defineProps 仅在 <script setup> 顶层可用，这里兼容处理
+      // eslint-disable-next-line no-undef
+      const props = defineProps(['taskId'])
+      if (props && props.taskId) taskId = props.taskId
+    } catch {}
+  }
+  if (taskId) {
+    executeOwnerMaterialAlignmentWorkflow(taskId)
+  }
+})
 
 // 弹窗相关变量
 const showDbMaterialDialog = ref(false)

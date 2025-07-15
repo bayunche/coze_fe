@@ -1,74 +1,152 @@
 import { defineStore } from 'pinia'
+import { ref, reactive } from 'vue'
 import CozeChatService from '@/services/CozeChatService'
 
-/**
- * @typedef {'user' | 'agent' | 'system'} MessageFrom
- */
+export const useChatStore = defineStore(
+  'chat',
+  () => {
+    const userInput = ref('')
 
-/**
- * @typedef {Object} WorkflowInfo
- * @property {string} name - 工作流名称
- * @property {string} [id] - 工作流ID
- */
+    /** @type {import('vue').Ref<ChatMessage[]>} */
+    const displayedMessages = ref([])
 
-/**
- * @typedef {Object} MessageOptions
- * @property {boolean} [isStreaming] - 是否正在流式传输
- * @property {boolean} [actionTriggered] - 是否已触发动作
- */
+    const cozeChatService = new CozeChatService()
 
-/**
- * @typedef {Object} ChatMessage
- * @property {number} id - 消息ID
- * @property {MessageFrom} from - 消息来源
- * @property {string} content - 消息内容
- * @property {string} timestamp - 消息时间戳
- * @property {string} sender - 发送者名称
- * @property {WorkflowInfo | null} workflow - 工作流信息
- * @property {Object | null} details - 消息详情
- * @property {boolean} [isStreaming] - 是否正在流式传输
- * @property {boolean} [actionTriggered] - 是否已触发动作
- */
-
-export const useChatStore = defineStore('chat', {
-  persist: {
-    key: 'chat-messages',
-    storage: sessionStorage,
-    paths: ['displayedMessages']
-  },
-
-  state: () => ({
-    userInput: '',
-    displayedMessages: [],
-    cozeChatService: new CozeChatService()
-  }),
-
-  actions: {
-    addMessage(content, from, workflowInfo = null, details = null, options = {}) {
-      const message = {
-        id: Date.now(),
-        from,
-        content,
-        timestamp: new Date().toISOString(),
-        sender: from === 'user' ? 'You' : 'Assistant',
-        workflow: workflowInfo,
-        details,
-        ...options
+    function addMessage(content, from, workflowInfo = null, details = null, options = {}) {
+      let msg = null
+      if (typeof content === 'object' && content !== null && content.id) {
+        msg = displayedMessages.value.find((m) => m.id === content.id)
       }
-      this.displayedMessages.push(message)
-    },
+      if (msg) {
+        Object.assign(msg, content)
+      } else {
+        const newMsg =
+          typeof content === 'object'
+            ? content
+            : {
+                id: Date.now() + Math.random(),
+                from,
+                content,
+                timestamp: new Date().toLocaleTimeString(),
+                sender:
+                  from === 'agent'
+                    ? workflowInfo?.name || '智能体'
+                    : from === 'user'
+                    ? 'You'
+                    : '系统',
+                workflow: workflowInfo,
+                details,
+                ...options
+              }
+        displayedMessages.value.push(newMsg)
+        if (displayedMessages.value.length > 500) displayedMessages.value.shift()
+      }
+    }
 
-    async handleSendMessage(query, workflowId, handleFunctionSelectCallback) {
-      // 原有实现保持不变
-    },
+    async function handleSendMessage(query, workflowId, handleFunctionSelectCallback) {
+      if (!query.trim()) return
+      const userMsg = query
+      userInput.value = ''
+      addMessage(userMsg, 'user')
 
-    initDefaultMessage() {
-      // 原有实现保持不变
-    },
+      const agentMessage = reactive({
+        id: Date.now() + Math.random(),
+        from: 'agent',
+        content: '',
+        timestamp: new Date().toLocaleTimeString(),
+        sender: '智能体',
+        workflow: null,
+        details: null,
+        isStreaming: true,
+        actionTriggered: false
+      })
+      addMessage(agentMessage)
 
-    resetAndInitMessages() {
-      this.displayedMessages = []
-      this.initDefaultMessage()
+      try {
+        await cozeChatService.runChat({ query: userMsg }, workflowId, {
+          onMessage(msg) {
+            const { event, data } = msg
+            if (event === 'conversation.message.delta' && data.type === 'answer') {
+              agentMessage.content += data.content
+              addMessage(agentMessage)
+              if (!agentMessage.actionTriggered) {
+                if (agentMessage.content.includes('解析合同')) {
+                  handleFunctionSelectCallback('contractParsing')
+                  agentMessage.actionTriggered = true
+                } else if (agentMessage.content.includes('解析乙供物资功能')) {
+                  handleFunctionSelectCallback('supplierMaterialParsing')
+                  agentMessage.actionTriggered = true
+                } else if (agentMessage.content.includes('解析甲供物资功能')) {
+                  handleFunctionSelectCallback('ownerSuppliedMaterialParsing')
+                  agentMessage.actionTriggered = true
+                }
+              }
+            } else if (event === 'done') {
+              agentMessage.isStreaming = false
+              addMessage(agentMessage)
+            }
+          },
+          onError(error) {
+            agentMessage.content = `对话出错: ${error.message}`
+            agentMessage.isStreaming = false
+            addMessage(agentMessage)
+          }
+        })
+      } catch (err) {
+        agentMessage.content = `发送消息失败: ${err.message}`
+        agentMessage.isStreaming = false
+        addMessage(agentMessage)
+      }
+    }
+
+    function initDefaultMessage() {
+      addMessage(
+        ` 欢迎使用「五模二算」智能体服务！
+
+ 当前可用功能：
+ 1.合同解析智能体
+ 2.乙供物资解析智能体
+ 3.甲供物资解析智能体
+
+您可直接输入以下指令调用功能：
+ 1.我想解析合同
+ 2.我想解析乙供物资
+ 3.我想解析甲供物资
+
+如需更多支持，请持续关注后续功能更新。`,
+        'agent',
+        { name: '智能体' }
+      )
+    }
+
+    function resetAndInitMessages() {
+      displayedMessages.value = []
+      initDefaultMessage()
+    }
+
+    return {
+      userInput,
+      displayedMessages,
+      addMessage,
+      handleSendMessage,
+      initDefaultMessage,
+      resetAndInitMessages
+    }
+  },
+  {
+    persist: {
+      key: 'chat-messages',
+      storage: sessionStorage,
+      paths: ['displayedMessages'],
+      beforeHydrate(ctx) {
+        const raw = sessionStorage.getItem('chat-messages')
+        if (raw === '[]') sessionStorage.removeItem('chat-messages')
+      },
+      afterHydrate(ctx) {
+        if (ctx.store.displayedMessages.length === 0) {
+          ctx.store.initDefaultMessage()
+        }
+      }
     }
   }
-})
+)

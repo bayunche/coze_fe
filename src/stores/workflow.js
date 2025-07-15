@@ -341,6 +341,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * @param {function(Object): void} addMessageCallback - 添加消息的回调函数
    */
   const executeWorkflow = async (addMessageCallback) => {
+    console.log(`【诊断】workflow.js - 执行工作流${addMessageCallback}`)
     const func = getCurrentFunction()
     if (!func) return
 
@@ -376,6 +377,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       sender: workflow.name,
       workflow: { id: workflow.id, name: workflow.name }
     })
+    console.log(`【诊断】workflow.js -  ${addMessageCallback}`)
     addMessageCallback(loadingMessage)
 
     let progress = 0
@@ -664,76 +666,57 @@ export const useWorkflowStore = defineStore('workflow', () => {
     setTaskIdCallback
   ) => {
     try {
-      loadingMessage.content = '任务解析已开始，正在接收数据...'
+      loadingMessage.content = '甲供物资解析已开始...'
       addMessageCallback(streamingAgentMessage)
-      streamingAgentMessage.content += '正在解析甲供物资，请稍候...\n'
-      // 这里不再调用 cozeParsingService.runOwnerMaterialParsing
-      // 改为调用后端接口流式返回消息
-      await callStreamWorkflow(
+
+      // 调用工作流API解析物资信息
+      const result = await callStreamWorkflow(
         {
           excelFileList: inputs,
-          ...workflowConfig.params
+          parseOnly: true // 新增参数，表示仅解析不进行对平
         },
         '2',
         {
           onMessage: (event) => {
-            console.log(` 接收到消息: ${JSON.stringify(event)}`)
-            if (event.content && event.content !== '') {
+            if (event.content) {
               const content = event.content
-              let taskIdCandidate = null
-              let displayText = null
-              let parsedContent = null
-              if (typeof content === 'string') {
-                try {
-                  parsedContent = JSON.parse(content)
-                } catch (e) {
-                  displayText = content
-                }
-              } else if (typeof content === 'object' && content !== null) {
-                parsedContent = content
-              }
+              let parsedData = null
 
-              if (parsedContent) {
-                taskIdCandidate = parsedContent?.task_id
-                if (parsedContent?.task_id) {
-                  setTaskIdCallback(parsedContent.task_id) // 设置任务ID
-                }
-                if (!taskIdCandidate && !displayText) {
-                  displayText = JSON.stringify(parsedContent, null, 2)
-                }
-              }
-
-              if (taskIdCandidate) {
-                streamingAgentMessage.task = taskIdCandidate
+              try {
+                parsedData = typeof content === 'string' ? JSON.parse(content) : content
+              } catch (e) {
+                console.error('解析消息失败:', e)
                 return
               }
-              console.log(`【诊断】workflow.js - 甲供物资解析接收到消息: ${displayText}`)
-              if (displayText) {
-                // 将 displayText 追加到 streamingAgentMessage.content（添加换行符）
-                streamingAgentMessage.content += displayText + '\n'
-                finalResult.push(displayText)
-                const currentSession = executionSessions.find((s) => s.id === workflow.id)
-                if (currentSession) {
-                  currentSession.output = streamingAgentMessage.content
+
+              // 处理任务ID
+              if (parsedData?.task_id) {
+                setTaskIdCallback(parsedData.task_id)
+                streamingAgentMessage.task = parsedData.task_id
+              }
+
+              // 处理解析结果
+              if (parsedData?.result) {
+                const output = {
+                  materials: parsedData.result.materials || [],
+                  flattened: parsedData.result.flattened || [],
+                  unmatched: parsedData.result.unmatched || [],
+                  taskId: parsedData.task_id
                 }
 
-                // 检查是否包含"存在无法匹配的物资信息，请人工介入"
-                if (displayText.includes('存在无法匹配的物资信息，请人工介入')) {
-                  streamingAgentMessage.buttons = [
-                    {
-                      text: '物资信息确认',
-                      action: 'confirm-material-alignment',
-                      data: {
-                        taskId: taskIdCandidate || streamingAgentMessage.task
-                      }
-                    }
-                  ]
+                if (output.unmatched.length > 0) {
+                  output.message = '存在无法匹配的物资信息，请人工介入'
+                }
+
+                const displayText = JSON.stringify(output, null, 2)
+                streamingAgentMessage.content = displayText
+                finalResult.push(displayText)
+
+                const currentSession = executionSessions.find((s) => s.id === workflow.id)
+                if (currentSession) {
+                  currentSession.output = displayText
                 }
               }
-            } else if (event.event === 'PING') {
-              // Handle PING
-            } else {
-              addMessageCallback('未知任务事件', 'system', null, event)
             }
           },
           onError: (error) => {
@@ -767,6 +750,68 @@ export const useWorkflowStore = defineStore('workflow', () => {
       loadingMessage.progress = 100
       addMessageCallback(`甲供物资解析任务执行失败: ${error.message}`, 'system')
       completeWorkflow({}, addMessageCallback)
+    }
+  }
+
+  /**
+   * 执行甲供物资对平工作流
+   * @param {string} taskId - 任务ID
+   * @param {function(Object): void} addMessageCallback - 添加消息的回调函数
+   * @returns {Promise<object>} 对平结果 {success: boolean, data: object, message: string}
+   */
+  const executeOwnerMaterialAlignmentWorkflow = async (taskId, addMessageCallback) => {
+    if (!taskId) {
+      ElMessage.warning('任务ID不能为空')
+      return { success: false, message: '任务ID不能为空' }
+    }
+
+    try {
+      // 1. 获取已解析的物资数据
+      const materials = await OwnerMaterialService.queryMaterialsApplyData({ taskDetailId: taskId })
+      if (!materials || materials.length === 0) {
+        ElMessage.warning('未找到物资数据')
+        return { success: false, message: '未找到物资数据' }
+      }
+
+      // 2. 执行物资对平
+      const alignmentResult = await OwnerMaterialService.alignMaterials({
+        taskId,
+        materials
+      })
+
+      // 3. 处理结果
+      if (alignmentResult.success) {
+        ElMessage.success('物资对平成功')
+        if (addMessageCallback) {
+          addMessageCallback({
+            content: `物资对平完成: 匹配${alignmentResult.data.matched.length}条, 未匹配${alignmentResult.data.unmatched.length}条`,
+            type: 'success'
+          })
+        }
+      } else {
+        ElMessage.error(`物资对平失败: ${alignmentResult.message}`)
+        if (addMessageCallback) {
+          addMessageCallback({
+            content: `物资对平失败: ${alignmentResult.message}`,
+            type: 'error'
+          })
+        }
+      }
+
+      return alignmentResult
+    } catch (error) {
+      console.error('物资对平工作流执行失败:', error)
+      ElMessage.error(`物资对平工作流执行失败: ${error.message}`)
+      if (addMessageCallback) {
+        addMessageCallback({
+          content: `物资对平工作流执行失败: ${error.message}`,
+          type: 'error'
+        })
+      }
+      return {
+        success: false,
+        message: error.message || '物资对平工作流执行失败'
+      }
     }
   }
 
@@ -835,6 +880,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * @param {function(Object): void} addMessageCallback - 添加消息的回调函数
    */
   const startWorkflowFromDialog = (addMessageCallback) => {
+    console.log(`【诊断】workflow.js - 从对话框启动工作流${addMessageCallback}`)
     const func = getCurrentFunction()
     if (!func) return
 

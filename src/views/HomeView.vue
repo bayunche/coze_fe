@@ -133,8 +133,9 @@ const parsingResultStore = useParsingResultStore()
 const materialDialogStore = useMaterialDialogStore()
 
 // 从 Store 中解构状态和方法
-const { displayedMessages, addMessage } = chatStore // 移除 userInput, handleSendMessage
 
+const { displayedMessages } = storeToRefs(chatStore) // 移除 userInput, handleSendMessage
+const { addMessage } = chatStore // 只保留 addMessage
 // 使用 storeToRefs 解构 workflowStore 中的响应式属性
 const {
   isSidebarOpen,
@@ -231,11 +232,6 @@ const handleViewSupplierMaterialDetail = (row) => {
     '【诊断】HomeView - 接收到 SupplierMaterialTaskParsingDetailDialog 的 view-detail 事件:',
     row
   )
-}
-
-const executeWorkflow = async () => {
-  // 直接调用 workflowStore 中的 executeWorkflow action
-  await workflowStore.executeWorkflow(addMessage)
 }
 
 const onConfigDialogClose = () => {

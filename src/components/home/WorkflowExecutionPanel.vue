@@ -104,6 +104,9 @@ import { Delete } from '@element-plus/icons-vue' // 导入 Element Plus 图标
 import { ElMessage, ElMessageBox } from 'element-plus' // 导入 Element Plus 消息提示和确认框
 import { useRouter } from 'vue-router' // 导入 useRouter
 
+// 新增：缓存流程初始 loadingMessage，防止被清空
+const loadingMessageCache = ref(null)
+
 const props = defineProps({
   messages: {
     type: Array,
@@ -147,10 +150,52 @@ const streamingMessageId = ref(null) // 跟踪当前正在流式传输的消息I
 const isAppending = ref(false) // 标记是否正在追加消息内容
 const activeTab = ref('all') // 'all', 'contract', 'dialogue'
 
+// 辅助函数：判断消息是否为流程 loadingMessage
+function isLoadingMessage(msg) {
+  return msg && msg.type === 'loading' && msg.workflow
+}
+
 // 计算属性，根据激活的 tab 过滤要显示的消息
 const messagesToRender = computed(() => {
+  // 自动为解析工作流命中特定内容的消息追加“物资信息确认”按钮
+  function enhanceMessage(msg) {
+    // 只处理乙供物资解析/甲供物资解析/合同解析等解析类工作流
+    const isParsingWorkflow =
+      msg.workflow &&
+      (msg.workflow.name === '乙供物资解析' ||
+        msg.workflow.name === '甲供物资解析' ||
+        msg.workflow.name === '合同解析')
+    // 检查内容是否包含指定提示
+    const needConfirm =
+      isParsingWorkflow &&
+      typeof msg.content === 'string' &&
+      msg.content.includes('存在无法匹配的物资信息，请人工介入') &&
+      msg.task // 需有 taskId
+    if (needConfirm) {
+      // 避免重复添加按钮
+      const hasButton =
+        Array.isArray(msg.buttons) &&
+        msg.buttons.some((b) => b.action === 'confirm-material-alignment')
+      if (!hasButton) {
+        // 克隆原消息，追加按钮
+        return {
+          ...msg,
+          buttons: [
+            ...(msg.buttons || []),
+            {
+              text: '物资信息确认',
+              action: 'confirm-material-alignment',
+              data: { taskId: msg.task }
+            }
+          ]
+        }
+      }
+    }
+    return msg
+  }
+
   if (activeTab.value === 'all') {
-    return displayedMessages.value
+    return displayedMessages.value.map(enhanceMessage)
   } else {
     // 在非 'all' 标签页时，直接从 props.messages 过滤并显示
     let filteredMessages = props.messages
@@ -169,9 +214,7 @@ const messagesToRender = computed(() => {
         (m) => m.workflow && m.workflow.name === '甲供物资解析'
       )
     }
-    // 在这些特定标签页下，消息的 isStreaming 状态应该保持其原始值，以便 StreamingMessage 能够根据实际情况进行流式或追加显示。
-    // 同时，确保在这些筛选标签页下，消息仍然是立即完整显示（非逐条动画）。
-    return filteredMessages
+    return filteredMessages.map(enhanceMessage)
   }
 })
 
@@ -236,12 +279,35 @@ const handleTabClick = (tab) => {
     messageQueue.value = [] // 清空队列
     isProcessingMessage.value = false
     streamingMessageId.value = null
+    // 新增：流程执行中且 loadingMessageCache 存在时补回
+    if (loadingMessageCache.value && loadingMessageCache.value.progress < 100) {
+      displayedMessages.value = [loadingMessageCache.value]
+      messageQueue.value = []
+      isProcessingMessage.value = false
+      streamingMessageId.value = null
+      isAppending.value = false
+      console.log('【修复】tab切换时流程未结束，恢复 loadingMessage。')
+    }
   } else {
     // 切换回 'all' 标签页时，重新初始化队列并开始处理
     displayedMessages.value = [] // 清空已显示的
     messageQueue.value = [...props.messages] // 将所有消息加入队列
     isProcessingMessage.value = false // 重置状态，准备开始处理
     streamingMessageId.value = null
+
+    // 新增：流程执行中且 loadingMessageCache 存在但 props.messages 不包含时补回
+    if (
+      loadingMessageCache.value &&
+      loadingMessageCache.value.progress < 100 &&
+      !props.messages.some((m) => m.id === loadingMessageCache.value.id)
+    ) {
+      displayedMessages.value = [loadingMessageCache.value]
+      messageQueue.value = []
+      isProcessingMessage.value = false
+      streamingMessageId.value = null
+      isAppending.value = false
+      console.log('【修复】tab切回all时流程未结束，恢复 loadingMessage。')
+    }
 
     processNextMessage() // 开始处理第一条消息
   }
@@ -277,6 +343,10 @@ watch(
     if (activeTab.value === 'all') {
       const newMessagesToAdd = []
       newMessages.forEach((newMessage) => {
+        // 新增：如果是 loadingMessage，缓存到 loadingMessageCache
+        if (isLoadingMessage(newMessage)) {
+          loadingMessageCache.value = newMessage
+        }
         const existingDisplayedMessageIndex = displayedMessages.value.findIndex(
           (dMsg) => dMsg.id === newMessage.id
         )
@@ -331,13 +401,24 @@ watch(
         messageQueue.value.push(...newMessagesToAdd)
       }
 
-      // 如果 props.messages 变为空，清空所有状态
+      // 如果 props.messages 变为空，清空所有状态，但流程未结束且 loadingMessageCache 存在时补回
       if (newMessages.length === 0) {
         displayedMessages.value = []
         messageQueue.value = []
         isProcessingMessage.value = false
         streamingMessageId.value = null
         isAppending.value = false
+        // 新增：流程执行中且 loadingMessageCache 存在时补回
+        if (loadingMessageCache.value && loadingMessageCache.value.progress < 100) {
+          displayedMessages.value = [loadingMessageCache.value]
+          messageQueue.value = []
+          isProcessingMessage.value = false
+          streamingMessageId.value = null
+          isAppending.value = false
+          console.log('【修复】props.messages 为空但流程未结束，恢复 loadingMessage。')
+        } else {
+          loadingMessageCache.value = null
+        }
         console.log('【诊断】WorkflowExecutionPanel - props.messages 为空，清空所有状态。')
       }
 
@@ -490,16 +571,21 @@ const handleClearMessages = () => {
       streamingMessageId.value = null
       isAppending.value = false // 确保追加状态也重置
 
+      // 新增：流程执行中且 loadingMessageCache 存在时补回
+      if (loadingMessageCache.value && loadingMessageCache.value.progress < 100) {
+        displayedMessages.value = [loadingMessageCache.value]
+        messageQueue.value = []
+        isProcessingMessage.value = false
+        streamingMessageId.value = null
+        isAppending.value = false
+        console.log('【修复】清空消息时流程未结束，恢复 loadingMessage。')
+      }
+
       activeTab.value = 'all' // 清空后默认回到“所有消息”tab
 
-      // 重新将 chatStore 中新初始化的消息添加到组件的队列中
-      // 注意：此时 props.messages 应该已经通过 watch 机制更新为 chatStore 中的新消息
-      // 但为了确保立即处理，我们手动触发
+      // 依赖 watch props.messages 触发消息同步，移除手动赋值 messageQueue 和 processNextMessage
+      // 保留滚动条滚动
       nextTick(() => {
-        if (chatStore.displayedMessages.length > 0) {
-          messageQueue.value = [...chatStore.displayedMessages]
-          processNextMessage() // 开始处理新初始化的消息
-        }
         if (messageContainer.value) {
           messageContainer.value.scrollTop = messageContainer.value.scrollHeight
         }
