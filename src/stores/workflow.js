@@ -9,15 +9,6 @@ import { callStreamWorkflow } from '@/uitls/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 import { useChatStore } from '@/stores/chat' // 导入 chat store
 /**
- * @typedef {Object} FunctionParam
- * @property {string} key - 参数的键名
- * @property {string} label - 参数的显示名称
- * @property {string} type - 参数类型 ('text', 'number', 'boolean', 'select')
- * @property {boolean} [required] - 是否必填
- * @property {Array<{label: string, value: any}>} [options] - 当 type 为 'select' 时的选项
- * @property {number} [min] - 当 type 为 'number' 时的最小值
- * @property {number} [max] - 当 type 为 'number' 时的最大值
- */
 
 /**
  * @typedef {Object} WorkflowFunction
