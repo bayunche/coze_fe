@@ -7,6 +7,7 @@ import CozeParsingService from '@/services/CozeParsingService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
 import { callStreamWorkflow } from '@/uitls/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
+import { useChatStore } from '@/stores/chat' // 导入 chat store
 /**
  * @typedef {Object} FunctionParam
  * @property {string} key - 参数的键名
@@ -88,6 +89,7 @@ import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
  */
 
 export const useWorkflowStore = defineStore('workflow', () => {
+  const chatStore = useChatStore()
   /** @type {import('vue').Ref<boolean>} */
   const isSidebarOpen = ref(false) // 默认隐藏侧边栏
   /** @type {import('vue').Ref<string>} */
@@ -469,7 +471,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
             if (event.event === 'Message' && event.data.content_type === 'text') {
               const content = event.data.content
-              // console.log(`【诊断】workflow.js - 合同解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}`);
               let taskIdCandidate = null
               let displayText = null
 
@@ -488,25 +489,20 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
               if (taskIdCandidate) {
                 taskId.value = taskIdCandidate // 直接设置合同解析taskId
-                // console.log(`【诊断】workflow.js - 合同解析设置任务ID: ${taskIdCandidate}`);
                 if (taskIdCandidate) {
                   streamingAgentMessage.task = taskIdCandidate
                   return
                 }
                 return
               }
-              console.log(
-                `【诊断】workflow.js - 合同解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}，displayText=${displayText}`
-              )
+
               if (displayText) {
-                streamingAgentMessage.content += displayText
+                // 使用新的追加方法
+                chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
                 finalResult.push(displayText)
-                console.log(
-                  `【诊断】workflow.js - 合同解析更新消息内容: ID=${streamingAgentMessage.id}, 追加的数据是：${displayText}`
-                )
                 const currentSession = executionSessions.find((s) => s.id === workflow.id)
                 if (currentSession) {
-                  currentSession.output = streamingAgentMessage.content
+                  currentSession.output += displayText // 同样追加
                 }
               }
             } else if (event.event === 'Done') {
@@ -545,9 +541,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
             if (event.event === 'Message' && event.data.content_type === 'text') {
               const content = event.data.content
-              console.log(
-                `【诊断】workflow.js - 乙供物资解析接收到消息: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}, content_length=${content.length}`
-              )
               let taskIdCandidate = null
               let displayText = null
               let parsedContent = null
@@ -566,15 +559,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
                 taskIdCandidate = parsedContent?.task_id
                 if (parsedContent?.task_id) {
                   supplierTaskId.value = parsedContent.task_id // 设置乙供物资taskId
-                  console.log(
-                    `【诊断】workflow.js - 乙供物资解析设置任务ID: ${parsedContent.task_id}`
-                  )
                 }
                 if (Array.isArray(parsedContent?.task_detail_id)) {
                   setSupplierFileIds(parsedContent.task_detail_id) // 使用新的 action
-                  console.log(
-                    `【诊断】workflow.js - 乙供物资解析设置文件详情ID: ${parsedContent.task_detail_id}`
-                  )
                 }
                 if (!taskIdCandidate && !displayText) {
                   displayText = JSON.stringify(parsedContent, null, 2)
@@ -587,11 +574,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
               }
 
               if (displayText) {
-                streamingAgentMessage.content += displayText
+                // 使用新的追加方法
+                chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
                 finalResult.push(displayText)
                 const currentSession = executionSessions.find((s) => s.id === workflow.id)
                 if (currentSession) {
-                  currentSession.output = streamingAgentMessage.content
+                  currentSession.output += displayText // 同样追加
                 }
               }
             } else if (event.event === 'Done') {
@@ -683,41 +671,55 @@ export const useWorkflowStore = defineStore('workflow', () => {
             if (event.content) {
               const content = event.content
               let parsedData = null
+              let isJson = false
 
-              try {
-                parsedData = typeof content === 'string' ? JSON.parse(content) : content
-              } catch (e) {
-                console.error('解析消息失败:', e)
-                return
+              // 尝试解析JSON
+              if (typeof content === 'string') {
+                try {
+                  parsedData = JSON.parse(content)
+                  isJson = true
+                } catch (e) {
+                  // 不是有效的JSON，当作纯文本处理
+                  isJson = false
+                }
+              } else if (typeof content === 'object' && content !== null) {
+                parsedData = content
+                isJson = true
               }
 
-              // 处理任务ID
-              if (parsedData?.task_id) {
-                setTaskIdCallback(parsedData.task_id)
-                streamingAgentMessage.task = parsedData.task_id
-                ownerMaterialStore.setTask(parsedData.task_id) // 初始化甲供物资任务状态
-              }
-
-              // 处理解析结果
-              if (parsedData?.result) {
-                const output = {
-                  materials: parsedData.result.materials || [],
-                  flattened: parsedData.result.flattened || [],
-                  unmatched: parsedData.result.unmatched || [],
-                  taskId: parsedData.task_id
+              if (isJson && parsedData) {
+                // --- 处理JSON数据 ---
+                if (parsedData.task_id) {
+                  setTaskIdCallback(parsedData.task_id)
+                  streamingAgentMessage.task = parsedData.task_id
+                  ownerMaterialStore.setTask(parsedData.task_id)
                 }
-
-                if (output.unmatched.length > 0) {
-                  output.message = '存在无法匹配的物资信息，请人工介入'
+                if (parsedData.result) {
+                  const output = {
+                    materials: parsedData.result.materials || [],
+                    flattened: parsedData.result.flattened || [],
+                    unmatched: parsedData.result.unmatched || [],
+                    taskId: parsedData.task_id
+                  }
+                  if (output.unmatched.length > 0) {
+                    output.message = '存在无法匹配的物资信息，请人工介入'
+                  }
+                  const displayText = JSON.stringify(output, null, 2)
+                  chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
+                  finalResult.push(displayText)
+                  const currentSession = executionSessions.find((s) => s.id === workflow.id)
+                  if (currentSession) {
+                    currentSession.output += displayText
+                  }
                 }
-
-                const displayText = JSON.stringify(output, null, 2)
-                streamingAgentMessage.content = displayText
+              } else {
+                // --- 处理纯文本数据 ---
+                const displayText = content + '\n' // 添加换行符以改善显示
+                chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
                 finalResult.push(displayText)
-
                 const currentSession = executionSessions.find((s) => s.id === workflow.id)
                 if (currentSession) {
-                  currentSession.output = displayText
+                  currentSession.output += displayText
                 }
               }
             }

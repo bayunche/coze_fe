@@ -124,13 +124,21 @@ export const useChatStore = defineStore(
       initDefaultMessage()
     }
 
+    function appendStreamContent(messageId, chunk) {
+      const msg = displayedMessages.value.find((m) => m.id === messageId)
+      if (msg) {
+        msg.content += chunk
+      }
+    }
+
     return {
       userInput,
       displayedMessages,
       addMessage,
       handleSendMessage,
       initDefaultMessage,
-      resetAndInitMessages
+      resetAndInitMessages,
+      appendStreamContent // 暴露新方法
     }
   },
   {
