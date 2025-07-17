@@ -187,8 +187,10 @@
 import { reactive, computed, ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
+import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 const router = useRouter()
 const route = useRoute()
+const ownerMaterialStore = useOwnerMaterialStore()
 // 新增行样式方法
 const getRowClassName = ({ row }) => {
   return row.dbCode ? 'selected-row' : ''
@@ -721,6 +723,8 @@ async function handleSaveClick() {
     // 这里可以添加实际保存逻辑
     await new Promise((resolve) => setTimeout(resolve, 1000)) // 模拟API调用
     ElMessage.success('物资信息保存成功')
+    // 更新 store 状态，标记为准备好进行自动对平
+    ownerMaterialStore.markAsReadyForAlignment()
   } catch (error) {
     console.error('保存失败:', error)
     ElMessage.error('保存失败: ' + error.message)

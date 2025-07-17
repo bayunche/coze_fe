@@ -97,6 +97,7 @@ import { useChatStore } from '@/stores/chat'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useParsingResultStore } from '@/stores/parsingResult'
 import { useMaterialDialogStore } from '@/stores/materialDialog'
+import { useOwnerMaterialStore } from '@/stores/ownerMaterial' // 导入甲供物资 store
 import { functions } from '@/uitls/workflows.js' // functions 仍然从这里导入
 // import CozeService from '@/services/CozeService'; // 移除 CozeService 导入
 
@@ -131,6 +132,7 @@ const chatStore = useChatStore()
 const workflowStore = useWorkflowStore()
 const parsingResultStore = useParsingResultStore()
 const materialDialogStore = useMaterialDialogStore()
+const ownerMaterialStore = useOwnerMaterialStore() // 初始化甲供物资 store
 
 // 从 Store 中解构状态和方法
 
@@ -172,6 +174,8 @@ const {
   setTaskId,
   setSupplierFileIds
 } = workflowStore
+
+const { alignmentTask } = storeToRefs(ownerMaterialStore) // 解构甲供物资任务状态
 
 const { editableRow, editableFieldProp, isLongText, openEditPopup } = parsingResultStore
 
@@ -245,6 +249,43 @@ onMounted(() => {
 watch(showOwnerMaterialTaskParsingDetailDialog, (newValue) => {
   console.log('【诊断】HomeView - showOwnerMaterialTaskParsingDetailDialog 变化:', newValue)
 })
+
+// 监听甲供物资对平任务状态的变化
+watch(
+  () => alignmentTask.value.status,
+  async (newStatus, oldStatus) => {
+    console.log(`【诊断】HomeView - 甲供物资任务状态变化: ${oldStatus} -> ${newStatus}`)
+    if (newStatus === 'ready_for_alignment') {
+      const taskId = alignmentTask.value.taskId
+      if (taskId) {
+        console.log(`【诊断】HomeView - 检测到任务 ${taskId} 已准备好对平，开始执行...`)
+        addMessage(
+          `接收到人工确认完成信号，即将开始对任务 ${taskId} 进行最终的物资对平...`,
+          'system'
+        )
+
+        // 更新状态为正在对平
+        ownerMaterialStore.updateStatus('aligning')
+
+        // 调用真实的对平工作流
+        const result = await workflowStore.executeOwnerMaterialAlignmentWorkflow(taskId, addMessage)
+
+        if (result.success) {
+          ownerMaterialStore.updateStatus('completed')
+          addMessage(`任务 ${taskId} 的物资对平已成功完成。`, 'system')
+          // 可以在这里添加显示最终结果的按钮或弹窗
+        } else {
+          ownerMaterialStore.updateStatus('failed')
+          addMessage(`任务 ${taskId} 的物资对平失败: ${result.message}`, 'system')
+        }
+
+        // 可以在这里选择是否立即重置，或者让用户查看结果后再重置
+        // ownerMaterialStore.resetTask();
+      }
+    }
+  },
+  { deep: true }
+)
 
 onUnmounted(() => {
   if (timeInterval) {

@@ -6,6 +6,7 @@ import CozeWorkflowService from '@/services/CozeWorkflowService'
 import CozeParsingService from '@/services/CozeParsingService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
 import { callStreamWorkflow } from '@/uitls/backendWorkflow.js'
+import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 /**
  * @typedef {Object} FunctionParam
  * @property {string} key - 参数的键名
@@ -665,6 +666,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     addMessageCallback,
     setTaskIdCallback
   ) => {
+    const ownerMaterialStore = useOwnerMaterialStore() // 获取 store 实例
     try {
       loadingMessage.content = '甲供物资解析已开始...'
       addMessageCallback(streamingAgentMessage)
@@ -693,6 +695,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
               if (parsedData?.task_id) {
                 setTaskIdCallback(parsedData.task_id)
                 streamingAgentMessage.task = parsedData.task_id
+                ownerMaterialStore.setTask(parsedData.task_id) // 初始化甲供物资任务状态
               }
 
               // 处理解析结果
