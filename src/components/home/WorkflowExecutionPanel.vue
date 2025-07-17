@@ -32,12 +32,12 @@
       </div>
 
       <div ref="messageContainer" class="message-container">
-        <div v-if="!messagesToRender.length" class="no-messages">
+        <div v-if="!filteredMessages.length" class="no-messages">
           <el-empty description="当前分类下没有消息" />
         </div>
-        <transition-group name="message-fade" tag="div">
+        <transition-group name="message-fade" tag="div" class="message-list">
           <div
-            v-for="message in messagesToRender"
+            v-for="message in displayedMessages"
             :key="message.id"
             :class="['message-item', `message-from-${message.from}`]"
           >
@@ -53,6 +53,7 @@
                   :text="message.content"
                   :is-streaming="!!message.isStreaming"
                   :skip-animation="activeTab !== 'all' && !message.isStreaming"
+                  @animation-end="handleAnimationEnd"
                 />
                 <div v-if="message.type === 'loading'" class="loading-progress-container">
                   <el-progress
@@ -96,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick, computed } from 'vue'
+import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import StreamingMessage from './StreamingMessage.vue'
 import { useChatStore } from '@/stores/chat'
 import { Delete } from '@element-plus/icons-vue'
@@ -122,6 +123,12 @@ const emit = defineEmits([
 
 const messageContainer = ref(null)
 const activeTab = ref('all')
+
+// --- 消息队列状态 ---
+const displayedMessages = ref([])
+const messageQueue = ref([])
+const isProcessingQueue = ref(false)
+// ---
 
 const enhanceMessage = (msg) => {
   const isParsingWorkflow =
@@ -153,7 +160,7 @@ const enhanceMessage = (msg) => {
   return msg
 }
 
-const messagesToRender = computed(() => {
+const filteredMessages = computed(() => {
   let filtered = props.messages
   if (activeTab.value === 'contract') {
     filtered = props.messages.filter((m) => m.workflow?.name === '合同解析')
@@ -175,13 +182,92 @@ const scrollToBottom = () => {
   })
 }
 
+const processQueue = () => {
+  if (isProcessingQueue.value || messageQueue.value.length === 0) {
+    return
+  }
+  isProcessingQueue.value = true
+  const nextMessage = messageQueue.value.shift()
+  displayedMessages.value.push(nextMessage)
+  scrollToBottom()
+
+  // 如果是 loading 消息，我们不等待 animation-end，而是通过 watch 来解锁
+  // 对于非 loading 消息，animation-end 会负责解锁
+  if (nextMessage.type === 'loading') {
+    // 标记正在处理，但允许 watch 解锁
+  }
+}
+
+const handleAnimationEnd = () => {
+  isProcessingQueue.value = false
+  processQueue()
+}
+
 watch(
-  () => props.messages,
-  () => {
-    scrollToBottom()
+  filteredMessages,
+  (newMessages, oldMessages) => {
+    // 1. 更新已显示消息的状态（特别是 loading 进度）
+    const updatedDisplayedMessages = displayedMessages.value
+      .map((dMsg) => {
+        const updatedVersion = newMessages.find((nMsg) => nMsg.id === dMsg.id)
+        return updatedVersion ? { ...updatedVersion } : null // 返回新对象以触发响应性
+      })
+      .filter(Boolean) // 过滤掉已删除的消息
+
+    if (JSON.stringify(updatedDisplayedMessages) !== JSON.stringify(displayedMessages.value)) {
+      displayedMessages.value = updatedDisplayedMessages
+    }
+
+    // 2. 检查 loading 消息是否完成
+    const lastDisplayed = displayedMessages.value[displayedMessages.value.length - 1]
+    if (isProcessingQueue.value && lastDisplayed && lastDisplayed.type === 'loading') {
+      const correspondingNewMessage = newMessages.find((m) => m.id === lastDisplayed.id)
+      if (!correspondingNewMessage || correspondingNewMessage.type !== 'loading') {
+        isProcessingQueue.value = false
+        processQueue() // loading 完成，立即处理下一条
+      }
+    }
+
+    // 3. 将新消息添加到队列
+    const displayedIds = new Set(displayedMessages.value.map((m) => m.id))
+    const queuedIds = new Set(messageQueue.value.map((m) => m.id))
+    const newIncomingMessages = newMessages.filter(
+      (m) => !displayedIds.has(m.id) && !queuedIds.has(m.id)
+    )
+
+    if (newIncomingMessages.length > 0) {
+      messageQueue.value.push(...newIncomingMessages)
+      processQueue()
+    }
+
+    // 4. 处理消息清空
+    if (newMessages.length === 0 && oldMessages.length > 0) {
+      displayedMessages.value = []
+      messageQueue.value = []
+      isProcessingQueue.value = false
+    }
   },
   { deep: true }
 )
+
+// 切换 tab 时，重置显示
+watch(activeTab, () => {
+  messageQueue.value = []
+  displayedMessages.value = []
+  isProcessingQueue.value = false
+  // 延迟一下，让 filteredMessages 更新
+  nextTick(() => {
+    messageQueue.value.push(...filteredMessages.value)
+    processQueue()
+  })
+})
+
+onMounted(() => {
+  if (props.messages.length > 0) {
+    messageQueue.value.push(...filteredMessages.value)
+    processQueue()
+  }
+})
 
 const handleTabClick = () => {
   scrollToBottom()
@@ -243,6 +329,11 @@ const handleClearMessages = () => {
   transition:
     opacity 0.5s,
     transform 0.5s;
+}
+.message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 .message-fade-enter-from,
 .message-fade-leave-to {
@@ -387,6 +478,7 @@ const handleClearMessages = () => {
 .message-bubble {
   line-height: 1.5;
   /* 移除通用背景、圆角和宽度，由特定来源的消息定义 */
+  align-self: flex-end; /* 确保智能体/系统消息靠左对齐 */
 }
 
 .message-sender {
