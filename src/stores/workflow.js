@@ -412,19 +412,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }, 100)
 
     try {
-      currentStepIndex.value = 0 // 上传文件
-      const appId = '7509762183313129512' // 使用与工作流相同的appId
-      const uploadPromises = workflowConfig.files.map((file) =>
-        cozeWorkflowService.uploadFile(file.raw, appId)
-      )
-      const fileIds = await Promise.all(uploadPromises)
+      const fileIds = await _uploadFiles(func.id)
       stepProgress.value = 100
       currentStepIndex.value = 1 // 文件解析
+
       /** @type {Array<{file_id: string}>} */
-      let inputs = []
-      fileIds.forEach((fileId) => {
-        inputs.push({ file_id: fileId })
-      })
+      const inputs = fileIds.map((fileId) => ({ file_id: fileId }))
 
       executionSessions.push({
         id: workflow.id,
@@ -621,6 +614,40 @@ export const useWorkflowStore = defineStore('workflow', () => {
       loadingMessage.progress = 100
       addMessageCallback(`任务执行失败: ${error.message}`, 'system')
       completeWorkflow({}, addMessageCallback)
+    }
+  }
+
+  /**
+   * 根据功能ID上传文件。
+   * @param {string} functionId - 当前执行的功能ID。
+   * @returns {Promise<string[]>} 上传后的文件ID列表。
+   * @private
+   */
+  const _uploadFiles = async (functionId) => {
+    currentStepIndex.value = 0 // 设置当前步骤为上传文件
+    stepProgress.value = 0
+
+    const appId = '7509762183313129512' // 通用appId
+
+    if (functionId === 'ownerSuppliedMaterialParsing') {
+      // 甲供物资解析使用新的（占位）上传逻辑
+      console.log('【诊断】使用甲供物资专用上传逻辑...')
+      // TODO: 将来替换为真正的甲供物资上传方法
+      const uploadPromises = workflowConfig.files.map((file) =>
+        cozeWorkflowService.uploadFile(file.raw, appId)
+      )
+      const fileIds = await Promise.all(uploadPromises)
+      stepProgress.value = 100
+      return fileIds
+    } else {
+      // 其他功能沿用原有的上传逻辑
+      console.log('【诊断】使用通用上传逻辑...')
+      const uploadPromises = workflowConfig.files.map((file) =>
+        cozeWorkflowService.uploadFile(file.raw, appId)
+      )
+      const fileIds = await Promise.all(uploadPromises)
+      stepProgress.value = 100
+      return fileIds
     }
   }
 
