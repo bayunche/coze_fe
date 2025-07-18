@@ -38,6 +38,11 @@ const router = createRouter({
       path: '/owner-material-align',
       name: 'owner-material-align',
       component: () => import('../views/OwnerMaterialAlignPage.vue')
+    },
+    {
+      path: '/owner-material-report',
+      name: 'OwnerMaterialReport',
+      component: () => import('../views/OwnerMaterialReportPage.vue')
     }
   ]
 })

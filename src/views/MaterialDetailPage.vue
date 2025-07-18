@@ -2,168 +2,271 @@
   <div v-loading="loading" class="material-detail-page">
     <div class="page-header">
       <h2>乙供物资解析详情</h2>
-      <el-button @click="handleBack">返回</el-button>
+      <el-button @click="handleBack" type="info">返回</el-button>
     </div>
-    <el-table :data="tableData" style="width: 100%" border>
-      <el-table-column type="index" label="序号" width="60"></el-table-column>
-      <el-table-column prop="material_name" label="乙供物资名称">
-        <template #default="scope">
-          <span>{{ scope.row.material_name || '/' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="material_specification" label="乙供物资规格型号">
-        <template #default="scope">
-          <span>{{ scope.row.material_specification || '/' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="material_price" label="乙供物资价格">
-        <template #default="scope">
-          <span>{{ scope.row.material_price || '/' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="matched_name" label="匹配物资名称">
-        <template #default="scope">
-          <span>{{ scope.row.matched_name || '/' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="matched_specification" label="匹配规格型号">
-        <template #default="scope">
-          <span>{{ scope.row.matched_specification || '/' }}</span>
-        </template>
-      </el-table-column>
 
-      <el-table-column prop="matched_price" label="匹配价格">
-        <template #default="scope">
-          <span>{{ getPrice(scope.row.matched_price, scope.row.matchedPriceQuarter) }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="similarity" label="相似度">
-        <template #default="scope">
-          <span>{{ scope.row.similarity || '/' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="match_type" label="匹配类型">
-        <template #default="scope">
-          <el-tag :type="getMatchTypeTag(scope.row.match_type)">{{ scope.row.match_type }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="200">
-        <template #default="scope">
-          <div v-if="scope.row.original_item.confirm_type === 2">
-            <!-- 如果是人工匹配，根据原始的 comparison_result 来显示下拉框或修改按钮 -->
-            <div v-if="scope.row.original_item.comparison_result === 2">
-              <el-select
-                v-model="scope.row.selected_material"
-                placeholder="选择物资"
-                value-key="matched_id"
-                @change="handleMaterialSelectChange(scope.row, $event)"
-                :popper-append-to-body="false"
-                style="width: 100%; margin-bottom: 5px"
-              >
-                <el-option
-                  v-for="item in scope.row.similar_matches"
-                  :key="item.matched_id || item.id"
-                  :label="`${item.name || '/'} ${item.specification || '/'}`"
-                  :value="item"
-                ></el-option>
-              </el-select>
-              <el-select
-                v-model="scope.row.selected_price_quarter"
-                placeholder="选择价格和季度"
-                value-key="id"
-                @change="handlePriceQuarterChange(scope.row, $event)"
-                :popper-append-to-body="false"
-                style="width: 100%"
-              >
-                <el-option
-                  v-for="item in scope.row.price_quarter_options"
-                  :key="item.id"
-                  :label="`¥${
-                    item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
-                  } (${item.quarter || '/'})`"
-                  :value="item"
-                ></el-option>
-              </el-select>
-            </div>
-            <div v-else>
-              <el-button type="primary" size="small" @click="handleEdit(scope.row)">修改</el-button>
-            </div>
-          </div>
-          <div v-else-if="scope.row.match_type === '精确匹配'">
-            <el-select
-              v-model="scope.row.selected_material"
-              placeholder="选择物资"
-              value-key="matched_id"
-              @change="handleMaterialSelectChange(scope.row, $event)"
-              :popper-append-to-body="false"
-              style="width: 100%; margin-bottom: 5px"
-            >
-              <el-option
-                v-for="item in scope.row.similar_matches"
-                :key="item.matched_id || item.id"
-                :label="`${item.name || '/'} ${item.specification || '/'}`"
-                :value="item"
-              ></el-option>
-            </el-select>
-            <el-select
-              v-model="scope.row.selected_price_quarter"
-              placeholder="选择价格和季度"
-              value-key="id"
-              @change="handlePriceQuarterChange(scope.row, $event)"
-              :popper-append-to-body="false"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in scope.row.price_quarter_options"
-                :key="item.id"
-                :label="`¥${
-                  item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
-                } (${item.quarter || '/'})`"
-                :value="item"
-              ></el-option>
-            </el-select>
-          </div>
-          <div v-else-if="['相似匹配', '历史匹配'].includes(scope.row.match_type)">
-            <el-select
-              v-model="scope.row.selected_material"
-              placeholder="选择物资"
-              value-key="matched_id"
-              @change="handleMaterialSelectChange(scope.row, $event)"
-              :popper-append-to-body="false"
-              style="width: 100%; margin-bottom: 5px"
-            >
-              <el-option
-                v-for="item in scope.row.similar_matches"
-                :key="item.matched_id || item.id"
-                :label="`${item.name || '/'} ${item.specification || '/'}`"
-                :value="item"
-              ></el-option>
-            </el-select>
-            <el-select
-              v-model="scope.row.selected_price_quarter"
-              placeholder="选择价格和季度"
-              value-key="id"
-              @change="handlePriceQuarterChange(scope.row, $event)"
-              :popper-append-to-body="false"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="item in scope.row.price_quarter_options"
-                :key="item.id"
-                :label="`¥${
-                  item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
-                } (${item.quarter || '/'})`"
-                :value="item"
-              ></el-option>
-            </el-select>
-          </div>
+    <div class="table-container">
+      <el-table
+        :data="tableData"
+        class="material-table"
+        :row-class-name="getRowClassName"
+        :header-cell-style="getHeaderStyle"
+        :cell-style="getCellStyle"
+        border
+        stripe
+        size="large"
+      >
+        <!-- 源数据分组 -->
+        <el-table-column
+          type="index"
+          label="序号"
+          width="100"
+          align="center"
+          fixed="left"
+        ></el-table-column>
 
-          <div v-else>
-            <el-button type="primary" size="small" @click="handleEdit(scope.row)">修改</el-button>
-          </div>
-        </template>
-      </el-table-column>
-    </el-table>
+        <!-- 乙供物资信息组 -->
+        <el-table-column label="乙供物资信息" align="center">
+          <el-table-column
+            prop="material_name"
+            label="物资名称"
+            min-width="140"
+            show-overflow-tooltip
+          >
+            <template #default="scope">
+              <div class="material-info">
+                <i class="material-icon el-icon-box"></i>
+                <span class="material-name">{{ scope.row.material_name || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="material_specification"
+            label="规格型号"
+            min-width="140"
+            show-overflow-tooltip
+          >
+            <template #default="scope">
+              <div class="spec-info">
+                <span class="spec-text">{{ scope.row.material_specification || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="material_price" label="价格" width="100" align="right">
+            <template #default="scope">
+              <div class="price-info">
+                <span class="price-text">{{ formatPrice(scope.row.material_price) }}</span>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table-column>
+
+        <!-- 分隔线 -->
+        <el-table-column width="2" class-name="divider-column"></el-table-column>
+
+        <!-- 匹配结果分组 -->
+        <el-table-column label="匹配结果信息" align="center">
+          <el-table-column
+            prop="matched_name"
+            label="匹配物资名称"
+            min-width="140"
+            show-overflow-tooltip
+          >
+            <template #default="scope">
+              <div class="matched-info">
+                <i class="match-icon el-icon-link"></i>
+                <span class="matched-name">{{ scope.row.matched_name || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column
+            prop="matched_specification"
+            label="匹配规格"
+            min-width="140"
+            show-overflow-tooltip
+          >
+            <template #default="scope">
+              <span class="matched-spec">{{ scope.row.matched_specification || '-' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="matched_price" label="匹配价格" width="120" align="right">
+            <template #default="scope">
+              <div class="matched-price">
+                <span class="price-value">{{
+                  getPrice(scope.row.matched_price, scope.row.matchedPriceQuarter)
+                }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="similarity" label="相似度" width="100" align="center">
+            <template #default="scope">
+              <div class="similarity-info">
+                <el-progress
+                  :percentage="getSimilarityPercentage(scope.row.similarity)"
+                  :color="getSimilarityColor(scope.row.similarity)"
+                  :show-text="false"
+                  :stroke-width="6"
+                />
+                <span class="similarity-text">{{ scope.row.similarity || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="match_type" label="匹配类型" width="120" align="center">
+            <template #default="scope">
+              <el-tag
+                :type="getMatchTypeTag(scope.row.match_type)"
+                :effect="getMatchTypeEffect(scope.row.match_type)"
+                size="medium"
+              >
+                {{ scope.row.match_type }}
+              </el-tag>
+            </template>
+          </el-table-column>
+        </el-table-column>
+        <!-- 操作列 -->
+        <el-table-column label="操作" width="240" align="center" fixed="right">
+          <template #default="scope">
+            <div class="operation-container">
+              <div v-if="scope.row.original_item.confirm_type === 2">
+                <!-- 如果是人工匹配，根据原始的 comparison_result 来显示下拉框或修改按钮 -->
+                <div v-if="scope.row.original_item.comparison_result === 2" class="select-group">
+                  <el-select
+                    v-model="scope.row.selected_material"
+                    placeholder="选择物资"
+                    value-key="matched_id"
+                    @change="handleMaterialSelectChange(scope.row, $event)"
+                    :popper-append-to-body="false"
+                    size="small"
+                    class="material-select"
+                  >
+                    <el-option
+                      v-for="item in scope.row.similar_matches"
+                      :key="item.matched_id || item.id"
+                      :label="`${item.name || '/'} ${item.specification || '/'}`"
+                      :value="item"
+                    ></el-option>
+                  </el-select>
+                  <el-select
+                    v-model="scope.row.selected_price_quarter"
+                    placeholder="选择价格和季度"
+                    value-key="id"
+                    @change="handlePriceQuarterChange(scope.row, $event)"
+                    :popper-append-to-body="false"
+                    size="small"
+                    class="price-select"
+                  >
+                    <el-option
+                      v-for="item in scope.row.price_quarter_options"
+                      :key="item.id"
+                      :label="`¥${
+                        item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
+                      } (${item.quarter || '/'})`"
+                      :value="item"
+                    ></el-option>
+                  </el-select>
+                </div>
+                <div v-else class="button-group">
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="handleEdit(scope.row)"
+                    class="edit-btn"
+                  >
+                    <i class="el-icon-edit"></i> 修改
+                  </el-button>
+                </div>
+              </div>
+              <div v-else-if="scope.row.match_type === '精确匹配'" class="select-group">
+                <el-select
+                  v-model="scope.row.selected_material"
+                  placeholder="选择物资"
+                  value-key="matched_id"
+                  @change="handleMaterialSelectChange(scope.row, $event)"
+                  :popper-append-to-body="false"
+                  size="small"
+                  class="material-select"
+                >
+                  <el-option
+                    v-for="item in scope.row.similar_matches"
+                    :key="item.matched_id || item.id"
+                    :label="`${item.name || '/'} ${item.specification || '/'}`"
+                    :value="item"
+                  ></el-option>
+                </el-select>
+                <el-select
+                  v-model="scope.row.selected_price_quarter"
+                  placeholder="选择价格和季度"
+                  value-key="id"
+                  @change="handlePriceQuarterChange(scope.row, $event)"
+                  :popper-append-to-body="false"
+                  size="small"
+                  class="price-select"
+                >
+                  <el-option
+                    v-for="item in scope.row.price_quarter_options"
+                    :key="item.id"
+                    :label="`¥${
+                      item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
+                    } (${item.quarter || '/'})`"
+                    :value="item"
+                  ></el-option>
+                </el-select>
+              </div>
+              <div
+                v-else-if="['相似匹配', '历史匹配'].includes(scope.row.match_type)"
+                class="select-group"
+              >
+                <el-select
+                  v-model="scope.row.selected_material"
+                  placeholder="选择物资"
+                  value-key="matched_id"
+                  @change="handleMaterialSelectChange(scope.row, $event)"
+                  :popper-append-to-body="false"
+                  size="small"
+                  class="material-select"
+                >
+                  <el-option
+                    v-for="item in scope.row.similar_matches"
+                    :key="item.matched_id || item.id"
+                    :label="`${item.name || '/'} ${item.specification || '/'}`"
+                    :value="item"
+                  ></el-option>
+                </el-select>
+                <el-select
+                  v-model="scope.row.selected_price_quarter"
+                  placeholder="选择价格和季度"
+                  value-key="id"
+                  @change="handlePriceQuarterChange(scope.row, $event)"
+                  :popper-append-to-body="false"
+                  size="small"
+                  class="price-select"
+                >
+                  <el-option
+                    v-for="item in scope.row.price_quarter_options"
+                    :key="item.id"
+                    :label="`¥${
+                      item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '/'
+                    } (${item.quarter || '/'})`"
+                    :value="item"
+                  ></el-option>
+                </el-select>
+              </div>
+
+              <div v-else class="button-group">
+                <el-button
+                  type="primary"
+                  size="small"
+                  @click="handleEdit(scope.row)"
+                  class="edit-btn"
+                >
+                  <i class="el-icon-edit"></i> 修改
+                </el-button>
+              </div>
+            </div>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
     <el-pagination
       background
       layout="total, sizes, prev, pager, next, jumper"
@@ -173,7 +276,7 @@
       v-model:current-page="currentPage"
       @current-change="handlePageChange"
       @size-change="handleSizeChange"
-      style="margin-top: 20px; text-align: right"
+      class="modern-pagination"
     />
     <div class="page-footer">
       <el-button @click="handleBack">关闭</el-button>
@@ -435,6 +538,62 @@ const getPrice = (price, quarter) => {
   }
   return `¥${price} (${quarter})`
 }
+
+// 格式化价格显示
+const formatPrice = (price) => {
+  if (price === null || price === undefined || price === '') {
+    return '-'
+  }
+  return `¥${price}`
+}
+
+// 获取相似度百分比
+const getSimilarityPercentage = (similarity) => {
+  if (!similarity || similarity === '/') return 0
+  const percent = parseInt(similarity.replace('%', ''))
+  return isNaN(percent) ? 0 : percent
+}
+
+// 获取相似度颜色
+const getSimilarityColor = (similarity) => {
+  const percent = getSimilarityPercentage(similarity)
+  if (percent >= 90) return '#0d9488' // 青蓝绿色
+  if (percent >= 70) return '#0891b2' // 青色
+  if (percent >= 50) return '#dc6803' // 深橙色
+  return '#9ca3af' // 中性灰
+}
+
+// 获取匹配类型标签样式
+const getMatchTypeEffect = (type) => {
+  if (type === '精确匹配') return 'dark'
+  if (type === '相似匹配') return 'plain'
+  if (type === '历史匹配') return 'light'
+  return 'plain'
+}
+
+// 获取行样式
+const getRowClassName = ({ row, rowIndex }) => {
+  const matchType = row.match_type
+  if (matchType === '精确匹配') return 'exact-match-row'
+  if (matchType === '相似匹配') return 'similar-match-row'
+  if (matchType === '历史匹配') return 'history-match-row'
+  if (matchType === '无匹配') return 'no-match-row'
+  return ''
+}
+
+// 获取表头样式
+const getHeaderStyle = ({ column, columnIndex }) => {
+  if (columnIndex === 0) return { backgroundColor: '#f1f5f9', fontWeight: 'bold', color: '#334155' }
+  if (column.label?.includes('乙供物资')) return { backgroundColor: '#eef2ff', color: '#3730a3' }
+  if (column.label?.includes('匹配')) return { backgroundColor: '#f0fdfa', color: '#0d9488' }
+  return { backgroundColor: '#f8fafc', color: '#475569' }
+}
+
+// 获取单元格样式
+const getCellStyle = ({ column, columnIndex }) => {
+  if (columnIndex === 0) return { backgroundColor: '#f1f5f9', fontWeight: 'bold', color: '#334155' }
+  return {}
+}
 const fetchPriceInfoList = async (baseMaterialsDataId) => {
   return await MaterialService.queryPriceInfoList(baseMaterialsDataId)
 }
@@ -692,29 +851,314 @@ const handleBack = () => {
 
 <style scoped>
 .material-detail-page {
-  padding: 20px;
-  background-color: #fff;
+  --primary-color: #4f46e5; /* 靛蓝色 */
+  --secondary-color: #64748b; /* 石板灰 */
+  --accent-color: #3730a3; /* 深靛蓝主题色 */
+  --success-color: #0d9488; /* 青蓝绿色（更柔和的成功色） */
+  --warning-color: #dc6803; /* 深橙色 */
+  --danger-color: #dc2626; /* 深红色 */
+  --info-color: #0891b2; /* 青色 */
+  --background-light: #f8fafc; /* 极浅灰蓝背景 */
+  --card-background: #ffffff; /* 纯白卡片背景 */
+  --border-color: rgba(79, 70, 229, 0.08); /* 柔和边框 */
+  --text-dark: #1e293b; /* 深色文字 */
+  --text-light: #64748b; /* 浅色文字 */
+  --shadow-color: rgba(79, 70, 229, 0.06); /* 柔和阴影 */
+
+  padding: 32px;
+  background-color: var(--background-light);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--text-dark);
+  overflow-x: hidden;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .page-header h2 {
   margin: 0;
-  font-size: 24px;
-  color: #333;
+  font-size: 28px;
+  color: var(--accent-color);
+  font-weight: 700;
+  position: relative;
+  padding-left: 16px;
+  text-shadow: 0 0 5px var(--shadow-color);
+}
+
+.page-header h2::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 28px;
+  width: 6px;
+  background: var(--accent-color);
+  border-radius: 3px;
+  box-shadow: 0 0 6px var(--shadow-color);
+}
+
+.table-container {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px var(--shadow-color);
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+}
+
+.material-table {
+  border-radius: 0;
+  overflow: visible;
+  background-color: transparent;
+  border: none;
+  font-size: 14px;
+}
+
+/* 表头样式 */
+.material-table :deep(.el-table__header-wrapper) {
+  border-radius: 12px 12px 0 0;
+}
+
+.material-table :deep(.el-table__header-wrapper th) {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.01));
+  color: var(--accent-color);
+  font-weight: 600;
+  font-size: 14px;
+  border-color: rgba(0, 0, 0, 0.05);
+  padding: 16px 12px;
+  text-shadow: none;
+  border-bottom: 2px solid rgba(79, 70, 229, 0.06);
+}
+
+/* 行样式 */
+.material-table :deep(.el-table__row) {
+  height: 70px;
+  font-size: 14px;
+  color: var(--text-dark);
+  transition: all 0.3s ease;
+}
+
+.material-table :deep(.el-table__row:hover) {
+  background-color: rgba(79, 70, 229, 0.015) !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.04);
+  transform: translateY(-1px);
+}
+
+/* 匹配类型行样式 */
+.material-table :deep(.exact-match-row) {
+  background-color: rgba(13, 148, 136, 0.02) !important;
+  border-left: 4px solid var(--success-color);
+}
+
+.material-table :deep(.similar-match-row) {
+  background-color: rgba(220, 104, 3, 0.02) !important;
+  border-left: 4px solid var(--warning-color);
+}
+
+.material-table :deep(.history-match-row) {
+  background-color: rgba(8, 145, 178, 0.02) !important;
+  border-left: 4px solid var(--info-color);
+}
+
+.material-table :deep(.no-match-row) {
+  background-color: rgba(220, 38, 38, 0.02) !important;
+  border-left: 4px solid var(--danger-color);
+}
+
+/* 单元格样式 */
+.material-table :deep(.el-table__cell) {
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 12px 8px;
+  vertical-align: middle;
+}
+
+/* 分隔列样式 */
+.material-table :deep(.divider-column) {
+  background: linear-gradient(
+    to bottom,
+    transparent 20%,
+    rgba(0, 123, 255, 0.2) 50%,
+    transparent 80%
+  );
+  width: 2px !important;
+  padding: 0 !important;
+}
+
+/* 内容样式 */
+.material-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.material-icon {
+  color: var(--accent-color);
+  font-size: 16px;
+}
+
+.material-name {
+  font-weight: 500;
+  color: var(--text-dark);
+  line-height: 1.4;
+}
+
+.spec-info {
+  display: flex;
+  align-items: center;
+}
+
+.spec-text {
+  color: var(--text-light);
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.price-info {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.price-text {
+  font-weight: 600;
+  color: #b45309;
+  font-family: 'Courier New', monospace;
+}
+
+.matched-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match-icon {
+  color: var(--success-color);
+  font-size: 16px;
+}
+
+.matched-name {
+  font-weight: 500;
+  color: var(--text-dark);
+  line-height: 1.4;
+}
+
+.matched-spec {
+  color: var(--text-light);
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.matched-price {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.price-value {
+  font-weight: 600;
+  color: var(--success-color);
+  font-family: 'Courier New', monospace;
+}
+
+.similarity-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.similarity-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+
+/* 操作区域样式 */
+.operation-container {
+  padding: 8px;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.material-select,
+.price-select {
+  width: 100% !important;
+}
+
+.material-select :deep(.el-input__wrapper) {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.12);
+}
+
+.price-select :deep(.el-input__wrapper) {
+  border-color: var(--success-color);
+  box-shadow: 0 0 0 1px rgba(13, 148, 136, 0.12);
+}
+
+.button-group {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.edit-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.edit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
 }
 
 .page-footer {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20px;
-  padding-top: 15px;
-  border-top: 1px solid #eee;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* 按钮样式优化 */
+.page-header .el-button,
+.page-footer .el-button {
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
+
+/* 加载动画优化 */
+.material-detail-page :deep(.el-loading-mask) {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.material-detail-page :deep(.el-loading-spinner .path) {
+  stroke: var(--accent-color);
 }
 </style>

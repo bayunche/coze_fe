@@ -130,7 +130,7 @@
     />
     <div class="page-footer">
       <el-button @click="handleBack">关闭</el-button>
-      <el-button type="primary" @click="handleSave" :loading="saving">保存解析结果</el-button>
+      <el-button type="primary" @click="handleGenerateReport" :loading="saving">生成解析报告</el-button>
     </div>
   </div>
 </template>
@@ -250,6 +250,18 @@ const handleCancelEdit = (row) => {
     Object.assign(row, originalItem)
     row.editing = currentEditingState
   }
+}
+
+const handleGenerateReport = () => {
+  // 导航到甲供物资解析报告页面
+  router.push({
+    name: 'OwnerMaterialReport',
+    query: {
+      taskId: route.query.taskId || route.query.taskDetailId,
+      projectName: projectInfo.value.projectName,
+      projectNumber: projectInfo.value.projectNumber
+    }
+  })
 }
 
 const handleSave = async () => {
@@ -387,15 +399,19 @@ const getMergedIndex = (index) => {
 
 <style scoped>
 .owner-material-detail-page {
-  --primary-color: #007bff; /* 蓝色 */
-  --secondary-color: #6c757d; /* 灰色 */
-  --accent-color: #007bff; /* 主题蓝 */
-  --background-light: #f8f9fa; /* 极浅色背景 */
+  --primary-color: #4f46e5; /* 靛蓝色 */
+  --secondary-color: #64748b; /* 石板灰 */
+  --accent-color: #3730a3; /* 深靛蓝主题色 */
+  --success-color: #0d9488; /* 青蓝绿色（更柔和的成功色） */
+  --warning-color: #dc6803; /* 深橙色 */
+  --danger-color: #dc2626; /* 深红色 */
+  --info-color: #0891b2; /* 青色 */
+  --background-light: #f8fafc; /* 极浅灰蓝背景 */
   --card-background: #ffffff; /* 纯白卡片背景 */
-  --border-color: rgba(0, 123, 255, 0.1); /* 柔光边框 */
-  --text-dark: #212529; /* 深色文字 */
-  --text-light: #495057; /* 浅色文字 */
-  --shadow-color: rgba(0, 123, 255, 0.08); /* 蓝色阴影 */
+  --border-color: rgba(79, 70, 229, 0.08); /* 柔和边框 */
+  --text-dark: #1e293b; /* 深色文字 */
+  --text-light: #64748b; /* 浅色文字 */
+  --shadow-color: rgba(79, 70, 229, 0.06); /* 柔和阴影 */
 
   padding: 32px;
   background-color: var(--background-light);
@@ -503,13 +519,13 @@ const getMergedIndex = (index) => {
 }
 
 .material-table :deep(.el-table__header-wrapper th) {
-  background-color: rgba(0, 123, 255, 0.03); /* 浅蓝色表头背景 */
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.01));
   color: var(--accent-color);
   font-weight: 600;
   font-size: 15px;
   border-color: rgba(0, 0, 0, 0.05);
   padding: 14px 0;
-  text-shadow: 0 0 2px var(--shadow-color);
+  text-shadow: none;
 }
 
 .material-table :deep(.el-table__row) {
@@ -522,34 +538,34 @@ const getMergedIndex = (index) => {
 }
 
 .material-table :deep(.el-table__row.merged-group-start) {
-  background-color: rgba(0, 123, 255, 0.05) !important; /* 浅蓝色背景，区分合并组 */
-  border-top: 2px solid rgba(0, 123, 255, 0.2) !important; /* 顶部加粗边框 */
+  background-color: rgba(79, 70, 229, 0.02) !important;
+  border-top: 2px solid rgba(79, 70, 229, 0.15) !important;
 }
 
 .material-table :deep(.el-table__row.merged-group-part) {
-  background-color: rgba(0, 123, 255, 0.05) !important; /* 与起始行相同的背景色 */
+  background-color: rgba(79, 70, 229, 0.02) !important;
 }
 
 /* 确保条纹背景和hover效果在合并行上也能正常工作 */
 .material-table :deep(.el-table__row.el-table__row--striped.merged-group-start),
 .material-table :deep(.el-table__row.el-table__row--striped.merged-group-part) {
-  background-color: rgba(0, 123, 255, 0.05) !important; /* 覆盖条纹背景 */
+  background-color: rgba(79, 70, 229, 0.02) !important;
 }
 
 .material-table :deep(.el-table__row.merged-group-start:hover),
 .material-table :deep(.el-table__row.merged-group-part:hover) {
-  background-color: rgba(0, 123, 255, 0.08) !important; /* 统一的hover效果 */
+  background-color: rgba(79, 70, 229, 0.04) !important;
 }
 
 /* 原始的条纹和hover效果 */
 .material-table
   :deep(.el-table__row.el-table__row--striped:not(.merged-group-start):not(.merged-group-part)) {
-  background-color: #fcfcfc; /* 条纹背景 */
+  background-color: #fcfcfc;
 }
 
 .material-table :deep(.el-table__row:hover:not(.merged-group-start):not(.merged-group-part)) {
-  background-color: rgba(0, 123, 255, 0.03) !important; /* hover 效果 */
-  box-shadow: inset 0 0 8px rgba(0, 123, 255, 0.08);
+  background-color: rgba(79, 70, 229, 0.015) !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.04);
 }
 
 .material-table :deep(.el-table__cell) {
@@ -578,7 +594,7 @@ const getMergedIndex = (index) => {
 
 /* 加载动画优化 */
 .owner-material-detail-page :deep(.el-loading-mask) {
-  background-color: rgba(255, 255, 255, 0.8); /* 浅色加载背景 */
+  background-color: rgba(255, 255, 255, 0.8);
 }
 
 .owner-material-detail-page :deep(.el-loading-spinner .path) {
@@ -587,10 +603,10 @@ const getMergedIndex = (index) => {
 </style>
 
 <style>
-/* 全局 Element Plus 样式覆盖，使其适应深色科技感主题 */
+/* 全局 Element Plus 样式覆盖，使其适应现代化主题 */
 .el-table {
-  --el-table-row-hover-bg-color: rgba(0, 123, 255, 0.03) !important;
-  --el-table-header-bg-color: rgba(0, 123, 255, 0.03) !important;
+  --el-table-row-hover-bg-color: rgba(79, 70, 229, 0.015) !important;
+  --el-table-header-bg-color: rgba(79, 70, 229, 0.02) !important;
   --el-table-border-color: rgba(0, 0, 0, 0.05) !important;
   --el-table-text-color: var(--text-dark) !important;
   --el-table-header-text-color: var(--accent-color) !important;
@@ -603,8 +619,8 @@ const getMergedIndex = (index) => {
 
 .el-input__wrapper {
   background-color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 0 3px rgba(0, 123, 255, 0.03) inset !important;
-  border: 1px solid rgba(0, 123, 255, 0.08) !important;
+  box-shadow: 0 0 3px rgba(79, 70, 229, 0.03) inset !important;
+  border: 1px solid rgba(79, 70, 229, 0.08) !important;
 }
 
 .el-input__inner {
@@ -615,33 +631,33 @@ const getMergedIndex = (index) => {
   font-weight: 600;
   border-radius: 4px;
   padding: 4px 8px;
-  background-color: rgba(0, 123, 255, 0.08);
-  border-color: rgba(0, 123, 255, 0.15);
+  background-color: rgba(79, 70, 229, 0.08);
+  border-color: rgba(79, 70, 229, 0.15);
   color: var(--accent-color);
 }
 
 .el-tag--success {
-  background-color: rgba(40, 167, 69, 0.08);
-  border-color: rgba(40, 167, 69, 0.15);
-  color: #28a745;
+  background-color: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.15);
+  color: #0d9488;
 }
 
 .el-tag--warning {
-  background-color: rgba(255, 193, 7, 0.08);
-  border-color: rgba(255, 193, 7, 0.15);
-  color: #ffc107;
+  background-color: rgba(220, 104, 3, 0.08);
+  border-color: rgba(220, 104, 3, 0.15);
+  color: #dc6803;
 }
 
 .el-tag--danger {
-  background-color: rgba(220, 53, 69, 0.08);
-  border-color: rgba(220, 53, 69, 0.15);
-  color: #dc3545;
+  background-color: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
 }
 
 .el-tag--info {
-  background-color: rgba(108, 117, 125, 0.08);
-  border-color: rgba(108, 117, 125, 0.15);
-  color: #6c757d;
+  background-color: rgba(100, 116, 139, 0.08);
+  border-color: rgba(100, 116, 139, 0.15);
+  color: #64748b;
 }
 
 /* 分页器样式 */
@@ -661,15 +677,15 @@ const getMergedIndex = (index) => {
 }
 
 .modern-pagination .el-pager li {
-  background-color: rgba(0, 123, 255, 0.03);
-  border: 1px solid rgba(0, 123, 255, 0.08);
+  background-color: rgba(79, 70, 229, 0.03);
+  border: 1px solid rgba(79, 70, 229, 0.08);
   color: var(--text-dark);
   transition: all 0.3s ease;
 }
 
 .modern-pagination .el-pager li:hover {
   color: var(--accent-color);
-  background-color: rgba(0, 123, 255, 0.08);
+  background-color: rgba(79, 70, 229, 0.08);
   border-color: var(--accent-color);
   box-shadow: 0 0 6px var(--shadow-color);
 }
@@ -683,7 +699,7 @@ const getMergedIndex = (index) => {
 
 .modern-pagination .el-select .el-input__wrapper {
   background-color: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid rgba(0, 123, 255, 0.08) !important;
+  border: 1px solid rgba(79, 70, 229, 0.08) !important;
 }
 
 .modern-pagination .el-select .el-input__inner {
@@ -696,26 +712,26 @@ const getMergedIndex = (index) => {
 
 /* 按钮通用样式 */
 .el-button--info {
-  background-color: rgba(108, 117, 125, 0.08);
-  border: 1px solid rgba(108, 117, 125, 0.15);
+  background-color: rgba(100, 116, 139, 0.08);
+  border: 1px solid rgba(100, 116, 139, 0.15);
   color: var(--text-light);
 }
 
 .el-button--info:hover {
-  background-color: rgba(128, 128, 128, 0.3);
-  border-color: rgba(128, 128, 128, 0.5);
+  background-color: rgba(100, 116, 139, 0.2);
+  border-color: rgba(100, 116, 139, 0.3);
   transform: translateY(-1px);
 }
 
 .el-button--success {
-  background-color: rgba(40, 167, 69, 0.08);
-  border: 1px solid rgba(40, 167, 69, 0.15);
-  color: #28a745;
+  background-color: rgba(13, 148, 136, 0.08);
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  color: #0d9488;
 }
 
 .el-button--success:hover {
-  background-color: rgba(0, 255, 0, 0.3);
-  border-color: rgba(0, 255, 0, 0.5);
+  background-color: rgba(13, 148, 136, 0.2);
+  border-color: rgba(13, 148, 136, 0.3);
   transform: translateY(-1px);
 }
 </style>

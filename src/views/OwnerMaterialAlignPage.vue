@@ -11,7 +11,14 @@
         人工确认
       </el-button>
     </div>
-    <el-table :data="mergedMaterials" border stripe style="width: 100%" class="material-table">
+
+    <el-table
+      :data="mergedMaterials"
+      border
+      stripe
+      style="width: 100%; margin-top: 20px"
+      class="material-table"
+    >
       <!-- 领料单物资信息列 -->
       <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
       <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
@@ -50,7 +57,7 @@
       :current-page="currentPage"
       @current-change="handlePageChange"
       @size-change="handleSizeChange"
-      style="margin-top: 20px; text-align: right"
+      class="modern-pagination"
     />
 
     <el-dialog
@@ -107,7 +114,7 @@
         :current-page="manualConfirmCurrentPage"
         @current-change="handleManualConfirmPageChange"
         @size-change="handleManualConfirmSizeChange"
-        style="margin-top: 10px; text-align: right"
+        class="modern-pagination"
       />
       <template v-slot:footer>
         <el-button @click="showManualConfirmDialog = false">关闭</el-button>
@@ -749,26 +756,47 @@ async function handleSaveClick() {
 }
 
 .owner-material-align-page {
+  --primary-color: #4f46e5; /* 靛蓝色 */
+  --secondary-color: #64748b; /* 石板灰 */
+  --accent-color: #3730a3; /* 深靛蓝主题色 */
+  --success-color: #0d9488; /* 青蓝绿色（更柔和的成功色） */
+  --warning-color: #dc6803; /* 深橙色 */
+  --danger-color: #dc2626; /* 深红色 */
+  --info-color: #0891b2; /* 青色 */
+  --background-light: #f8fafc; /* 极浅灰蓝背景 */
+  --card-background: #ffffff; /* 纯白卡片背景 */
+  --border-color: rgba(79, 70, 229, 0.08); /* 柔和边框 */
+  --text-dark: #1e293b; /* 深色文字 */
+  --text-light: #64748b; /* 浅色文字 */
+  --shadow-color: rgba(79, 70, 229, 0.06); /* 柔和阴影 */
+
   padding: 32px;
-  background-color: #f8f9fa;
+  background-color: var(--background-light);
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  color: #212529;
+  color: var(--text-dark);
+  overflow-x: hidden; /* 防止水平滚动条 */
 }
 
 .page-header {
-  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  padding-bottom: 16px;
 }
 
 .page-header h2 {
+  margin: 0;
   font-size: 28px;
+  color: var(--accent-color);
   font-weight: 700;
-  color: #007bff;
   position: relative;
   padding-left: 16px;
-  text-shadow: 0 0 5px rgba(0, 123, 255, 0.08);
+  text-shadow: 0 0 5px var(--shadow-color);
 }
 
 .page-header h2::before {
@@ -779,41 +807,94 @@ async function handleSaveClick() {
   transform: translateY(-50%);
   height: 28px;
   width: 6px;
-  background: #007bff;
+  background: var(--accent-color);
   border-radius: 3px;
-  box-shadow: 0 0 6px rgba(0, 123, 255, 0.08);
+  box-shadow: 0 0 6px var(--shadow-color);
+}
+
+.project-info-card {
+  margin-bottom: 24px;
+  padding: 20px 30px;
+  background: var(--card-background);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px var(--shadow-color);
+  display: flex;
+  gap: 40px;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  max-width: 900px;
+  align-self: center;
+  transition: all 0.3s ease-in-out;
+}
+
+.project-info-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 12px 25px rgba(0, 123, 255, 0.15);
+  border-color: var(--accent-color);
+}
+
+.card-item {
+  display: flex;
+  align-items: center;
+}
+
+.card-item .label {
+  font-weight: 500;
+  color: var(--text-light);
+  margin-right: 20px;
+  min-width: 120px;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+}
+
+.card-item .value {
+  color: var(--accent-color);
+  font-size: 18px;
+  font-weight: 700;
+  background-color: rgba(0, 123, 255, 0.03);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 123, 255, 0.1);
+  box-shadow: inset 0 0 3px rgba(0, 123, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.card-item .value:hover {
+  background-color: rgba(0, 123, 255, 0.08);
+  box-shadow: inset 0 0 8px rgba(0, 123, 255, 0.2);
 }
 
 .material-table {
   border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0, 123, 255, 0.08);
-  background-color: #fff;
-  border: 1px solid rgba(0, 123, 255, 0.1);
+  box-shadow: 0 8px 20px var(--shadow-color);
+  flex-grow: 1;
+  background-color: var(--card-background); /* 表格背景 */
+  border: 1px solid var(--border-color);
 }
 
 .material-table :deep(.el-table__header-wrapper th) {
-  background-color: rgba(0, 123, 255, 0.03);
-  color: #007bff;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.01));
+  color: var(--accent-color);
   font-weight: 600;
   font-size: 15px;
   border-color: rgba(0, 0, 0, 0.05);
   padding: 14px 0;
-  text-shadow: 0 0 2px rgba(0, 123, 255, 0.08);
+  text-shadow: none;
 }
 
 .material-table :deep(.el-table__row) {
   height: 60px;
   font-size: 14px;
-  color: #212529;
+  color: var(--text-dark);
   transition:
     background-color 0.3s ease,
     box-shadow 0.3s ease;
 }
 
 .material-table :deep(.el-table__row:hover) {
-  background-color: rgba(0, 123, 255, 0.03) !important;
-  box-shadow: inset 0 0 8px rgba(0, 123, 255, 0.08);
+  background-color: rgba(79, 70, 229, 0.015) !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.04);
 }
 
 .material-table :deep(.el-table__cell) {
@@ -839,5 +920,185 @@ async function handleSaveClick() {
 .save-button-container .el-button:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* 按钮样式优化 */
+.page-header .el-button,
+.save-button-container .el-button {
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  letter-spacing: 0.5px;
+}
+
+/* 加载动画优化 */
+.owner-material-align-page :deep(.el-loading-mask) {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.owner-material-align-page :deep(.el-loading-spinner .path) {
+  stroke: var(--accent-color);
+}
+</style>
+
+<style>
+/* 全局 Element Plus 样式覆盖，使其适应现代化主题 */
+.el-table {
+  --el-table-row-hover-bg-color: rgba(79, 70, 229, 0.015) !important;
+  --el-table-header-bg-color: rgba(79, 70, 229, 0.02) !important;
+  --el-table-border-color: rgba(0, 0, 0, 0.05) !important;
+  --el-table-text-color: var(--text-dark) !important;
+  --el-table-header-text-color: var(--accent-color) !important;
+}
+
+.el-table__empty-block {
+  background-color: var(--card-background) !important;
+  color: var(--text-light) !important;
+}
+
+.el-input__wrapper {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  box-shadow: 0 0 3px rgba(79, 70, 229, 0.03) inset !important;
+  border: 1px solid rgba(79, 70, 229, 0.08) !important;
+}
+
+.el-input__inner {
+  color: var(--text-dark) !important;
+}
+
+.el-tag {
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 4px 8px;
+  background-color: rgba(79, 70, 229, 0.08);
+  border-color: rgba(79, 70, 229, 0.15);
+  color: var(--accent-color);
+}
+
+.el-tag--success {
+  background-color: rgba(13, 148, 136, 0.08);
+  border-color: rgba(13, 148, 136, 0.15);
+  color: #0d9488;
+}
+
+.el-tag--warning {
+  background-color: rgba(220, 104, 3, 0.08);
+  border-color: rgba(220, 104, 3, 0.15);
+  color: #dc6803;
+}
+
+.el-tag--danger {
+  background-color: rgba(220, 38, 38, 0.08);
+  border-color: rgba(220, 38, 38, 0.15);
+  color: #dc2626;
+}
+
+.el-tag--info {
+  background-color: rgba(100, 116, 139, 0.08);
+  border-color: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+}
+
+/* 分页器样式 */
+.modern-pagination {
+  margin-top: 20px;
+  text-align: right;
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: var(--text-light);
+  --el-pagination-button-color: var(--text-light);
+  --el-pagination-button-disabled-color: rgba(0, 0, 0, 0.1);
+  --el-pagination-hover-color: var(--accent-color);
+}
+
+.modern-pagination .el-pagination__total,
+.modern-pagination .el-pagination__jump {
+  color: var(--text-light);
+}
+
+.modern-pagination .el-pager li {
+  background-color: rgba(79, 70, 229, 0.03);
+  border: 1px solid rgba(79, 70, 229, 0.08);
+  color: var(--text-dark);
+  transition: all 0.3s ease;
+}
+
+.modern-pagination .el-pager li:hover {
+  color: var(--accent-color);
+  background-color: rgba(79, 70, 229, 0.08);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 6px var(--shadow-color);
+}
+
+.modern-pagination .el-pager li.is-active {
+  background-color: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 8px var(--shadow-color);
+}
+
+.modern-pagination .el-select .el-input__wrapper {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(79, 70, 229, 0.08) !important;
+}
+
+.modern-pagination .el-select .el-input__inner {
+  color: var(--text-dark) !important;
+}
+
+.modern-pagination .el-input__suffix-inner {
+  color: var(--text-light) !important;
+}
+
+/* 按钮通用样式 */
+.el-button--info {
+  background-color: rgba(100, 116, 139, 0.08);
+  border: 1px solid rgba(100, 116, 139, 0.15);
+  color: var(--text-light);
+}
+
+.el-button--info:hover {
+  background-color: rgba(100, 116, 139, 0.2);
+  border-color: rgba(100, 116, 139, 0.3);
+  transform: translateY(-1px);
+}
+
+.el-button--success {
+  background-color: rgba(13, 148, 136, 0.08);
+  border: 1px solid rgba(13, 148, 136, 0.15);
+  color: #0d9488;
+}
+
+.el-button--success:hover {
+  background-color: rgba(13, 148, 136, 0.2);
+  border-color: rgba(13, 148, 136, 0.3);
+  transform: translateY(-1px);
+}
+
+/* 对话框样式 */
+.el-dialog {
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(79, 70, 229, 0.12);
+  border: 1px solid var(--border-color);
+}
+
+.el-dialog__header {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.02), rgba(79, 70, 229, 0.01));
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 12px 12px 0 0;
+}
+
+.el-dialog__title {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.el-dialog__body {
+  background-color: var(--card-background);
+}
+
+.el-dialog__footer {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.005), rgba(79, 70, 229, 0.002));
+  border-top: 1px solid var(--border-color);
+  border-radius: 0 0 12px 12px;
 }
 </style>
