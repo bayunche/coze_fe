@@ -7,16 +7,16 @@ import CozeParsingService from '@/services/CozeParsingService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
 import { callStreamWorkflow } from '@/uitls/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
-import { useChatStore } from '@/stores/chat' // 导入 chat store
-/**
+import { useChatStore } from '@/stores/chat'
 
+// #region Type Definitions
 /**
  * @typedef {Object} WorkflowFunction
  * @property {string} id - 功能ID
  * @property {string} name - 功能名称
  * @property {Array<Object>} steps - 工作流步骤
  * @property {boolean} [needsFiles] - 是否需要文件上传
- * @property {string} [allowedTypes] - 允许的文件类型，如 'application/pdf'
+ * @property {string} [allowedTypes] - 允许的文件类型
  * @property {Array<FunctionParam>} [params] - 功能参数
  */
 
@@ -78,49 +78,54 @@ import { useChatStore } from '@/stores/chat' // 导入 chat store
  * @property {string} timestamp - 时间戳
  * @property {string} output - 输出内容
  */
+// #endregion
+
+// #region Constants
+const WORKFLOW_IDS = {
+  GET_TASK_COUNTS: '7517560875563204627',
+  GET_TASK_LIST: '7517283953213866036',
+  CONTRACT_PARSING: '7516796514431172642',
+  SUPPLIER_MATERIAL_PARSING: '7517934954761715721',
+  OWNER_MATERIAL_PARSING: '7517934954761715721' // 复用乙供ID，后端通过参数区分
+}
+
+const BUSINESS_DOMAINS = {
+  contractParsing: 'contract',
+  supplierMaterialParsing: 'y_material',
+  ownerSuppliedMaterialParsing: 'j_material'
+}
+
+const COMMON_APP_ID = '7509762183313129512'
+// #endregion
 
 export const useWorkflowStore = defineStore('workflow', () => {
+  // #region Services and Stores
   const chatStore = useChatStore()
-  /** @type {import('vue').Ref<boolean>} */
-  const isSidebarOpen = ref(false) // 默认隐藏侧边栏
-  /** @type {import('vue').Ref<string>} */
-  const activeFunction = ref('')
-  /** @type {import('vue').Ref<CurrentWorkflow | null>} */
-  const currentWorkflow = ref(null)
-  /** @type {import('vue').Ref<boolean>} */
-  const isExecuting = ref(false)
-  /** @type {import('vue').Ref<number>} */
-  const workflowElapsedTime = ref(0)
-  /** @type {import('vue').Ref<number>} */
-  const currentStepIndex = ref(0)
-  /** @type {import('vue').Ref<number>} */
-  const stepProgress = ref(0)
-  /** @type {import('vue').Ref<boolean>} */
-  const showWorkflowConfig = ref(false)
-  /** @type {import('vue').Ref<boolean>} */
-  const showSmartBrainDialog = ref(false) // 新增：智能大脑弹窗显示状态
-  /** @type {import('vue').Reactive<ExecutionSession[]>} */
-  const executionSessions = reactive([])
-  /** @type {import('vue').Reactive<CompletedExecution[]>} */
-  const executionHistory = reactive([]) // 移动到这里
-  /** @type {import('vue').Ref<Object | null>} */
-  const lastExecutionResult = ref(null) // 新增 lastExecutionResult
-  /** @type {import('vue').Ref<string | null>} */
-  const taskId = ref(null) // 合同解析任务ID
-  const supplierTaskId = ref(null) // 乙供物资解析任务ID
-  /** @type {import('vue').Ref<string[]>} */
-  const supplierFileDetailIds = ref([]) // 乙供物资解析文件详情IDs
+  const ownerMaterialStore = useOwnerMaterialStore()
+  const cozeWorkflowService = new CozeWorkflowService()
+  const cozeParsingService = new CozeParsingService()
+  // #endregion
 
-  // 智能大脑相关状态
-  /** @type {import('vue').Ref<SmartAgent[]>} */
+  // #region State
+  const isSidebarOpen = ref(false)
+  const activeFunction = ref('')
+  const currentWorkflow = ref(null)
+  const isExecuting = ref(false)
+  const workflowElapsedTime = ref(0)
+  const currentStepIndex = ref(0)
+  const stepProgress = ref(0)
+  const showWorkflowConfig = ref(false)
+  const showSmartBrainDialog = ref(false)
+  const executionSessions = reactive([])
+  const executionHistory = reactive([])
+  const lastExecutionResult = ref(null)
+  const taskId = ref(null)
+  const supplierTaskId = ref(null)
+  const supplierFileDetailIds = ref([])
+
   const smartAgents = ref(
     functions
-      .filter(
-        (f) =>
-          f.id === 'contractParsing' ||
-          f.id === 'supplierMaterialParsing' ||
-          f.id === 'ownerSuppliedMaterialParsing'
-      )
+      .filter((f) => f.id in BUSINESS_DOMAINS)
       .map((f) => ({
         id: f.id,
         name: f.name,
@@ -128,201 +133,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
         tasks: { completed: 0, inProgress: 0, total: 0 }
       }))
   )
-  /** @type {import('vue').Ref<Object.<string, TaskList>>} */
   const taskListsByAgent = ref({})
 
-  const cozeWorkflowService = new CozeWorkflowService()
-  const cozeParsingService = new CozeParsingService()
-
-  let timeInterval = null
-  let loadingInterval = null
-
-  // Getters
-  /**
-   * 获取当前激活功能的名称
-   * @returns {string} 功能名称
-   */
-  const getCurrentFunctionName = () => {
-    const func = functions.find((f) => f.id === activeFunction.value)
-    return func ? func.name : '未知功能'
-  }
-
-  /**
-   * 获取当前激活的功能对象
-   * @returns {WorkflowFunction | undefined} 功能对象
-   */
-  const getCurrentFunction = () => {
-    return functions.find((f) => f.id === activeFunction.value)
-  }
-
-  /**
-   * 获取当前激活功能的参数列表
-   * @returns {Array<FunctionParam>} 参数列表
-   */
-  const getCurrentFunctionParams = () => {
-    const func = getCurrentFunction()
-    return func ? func.params || [] : []
-  }
-
-  /**
-   * 判断当前功能是否需要文件上传
-   * @returns {boolean} 是否需要文件上传
-   */
-  const needsFileUpload = () => {
-    const func = getCurrentFunction()
-    return func ? func.needsFiles : false
-  }
-
-  /**
-   * 获取当前功能允许的文件类型
-   * @returns {string} 允许的文件类型字符串
-   */
-  const getAllowedFileTypes = () => {
-    const func = getCurrentFunction()
-    return func ? func.allowedTypes || '*' : '*'
-  }
-
-  // Actions
-  /**
-   * 设置当前任务ID
-   * @param {string} id - 任务ID
-   */
-  const setTaskId = (id) => {
-    taskId.value = id
-  }
-
-  /**
-   * 设置乙供物资文件详情ID列表
-   * @param {string[]} ids - 文件详情ID列表
-   */
-  const setSupplierFileIds = (ids) => {
-    supplierFileDetailIds.value = ids
-  }
-
-  /**
-   * 处理功能选择
-   * @param {string} key - 功能ID
-   * @param {function(string, string, WorkflowInfo | null, Object | null, Object): void} addMessageCallback - 添加消息的回调函数
-   */
-  const handleFunctionSelect = async (key, addMessageCallback) => {
-    if (key === 'smartBrain') {
-      try {
-        if (typeof addMessageCallback === 'function') {
-          addMessageCallback('正在查询智能体任务数据...', 'system')
-        }
-
-        const getTaskCountsWorkflowId = '7517560875563204627'
-        const getTaskListWorkflowId = '7517283953213866036'
-        const businessDomains = {
-          contractParsing: 'contract',
-          supplierMaterialParsing: 'y_material',
-          ownerSuppliedMaterialParsing: 'j_material'
-        }
-
-        /**
-         * 解析工作流输出的任务列表
-         * @param {Object} result - 工作流执行结果
-         * @returns {Array<Object>} 任务列表
-         */
-        const getTaskList = (result) => {
-          try {
-            const data = result?.data
-            if (!data) return []
-            const output = JSON.parse(data).output
-            if (!output) return []
-            if (Array.isArray(output)) return output
-            if (typeof output === 'string') {
-              const parsed = JSON.parse(output)
-              return Array.isArray(parsed) ? parsed : []
-            }
-            return []
-          } catch (e) {
-            console.error('Failed to parse workflow output:', e, result?.data)
-            return []
-          }
-        }
-
-        // 移除函数内部的重复声明，直接使用顶层 smartAgents 和 taskListsByAgent
-        // smartAgents 和 taskListsByAgent 已经在 store 顶层定义
-
-        const fetchPromises = smartAgents.value.map(async (agent) => {
-          const domain = businessDomains[agent.id]
-          if (domain) {
-            try {
-              const countResult = await cozeWorkflowService.runWorkflow(getTaskCountsWorkflowId, {
-                businessDomain: domain
-              })
-              if (countResult && countResult.data) {
-                try {
-                  const outerParsed = JSON.parse(countResult.data)
-                  if (outerParsed && outerParsed.output) {
-                    const innerParsed = JSON.parse(outerParsed.output)
-                    const domainData = innerParsed.find((item) => item.BUSINESS_DOMAIN === domain)
-                    if (domainData) {
-                      agent.tasks.completed = parseInt(domainData.finished_count) || 0
-                      agent.tasks.inProgress = parseInt(domainData.running_count) || 0
-                      agent.tasks.total = parseInt(domainData.total_count) || 0
-                    }
-                  }
-                } catch (parseError) {
-                  console.error(
-                    `解析 ${agent.name} 任务数量数据失败:`,
-                    parseError,
-                    countResult.data
-                  )
-                }
-              }
-
-              const [inProgressListResult, completedListResult, allListResult] = await Promise.all([
-                cozeWorkflowService.runWorkflow(getTaskListWorkflowId, {
-                  status: '1',
-                  businessDomain: domain
-                }),
-                cozeWorkflowService.runWorkflow(getTaskListWorkflowId, {
-                  status: '2',
-                  businessDomain: domain
-                }),
-                cozeWorkflowService.runWorkflow(getTaskListWorkflowId, {
-                  status: '5',
-                  businessDomain: domain
-                })
-              ])
-
-              taskListsByAgent.value[agent.id] = {
-                inProgress: getTaskList(inProgressListResult),
-                completed: getTaskList(completedListResult),
-                all: getTaskList(allListResult)
-              }
-            } catch (error) {
-              console.error(`获取 ${agent.name} 数据失败:`, error)
-              agent.tasks.completed = 0
-              agent.tasks.inProgress = 0
-              agent.tasks.total = 0
-              taskListsByAgent.value[agent.id] = { all: [], completed: [], inProgress: [] }
-            }
-          }
-        })
-
-        await Promise.all(fetchPromises)
-
-        ElMessage.success('智能体任务数据查询成功！')
-        showSmartBrainDialog.value = true // 新增：打开智能大脑弹窗
-      } catch (error) {
-        console.error('查询智能大脑数据失败:', error)
-        if (typeof addMessageCallback === 'function') {
-          addMessageCallback('查询智能大脑数据失败，请稍后重试。', 'system', null, error)
-        }
-        ElMessage.error('查询智能大脑数据失败，请稍后重试。')
-      }
-      return
-    }
-    console.log(`【诊断】workflow.js - 选择功能: ${key}`)
-    activeFunction.value = key
-    resetWorkflowConfig()
-    showWorkflowConfig.value = true
-  }
-
-  /** @type {import('vue').Reactive<WorkflowConfig>} */
   const workflowConfig = reactive({
     files: [],
     params: {},
@@ -330,22 +142,267 @@ export const useWorkflowStore = defineStore('workflow', () => {
     errorHandling: 'stop'
   })
 
-  /**
-   * 执行工作流
-   * @param {function(Object): void} addMessageCallback - 添加消息的回调函数
-   */
-  const executeWorkflow = async (addMessageCallback) => {
-    console.log(`【诊断】workflow.js - 执行工作流${addMessageCallback}`)
-    const func = getCurrentFunction()
-    if (!func) return
+  let timeInterval = null
+  let progressManager = null
+  // #endregion
 
-    if (func.needsFiles && workflowConfig.files.length === 0) {
-      ElMessage.warning('请先上传文件')
-      showWorkflowConfig.value = true
-      return
+  // #region Getters
+  const getCurrentFunctionName = () => {
+    const func = functions.find((f) => f.id === activeFunction.value)
+    return func ? func.name : '未知功能'
+  }
+
+  const getCurrentFunction = () => {
+    return functions.find((f) => f.id === activeFunction.value)
+  }
+
+  const getCurrentFunctionParams = () => {
+    const func = getCurrentFunction()
+    return func ? func.params || [] : []
+  }
+
+  const needsFileUpload = () => {
+    const func = getCurrentFunction()
+    return func ? func.needsFiles : false
+  }
+
+  const getAllowedFileTypes = () => {
+    const func = getCurrentFunction()
+    return func ? func.allowedTypes || '*' : '*'
+  }
+  // #endregion
+
+  // #region Utility Functions
+  /**
+   * 统一处理工作流执行中的错误
+   * @param {Error} error - 错误对象
+   * @param {Object} loadingMessage - 加载消息对象
+   * @param {function} addMessageCallback - 添加消息的回调
+   */
+  const handleExecutionError = (error, loadingMessage, addMessageCallback) => {
+    console.error('Workflow execution failed:', error)
+    if (progressManager) progressManager.stop()
+    if (timeInterval) clearInterval(timeInterval)
+
+    if (loadingMessage) {
+      loadingMessage.content = `任务失败: ${error.message}`
+      loadingMessage.progress = 100
+    }
+    addMessageCallback(`任务执行失败: ${error.message}`, 'system')
+    finalizeWorkflowExecution({ status: 'error', output: error.message }, addMessageCallback)
+  }
+
+  /**
+   * 创建并管理进度条更新
+   * @param {Object} loadingMessage - 要更新进度的消息对象
+   * @param {number} expectedDurationMinutes - 预估持续时间（分钟）
+   * @returns {{start: function, stop: function}}
+   */
+  const createProgressManager = (loadingMessage, expectedDurationMinutes) => {
+    let interval = null
+    const start = () => {
+      let progress = 0
+      const maxProgress = 99
+      const intervalTime = 300
+      const totalUpdates = (expectedDurationMinutes * 60 * 1000) / intervalTime
+      const progressIncrement = totalUpdates > 0 ? maxProgress / totalUpdates : 0
+
+      interval = setInterval(() => {
+        if (progress < maxProgress) {
+          progress += progressIncrement
+          loadingMessage.progress = Math.floor(Math.min(progress, maxProgress))
+        } else {
+          stop()
+        }
+      }, intervalTime)
+    }
+    const stop = () => {
+      if (interval) {
+        clearInterval(interval)
+        interval = null
+      }
+    }
+    return { start, stop }
+  }
+
+  /**
+   * 解析工作流返回的流式消息
+   * @param {Object} event - SSE 事件
+   * @returns {{potentialTaskId: string|null, messageContent: string|null, parsedMessage: Object|null}}
+   */
+  const parseWorkflowMessage = (event) => {
+    if (event.event !== 'Message' || event.data.content_type !== 'text') {
+      return { potentialTaskId: null, messageContent: null, parsedMessage: null }
     }
 
-    /** @type {CurrentWorkflow} */
+    const content = event.data.content
+    let potentialTaskId = null
+    let messageContent = null
+    let parsedMessage = null
+
+    if (typeof content === 'string') {
+      try {
+        parsedMessage = JSON.parse(content)
+      } catch (e) {
+        messageContent = content
+      }
+    } else if (typeof content === 'object' && content !== null) {
+      parsedMessage = content
+    }
+
+    if (parsedMessage) {
+      potentialTaskId = parsedMessage?.task_id || null
+      if (!potentialTaskId) {
+        messageContent = JSON.stringify(parsedMessage, null, 2)
+      }
+    }
+
+    return { potentialTaskId, messageContent, parsedMessage }
+  }
+
+  /**
+   * 从工作流结果中解析任务列表
+   * @param {Object} result - 工作流执行结果
+   * @returns {Array<Object>}
+   */
+  const parseTaskListFromResult = (result) => {
+    try {
+      const data = result?.data
+      if (!data) return []
+      const output = JSON.parse(data).output
+      if (!output) return []
+      if (Array.isArray(output)) return output
+      if (typeof output === 'string') {
+        const parsed = JSON.parse(output)
+        return Array.isArray(parsed) ? parsed : []
+      }
+      return []
+    } catch (e) {
+      console.error('Failed to parse workflow output:', e, result?.data)
+      return []
+    }
+  }
+  // #endregion
+
+  // #region Actions - Smart Brain
+  /**
+   * 获取单个智能体的任务数量
+   * @param {SmartAgent} agent - 智能体对象
+   */
+  const fetchAgentTaskCounts = async (agent) => {
+    const domain = BUSINESS_DOMAINS[agent.id]
+    if (!domain) return
+
+    try {
+      const result = await cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_COUNTS, {
+        businessDomain: domain
+      })
+      if (result && result.data) {
+        const outerParsed = JSON.parse(result.data)
+        if (outerParsed && outerParsed.output) {
+          const innerParsed = JSON.parse(outerParsed.output)
+          const domainData = innerParsed.find((item) => item.BUSINESS_DOMAIN === domain)
+          if (domainData) {
+            agent.tasks.completed = parseInt(domainData.finished_count) || 0
+            agent.tasks.inProgress = parseInt(domainData.running_count) || 0
+            agent.tasks.total = parseInt(domainData.total_count) || 0
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`解析 ${agent.name} 任务数量数据失败:`, error)
+      agent.tasks = { completed: 0, inProgress: 0, total: 0 }
+    }
+  }
+
+  /**
+   * 获取单个智能体的任务列表
+   * @param {SmartAgent} agent - 智能体对象
+   */
+  const fetchAgentTaskLists = async (agent) => {
+    const domain = BUSINESS_DOMAINS[agent.id]
+    if (!domain) return
+
+    try {
+      const [inProgressListResult, completedListResult, allListResult] = await Promise.all([
+        cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_LIST, {
+          status: '1',
+          businessDomain: domain
+        }),
+        cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_LIST, {
+          status: '2',
+          businessDomain: domain
+        }),
+        cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_LIST, {
+          status: '5',
+          businessDomain: domain
+        })
+      ])
+
+      taskListsByAgent.value[agent.id] = {
+        inProgress: parseTaskListFromResult(inProgressListResult),
+        completed: parseTaskListFromResult(completedListResult),
+        all: parseTaskListFromResult(allListResult)
+      }
+    } catch (error) {
+      console.error(`获取 ${agent.name} 任务列表失败:`, error)
+      taskListsByAgent.value[agent.id] = { all: [], completed: [], inProgress: [] }
+    }
+  }
+
+  /**
+   * 处理智能大脑功能选择，获取所有智能体数据
+   * @param {function} addMessageCallback - 添加消息的回调
+   */
+  const handleSmartBrainSelection = async (addMessageCallback) => {
+    try {
+      if (typeof addMessageCallback === 'function') {
+        addMessageCallback('正在查询智能体任务数据...', 'system')
+      }
+
+      const fetchPromises = smartAgents.value.map(async (agent) => {
+        await fetchAgentTaskCounts(agent)
+        await fetchAgentTaskLists(agent)
+      })
+
+      await Promise.all(fetchPromises)
+
+      ElMessage.success('智能体任务数据查询成功！')
+      showSmartBrainDialog.value = true
+    } catch (error) {
+      console.error('查询智能大脑数据失败:', error)
+      if (typeof addMessageCallback === 'function') {
+        addMessageCallback('查询智能大脑数据失败，请稍后重试。', 'system', null, error)
+      }
+      ElMessage.error('查询智能大脑数据失败，请稍后重试。')
+    }
+  }
+  // #endregion
+
+  // #region Actions - Workflow Execution
+  /**
+   * 上传工作流所需的文件
+   * @returns {Promise<string[]>} 上传后的文件ID列表
+   */
+  const uploadWorkflowFiles = async () => {
+    currentStepIndex.value = 0 // 步骤: 上传文件
+    stepProgress.value = 0
+
+    const uploadPromises = workflowConfig.files.map((file) =>
+      cozeWorkflowService.uploadFile(file.raw, COMMON_APP_ID)
+    )
+    const fileIds = await Promise.all(uploadPromises)
+    stepProgress.value = 100
+    return fileIds
+  }
+
+  /**
+   * 准备工作流执行环境
+   * @param {function} addMessageCallback - 添加消息的回调
+   * @returns {{workflow: CurrentWorkflow, loadingMessage: Object}}
+   */
+  const prepareWorkflowExecution = (addMessageCallback) => {
+    const func = getCurrentFunction()
     const workflow = {
       id: Date.now(),
       name: `${func.name}`,
@@ -360,7 +417,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     stepProgress.value = 0
     workflowElapsedTime.value = 0
 
-    /** @type {Object} */
     const loadingMessage = reactive({
       id: Date.now() + Math.random(),
       from: 'agent',
@@ -371,36 +427,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       sender: workflow.name,
       workflow: { id: workflow.id, name: workflow.name }
     })
-    console.log(`【诊断】workflow.js -  ${addMessageCallback}`)
     addMessageCallback(loadingMessage)
-
-    let progress = 0
-    const maxProgress = 99
-    const intervalTime = 300 // 每300ms更新一次进度
-
-    let expectedDurationMinutes = 0
-    if (func.id === 'contractParsing') {
-      expectedDurationMinutes = workflowConfig.files.length * 4 // 每份合同4分钟
-    } else if (func.id === 'supplierMaterialParsing') {
-      expectedDurationMinutes = workflowConfig.files.length * 2 // 每份文件2分钟
-    } else {
-      // 对于其他类型，可以设置一个默认值或根据实际情况调整
-      expectedDurationMinutes = workflowConfig.files.length * 3 // 默认每份文件3分钟
-    }
-
-    // 计算总的更新次数
-    const totalUpdates = (expectedDurationMinutes * 60 * 1000) / intervalTime
-    // 计算每次的进度增量
-    const progressIncrement = totalUpdates > 0 ? maxProgress / totalUpdates : 0
-
-    loadingInterval = setInterval(() => {
-      if (progress < maxProgress) {
-        progress += progressIncrement
-        loadingMessage.progress = Math.floor(Math.min(progress, maxProgress))
-      } else {
-        clearInterval(loadingInterval)
-      }
-    }, intervalTime) // 每300ms更新一次进度
 
     timeInterval = setInterval(() => {
       const elapsed = (Date.now() - workflow.startTime) / 1000
@@ -411,13 +438,237 @@ export const useWorkflowStore = defineStore('workflow', () => {
       }
     }, 100)
 
-    try {
-      const fileIds = await _uploadFiles(func.id)
-      stepProgress.value = 100
-      currentStepIndex.value = 1 // 文件解析
+    return { workflow, loadingMessage }
+  }
 
-      /** @type {Array<{file_id: string}>} */
+  /**
+   * 处理合同解析工作流
+   * @param {Array<{file_id: string}>} inputs - 文件输入
+   * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
+   */
+  const handleContractParsing = (inputs, context) => {
+    const { workflow, loadingMessage, addMessageCallback } = context
+    const finalResult = []
+    let isFirstMessage = true
+
+    const streamingAgentMessage = {
+      id: Date.now() + Math.random(),
+      from: 'agent',
+      content: '',
+      timestamp: new Date().toLocaleTimeString(),
+      sender: workflow.name,
+      workflow: { id: workflow.id, name: workflow.name },
+      isStreaming: true
+    }
+
+    cozeParsingService.runContractParsing(WORKFLOW_IDS.CONTRACT_PARSING, inputs, {
+      onMessage(event) {
+        if (isFirstMessage) {
+          loadingMessage.content = '任务解析已开始，正在接收数据...'
+          addMessageCallback(streamingAgentMessage)
+          isFirstMessage = false
+        }
+
+        const { potentialTaskId, messageContent } = parseWorkflowMessage(event)
+
+        if (potentialTaskId) {
+          taskId.value = potentialTaskId
+          streamingAgentMessage.task = potentialTaskId
+          return
+        }
+
+        if (messageContent) {
+          chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
+          finalResult.push(messageContent)
+        }
+
+        if (event.event === 'Done') {
+          delete streamingAgentMessage.isStreaming
+          if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+            streamingAgentMessage.showViewResultButton = true
+          }
+          if (progressManager) progressManager.stop()
+          loadingMessage.progress = 100
+          loadingMessage.content = '任务执行完毕！'
+          finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
+        } else if (event.event === 'Error') {
+          handleExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
+        }
+      }
+    })
+  }
+
+  /**
+   * 处理乙供物资解析工作流
+   * @param {Array<{file_id: string}>} inputs - 文件输入
+   * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
+   */
+  const handleSupplierMaterialParsing = (inputs, context) => {
+    const { workflow, loadingMessage, addMessageCallback } = context
+    const finalResult = []
+    let isFirstMessage = true
+
+    const streamingAgentMessage = {
+      id: Date.now() + Math.random(),
+      from: 'agent',
+      content: '',
+      timestamp: new Date().toLocaleTimeString(),
+      sender: workflow.name,
+      workflow: { id: workflow.id, name: workflow.name },
+      isStreaming: true
+    }
+
+    cozeParsingService.runSupplierMaterialParsing(WORKFLOW_IDS.SUPPLIER_MATERIAL_PARSING, inputs, {
+      onMessage(event) {
+        if (isFirstMessage) {
+          loadingMessage.content = '任务解析已开始，正在接收数据...'
+          addMessageCallback(streamingAgentMessage)
+          isFirstMessage = false
+        }
+
+        const { potentialTaskId, messageContent, parsedMessage } = parseWorkflowMessage(event)
+
+        if (parsedMessage) {
+          if (parsedMessage.task_id) {
+            supplierTaskId.value = parsedMessage.task_id
+          }
+          if (Array.isArray(parsedMessage.task_detail_id)) {
+            supplierFileDetailIds.value = parsedMessage.task_detail_id
+          }
+        }
+
+        if (potentialTaskId) {
+          streamingAgentMessage.task = potentialTaskId
+          return
+        }
+
+        if (messageContent) {
+          chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
+          finalResult.push(messageContent)
+        }
+
+        if (event.event === 'Done') {
+          delete streamingAgentMessage.isStreaming
+          if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+            streamingAgentMessage.showViewResultButton = true
+          }
+          if (progressManager) progressManager.stop()
+          loadingMessage.progress = 100
+          loadingMessage.content = '任务执行完毕！'
+          ElMessage.success('乙供物资解析完成')
+          finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
+        } else if (event.event === 'Error') {
+          handleExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
+        }
+      }
+    })
+  }
+
+  /**
+   * 处理甲供物资解析工作流
+   * @param {Array<{file_id: string}>} inputs - 文件输入
+   * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
+   */
+  const handleOwnerMaterialParsing = async (inputs, context) => {
+    const { workflow, loadingMessage, addMessageCallback } = context
+    const finalResult = []
+
+    const streamingAgentMessage = {
+      id: Date.now() + Math.random(),
+      from: 'agent',
+      content: '',
+      timestamp: new Date().toLocaleTimeString(),
+      sender: workflow.name,
+      workflow: { id: workflow.id, name: workflow.name },
+      isStreaming: true
+    }
+
+    try {
+      loadingMessage.content = '甲供物资解析已开始...'
+      addMessageCallback(streamingAgentMessage)
+
+      await callStreamWorkflow({ excelFileList: inputs, parseOnly: true }, '2', {
+        onMessage: (event) => {
+          if (event.content) {
+            const { parsedMessage, messageContent } = parseWorkflowMessage({
+              event: 'Message',
+              data: { content_type: 'text', content: event.content }
+            })
+
+            if (parsedMessage) {
+              if (parsedMessage.task_id) {
+                taskId.value = parsedMessage.task_id
+                streamingAgentMessage.task = parsedMessage.task_id
+                ownerMaterialStore.setTask(parsedMessage.task_id)
+              }
+              if (parsedMessage.result) {
+                const output = {
+                  materials: parsedMessage.result.materials || [],
+                  flattened: parsedMessage.result.flattened || [],
+                  unmatched: parsedMessage.result.unmatched || [],
+                  taskId: parsedMessage.task_id
+                }
+                if (output.unmatched.length > 0) {
+                  output.message = '存在无法匹配的物资信息，请人工介入'
+                }
+                const text = JSON.stringify(output, null, 2)
+                chatStore.appendStreamContent(streamingAgentMessage.id, text)
+                finalResult.push(text)
+              }
+            } else if (messageContent) {
+              chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
+              finalResult.push(messageContent)
+            }
+          }
+        },
+        onError: (error) => {
+          handleExecutionError(error, loadingMessage, addMessageCallback)
+        },
+        onComplete: () => {
+          delete streamingAgentMessage.isStreaming
+          if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+            streamingAgentMessage.showViewResultButton = true
+          }
+          if (progressManager) progressManager.stop()
+          loadingMessage.progress = 100
+          loadingMessage.content = '甲供物资解析任务执行完毕！'
+          finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
+        }
+      })
+    } catch (error) {
+      handleExecutionError(error, loadingMessage, addMessageCallback)
+    }
+  }
+
+  /**
+   * 主工作流执行函数
+   * @param {function} addMessageCallback - 添加消息的回调
+   */
+  const executeWorkflow = async (addMessageCallback) => {
+    const func = getCurrentFunction()
+    if (!func) return
+
+    if (func.needsFiles && workflowConfig.files.length === 0) {
+      ElMessage.warning('请先上传文件')
+      showWorkflowConfig.value = true
+      return
+    }
+
+    const { workflow, loadingMessage } = prepareWorkflowExecution(addMessageCallback)
+
+    let expectedDurationMinutes = workflowConfig.files.length * 3 // Default
+    if (func.id === 'contractParsing') expectedDurationMinutes = workflowConfig.files.length * 4
+    if (func.id === 'supplierMaterialParsing')
+      expectedDurationMinutes = workflowConfig.files.length * 2
+    progressManager = createProgressManager(loadingMessage, expectedDurationMinutes)
+    progressManager.start()
+
+    try {
+      const fileIds = await uploadWorkflowFiles()
+      currentStepIndex.value = 1 // 步骤: 文件解析
+
       const inputs = fileIds.map((fileId) => ({ file_id: fileId }))
+      const context = { workflow, loadingMessage, addMessageCallback }
 
       executionSessions.push({
         id: workflow.id,
@@ -427,441 +678,47 @@ export const useWorkflowStore = defineStore('workflow', () => {
         output: '正在执行，请稍候...'
       })
 
-      /** @type {Object} */
-      const streamingAgentMessage = {
-        id: Date.now() + Math.random(),
-        from: 'agent',
-        content: '',
-        timestamp: new Date().toLocaleTimeString(),
-        sender: workflow.name,
-        workflow: { id: workflow.id, name: workflow.name },
-        isStreaming: true
-      }
-
-      /** @type {Array<string>} */
-      const finalResult = []
-      let isFirstMessage = true
-
-      if (func.id === 'contractParsing') {
-        const workflowId = '7516796514431172642' // 合同解析的实际工作流ID
-        cozeParsingService.runContractParsing(workflowId, inputs, {
-          onMessage(event) {
-            if (isFirstMessage) {
-              loadingMessage.content = '任务解析已开始，正在接收数据...'
-              addMessageCallback(streamingAgentMessage)
-              isFirstMessage = false
-            }
-            console.log(event)
-
-            if (event.event === 'Message' && event.data.content_type === 'text') {
-              const content = event.data.content
-              let taskIdCandidate = null
-              let displayText = null
-
-              if (typeof content === 'object' && content !== null) {
-                taskIdCandidate = content.task_id
-                if (!taskIdCandidate) displayText = JSON.stringify(content, null, 2)
-              } else if (typeof content === 'string') {
-                try {
-                  const parsed = JSON.parse(content)
-                  taskIdCandidate = parsed?.task_id
-                  if (!taskIdCandidate) displayText = content
-                } catch (e) {
-                  displayText = content
-                }
-              }
-
-              if (taskIdCandidate) {
-                taskId.value = taskIdCandidate // 直接设置合同解析taskId
-                if (taskIdCandidate) {
-                  streamingAgentMessage.task = taskIdCandidate
-                  return
-                }
-                return
-              }
-
-              if (displayText) {
-                // 使用新的追加方法
-                chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
-                finalResult.push(displayText)
-                const currentSession = executionSessions.find((s) => s.id === workflow.id)
-                if (currentSession) {
-                  currentSession.output += displayText // 同样追加
-                }
-              }
-            } else if (event.event === 'Done') {
-              // console.log(`【诊断】workflow.js - 合同解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`);
-              delete streamingAgentMessage.isStreaming
-              // 新增正则过滤逻辑
-              if (/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
-                streamingAgentMessage.showViewResultButton = false
-              } else {
-                streamingAgentMessage.showViewResultButton = true
-              }
-              loadingMessage.progress = 100
-              loadingMessage.content = '任务执行完毕！'
-              clearInterval(loadingInterval)
-              completeWorkflow({ output: finalResult.join('\n') }, addMessageCallback)
-            } else if (event.event === 'PING') {
-              // Handle PING
-            } else if (event.event === 'Error') {
-              console.error(`【诊断】workflow.js - 合同解析接收到错误事件: ${event.data}`)
-              addMessageCallback('任务执行出错', 'system', null, event)
-            } else {
-              console.log(`【诊断】workflow.js - 合同解析未知任务事件: ${JSON.stringify(event)}`)
-              addMessageCallback('未知任务事件', 'system', null, event)
-            }
-          }
-        })
-      } else if (func.id === 'supplierMaterialParsing') {
-        const workflowId = '7517934954761715721' // 乙供物资解析的实际工作流ID
-        cozeParsingService.runSupplierMaterialParsing(workflowId, inputs, {
-          onMessage(event) {
-            if (isFirstMessage) {
-              loadingMessage.content = '任务解析已开始，正在接收数据...'
-              addMessageCallback(streamingAgentMessage)
-              isFirstMessage = false
-            }
-
-            if (event.event === 'Message' && event.data.content_type === 'text') {
-              const content = event.data.content
-              let taskIdCandidate = null
-              let displayText = null
-              let parsedContent = null
-
-              if (typeof content === 'string') {
-                try {
-                  parsedContent = JSON.parse(content)
-                } catch (e) {
-                  displayText = content
-                }
-              } else if (typeof content === 'object' && content !== null) {
-                parsedContent = content
-              }
-
-              if (parsedContent) {
-                taskIdCandidate = parsedContent?.task_id
-                if (parsedContent?.task_id) {
-                  supplierTaskId.value = parsedContent.task_id // 设置乙供物资taskId
-                }
-                if (Array.isArray(parsedContent?.task_detail_id)) {
-                  setSupplierFileIds(parsedContent.task_detail_id) // 使用新的 action
-                }
-                if (!taskIdCandidate && !displayText) {
-                  displayText = JSON.stringify(parsedContent, null, 2)
-                }
-              }
-
-              if (taskIdCandidate) {
-                streamingAgentMessage.task = taskIdCandidate
-                return
-              }
-
-              if (displayText) {
-                // 使用新的追加方法
-                chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
-                finalResult.push(displayText)
-                const currentSession = executionSessions.find((s) => s.id === workflow.id)
-                if (currentSession) {
-                  currentSession.output += displayText // 同样追加
-                }
-              }
-            } else if (event.event === 'Done') {
-              console.log(
-                `【诊断】workflow.js - 乙供物资解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`
-              )
-              delete streamingAgentMessage.isStreaming
-              // 新增正则过滤逻辑
-              if (/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
-                streamingAgentMessage.showViewResultButton = false
-              } else {
-                streamingAgentMessage.showViewResultButton = true
-              }
-              loadingMessage.progress = 100
-              loadingMessage.content = '任务执行完毕！'
-              clearInterval(loadingInterval)
-              ElMessage.success(`乙供物资解析完成`)
-              completeWorkflow({ output: finalResult.join('\n') }, addMessageCallback)
-            } else if (event.event === 'PING') {
-              // Handle PING
-            } else if (event.event === 'Error') {
-              // Handle PING
-              console.error(`【诊断】workflow.js - 乙供物资解析接收到错误事件: ${event.data}`)
-              addMessageCallback('任务执行出错', 'system', null, event)
-            } else {
-              addMessageCallback('未知任务事件', 'system', null, event)
-            }
-          }
-        })
-      } else if (func.id === 'ownerSuppliedMaterialParsing') {
-        const workflowId = '7517934954761715721' // 甲供物资解析的实际工作流ID
-        executeOwnerMaterialParsingWorkflow(
-          workflowId, // 传入 workflowId
-          inputs,
-          loadingMessage,
-          streamingAgentMessage,
-          finalResult,
-          workflow,
-          addMessageCallback,
-          setTaskId
-        )
-      } else {
-        throw new Error(`Unsupported function ID: ${func.id}`)
+      switch (func.id) {
+        case 'contractParsing':
+          handleContractParsing(inputs, context)
+          break
+        case 'supplierMaterialParsing':
+          handleSupplierMaterialParsing(inputs, context)
+          break
+        case 'ownerSuppliedMaterialParsing':
+          handleOwnerMaterialParsing(inputs, context)
+          break
+        default:
+          throw new Error(`Unsupported function ID: ${func.id}`)
       }
     } catch (error) {
-      clearInterval(loadingInterval)
-      loadingMessage.content = `任务失败: ${error.message}`
-      loadingMessage.progress = 100
-      addMessageCallback(`任务执行失败: ${error.message}`, 'system')
-      completeWorkflow({}, addMessageCallback)
+      handleExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
 
   /**
-   * 根据功能ID上传文件。
-   * @param {string} functionId - 当前执行的功能ID。
-   * @returns {Promise<string[]>} 上传后的文件ID列表。
-   * @private
+   * 最终确定工作流执行状态
+   * @param {Object} resultOverride - 覆盖默认结果的对象
+   * @param {function} addMessageCallback - 添加消息的回调
    */
-  const _uploadFiles = async (functionId) => {
-    currentStepIndex.value = 0 // 设置当前步骤为上传文件
-    stepProgress.value = 0
-
-    const appId = '7509762183313129512' // 通用appId
-
-    if (functionId === 'ownerSuppliedMaterialParsing') {
-      // 甲供物资解析使用新的（占位）上传逻辑
-      console.log('【诊断】使用甲供物资专用上传逻辑...')
-      // TODO: 将来替换为真正的甲供物资上传方法
-      const uploadPromises = workflowConfig.files.map((file) =>
-        cozeWorkflowService.uploadFile(file.raw, appId)
-      )
-      const fileIds = await Promise.all(uploadPromises)
-      stepProgress.value = 100
-      return fileIds
-    } else {
-      // 其他功能沿用原有的上传逻辑
-      console.log('【诊断】使用通用上传逻辑...')
-      const uploadPromises = workflowConfig.files.map((file) =>
-        cozeWorkflowService.uploadFile(file.raw, appId)
-      )
-      const fileIds = await Promise.all(uploadPromises)
-      stepProgress.value = 100
-      return fileIds
-    }
-  }
-
-  /**
-   * 执行甲供物资解析工作流
-   * @param {string} workflowId - 工作流ID
-   * @param {Array<{file_id: string}>} inputs - 文件输入列表
-   * @param {Object} loadingMessage - 加载消息对象
-   * @param {Object} streamingAgentMessage - 流式代理消息对象
-   * @param {Array<string>} finalResult - 最终结果数组
-   * @param {CurrentWorkflow} workflow - 当前工作流对象
-   * @param {function(Object): void} addMessageCallback - 添加消息的回调函数
-   * @param {function(string): void} setTaskIdCallback - 设置任务ID的回调函数
-   */
-  const executeOwnerMaterialParsingWorkflow = async (
-    workflowId,
-    inputs,
-    loadingMessage,
-    streamingAgentMessage,
-    finalResult,
-    workflow,
-    addMessageCallback,
-    setTaskIdCallback
-  ) => {
-    const ownerMaterialStore = useOwnerMaterialStore() // 获取 store 实例
-    try {
-      loadingMessage.content = '甲供物资解析已开始...'
-      addMessageCallback(streamingAgentMessage)
-
-      // 调用工作流API解析物资信息
-      const result = await callStreamWorkflow(
-        {
-          excelFileList: inputs,
-          parseOnly: true // 新增参数，表示仅解析不进行对平
-        },
-        '2',
-        {
-          onMessage: (event) => {
-            if (event.content) {
-              const content = event.content
-              let parsedData = null
-              let isJson = false
-
-              // 尝试解析JSON
-              if (typeof content === 'string') {
-                try {
-                  parsedData = JSON.parse(content)
-                  isJson = true
-                } catch (e) {
-                  // 不是有效的JSON，当作纯文本处理
-                  isJson = false
-                }
-              } else if (typeof content === 'object' && content !== null) {
-                parsedData = content
-                isJson = true
-              }
-
-              if (isJson && parsedData) {
-                // --- 处理JSON数据 ---
-                if (parsedData.task_id) {
-                  setTaskIdCallback(parsedData.task_id)
-                  streamingAgentMessage.task = parsedData.task_id
-                  ownerMaterialStore.setTask(parsedData.task_id)
-                }
-                if (parsedData.result) {
-                  const output = {
-                    materials: parsedData.result.materials || [],
-                    flattened: parsedData.result.flattened || [],
-                    unmatched: parsedData.result.unmatched || [],
-                    taskId: parsedData.task_id
-                  }
-                  if (output.unmatched.length > 0) {
-                    output.message = '存在无法匹配的物资信息，请人工介入'
-                  }
-                  const displayText = JSON.stringify(output, null, 2)
-                  chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
-                  finalResult.push(displayText)
-                  const currentSession = executionSessions.find((s) => s.id === workflow.id)
-                  if (currentSession) {
-                    currentSession.output += displayText
-                  }
-                }
-              } else {
-                // --- 处理纯文本数据 ---
-                const displayText = content + '\n' // 添加换行符以改善显示
-                chatStore.appendStreamContent(streamingAgentMessage.id, displayText)
-                finalResult.push(displayText)
-                const currentSession = executionSessions.find((s) => s.id === workflow.id)
-                if (currentSession) {
-                  currentSession.output += displayText
-                }
-              }
-            }
-          },
-          onError: (error) => {
-            clearInterval(loadingInterval)
-            loadingMessage.content = `甲供物资解析任务出错: ${error.message}`
-            loadingMessage.progress = 100
-            addMessageCallback(`甲供物资解析任务执行出错: ${error.message}`, 'system')
-            completeWorkflow({ status: 'error', output: error.message }, addMessageCallback)
-          },
-          onComplete: () => {
-            // 将 Done 事件的处理逻辑移动到这里
-            console.log(
-              `【诊断】workflow.js - 甲供物资解析完成事件: ID=${streamingAgentMessage.id}, isStreaming=${streamingAgentMessage.isStreaming}`
-            )
-            delete streamingAgentMessage.isStreaming
-            if (/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
-              streamingAgentMessage.showViewResultButton = false
-            } else {
-              streamingAgentMessage.showViewResultButton = true
-            }
-            loadingMessage.progress = 100
-            loadingMessage.content = '甲供物资解析任务执行完毕！'
-            clearInterval(loadingInterval)
-            completeWorkflow({ output: finalResult.join('\n') }, addMessageCallback)
-          }
-        }
-      )
-    } catch (error) {
-      clearInterval(loadingInterval)
-      loadingMessage.content = `甲供物资解析任务失败: ${error.message}`
-      loadingMessage.progress = 100
-      addMessageCallback(`甲供物资解析任务执行失败: ${error.message}`, 'system')
-      completeWorkflow({}, addMessageCallback)
-    }
-  }
-
-  /**
-   * 执行甲供物资对平工作流
-   * @param {string} taskId - 任务ID
-   * @param {function(Object): void} addMessageCallback - 添加消息的回调函数
-   * @returns {Promise<object>} 对平结果 {success: boolean, data: object, message: string}
-   */
-  const executeOwnerMaterialAlignmentWorkflow = async (taskId, addMessageCallback) => {
-    if (!taskId) {
-      ElMessage.warning('任务ID不能为空')
-      return { success: false, message: '任务ID不能为空' }
-    }
-
-    try {
-      // 1. 获取已解析的物资数据
-      const materials = await OwnerMaterialService.queryMaterialsApplyData({ taskDetailId: taskId })
-      if (!materials || materials.length === 0) {
-        ElMessage.warning('未找到物资数据')
-        return { success: false, message: '未找到物资数据' }
-      }
-
-      // 2. 执行物资对平
-      const alignmentResult = await OwnerMaterialService.alignMaterials({
-        taskId,
-        materials
-      })
-
-      // 3. 处理结果
-      if (alignmentResult.success) {
-        ElMessage.success('物资对平成功')
-        if (addMessageCallback) {
-          addMessageCallback({
-            content: `物资对平完成: 匹配${alignmentResult.data.matched.length}条, 未匹配${alignmentResult.data.unmatched.length}条`,
-            type: 'success'
-          })
-        }
-      } else {
-        ElMessage.error(`物资对平失败: ${alignmentResult.message}`)
-        if (addMessageCallback) {
-          addMessageCallback({
-            content: `物资对平失败: ${alignmentResult.message}`,
-            type: 'error'
-          })
-        }
-      }
-
-      return alignmentResult
-    } catch (error) {
-      console.error('物资对平工作流执行失败:', error)
-      ElMessage.error(`物资对平工作流执行失败: ${error.message}`)
-      if (addMessageCallback) {
-        addMessageCallback({
-          content: `物资对平工作流执行失败: ${error.message}`,
-          type: 'error'
-        })
-      }
-      return {
-        success: false,
-        message: error.message || '物资对平工作流执行失败'
-      }
-    }
-  }
-
-  /**
-   * 完成工作流执行
-   * @param {Object} [resultOverride={}] - 覆盖结果的对象
-   * @param {function(string, string, Object | null, Object | null, Object): void} addMessageCallback - 添加消息的回调函数
-   */
-  const completeWorkflow = (resultOverride = {}, addMessageCallback) => {
+  const finalizeWorkflowExecution = (resultOverride = {}, addMessageCallback) => {
     if (!currentWorkflow.value) return
 
-    clearInterval(timeInterval)
-    clearInterval(loadingInterval)
+    if (timeInterval) clearInterval(timeInterval)
+    if (progressManager) progressManager.stop()
 
     const duration = formatDuration((Date.now() - currentWorkflow.value.startTime) / 1000)
     const func = getCurrentFunction()
     const result = generateMockResult(func, duration)
 
-    /** @type {CompletedExecution} */
     const completedExecution = {
       id: currentWorkflow.value.id,
       workflow: currentWorkflow.value.name,
       function: getCurrentFunctionName(),
-      status: 'success',
+      status: resultOverride.status || 'success',
       duration,
       timestamp: new Date().toLocaleString(),
-      output: result.output
+      output: resultOverride.output || result.output
     }
 
     executionHistory.unshift(completedExecution)
@@ -875,35 +732,49 @@ export const useWorkflowStore = defineStore('workflow', () => {
         ...resultOverride
       })
     }
+
     currentWorkflow.value = null
     isExecuting.value = false
     currentStepIndex.value = 0
     stepProgress.value = 0
     workflowElapsedTime.value = 0
 
-    const isSuccess = resultOverride.status !== 'error'
     setTimeout(() => {
-      let showButton = false
       addMessageCallback(
         `任务执行完成: ${completedExecution.workflow} (耗时: ${duration})`,
         'agent',
         { id: completedExecution.id, name: completedExecution.workflow },
         null,
-        { showViewResultButton: showButton }
+        { showViewResultButton: false } // 按钮逻辑已移至具体处理函数
       )
       addMessageCallback(`--- 任务 ${completedExecution.workflow} 执行结束 ---`, 'system', {
         id: completedExecution.id,
         name: completedExecution.workflow
       })
-    }, 2000)
+    }, 1000)
+  }
+  // #endregion
+
+  // #region Actions - UI & General
+  const setTaskId = (id) => {
+    taskId.value = id
   }
 
-  /**
-   * 从对话框启动工作流
-   * @param {function(Object): void} addMessageCallback - 添加消息的回调函数
-   */
+  const setSupplierFileIds = (ids) => {
+    supplierFileDetailIds.value = ids
+  }
+
+  const handleFunctionSelect = async (key, addMessageCallback) => {
+    if (key === 'smartBrain') {
+      await handleSmartBrainSelection(addMessageCallback)
+      return
+    }
+    activeFunction.value = key
+    resetWorkflowConfig()
+    showWorkflowConfig.value = true
+  }
+
   const startWorkflowFromDialog = (addMessageCallback) => {
-    console.log(`【诊断】workflow.js - 从对话框启动工作流${addMessageCallback}`)
     const func = getCurrentFunction()
     if (!func) return
 
@@ -914,47 +785,31 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
     showWorkflowConfig.value = false
     ElMessage.success('即将开始执行...')
-
     executeWorkflow(addMessageCallback)
   }
 
-  /**
-   * 重置工作流配置
-   */
   const resetWorkflowConfig = () => {
     const func = getCurrentFunction()
-    if (!func) return
+    if (!func || !func.params) return
 
     const newParams = {}
     func.params.forEach((param) => {
-      if (param.type === 'boolean') {
-        newParams[param.key] = false
-      } else if (param.type === 'number') {
-        newParams[param.key] = param.min || 0
-      } else if (param.type === 'select' && param.options?.length) {
+      if (param.type === 'boolean') newParams[param.key] = false
+      else if (param.type === 'number') newParams[param.key] = param.min || 0
+      else if (param.type === 'select' && param.options?.length)
         newParams[param.key] = param.options[0].value
-      } else {
-        newParams[param.key] = ''
-      }
+      else newParams[param.key] = ''
     })
     workflowConfig.params = newParams
     workflowConfig.files = []
   }
 
-  /**
-   * 清空执行历史
-   * @param {function(string, string): void} addMessageCallback - 添加消息的回调函数
-   */
   const clearHistory = (addMessageCallback) => {
     executionHistory.splice(0)
     addMessageCallback('执行历史已清空', 'system')
     ElMessage.success('执行历史已清空')
   }
 
-  /**
-   * 导出执行历史
-   * @param {function(string, string): void} addMessageCallback - 添加消息的回调函数
-   */
   const exportHistory = (addMessageCallback) => {
     const data = JSON.stringify(executionHistory, null, 2)
     const blob = new Blob([data], { type: 'application/json' })
@@ -967,12 +822,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     addMessageCallback('执行历史已导出', 'system')
   }
 
-  /**
-   * 查看执行详情
-   * @param {CompletedExecution} row - 选中的执行历史行数据
-   * @param {function(Object): void} setLastExecutionResultCallback - 设置最后执行结果的回调函数
-   * @param {function(string, string): void} addMessageCallback - 添加消息的回调函数
-   */
   const viewExecutionDetail = (row, setLastExecutionResultCallback, addMessageCallback) => {
     setLastExecutionResultCallback({
       id: row.id,
@@ -987,8 +836,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
     })
     addMessageCallback(`查看执行详情: ${row.workflow}`, 'system')
   }
+  // #endregion
 
   return {
+    // State
     isSidebarOpen,
     activeFunction,
     currentWorkflow,
@@ -1005,15 +856,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
     taskListsByAgent,
     taskId,
     supplierFileDetailIds,
-    showSmartBrainDialog, // 暴露 showSmartBrainDialog
+    showSmartBrainDialog,
+    // Getters
     getCurrentFunctionName,
     getCurrentFunction,
     getCurrentFunctionParams,
     needsFileUpload,
     getAllowedFileTypes,
+    // Actions
     handleFunctionSelect,
     executeWorkflow,
-    completeWorkflow,
+    finalizeWorkflowExecution,
     startWorkflowFromDialog,
     resetWorkflowConfig,
     clearHistory,
