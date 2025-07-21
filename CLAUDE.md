@@ -4,11 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Vue 3 frontend application that integrates with Coze APIs to provide workflow management and material parsing capabilities. The project focuses on contract parsing, supplier material parsing, and owner-supplied material parsing with real-time workflow execution.
+This is a Vue 3 frontend application that integrates with Coze APIs to provide a rich, interactive interface for managing and executing workflows. The project focuses on real-time, streaming execution for tasks like contract parsing, supplier material analysis, and owner-supplied material processing.
+
+### Core Features
+- **Workflow Integration**: Deep integration with Coze APIs for both streaming and non-streaming workflow execution.
+- **Material Parsing**: Specialized workflows for parsing various documents like contracts and material lists.
+- **Real-time Interaction**: Utilizes WebSocket-like patterns to provide real-time feedback and results from workflow execution.
+- **Dynamic UI**: Features for data generation, editing, and visualization of structured data extracted from documents.
+
 
 ## Development Commands
 
 ```bash
+# Install dependencies
+yarn install
+
 # Start development server (http://localhost:5173)
 yarn dev
 
@@ -31,6 +41,14 @@ yarn lint
 yarn format
 ```
 
+## Setup
+
+1.  Create a `.env.local` file in the root directory.
+2.  Add your Coze API Key to the file:
+    ```env
+    VITE_COZE_API_KEY=your_coze_api_key_here
+    ```
+
 ## Architecture Overview
 
 ### Core Technologies
@@ -42,14 +60,14 @@ yarn format
 - **Element Plus** UI components with auto-import
 - **Tailwind CSS** for styling
 - **@coze/api** for Coze API integration
+- **Marked** for rendering Markdown content
 
 ### Key Directory Structure
 
 - `src/components/home/` - Main application components (chat, dialogs, workflow panels)
-- `src/services/` - API service classes (CozeChatService, CozeParsingService, etc.)
+- `src/services/` - API service classes (CozeWorkflowService, CozeParsingService, etc.)
 - `src/stores/` - Pinia stores for state management
 - `src/utils/` - Utility functions and helpers
-- `src/utils/` - Legacy utils directory (contains workflow utilities)
 - `proxy-server/` - Node.js proxy server for production
 
 ### State Management
@@ -71,9 +89,9 @@ yarn format
 
 The application supports three main workflow types:
 
-1. **Contract Parsing** (`contractParsing`) - Workflow ID: 7516796514431172642
-2. **Supplier Material Parsing** (`supplierMaterialParsing`) - Workflow ID: 7517934954761715721
-3. **Owner Material Parsing** (`ownerSuppliedMaterialParsing`) - Uses backend API integration
+1. **Contract Parsing** (`contractParsing`) - Workflow ID: `7516796514431172642`
+2. **Supplier Material Parsing** (`supplierMaterialParsing`) - Workflow ID: `7517934954761715721`
+3. **Owner Material Parsing** (`ownerSuppliedMaterialParsing`) - Uses a dedicated backend API.
 
 ### API Configuration
 
@@ -87,29 +105,20 @@ Development proxy configuration in `vite.config.js`:
 
 ### Workflow Execution
 
-- All workflows support file uploads and streaming responses
-- Task IDs are managed in the workflow store for result tracking
-- Progress indicators show real-time execution status
-- Results can be viewed through dedicated detail pages
+- All workflows support file uploads and streaming responses.
+- Task IDs are managed in the workflow store for result tracking.
+- Progress indicators show real-time execution status.
+- Results can be viewed through dedicated detail pages.
 
 ### File Upload
 
-- Uses Coze API for file uploads with app ID: 7509762183313129512
-- Supports multiple file types (PDF, Excel, etc.)
-- Files are processed through workflow inputs as `{file_id: string}[]`
+- Uses Coze API for file uploads with app ID: `7509762183313129512`.
+- Supports multiple file types (PDF, Excel, etc.).
+- Files are processed through workflow inputs as `{file_id: string}[]`.
 
 ### Streaming Implementation
 
-- Real-time message streaming using SSE/WebSocket patterns
-- Messages are appended to chat store with unique IDs
-- Progress tracking with loading states and completion callbacks
+- Real-time message streaming using Server-Sent Events (SSE) patterns.
+- Messages are appended to the chat store with unique IDs.
+- Progress is tracked with loading states and completion callbacks.
 
-### Navigation
-
-- Home page (`/home`) - Main workflow interface
-- Material detail pages with dynamic routing (`/material-detail/:taskId`)
-- Owner material pages for specialized workflows
-
-### Environment Variables
-
-Requires `VITE_COZE_API_KEY` in `.env.local` for Coze API integration.
