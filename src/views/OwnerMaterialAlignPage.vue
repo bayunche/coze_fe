@@ -125,6 +125,7 @@
       @select="handleDbMaterialSelect"
       @page-change="handleDbMaterialPageChange"
       @size-change="handleDbMaterialSizeChange"
+      @search="handleDbMaterialSearch"
       style="z-index: 9999"
     />
     <!-- 新增保存按钮 -->
@@ -145,10 +146,14 @@ import { queryBalanceResult, queryUnmatchedBalanceResult } from '@/utils/backend
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
 import { ElDialog } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
+import CozeWorkflowService from '@/services/CozeWorkflowService'
 
 const router = useRouter()
 const route = useRoute()
 const ownerMaterialStore = useOwnerMaterialStore()
+
+// 初始化 Coze 工作流服务
+const cozeWorkflowService = new CozeWorkflowService()
 
 // --- 状态和数据管理 ---
 const allMaterials = ref([]) // 存储从后端获取的所有数据
@@ -331,19 +336,99 @@ function handleSelectDbMaterial(row, index) {
   currentEditingRow.value = row
   dbMaterialSearch.value = ''
   dbMaterialPageNum.value = 1
-  // fetchDbMaterialList() // TODO: 需要实现真实接口
+  
+  // 调用真实的数据加载函数
+  fetchDbMaterialList(1, dbMaterialPageSize.value)
+  
   showDbMaterialDialog.value = true
   console.log('弹窗状态:', showDbMaterialDialog.value)
 }
 
 // TODO: 实现真实数据库物资列表加载
-function fetchDbMaterialList() {
+const fetchDbMaterialList = async (pageNum = dbMaterialPageNum.value, pageSize = dbMaterialPageSize.value, searchTerm = '') => {
   dbMaterialLoading.value = true
-  setTimeout(() => {
-    dbMaterialList.value = [] // 替换为真实数据
+  try {
+    // 使用与乙供物资解析详情相同的工作流ID: 7519455533105184809
+    const workflowId = '7519455533105184809'
+    const params = {
+      pageNum: pageNum,
+      pageSize: pageSize
+    }
+    
+    // 如果有搜索条件，添加到参数中
+    if (searchTerm && searchTerm.trim()) {
+      params.searchTerm = searchTerm.trim()
+    }
+    
+    console.log('调用数据库物资查询工作流，参数：', params)
+    
+    const result = await cozeWorkflowService.runWorkflow(workflowId, params)
+    
+    if (result && result.data) {
+      // 解析返回的数据
+      let parsedData
+      if (typeof result.data === 'string') {
+        parsedData = JSON.parse(result.data)
+      } else {
+        parsedData = result.data
+      }
+      
+      console.log('数据库物资查询结果：', parsedData)
+      
+      // 根据返回数据结构适配
+      if (parsedData && Array.isArray(parsedData.result)) {
+        // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
+        dbMaterialList.value = parsedData.result.map(item => ({
+          id: item.id,
+          material_name: item.ymtd_material_name || item.material_name || item.materialName,
+          specification_model: item.ymtd_specification_model || item.specification_model || item.specificationModel,
+          tax_price: item.ymtd_tax_price || item.tax_price || item.taxPrice,
+          quarter: item.ymtd_quarter || item.quarter,
+          unit: item.ymtd_unit || item.unit,
+          code: item.ymtd_code || item.code || item.materialCode,
+          // 保留原始数据
+          originalData: item
+        }))
+        
+        dbMaterialTotal.value = parsedData.totalCount || parsedData.total || parsedData.result.length
+        
+        ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
+      } else if (parsedData && Array.isArray(parsedData)) {
+        // 如果直接返回数组
+        dbMaterialList.value = parsedData.map(item => ({
+          id: item.id,
+          material_name: item.ymtd_material_name || item.material_name || item.materialName,
+          specification_model: item.ymtd_specification_model || item.specification_model || item.specificationModel,
+          tax_price: item.ymtd_tax_price || item.tax_price || item.taxPrice,
+          quarter: item.ymtd_quarter || item.quarter,
+          unit: item.ymtd_unit || item.unit,
+          code: item.ymtd_code || item.code || item.materialCode,
+          originalData: item
+        }))
+        
+        dbMaterialTotal.value = parsedData.length
+        
+        ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
+      } else {
+        console.warn('未识别的数据格式：', parsedData)
+        dbMaterialList.value = []
+        dbMaterialTotal.value = 0
+        ElMessage.info('未查询到相关数据')
+      }
+    } else {
+      console.warn('工作流返回数据为空')
+      dbMaterialList.value = []
+      dbMaterialTotal.value = 0
+      ElMessage.info('未查询到相关数据')
+    }
+  } catch (error) {
+    console.error('加载数据库物资列表失败:', error)
+    ElMessage.error(`加载数据库物资列表失败: ${error.message}`)
+    dbMaterialList.value = []
     dbMaterialTotal.value = 0
+  } finally {
     dbMaterialLoading.value = false
-  }, 300)
+  }
 }
 
 // 保存对平物资信息
@@ -356,12 +441,19 @@ function handleSaveMaterial() {
 // 分页/搜索事件
 function handleDbMaterialPageChange(page) {
   dbMaterialPageNum.value = page
-  fetchDbMaterialList()
+  fetchDbMaterialList(page, dbMaterialPageSize.value, dbMaterialSearch.value)
 }
+
 function handleDbMaterialSizeChange(size) {
   dbMaterialPageSize.value = size
   dbMaterialPageNum.value = 1
-  fetchDbMaterialList()
+  fetchDbMaterialList(1, size, dbMaterialSearch.value)
+}
+
+// 处理搜索事件
+function handleDbMaterialSearch(searchTerm) {
+  dbMaterialSearch.value = searchTerm
+  // 搜索逻辑在 watch 中处理，这里只更新搜索词
 }
 
 // 选择数据库物资后覆盖当前行
@@ -380,9 +472,19 @@ function handleDbMaterialSelect(selected) {
   showDbMaterialDialog.value = false
 }
 
-// 搜索事件
-watch(dbMaterialSearch, () => {
-  fetchDbMaterialList()
+// 搜索事件 - 添加防抖处理
+let searchTimeout = null
+watch(dbMaterialSearch, (newVal) => {
+  // 清除之前的定时器
+  if (searchTimeout) {
+    clearTimeout(searchTimeout)
+  }
+  
+  // 设置新的定时器，300ms后执行搜索
+  searchTimeout = setTimeout(() => {
+    dbMaterialPageNum.value = 1 // 重置到第一页
+    fetchDbMaterialList(1, dbMaterialPageSize.value, newVal)
+  }, 300)
 })
 // 检查所有物资是否已拉平
 function checkAllAligned() {

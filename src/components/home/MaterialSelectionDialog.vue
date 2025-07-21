@@ -83,7 +83,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'select', 'page-change', 'size-change'])
+const emit = defineEmits(['update:modelValue', 'select', 'page-change', 'size-change', 'search'])
 
 const dialogVisible = computed({
   get: () => props.modelValue,
@@ -94,12 +94,13 @@ const searchTerm = ref('')
 const selectedMaterial = ref(null)
 
 const filteredData = computed(() => {
-  if (!searchTerm.value) {
-    return props.dataList
-  }
-  return props.dataList.filter((item) =>
-    (item.ymtd_material_name || '').toLowerCase().includes(searchTerm.value.toLowerCase())
-  )
+  // 现在直接使用传入的数据，搜索在服务器端处理
+  return props.dataList
+})
+
+// 添加搜索功能的监听器
+watch(searchTerm, (newVal) => {
+  emit('search', newVal)
 })
 
 watch(
