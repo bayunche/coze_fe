@@ -1,4 +1,4 @@
-// src/uitls/dify.js
+// src/utils/dify.js
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
 

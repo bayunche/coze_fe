@@ -98,7 +98,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import CozeService from '@/uitls/coze.js'
+import CozeService from '@/utils/coze.js'
 import { useChatStore } from '@/stores/chat.js'
 
 const props = defineProps({

@@ -300,7 +300,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
-import CozeService from '@/uitls/coze.js'
+import CozeService from '@/utils/coze.js'
 import { useChatStore } from '@/stores/chat.js'
 import MaterialService from '@/services/MaterialService.js'
 import { useRoute, useRouter } from 'vue-router'

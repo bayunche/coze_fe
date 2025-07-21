@@ -56,7 +56,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import CozeService from '@/uitls/coze.js'
+import CozeService from '@/utils/coze.js'
 import { useRouter } from 'vue-router' // 导入 useRouter
 
 const props = defineProps({

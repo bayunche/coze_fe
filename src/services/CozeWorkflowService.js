@@ -1,13 +1,15 @@
 // src/services/CozeWorkflowService.js
-import  CozeService  from '@/uitls/coze.js'; // 假设 CozeService 仍然从这里导入
+import CozeService from '@/utils/coze.js' // 假设 CozeService 仍然从这里导入
 
 class CozeWorkflowService {
   constructor() {
-    const apiKey = import.meta.env.VITE_COZE_API_KEY;
+    const apiKey = import.meta.env.VITE_COZE_API_KEY
     if (!apiKey) {
-      console.error('Coze API Key is not set. Please set VITE_COZE_API_KEY in your .env.local file.');
+      console.error(
+        'Coze API Key is not set. Please set VITE_COZE_API_KEY in your .env.local file.'
+      )
     }
-    this.cozeService = new CozeService(apiKey);
+    this.cozeService = new CozeService(apiKey)
   }
 
   /**
@@ -16,7 +18,7 @@ class CozeWorkflowService {
    * @returns {Promise<string>} - 文件ID
    */
   async uploadFile(file) {
-    return this.cozeService.uploadFile(file);
+    return this.cozeService.uploadFile(file)
   }
 
   /**
@@ -26,8 +28,8 @@ class CozeWorkflowService {
    * @param {object} callbacks - 回调函数对象 { onMessage, onError, onEnd }
    */
   async runWorkflow(workflowId, params, callbacks) {
-    return this.cozeService.runWorkflow(workflowId, params, callbacks);
+    return this.cozeService.runWorkflow(workflowId, params, callbacks)
   }
 }
 
-export default CozeWorkflowService;
+export default CozeWorkflowService

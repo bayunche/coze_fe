@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
-import { functions } from '@/uitls/workflows.js'
+import { functions } from '@/utils/workflowsDefinedEnum.js'
 import CozeWorkflowService from '@/services/CozeWorkflowService'
 import CozeParsingService from '@/services/CozeParsingService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
-import { callStreamWorkflow } from '@/uitls/backendWorkflow.js'
+import { callStreamWorkflow } from '@/utils/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 import { useChatStore } from '@/stores/chat'
 

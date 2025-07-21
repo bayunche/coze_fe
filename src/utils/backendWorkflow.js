@@ -1,4 +1,4 @@
-// src/uitls/backendWorkflow.js
+// src/utils/backendWorkflow.js
 // 用于请求后端自建的工作流调用与模拟对话流程的工具函数
 
 // 导入必要的模块和工具函数

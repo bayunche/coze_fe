@@ -98,7 +98,7 @@ import { useWorkflowStore } from '@/stores/workflow'
 import { useParsingResultStore } from '@/stores/parsingResult'
 import { useMaterialDialogStore } from '@/stores/materialDialog'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial' // 导入甲供物资 store
-import { functions } from '@/uitls/workflows.js' // functions 仍然从这里导入
+import { functions } from '@/utils/workflowsDefinedEnum.js' // functions 仍然从这里导入
 // import CozeService from '@/services/CozeService'; // 移除 CozeService 导入
 
 // 导入子组件
