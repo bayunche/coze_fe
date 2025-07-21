@@ -5,7 +5,7 @@ import { functions } from '@/utils/workflowsDefinedEnum.js'
 import CozeWorkflowService from '@/services/CozeWorkflowService'
 import CozeParsingService from '@/services/CozeParsingService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
-import { callStreamWorkflow } from '@/utils/backendWorkflow.js'
+import { callStreamWorkflow, uploadFile } from '@/utils/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 import { useChatStore } from '@/stores/chat'
 
@@ -388,12 +388,22 @@ export const useWorkflowStore = defineStore('workflow', () => {
     currentStepIndex.value = 0 // 步骤: 上传文件
     stepProgress.value = 0
 
-    const uploadPromises = workflowConfig.files.map((file) =>
-      cozeWorkflowService.uploadFile(file.raw, COMMON_APP_ID)
-    )
-    const fileIds = await Promise.all(uploadPromises)
+    const uploadPromises = workflowConfig.files.map((file) => {
+      if (activeFunction.value === 'ownerSuppliedMaterialParsing') {
+        // 甲供物资文件使用新的上传接口，并保留 excel_type
+        return uploadFile(file.raw).then((res) => ({
+          filePath: res.filePath,
+          excel_type: file.excel_type
+        }))
+      } else {
+        // 其他文件保持原有逻辑
+        return cozeWorkflowService.uploadFile(file.raw, COMMON_APP_ID)
+      }
+    })
+
+    const fileIdsOrPaths = await Promise.all(uploadPromises)
     stepProgress.value = 100
-    return fileIds
+    return fileIdsOrPaths
   }
 
   /**
@@ -566,7 +576,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
   /**
    * 处理甲供物资解析工作流
-   * @param {Array<{file_id: string}>} inputs - 文件输入
+   * @param {Array<{file_id: string}|{file_path: string}>} inputs - 文件输入
    * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
    */
   const handleOwnerMaterialParsing = async (inputs, context) => {
@@ -587,7 +597,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       loadingMessage.content = '甲供物资解析已开始...'
       addMessageCallback(streamingAgentMessage)
 
-      await callStreamWorkflow({ excelFileList: inputs, parseOnly: true }, '2', {
+      await callStreamWorkflow({ ...inputs, parseOnly: true }, '2', {
         onMessage: (event) => {
           if (event.content) {
             const { parsedMessage, messageContent } = parseWorkflowMessage({
@@ -664,10 +674,34 @@ export const useWorkflowStore = defineStore('workflow', () => {
     progressManager.start()
 
     try {
-      const fileIds = await uploadWorkflowFiles()
+      const fileIdsOrPaths = await uploadWorkflowFiles()
       currentStepIndex.value = 1 // 步骤: 文件解析
 
-      const inputs = fileIds.map((fileId) => ({ file_id: fileId }))
+      let inputs
+
+      if (func.id === 'ownerSuppliedMaterialParsing') {
+        // For owner material, group files by excel_type
+        // For owner material, group files by excel_type, respecting single vs. multiple file types.
+        inputs = fileIdsOrPaths.reduce((acc, file) => {
+          const key = file.excel_type
+          if (!key) return acc // Skip if excel_type is missing
+
+          if (key === 'other') {
+            // 'other' files are collected into an array of objects.
+            if (!acc[key]) {
+              acc[key] = []
+            }
+            acc[key].push({ filePath: file.filePath })
+          } else {
+            // Other file types are assigned as a single object.
+            acc[key] = { filePath: file.filePath }
+          }
+          return acc
+        }, {})
+      } else {
+        // For other workflows, create a list of file_id objects
+        inputs = fileIdsOrPaths.map((idOrPath) => ({ file_id: idOrPath }))
+      }
       const context = { workflow, loadingMessage, addMessageCallback }
 
       executionSessions.push({

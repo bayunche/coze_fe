@@ -47,6 +47,8 @@
               drag
               accept=".xls,.xlsx"
               :before-upload="(file) => beforeUpload(file, ['.xls', '.xlsx'])"
+              :on-change="handleComprehensiveClaimChange"
+              :on-exceed="handleComprehensiveClaimExceed"
               class="upload-demo"
             >
               <div class="el-upload-dragger-content">
@@ -65,6 +67,8 @@
               drag
               accept=".pdf"
               :before-upload="(file) => beforeUpload(file, ['.pdf'])"
+              :on-change="handleActualUsage1Change"
+              :on-exceed="handleActualUsage1Exceed"
               class="upload-demo"
             >
               <div class="el-upload-dragger-content">
@@ -74,7 +78,7 @@
             </el-upload>
           </div>
           <div class="upload-grid-item">
-            <div class="upload-label">实际用料 (PDF, 必填)</div>
+            <div class="upload-label">实际退料 (PDF, 必填)</div>
             <el-upload
               ref="actualUsageRef2"
               v-model:file-list="actualUsageFiles2"
@@ -83,6 +87,8 @@
               drag
               accept=".pdf"
               :before-upload="(file) => beforeUpload(file, ['.pdf'])"
+              :on-change="handleActualUsage2Change"
+              :on-exceed="handleActualUsage2Exceed"
               class="upload-demo"
             >
               <div class="el-upload-dragger-content">
@@ -177,6 +183,33 @@ const otherFiles = ref([])
 
 const isOwnerMaterialWorkflow = computed(() => props.currentFunctionName === '甲供物资解析')
 
+const handleComprehensiveClaimChange = (file, fileList) => {
+  comprehensiveClaimFiles.value = fileList
+}
+
+const handleActualUsage1Change = (file, fileList) => {
+  actualUsageFiles1.value = fileList
+}
+
+const handleActualUsage2Change = (file, fileList) => {
+  actualUsageFiles2.value = fileList
+}
+
+const handleComprehensiveClaimExceed = (files) => {
+  comprehensiveClaimRef.value.clearFiles()
+  comprehensiveClaimRef.value.handleStart(files[0])
+}
+
+const handleActualUsage1Exceed = (files) => {
+  actualUsageRef1.value.clearFiles()
+  actualUsageRef1.value.handleStart(files[0])
+}
+
+const handleActualUsage2Exceed = (files) => {
+  actualUsageRef2.value.clearFiles()
+  actualUsageRef2.value.handleStart(files[0])
+}
+
 const handleClose = () => {
   if (uploadRef.value) {
     uploadRef.value.clearFiles()
@@ -205,16 +238,18 @@ const handleSubmit = () => {
       return
     }
     if (actualUsageFiles2.value.length === 0) {
-      ElMessage.error('请上传第二个“实际用料 (PDF, 必填)”文件')
+      ElMessage.error('请上传“实际退料 (PDF, 必填)”文件')
       return
     }
 
-    // Merge files
+    // Assign categorized files with excel_type
+    const assignExcelType = (files, type) => files.map((file) => ({ ...file, excel_type: type }))
+
     props.config.files = [
-      ...comprehensiveClaimFiles.value,
-      ...actualUsageFiles1.value,
-      ...actualUsageFiles2.value,
-      ...otherFiles.value
+      ...assignExcelType(comprehensiveClaimFiles.value, 'comprehensive_claim'),
+      ...assignExcelType(actualUsageFiles1.value, 'actual_usage'),
+      ...assignExcelType(actualUsageFiles2.value, 'actual_return'),
+      ...assignExcelType(otherFiles.value, 'other')
     ]
   }
 
@@ -266,25 +301,56 @@ const handleExceed = (files) => {
 }
 
 .owner-material-upload-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
+  position: relative;
+  width: 100%;
+  height: 488px; /* 固定容器高度，确保能容纳两行 */
 }
 
 .upload-grid-item {
+  position: absolute;
   display: flex;
   flex-direction: column;
+  width: calc(50% - 12px); /* 宽度为50%减去一半的间隙 */
+  height: 220px; /* 为每个上传框设置固定高度 */
+}
+
+/* 使用 :nth-child 精确定位每个上传框 */
+.upload-grid-item:nth-child(1) {
+  top: 0;
+  left: 0;
+}
+.upload-grid-item:nth-child(2) {
+  top: 0;
+  left: calc(50% + 12px);
+}
+.upload-grid-item:nth-child(3) {
+  top: 244px; /* 220px (item-height) + 24px (gap) */
+  left: 0;
+}
+.upload-grid-item:nth-child(4) {
+  top: 244px; /* 220px (item-height) + 24px (gap) */
+  left: calc(50% + 12px);
 }
 
 .upload-label {
   font-size: 14px;
-  color: var(--el-text-color-regular);
-  margin-bottom: 8px;
-  font-weight: 600;
+  color: #1c1e21; /* Meta-like dark text */
+  margin-bottom: 12px;
+  font-weight: 500;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .upload-demo {
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Ensure it fills the grid item */
+}
+
+.upload-demo :deep(.el-upload) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .upload-demo :deep(.el-upload-dragger) {
@@ -292,18 +358,20 @@ const handleExceed = (files) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 160px;
-  background-color: #fafafa;
-  border: 1px dashed #d9d9d9;
-  border-radius: 8px;
+  flex-grow: 1;
+  background-color: transparent; /* No background */
+  border: 1.5px dashed #ced0d4; /* Softer, thinner dash */
+  border-radius: 12px; /* Larger radius */
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s ease-in-out;
+  min-height: 120px;
 }
 
 .upload-demo :deep(.el-upload-dragger):hover,
 .upload-demo :deep(.el-upload-dragger.is-dragover) {
-  border-color: var(--el-color-primary);
-  background-color: #f0f8ff;
+  border-color: #0052ff; /* Apple-like blue */
+  background-color: rgba(0, 82, 255, 0.05); /* Subtle background on hover */
+  box-shadow: 0 4px 12px rgba(0, 82, 255, 0.1); /* Soft shadow */
 }
 
 .upload-demo .el-upload-dragger-content {
@@ -311,31 +379,97 @@ const handleExceed = (files) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: #65676b; /* Softer text color */
 }
 
 .upload-demo :deep(.el-upload-dragger) .el-icon--upload {
-  font-size: 48px;
+  font-size: 36px; /* Smaller icon */
   margin-bottom: 12px;
-  color: var(--el-color-primary);
+  color: #0052ff;
 }
 
 .upload-demo :deep(.el-upload-dragger) .el-upload__text {
-  color: var(--el-text-color-regular);
+  color: #1c1e21;
   font-size: 14px;
+  font-weight: 500;
   text-align: center;
 }
 
 .upload-demo :deep(.el-upload-dragger) .el-upload__text em {
-  color: var(--el-color-primary);
+  color: #0052ff;
   font-style: normal;
+  font-weight: 600;
 }
 
 .upload-demo :deep(.el-upload__tip) {
-  margin-top: 10px; /* 调整提示文本的边距 */
+  display: none; /* Hide the default tip */
 }
 
 .upload-demo :deep(.el-upload-list) {
-  margin-top: 10px; /* 调整文件列表的边距 */
+  margin-top: 12px;
+  height: 54px;
+  overflow-y: auto;
+  border: none; /* Remove border */
+  border-radius: 0;
+  padding: 0;
+  background-color: transparent;
+}
+
+/* Custom scrollbar styling */
+.upload-demo :deep(.el-upload-list::-webkit-scrollbar) {
+  width: 4px;
+}
+.upload-demo :deep(.el-upload-list::-webkit-scrollbar-thumb) {
+  background: #dcdfe6;
+  border-radius: 4px;
+}
+.upload-demo :deep(.el-upload-list::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+.upload-demo :deep(.el-upload-list__item) {
+  margin-top: 0 !important;
+  margin-bottom: 8px; /* Space between items */
+  background-color: #fff;
+  border: 1px solid #eef0f2;
+  border-radius: 8px; /* Softer corners */
+  padding: 0 12px;
+  height: 40px;
+  line-height: 40px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition:
+    box-shadow 0.2s ease-in-out,
+    transform 0.2s ease-in-out;
+}
+
+.upload-demo :deep(.el-upload-list__item:hover) {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.upload-demo :deep(.el-upload-list__item .el-icon) {
+  vertical-align: middle;
+  color: #65676b;
+}
+
+.upload-demo :deep(.el-upload-list__item-name) {
+  padding: 0 8px;
+  color: #1c1e21;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.upload-demo :deep(.el-upload-list__item .el-upload-list__item-status-label) {
+  vertical-align: middle;
+}
+
+.upload-demo :deep(.el-upload-list__item .el-icon--close) {
+  top: 50%;
+  transform: translateY(-50%);
+  color: #909399;
+  font-size: 16px;
+}
+.upload-demo :deep(.el-upload-list__item .el-icon--close:hover) {
+  color: #ff4d4f;
 }
 </style>

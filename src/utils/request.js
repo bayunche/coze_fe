@@ -28,6 +28,10 @@ service.interceptors.response.use(
     }
 
     const res = response.data
+    // 检查是否是文件下载响应
+    if (res.fileName && res.filePath) {
+      return res
+    }
     // 根据实际业务逻辑判断请求是否成功
     if (res.code !== 20000 && res.code !== 200) {
       // 假设 20000 或 200 为成功状态码

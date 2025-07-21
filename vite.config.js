@@ -42,17 +42,32 @@ export default defineConfig({
       '/api/backend-api': {
         target: 'http://159.75.127.84:1202',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/backend-api/, '')
+        rewrite: (path) => {
+          const newPath = path.replace(/^\/api\/backend-api/, '')
+          console.log(`[/api/backend-api] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[/api/backend-api] 最终请求: http://159.75.127.84:1207${newPath}`)
+          return newPath
+        }
       },
       '/api': {
         target: 'http://159.75.127.84:1207',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        rewrite: (path) => {
+          const newPath = path.replace(/^\/api/, '')
+          console.log(`[/api] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[/api] 最终请求: http://159.75.127.84:1207${newPath}`)
+          return newPath
+        }
       },
       '/backend-api': {
         target: 'http://159.75.127.84:1202',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/backend-api/, '')
+        rewrite: (path) => {
+          const newPath = path.replace(/^\/backend-api/, '')
+          console.log(`[/backend-api] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[/backend-api] 最终请求: http://159.75.127.84:1207${newPath}`)
+          return newPath
+        }
       }
     }
   }

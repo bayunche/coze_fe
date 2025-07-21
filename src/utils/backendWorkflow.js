@@ -163,3 +163,30 @@ export async function callNonStreamWorkflow(inputs, agentManagementId) {
     throw error // 抛出错误以便调用方处理
   }
 }
+
+/**
+ * 上传文件到服务器
+ * @param {File} file - 要上传的文件对象
+ * @returns {Promise&lt;{fileName: string, filePath: string}&gt;} - 包含 fileName 和 filePath 的对象
+ */
+export async function uploadFile(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    // request 工具的响应拦截器会处理掉外层的 data，直接返回业务数据
+    const response = await request({
+      url: `/api/files/upload`, // 基础路径 /api 已在 request 中配置
+      method: 'post',
+      data: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
+    return response
+  } catch (error) {
+    console.error('文件上传失败:', error)
+    ElMessage.error(error.message || '文件上传失败')
+    throw error
+  }
+}
