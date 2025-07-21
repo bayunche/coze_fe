@@ -285,3 +285,25 @@ export async function queryBalanceResult(params) {
     throw error
   }
 }
+
+/**
+ * 人工匹配并更新对平状态
+ * @param {object} data - 匹配数据
+ * @param {string} data.balanceResultId - 对平结果记录的唯一ID
+ * @param {string} data.baseDataId - 标准物料的唯一ID
+ * @returns {Promise<object>} - 后端返回的响应数据
+ */
+export async function manualMatch(data) {
+  try {
+    const response = await request({
+      url: '/api/materials/partya/manualMatch',
+      method: 'post',
+      data: data
+    })
+    return response
+  } catch (error) {
+    console.error('人工匹配并更新对平状态失败:', error)
+    ElMessage.error(error.message || '人工匹配并更新对平状态失败')
+    throw error
+  }
+}

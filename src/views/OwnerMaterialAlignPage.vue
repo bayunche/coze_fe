@@ -142,7 +142,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
-import { queryBalanceResult, queryUnmatchedBalanceResult } from '@/utils/backendWorkflow' // 导入接口
+import { queryBalanceResult, queryUnmatchedBalanceResult, manualMatch } from '@/utils/backendWorkflow' // 导入接口
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
 import { ElDialog } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
@@ -432,10 +432,113 @@ const fetchDbMaterialList = async (pageNum = dbMaterialPageNum.value, pageSize =
 }
 
 // 保存对平物资信息
-function handleSaveMaterial() {
-  // TODO: 实现真实的保存逻辑
-  ElMessage.success('物资对平信息保存成功')
-  showManualConfirmDialog.value = false
+async function handleSaveMaterial() {
+  try {
+    // 检查是否有需要保存的未对平物资
+    const materialsToSave = unalignedMaterials.value.filter(material => 
+      material.dbCode && material.originalData && material.originalData.id
+    )
+    
+    if (materialsToSave.length === 0) {
+      ElMessage.warning('没有可保存的物资匹配信息')
+      return
+    }
+    
+    // 确认保存操作
+    await ElMessageBox.confirm(
+      `确认保存 ${materialsToSave.length} 个物资的匹配信息？`,
+      '确认保存',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+    
+    // 开始保存流程
+    let successCount = 0
+    let failureCount = 0
+    const errors = []
+    
+    ElMessage.info(`开始保存 ${materialsToSave.length} 个物资匹配信息...`)
+    
+    // 逐个调用人工匹配API
+    for (let i = 0; i < materialsToSave.length; i++) {
+      const material = materialsToSave[i]
+      
+      try {
+        // 调用人工匹配API
+        const matchData = {
+          balanceResultId: material.originalData.id,
+          baseDataId: material.originalData.selectedBaseData?.id || 
+                     material.originalData.selectedBaseData?.code || 
+                     material.dbCode
+        }
+        
+        console.log(`保存第 ${i + 1}/${materialsToSave.length} 个物资匹配:`, {
+          materialName: material.requestName,
+          matchData
+        })
+        
+        await manualMatch(matchData)
+        successCount++
+        
+        // 更新本地状态
+        const index = unalignedMaterials.value.findIndex(item => item.id === material.id)
+        if (index !== -1) {
+          unalignedMaterials.value[index].aligned = true
+        }
+        
+        // 同时更新主表格数据
+        const mainIndex = allMaterials.value.findIndex(item => item.id === material.id)
+        if (mainIndex !== -1) {
+          allMaterials.value[mainIndex].aligned = true
+        }
+        
+      } catch (error) {
+        console.error(`保存物资 "${material.requestName}" 匹配信息失败:`, error)
+        failureCount++
+        errors.push(`${material.requestName}: ${error.message}`)
+      }
+    }
+    
+    // 显示保存结果
+    if (successCount > 0 && failureCount === 0) {
+      ElMessage.success(`成功保存 ${successCount} 个物资匹配信息！`)
+      showManualConfirmDialog.value = false
+      
+      // 重新加载主表格数据以同步最新状态
+      await fetchData()
+      
+    } else if (successCount > 0 && failureCount > 0) {
+      ElMessage.warning(`保存完成：成功 ${successCount} 个，失败 ${failureCount} 个`)
+      
+      // 显示详细错误信息
+      if (errors.length > 0) {
+        await ElMessageBox.alert(
+          errors.slice(0, 5).join('\n') + (errors.length > 5 ? '\n...' : ''),
+          '部分保存失败',
+          { confirmButtonText: '确定', type: 'warning' }
+        )
+      }
+      
+    } else {
+      ElMessage.error(`所有物资匹配信息保存失败`)
+      if (errors.length > 0) {
+        await ElMessageBox.alert(
+          errors.slice(0, 5).join('\n') + (errors.length > 5 ? '\n...' : ''),
+          '保存失败',
+          { confirmButtonText: '确定', type: 'error' }
+        )
+      }
+    }
+    
+  } catch (error) {
+    if (error.message !== 'cancel') { // 用户取消操作
+      console.error('保存物资匹配信息失败:', error)
+      ElMessage.error(`保存物资匹配信息失败: ${error.message}`)
+    }
+  }
 }
 
 // 分页/搜索事件
@@ -459,14 +562,36 @@ function handleDbMaterialSearch(searchTerm) {
 // 选择数据库物资后覆盖当前行
 function handleDbMaterialSelect(selected) {
   if (currentEditingRow.value && selected) {
+    // 找到未对平物资列表中的对应项
+    const unalignedIndex = unalignedMaterials.value.findIndex((m) => m.id === currentEditingRow.value.id)
+    if (unalignedIndex !== -1) {
+      // 更新未对平物资列表中的数据
+      unalignedMaterials.value[unalignedIndex].dbCode = selected.code || selected.id
+      unalignedMaterials.value[unalignedIndex].dbName = selected.material_name
+      unalignedMaterials.value[unalignedIndex].dbSpec = selected.specification_model
+      unalignedMaterials.value[unalignedIndex].dbUnit = selected.unit
+      
+      // 保存选择的物资的完整信息，用于后续的 baseDataId
+      if (!unalignedMaterials.value[unalignedIndex].originalData) {
+        unalignedMaterials.value[unalignedIndex].originalData = {}
+      }
+      unalignedMaterials.value[unalignedIndex].originalData.selectedBaseData = selected
+      
+      console.log('物资选择完成:', {
+        materialName: unalignedMaterials.value[unalignedIndex].requestName,
+        selectedMaterial: selected,
+        updatedItem: unalignedMaterials.value[unalignedIndex]
+      })
+    }
+    
+    // 同时更新主表格数据
     const material = allMaterials.value.find((m) => m.id === currentEditingRow.value.id)
     if (material) {
-      material.dbCode = selected.code
+      material.dbCode = selected.code || selected.id
       material.dbName = selected.material_name
       material.dbSpec = selected.specification_model
       material.dbUnit = selected.unit
-      // material.dbQuantity = selected.quantity; // 数量通常不需要更新
-      material.aligned = true
+      material.aligned = false // 仅选择了但尚未保存，所以还未对平
     }
   }
   showDbMaterialDialog.value = false
