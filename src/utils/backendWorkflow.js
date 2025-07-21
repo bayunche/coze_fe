@@ -190,3 +190,98 @@ export async function uploadFile(file) {
     throw error
   }
 }
+
+/**
+ * 查询甲供物资申领数据
+ * @param {object} params - 查询参数
+ * @param {string} params.taskDetailId - 任务详情的唯一标识符
+ * @param {number} [params.page=0] - 请求的页码
+ * @param {number} [params.size=10] - 每页返回的记录数
+ * @param {string} [params.sort] - 排序参数
+ * @returns {Promise<object>} - 后端返回的分页数据
+ */
+export async function queryMaterialsApplyData(params) {
+  try {
+    const response = await request({
+      url: '/api/materials/partya/queryMaterialsApplyData',
+      method: 'get',
+      params: params
+    })
+    return response
+  } catch (error) {
+    console.error('查询甲供物资申领数据失败:', error)
+    ElMessage.error(error.message || '查询甲供物资申领数据失败')
+    throw error
+  }
+}
+
+/**
+ * 查询实际使用物资数据
+ * @param {object} params - 查询参数
+ * @param {string} params.taskDetailId - 任务详情的唯一标识符
+ * @param {number} [params.page=0] - 请求的页码
+ * @param {number} [params.size=10] - 每页返回的记录数
+ * @param {string} [params.sort] - 排序参数
+ * @returns {Promise<object>} - 后端返回的分页数据
+ */
+export async function queryActualUsage(params) {
+  try {
+    const response = await request({
+      url: '/api/materials/partya/queryActualUsage',
+      method: 'get',
+      params: params
+    })
+    return response
+  } catch (error) {
+    console.error('查询实际使用物资数据失败:', error)
+    ElMessage.error(error.message || '查询实际使用物资数据失败')
+    throw error
+  }
+}
+
+/**
+ * 查询未匹配的甲供物资对平结果
+ * @param {object} params - 查询参数
+ * @param {string} params.taskId - 任务的唯一标识符
+ * @param {number} [params.page=0] - 请求的页码
+ * @param {number} [params.size=10] - 每页返回的记录数
+ * @returns {Promise<object>} - 后端返回的分页数据
+ */
+export async function queryUnmatchedBalanceResult(params) {
+  try {
+    const response = await request({
+      url: '/api/materials/partya/queryUnmatchedBalanceResult',
+      method: 'get',
+      params: params
+    })
+    return response
+  } catch (error) {
+    console.error('查询未匹配的甲供物资对平结果失败:', error)
+    ElMessage.error(error.message || '查询未匹配的甲供物资对平结果失败')
+    throw error
+  }
+}
+
+/**
+ * 查询物资对平结果数据
+ * @param {object} params - 查询参数
+ * @param {string} params.taskId - 任务的唯一标识符
+ * @param {number} [params.page=0] - 请求的页码
+ * @param {number} [params.size=10] - 每页返回的记录数
+ * @param {string} [params.sort] - 排序参数
+ * @returns {Promise<object>} - 后端返回的分页数据
+ */
+export async function queryBalanceResult(params) {
+  try {
+    const response = await request({
+      url: '/api/materials/partya/queryBalanceResult',
+      method: 'get',
+      params: params
+    })
+    return response
+  } catch (error) {
+    console.error('查询物资对平结果数据失败:', error)
+    ElMessage.error(error.message || '查询物资对平结果数据失败')
+    throw error
+  }
+}

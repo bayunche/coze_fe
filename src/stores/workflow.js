@@ -693,8 +693,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
             }
             acc[key].push({ filePath: file.filePath })
           } else {
-            // Other file types are assigned as a single object.
-            acc[key] = { filePath: file.filePath }
+            // Other file types are assigned as a direct string path.
+            acc[key] = file.filePath
           }
           return acc
         }, {})

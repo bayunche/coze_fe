@@ -44,7 +44,7 @@
       </el-table-column>
       <el-table-column prop="specificationModel" label="规格型号" min-width="180">
         <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.specifications || '/' }}</span>
+          <span v-if="!scope.row.editing">{{ scope.row.specificationModel || '/' }}</span>
           <el-input v-else v-model="scope.row.specificationModel"></el-input>
         </template>
       </el-table-column>
@@ -130,7 +130,9 @@
     />
     <div class="page-footer">
       <el-button @click="handleBack">关闭</el-button>
-      <el-button type="primary" @click="handleGenerateReport" :loading="saving">生成解析报告</el-button>
+      <el-button type="primary" @click="handleGenerateReport" :loading="saving"
+        >生成解析报告</el-button
+      >
     </div>
   </div>
 </template>
@@ -139,7 +141,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import OwnerMaterialService from '@/services/OwnerMaterialService'
+import { queryBalanceResult } from '@/utils/backendWorkflow'
 
 const router = useRouter()
 const route = useRoute()
@@ -160,29 +162,89 @@ const projectInfo = ref({
   projectNumber: '项目编号占位'
 })
 
-// 获取数据占位函数
+// 转换API数据为表格需要的扁平化结构
+const transformDataForTable = (data) => {
+  const flattenedData = []
+  data.forEach((balanceItem) => {
+    const baseInfo = {
+      id: balanceItem.id,
+      materialName: balanceItem.materialName,
+      specificationModel: balanceItem.specificationModel,
+      unit: balanceItem.unit,
+      requisitionQuantity: balanceItem.requisitionQuantity,
+      matchingStatus: balanceItem.balanceStatus,
+      // 假设申领数据只有一个或取第一个
+      materialCategoryCode:
+        balanceItem.sourceRequisitions.length > 0
+          ? balanceItem.sourceRequisitions[0].materialCategoryCode
+          : '/',
+      statisticalQuantity:
+        balanceItem.sourceRequisitions.length > 0
+          ? balanceItem.sourceRequisitions[0].statisticalQuantity
+          : '/',
+      supplier:
+        balanceItem.sourceRequisitions.length > 0 ? balanceItem.sourceRequisitions[0].supplier : '/'
+    }
+
+    if (balanceItem.sourceUsages && balanceItem.sourceUsages.length > 0) {
+      balanceItem.sourceUsages.forEach((usage, index) => {
+        flattenedData.push({
+          ...baseInfo,
+          // 为每个子项创建唯一ID，防止key冲突
+          rowId: `${balanceItem.id}-${index}`,
+          // 标记是否为合并组的第一个子项
+          isFirstChild: index === 0,
+          actualSource: usage.path,
+          actualMaterialName: usage.materialName,
+          actualSpecifications: usage.specificationModel,
+          actualUnit: usage.unit,
+          actualApplicationQuantity: usage.useCount // 假设使用数量对应申领数量
+        })
+      })
+    } else {
+      // 如果没有实际使用数据，也显示一行基础信息
+      flattenedData.push({
+        ...baseInfo,
+        rowId: `${balanceItem.id}-0`,
+        isFirstChild: true,
+        actualSource: '/',
+        actualMaterialName: '/',
+        actualSpecifications: '/',
+        actualUnit: '/',
+        actualApplicationQuantity: '/'
+      })
+    }
+  })
+  return flattenedData
+}
+
+// 获取数据
 const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSize.value) => {
   loading.value = true
   try {
-    console.log('开始加载甲供物资详情数据...')
-    console.log('当前路由参数:', route.query)
-    // const taskDetailId = route.query.taskDetailId || 'd34c7196-9548-44bf-8895-f882eb388217' // 从路由获取 taskDetailId，如果不存在则使用默认值
-    const taskDetailId = 'd34c7196-9548-44bf-8895-f882eb388217'
-    console.log('使用的 taskDetailId:', taskDetailId)
-    const response = await OwnerMaterialService.queryMaterialsApplyData({ taskDetailId })
-    console.log('接口返回的数据:', response)
-    if (response && response.length > 0) {
-      // 假设接口返回的数据就是 tableData 所需的格式
-      // 如果接口返回的数据需要进一步处理，这里需要添加转换逻辑
-      const paginatedData = response.slice((page - 1) * size, page * size)
+    const taskId = route.query.taskId
+    if (!taskId) {
+      ElMessage.error('缺少 taskId，无法加载数据。')
+      loading.value = false
+      return
+    }
 
-      tableData.value = paginatedData.map((item) => ({
+    const response = await queryBalanceResult({
+      taskId,
+      page: page - 1, // 后端分页从0开始
+      size
+    })
+
+    if (response && response.content && response.content.length > 0) {
+      const flattenedData = transformDataForTable(response.content)
+      tableData.value = flattenedData.map((item) => ({
         ...item,
         original: { ...item },
-        isMergedStart: false // 默认值，将在 getSpanArr 中更新
+        editing: false,
+        isMergedStart: false
       }))
-      originalData.value = paginatedData.map((item) => ({ ...item }))
-      totalDetails.value = response.length
+      originalData.value = flattenedData.map((item) => ({ ...item }))
+      totalDetails.value = response.totalElements || 0
       getSpanArr(tableData.value) // 计算合并信息
       ElMessage.success('甲供物资详情数据加载成功！')
     } else {
@@ -192,7 +254,6 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
       ElMessage.info('未获取到甲供物资详情数据。')
     }
 
-    // 从路由参数获取项目信息，如果存在的话
     projectInfo.value.projectName = route.query.projectName || '项目名称占位'
     projectInfo.value.projectNumber = route.query.projectNumber || '项目编号占位'
   } catch (error) {
@@ -299,9 +360,9 @@ const arraySpanMethod = ({ row, column, rowIndex, columnIndex }) => {
   // 需要合并的列的 prop
   const mergeColumns = [
     'materialName',
-    'specifications',
+    'specificationModel',
     'unit',
-    'applicationQuantity',
+    'requisitionQuantity',
     'matchingStatus'
   ]
 
@@ -363,11 +424,8 @@ const getSpanArr = (data) => {
     } else {
       // 判断当前行与上一行的合并条件是否满足
       if (
-        data[i].materialName === data[i - 1].materialName &&
-        data[i].specifications === data[i - 1].specifications &&
-        data[i].unit === data[i - 1].unit &&
-        data[i].applicationQuantity === data[i - 1].applicationQuantity &&
-        data[i].matchingStatus === data[i - 1].matchingStatus
+        // 使用 id 来判断是否属于同一个基础物资组
+        data[i].id === data[i - 1].id
       ) {
         spanArr.value[pos.value] += 1
         spanArr.value.push(0)

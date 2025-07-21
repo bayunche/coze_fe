@@ -13,7 +13,7 @@
     </div>
 
     <el-table
-      :data="mergedMaterials"
+      :data="paginatedMaterials"
       border
       stripe
       style="width: 100%; margin-top: 20px"
@@ -41,13 +41,6 @@
       <el-table-column prop="dbSpec" label="数据库规格型号" min-width="140" />
       <el-table-column prop="dbUnit" label="数据库单位" min-width="80" />
       <el-table-column prop="dbQuantity" label="数据库数量" min-width="100" />
-
-      <!-- 未拉平理由列 -->
-      <el-table-column label="未拉平理由" min-width="180">
-        <template #default="{ row }">
-          {{ row.reasonForNotAligned }}
-        </template>
-      </el-table-column>
     </el-table>
     <el-pagination
       background
@@ -141,127 +134,50 @@
       </el-button>
     </div>
   </div>
-  <!-- 自动对平结果按钮 -->
-  <el-button
-    v-if="showResultButton"
-    type="success"
-    style="position: fixed; left: 32px; bottom: 32px; z-index: 1001"
-    @click="showResultDialog = true"
-    :loading="alignLoading"
-  >
-    查看对平结果
-  </el-button>
-  <!-- 对平结果弹窗 -->
-  <el-dialog
-    v-model="showResultDialog"
-    title="物资对平结果"
-    width="600px"
-    :close-on-click-modal="false"
-  >
-    <div v-if="alignResult">
-      <div>任务ID：{{ alignResult.taskId }}</div>
-      <div>
-        对平状态：<el-tag :type="alignResult.status === 'success' ? 'success' : 'danger'">{{
-          alignResult.status === 'success' ? '成功' : '失败'
-        }}</el-tag>
-      </div>
-      <div>已对平物资数：{{ alignResult.alignedCount }}</div>
-      <div>未对平物资数：{{ alignResult.unalignedCount }}</div>
-      <el-table :data="alignResult.details" border style="margin-top: 16px">
-        <el-table-column prop="code" label="物资编码" width="120" />
-        <el-table-column prop="name" label="物资名称" width="160" />
-        <el-table-column label="对平状态" width="120">
-          <template #default="{ row }">
-            <el-tag :type="row.aligned ? 'success' : 'danger'">
-              {{ row.aligned ? '已对平' : '未对平' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="reason" label="未对平原因" width="180" />
-      </el-table>
-    </div>
-    <div v-else-if="alignLoading" style="text-align: center; padding: 32px 0">
-      <el-icon><i class="el-icon-loading"></i></el-icon> 正在对平...
-    </div>
-    <div v-else-if="alignError" style="color: red">{{ alignError }}</div>
-    <template #footer>
-      <el-button @click="showResultDialog = false">关闭</el-button>
-    </template>
-  </el-dialog>
 </template>
 
 <script setup>
-import { reactive, computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
-const router = useRouter()
-const route = useRoute()
-const ownerMaterialStore = useOwnerMaterialStore()
-// 新增行样式方法
-const getRowClassName = ({ row }) => {
-  return row.dbCode ? 'selected-row' : ''
-}
+import { queryBalanceResult, queryUnmatchedBalanceResult } from '@/utils/backendWorkflow' // 导入接口
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
 import { ElDialog } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
 
-// 自动对平相关
-const alignResult = ref(null)
-const alignLoading = ref(false)
-const alignError = ref('')
-const showResultDialog = ref(false)
-const showResultButton = ref(false)
+const router = useRouter()
+const route = useRoute()
+const ownerMaterialStore = useOwnerMaterialStore()
 
-// 假定 executeOwnerMaterialAlignmentWorkflow 已全局可用或 mock
-async function executeOwnerMaterialAlignmentWorkflow(taskId) {
-  // 实际应调用后端接口，这里用模拟数据
-  alignLoading.value = true
-  alignError.value = ''
-  try {
-    // 模拟异步对平
-    await new Promise((resolve) => setTimeout(resolve, 1200))
-    // 假设返回结构如下
-    alignResult.value = {
-      taskId,
-      status: 'success',
-      alignedCount: 4,
-      unalignedCount: 1,
-      details: [
-        { code: 'M001', name: '水泥', aligned: true },
-        { code: 'M002', name: '钢筋', aligned: true },
-        { code: 'M003', name: '砂子', aligned: true },
-        { code: 'M004', name: '石灰石', aligned: true },
-        { code: 'M005', name: '砖块', aligned: false, reason: '无匹配物资' }
-      ]
-    }
-    showResultButton.value = true
-  } catch (e) {
-    alignError.value = '自动对平失败'
-    showResultButton.value = false
-  } finally {
-    alignLoading.value = false
-  }
-}
+// --- 状态和数据管理 ---
+const allMaterials = ref([]) // 存储从后端获取的所有数据
+const unalignedMaterials = ref([]) // 存储需要手动对平的数据
+const isLoading = ref(false)
+const isSaving = ref(false)
 
-// 自动检测 taskId 并自动调用
-onMounted(() => {
-  let taskId = route.query.taskId || undefined
-  // 支持 props 方式（假定父组件传递）
-  if (!taskId && typeof defineProps === 'function') {
-    try {
-      // defineProps 仅在 <script setup> 顶层可用，这里兼容处理
-      // eslint-disable-next-line no-undef
-      const props = defineProps(['taskId'])
-      if (props && props.taskId) taskId = props.taskId
-    } catch {}
-  }
-  if (taskId) {
-    executeOwnerMaterialAlignmentWorkflow(taskId)
-  }
+const total = ref(0)
+const pageSize = ref(10)
+const currentPage = ref(1)
+
+// 主表格的分页数据
+const paginatedMaterials = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return allMaterials.value.slice(start, end)
 })
 
-// 弹窗相关变量
+// --- 弹窗相关 ---
+const showManualConfirmDialog = ref(false)
+const manualConfirmPageSize = ref(5)
+const manualConfirmCurrentPage = ref(1)
+const paginatedUnalignedMaterials = computed(() => {
+  const start = (manualConfirmCurrentPage.value - 1) * manualConfirmPageSize.value
+  const end = start + manualConfirmPageSize.value
+  return unalignedMaterials.value.slice(start, end)
+})
+
+// --- 数据库物资选择弹窗相关 ---
 const showDbMaterialDialog = ref(false)
 const dbMaterialList = ref([])
 const dbMaterialTotal = ref(0)
@@ -271,190 +187,80 @@ const dbMaterialLoading = ref(false)
 const dbMaterialSearch = ref('')
 const currentEditingRow = ref(null)
 
-// 新增：弹窗显示控制变量
-const showManualConfirmDialog = ref(false)
-
-let requestMaterials = reactive([
-  {
-    id: 1,
-    code: 'M001',
-    name: '水泥',
-    spec: '42.5级',
-    unit: '吨',
-    quantity: 100,
-    aligned: false,
-    reasonForNotAligned: null,
-    similarMaterials: [
-      { id: 201, name: '水泥A', spec: '42.5级', unit: '吨', quantity: 100 },
-      { id: 202, name: '水泥B', spec: '42.5级', unit: '吨', quantity: 90 }
-    ],
-    selectedSimilar: null,
-    priceQuarterOptions: [
-      { id: 1, price: 100, quarter: '2024Q1' },
-      { id: 2, price: 105, quarter: '2024Q2' }
-    ],
-    selectedPriceQuarter: { id: 1, price: 100, quarter: '2024Q1' }
-  },
-  {
-    id: 2,
-    code: 'M002',
-    name: '钢筋',
-    spec: 'HRB400 20mm',
-    unit: '吨',
-    quantity: 50,
-    aligned: false,
-    reasonForNotAligned: null,
-    similarMaterials: [
-      { id: 203, name: '钢筋A', spec: 'HRB400 20mm', unit: '吨', quantity: 55 },
-      { id: 204, name: '钢筋B', spec: 'HRB400 20mm', unit: '吨', quantity: 50 }
-    ],
-    selectedSimilar: null,
-    priceQuarterOptions: [
-      { id: 3, price: 200, quarter: '2024Q1' },
-      { id: 4, price: 210, quarter: '2024Q2' }
-    ],
-    selectedPriceQuarter: { id: 3, price: 200, quarter: '2024Q1' }
-  },
-  {
-    id: 3,
-    code: 'M003',
-    name: '砂子',
-    spec: '中砂',
-    unit: '立方米',
-    quantity: 200,
-    aligned: false,
-    reasonForNotAligned: null,
-    similarMaterials: [
-      { id: 205, name: '砂子A', spec: '中砂', unit: '立方米', quantity: 210 },
-      { id: 206, name: '砂子B', spec: '中砂', unit: '立方米', quantity: 205 }
-    ],
-    selectedSimilar: null,
-    priceQuarterOptions: [
-      { id: 5, price: 300, quarter: '2024Q1' },
-      { id: 6, price: 310, quarter: '2024Q2' }
-    ],
-    selectedPriceQuarter: { id: 5, price: 300, quarter: '2024Q1' }
-  },
-  {
-    id: 4,
-    code: 'M004',
-    name: '石灰石',
-    spec: '细粉',
-    unit: '吨',
-    quantity: 80,
-    aligned: false,
-    reasonForNotAligned: '规格型号不匹配',
-    similarMaterials: [
-      { id: 207, name: '石灰石A', spec: '细粉', unit: '吨', quantity: 80 },
-      { id: 208, name: '石灰石B', spec: '细粉', unit: '吨', quantity: 75 }
-    ],
-    selectedSimilar: null,
-    priceQuarterOptions: [
-      { id: 7, price: 400, quarter: '2024Q1' },
-      { id: 8, price: 410, quarter: '2024Q2' }
-    ],
-    selectedPriceQuarter: { id: 7, price: 400, quarter: '2024Q1' }
-  },
-  {
-    id: 5,
-    code: 'M005',
-    name: '砖块',
-    spec: '红砖',
-    unit: '块',
-    quantity: 5000,
-    aligned: false,
-    reasonForNotAligned: '无匹配物资',
-    similarMaterials: [
-      { id: 209, name: '砖块A', spec: '红砖', unit: '块', quantity: 5000 },
-      { id: 210, name: '砖块B', spec: '红砖', unit: '块', quantity: 4800 }
-    ],
-    selectedSimilar: null,
-    priceQuarterOptions: [
-      { id: 9, price: 500, quarter: '2024Q1' },
-      { id: 10, price: 510, quarter: '2024Q2' }
-    ],
-    selectedPriceQuarter: { id: 9, price: 500, quarter: '2024Q1' }
-  }
-])
-
-const dbMaterials = reactive([
-  {
-    id: 101,
-    code: 'D001',
-    name: '水泥',
-    spec: '42.5级',
-    unit: '吨',
-    quantity: 120,
-    price: 420 // 示例价格
-  },
-  {
-    id: 102,
-    code: 'D002',
-    name: '钢筋',
-    spec: 'HRB400 20mm',
-    unit: '吨',
-    quantity: 60,
-    price: 520
-  },
-  {
-    id: 103,
-    code: 'D003',
-    name: '砂子',
-    spec: '中砂',
-    unit: '立方米',
-    quantity: 210,
-    price: 320
-  }
-])
-
-function isSimilar(a, b) {
-  if (!a || !b) return false
-  return a.name === b.name && a.spec === b.spec && a.unit === b.unit
+// --- 枚举值 ---
+const BalanceStatusEnum = {
+  BALANCED: 0,
+  UNRETURNED: 1,
+  DATA_MISSING: 2,
+  UNMATCHED: 3
 }
 
-const mergedMaterials = computed(() => {
-  const formatValue = (value) => (value == null || value === '' ? '/' : value)
+// --- 数据获取和处理 ---
+const fetchData = async () => {
+  isLoading.value = true
+  try {
+    const taskId = route.query.taskId
+    if (!taskId) {
+      ElMessage.error('缺少任务ID，无法加载数据。')
+      return
+    }
+    // 注意：这里假设一次性获取所有数据，如果数据量大需要后端支持分页
+    const response = await queryBalanceResult({ taskId, page: 0, size: 1000 }) // 获取足够多的数据
+    if (response && response.content) {
+      transformAndSetData(response.content)
+      total.value = allMaterials.value.length
+      ElMessage.success('数据加载成功！')
+    } else {
+      ElMessage.info('未查询到相关数据。')
+    }
+  } catch (error) {
+    console.error('加载数据失败:', error)
+    ElMessage.error(`加载数据失败: ${error.message}`)
+  } finally {
+    isLoading.value = false
+  }
+}
 
-  return requestMaterials.map((req) => {
-    const dbMatch = dbMaterials.find((db) => db.code === req.code)
-    const displayInfo = req.selectedSimilar || dbMatch || {}
+const transformAndSetData = (data) => {
+  const transformed = data.map((item) => {
+    const aligned = item.balanceStatus !== BalanceStatusEnum.UNMATCHED
+
+    // 假设申领数据和实际使用数据都只取第一个作为代表
+    const requisition =
+      item.sourceRequisitions && item.sourceRequisitions[0] ? item.sourceRequisitions[0] : {}
+    const usage = item.sourceUsages && item.sourceUsages[0] ? item.sourceUsages[0] : {}
 
     return {
-      ...req,
-      requestCode: formatValue(req.code),
-      requestName: formatValue(req.name),
-      requestSpec: formatValue(req.spec),
-      requestUnit: formatValue(req.unit),
-      requestQuantity: formatValue(req.quantity),
-      reasonForNotAligned: formatValue(req.reasonForNotAligned),
-      dbCode: formatValue(displayInfo.code),
-      dbName: formatValue(displayInfo.name),
-      dbSpec: formatValue(displayInfo.spec),
-      dbUnit: formatValue(displayInfo.unit),
-      dbQuantity: formatValue(displayInfo.quantity)
+      id: item.id,
+      // 领料单信息 (来自申领数据)
+      requestCode: requisition.materialCategoryCode || '/',
+      requestName: requisition.materialName || item.materialName, // 优先用申领的，其次用对平结果的
+      requestSpec: requisition.specificationModel || item.specificationModel,
+      requestUnit: requisition.unit || item.unit,
+      requestQuantity: requisition.requisitionQuantity || item.requisitionQuantity,
+      // 拉平状态
+      aligned: aligned,
+      balanceStatus: item.balanceStatus,
+      // 数据库物资信息 (来自实际使用数据或对平结果)
+      dbCode: usage.baseDataId || item.baseDataId || '/',
+      dbName: usage.materialName || item.materialName,
+      dbSpec: usage.specificationModel || item.specificationModel,
+      dbUnit: usage.unit || item.unit,
+      dbQuantity: usage.useCount || item.actualUsageQuantity,
+      // 原始数据，用于后续操作
+      originalData: item
     }
   })
-})
 
-function updateAlignedStatus() {
-  requestMaterials.forEach((req) => {
-    const dbMatch = dbMaterials.find((db) => isSimilar(req, db))
-    req.aligned = !!dbMatch
-    req.selectedSimilar = req.similarMaterials[0] || null
-    if (!req.aligned && req.selectedSimilar) {
-      req.dbCode = req.selectedSimilar.code || ''
-      req.dbName = req.selectedSimilar.name || ''
-      req.dbSpec = req.selectedSimilar.spec || ''
-      req.dbUnit = req.selectedSimilar.unit || ''
-      req.dbQuantity = req.selectedSimilar.quantity || 0
-    }
-  })
+  allMaterials.value = transformed
+  unalignedMaterials.value = transformed.filter((item) => !item.aligned)
 }
 
-const total = requestMaterials.length
-const pageSize = 5
-const currentPage = ref(1)
+onMounted(() => {
+  fetchData()
+})
 
+// --- 分页处理 ---
 function handlePageChange(page) {
   currentPage.value = page
 }
@@ -463,110 +269,10 @@ function handleSizeChange(size) {
   pageSize.value = size
   currentPage.value = 1
 }
-updateAlignedStatus()
 
-const unalignedMaterials = ref([])
-const isLoading = ref(false)
-const isSaving = ref(false)
-
-function loadUnalignedMaterials() {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const data = [
-        {
-          id: 1,
-          requestCode: 'M001',
-          requestName: '水泥',
-          requestSpec: '42.5级',
-          requestUnit: '吨',
-          requestQuantity: 100,
-          similarMaterials: [
-            { id: 201, name: '水泥A', spec: '42.5级', unit: '吨', quantity: 100 },
-            { id: 202, name: '水泥B', spec: '42.5级', unit: '吨', quantity: 90 }
-          ],
-          selectedSimilar: null,
-          priceQuarterOptions: [
-            { id: 1, price: 100, quarter: '2024Q1' },
-            { id: 2, price: 105, quarter: '2024Q2' }
-          ],
-          selectedPriceQuarter: { id: 1, price: 100, quarter: '2024Q1' }
-        },
-        {
-          id: 2,
-          requestCode: 'M002',
-          requestName: '钢筋',
-          requestSpec: 'HRB400 20mm',
-          requestUnit: '吨',
-          requestQuantity: 50,
-          similarMaterials: [
-            { id: 203, name: '钢筋A', spec: 'HRB400 20mm', unit: '吨', quantity: 55 },
-            { id: 204, name: '钢筋B', spec: 'HRB400 20mm', unit: '吨', quantity: 50 }
-          ],
-          selectedSimilar: null,
-          priceQuarterOptions: [
-            { id: 3, price: 200, quarter: '2024Q1' },
-            { id: 4, price: 210, quarter: '2024Q2' }
-          ],
-          selectedPriceQuarter: { id: 3, price: 200, quarter: '2024Q1' }
-        },
-        {
-          id: 3,
-          requestCode: 'M003',
-          requestName: '砂子',
-          requestSpec: '中砂',
-          requestUnit: '立方米',
-          requestQuantity: 200,
-          similarMaterials: [
-            { id: 205, name: '砂子A', spec: '中砂', unit: '立方米', quantity: 210 },
-            { id: 206, name: '砂子B', spec: '中砂', unit: '立方米', quantity: 205 }
-          ],
-          selectedSimilar: null,
-          priceQuarterOptions: [
-            { id: 5, price: 300, quarter: '2024Q1' },
-            { id: 6, price: 310, quarter: '2024Q2' }
-          ],
-          selectedPriceQuarter: { id: 5, price: 300, quarter: '2024Q1' }
-        },
-        {
-          id: 4,
-          requestCode: 'M004',
-          requestName: '石灰石',
-          requestSpec: '细粉',
-          requestUnit: '吨',
-          requestQuantity: 80,
-          similarMaterials: [
-            { id: 207, name: '石灰石A', spec: '细粉', unit: '吨', quantity: 80 },
-            { id: 208, name: '石灰石B', spec: '细粉', unit: '吨', quantity: 75 }
-          ],
-          selectedSimilar: null,
-          priceQuarterOptions: [
-            { id: 7, price: 400, quarter: '2024Q1' },
-            { id: 8, price: 410, quarter: '2024Q2' }
-          ],
-          selectedPriceQuarter: { id: 7, price: 400, quarter: '2024Q1' }
-        },
-        {
-          id: 5,
-          requestCode: 'M005',
-          requestName: '砖块',
-          requestSpec: '红砖',
-          requestUnit: '块',
-          requestQuantity: 5000,
-          similarMaterials: [
-            { id: 209, name: '砖块A', spec: '红砖', unit: '块', quantity: 5000 },
-            { id: 210, name: '砖块B', spec: '红砖', unit: '块', quantity: 4800 }
-          ],
-          selectedSimilar: null,
-          priceQuarterOptions: [
-            { id: 9, price: 500, quarter: '2024Q1' },
-            { id: 10, price: 510, quarter: '2024Q2' }
-          ],
-          selectedPriceQuarter: { id: 9, price: 500, quarter: '2024Q1' }
-        }
-      ]
-      resolve(data)
-    }, 1000)
-  })
+// 新增行样式方法
+const getRowClassName = ({ row }) => {
+  return row.dbCode && row.dbCode !== '/' ? 'selected-row' : ''
 }
 
 function handleDialogClose(done) {
@@ -577,23 +283,38 @@ function handleDialogClose(done) {
 const handleManualConfirmClick = async () => {
   isLoading.value = true
   try {
-    unalignedMaterials.value = await loadUnalignedMaterials()
-    showManualConfirmDialog.value = true
+    const taskId = route.query.taskId
+    if (!taskId) {
+      ElMessage.error('缺少任务ID，无法加载数据。')
+      return
+    }
+    const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1000 })
+    if (response && response.content && response.content.length > 0) {
+      // 转换数据以适应弹窗表格
+      unalignedMaterials.value = response.content.map((item) => ({
+        id: item.id,
+        requestCode: item.taskDetailId, // 暂时使用taskDetailId作为编码
+        requestName: item.materialName,
+        requestSpec: item.specificationModel,
+        requestUnit: item.unit,
+        requestQuantity: item.requisitionQuantity,
+        dbCode: null, // 初始化为空
+        dbName: null,
+        dbSpec: null,
+        originalData: item
+      }))
+      manualConfirmCurrentPage.value = 1 // 重置弹窗分页
+      showManualConfirmDialog.value = true
+    } else {
+      ElMessage.success('所有物资均已对平！')
+    }
   } catch (error) {
-    console.error('加载未对平物资失败:', error)
+    console.error('加载未对平数据失败:', error)
+    ElMessage.error(`加载未对平数据失败: ${error.message}`)
   } finally {
     isLoading.value = false
   }
 }
-
-const manualConfirmPageSize = 5
-const manualConfirmCurrentPage = ref(1)
-
-const paginatedUnalignedMaterials = computed(() => {
-  const start = (manualConfirmCurrentPage.value - 1) * manualConfirmPageSize
-  const end = start + manualConfirmPageSize
-  return unalignedMaterials.value.slice(start, end)
-})
 
 function handleManualConfirmPageChange(page) {
   manualConfirmCurrentPage.value = page
@@ -610,56 +331,24 @@ function handleSelectDbMaterial(row, index) {
   currentEditingRow.value = row
   dbMaterialSearch.value = ''
   dbMaterialPageNum.value = 1
-  fetchDbMaterialList()
+  // fetchDbMaterialList() // TODO: 需要实现真实接口
   showDbMaterialDialog.value = true
   console.log('弹窗状态:', showDbMaterialDialog.value)
 }
 
-// 模拟数据库物资列表加载（可替换为实际接口）
+// TODO: 实现真实数据库物资列表加载
 function fetchDbMaterialList() {
   dbMaterialLoading.value = true
   setTimeout(() => {
-    // 假设dbMaterials为数据库物资数据
-    dbMaterialList.value = dbMaterials
-      .map((item) => ({
-        ...item,
-        material_name: item.name,
-        specification_model: item.spec,
-        unit: item.unit,
-        tax_price: item.price || item.quantity, // 仅示例
-        quarter: '2024Q1'
-      }))
-      .filter(
-        (item) => !dbMaterialSearch.value || item.material_name.includes(dbMaterialSearch.value)
-      )
-    dbMaterialTotal.value = dbMaterialList.value.length
+    dbMaterialList.value = [] // 替换为真实数据
+    dbMaterialTotal.value = 0
     dbMaterialLoading.value = false
   }, 300)
 }
 
 // 保存对平物资信息
 function handleSaveMaterial() {
-  // 将弹窗中的修改同步到主数据
-  unalignedMaterials.value.forEach((updatedMaterial) => {
-    const index = requestMaterials.findIndex((m) => m.id === updatedMaterial.id)
-    if (index !== -1) {
-      // 更新主数据
-      requestMaterials[index] = {
-        ...requestMaterials[index],
-        dbCode: updatedMaterial.dbCode,
-        dbName: updatedMaterial.dbName,
-        dbSpec: updatedMaterial.dbSpec,
-        dbUnit: updatedMaterial.dbUnit,
-        dbQuantity: updatedMaterial.dbQuantity,
-        aligned: !!updatedMaterial.dbCode,
-        reasonForNotAligned: updatedMaterial.dbCode ? '' : '未选择匹配物资'
-      }
-    }
-  })
-
-  // 触发响应式更新
-  requestMaterials.splice(0, requestMaterials.length, ...requestMaterials)
-
+  // TODO: 实现真实的保存逻辑
   ElMessage.success('物资对平信息保存成功')
   showManualConfirmDialog.value = false
 }
@@ -678,30 +367,15 @@ function handleDbMaterialSizeChange(size) {
 // 选择数据库物资后覆盖当前行
 function handleDbMaterialSelect(selected) {
   if (currentEditingRow.value && selected) {
-    console.log('更新行数据:', currentEditingRow.value.id, '选中数据:', selected)
-
-    // 更新当前行显示数据
-    currentEditingRow.value.dbCode = selected.code
-    currentEditingRow.value.dbName = selected.material_name
-    currentEditingRow.value.dbSpec = selected.specification_model
-    currentEditingRow.value.dbUnit = selected.unit
-    currentEditingRow.value.dbQuantity = selected.quantity
-
-    // 同步更新主数据
-    const material = requestMaterials.find((m) => m.id === currentEditingRow.value.id)
+    const material = allMaterials.value.find((m) => m.id === currentEditingRow.value.id)
     if (material) {
       material.dbCode = selected.code
       material.dbName = selected.material_name
       material.dbSpec = selected.specification_model
       material.dbUnit = selected.unit
-      material.dbQuantity = selected.quantity
+      // material.dbQuantity = selected.quantity; // 数量通常不需要更新
       material.aligned = true
-      material.reasonForNotAligned = ''
-      console.log('主数据已更新:', material)
     }
-
-    // 使用数组方法触发响应式更新
-    requestMaterials.splice(0, requestMaterials.length, ...requestMaterials)
   }
   showDbMaterialDialog.value = false
 }
@@ -712,7 +386,7 @@ watch(dbMaterialSearch, () => {
 })
 // 检查所有物资是否已拉平
 function checkAllAligned() {
-  return requestMaterials.every((material) => material.aligned)
+  return allMaterials.value.every((material) => material.aligned)
 }
 
 // 保存按钮点击事件
@@ -727,10 +401,9 @@ async function handleSaveClick() {
 
   isSaving.value = true
   try {
-    // 这里可以添加实际保存逻辑
+    // TODO: 实现真实保存逻辑
     await new Promise((resolve) => setTimeout(resolve, 1000)) // 模拟API调用
     ElMessage.success('物资信息保存成功')
-    // 更新 store 状态，标记为准备好进行自动对平
     ownerMaterialStore.markAsReadyForAlignment()
   } catch (error) {
     console.error('保存失败:', error)

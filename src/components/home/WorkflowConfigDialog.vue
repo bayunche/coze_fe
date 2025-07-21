@@ -246,9 +246,9 @@ const handleSubmit = () => {
     const assignExcelType = (files, type) => files.map((file) => ({ ...file, excel_type: type }))
 
     props.config.files = [
-      ...assignExcelType(comprehensiveClaimFiles.value, 'comprehensive_claim'),
-      ...assignExcelType(actualUsageFiles1.value, 'actual_usage'),
-      ...assignExcelType(actualUsageFiles2.value, 'actual_return'),
+      ...assignExcelType(comprehensiveClaimFiles.value, 'applyExcelFile'),
+      ...assignExcelType(actualUsageFiles1.value, 'useMaterualPdfUrl'),
+      ...assignExcelType(actualUsageFiles2.value, 'backMaterualPdfUrl'),
       ...assignExcelType(otherFiles.value, 'other')
     ]
   }
