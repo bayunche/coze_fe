@@ -351,3 +351,33 @@ export async function manualMatch(data) {
     throw error
   }
 }
+
+/**
+ * 查询任务关联的项目信息
+ * @param {string} taskId - 任务ID
+ * @returns {Promise<object>} - 项目信息
+ */
+export async function queryTaskLinkProjectInfo(taskId) {
+  try {
+    const response = await request({
+      url: '/baseprojectinfo/queryTaskLinkProjectInfo',
+      method: 'get',
+      params: { taskId }
+    })
+    
+    // 处理返回体结构 {code, success, data, msg}
+    if (response && response.success && response.data) {
+      return response.data
+    } else if (response && response.success && response.data === null) {
+      // 未找到项目信息的情况
+      return null
+    } else {
+      const errorMsg = response?.msg || '查询项目信息失败'
+      console.error('查询项目信息失败:', errorMsg)
+      throw new Error(errorMsg)
+    }
+  } catch (error) {
+    console.error('查询任务关联的项目信息失败:', error)
+    throw error
+  }
+}

@@ -647,9 +647,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
-          if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
-            streamingAgentMessage.showViewResultButton = true
-          }
+          // 甲供物资解析第一个工作流不显示查看解析结果按钮
+          // if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+          //   streamingAgentMessage.showViewResultButton = true
+          // }
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100
           loadingMessage.content = '甲供物资解析任务执行完毕！'

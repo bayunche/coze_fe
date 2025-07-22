@@ -165,6 +165,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
 import { Document, Shop, Coin, DataAnalysis, Warning, InfoFilled, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import html2pdf from 'html2pdf.js'
 
@@ -224,20 +225,45 @@ const handleExport = async () => {
   }
 }
 
-onMounted(() => {
+// 获取项目信息
+const loadProjectInfo = async (taskId) => {
+  try {
+    const projectData = await queryTaskLinkProjectInfo(taskId)
+    if (projectData) {
+      projectInfo.value.projectName = projectData.projectName || '项目名称未知'
+      projectInfo.value.projectNumber = projectData.projectCode || '项目编号未知'
+    } else {
+      // 如果API没有找到项目信息，使用占位符或URL参数
+      projectInfo.value.projectName = route.query.projectName || '项目名称占位'
+      projectInfo.value.projectNumber = route.query.projectNumber || '项目编号占位'
+    }
+  } catch (error) {
+    console.error('获取项目信息失败:', error)
+    // 出错时使用占位符或URL参数
+    projectInfo.value.projectName = route.query.projectName || '项目名称占位'
+    projectInfo.value.projectNumber = route.query.projectNumber || '项目编号占位'
+  }
+}
+
+onMounted(async () => {
   // 设置报告生成时间
   reportTime.value = new Date().toLocaleString('zh-CN')
   
-  // 从路由参数获取项目信息
-  if (route.query.projectName) {
-    projectInfo.value.projectName = route.query.projectName
-  }
-  if (route.query.projectNumber) {
-    projectInfo.value.projectNumber = route.query.projectNumber
+  // 获取项目信息
+  const taskId = route.query.taskId
+  if (taskId) {
+    await loadProjectInfo(taskId)
+  } else {
+    // 从路由参数获取项目信息作为备用
+    if (route.query.projectName) {
+      projectInfo.value.projectName = route.query.projectName
+    }
+    if (route.query.projectNumber) {
+      projectInfo.value.projectNumber = route.query.projectNumber
+    }
   }
   
   // 这里可以根据taskId获取具体的报告数据
-  // const taskId = route.query.taskId
   // 暂时使用模拟数据
 })
 </script>

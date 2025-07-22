@@ -650,13 +650,33 @@ watch(dbMaterialSearch, (newVal) => {
   }, 300)
 })
 // 检查所有物资是否已拉平
-function checkAllAligned() {
-  return allMaterials.value.every((material) => material.aligned)
+async function checkAllAligned() {
+  try {
+    const taskId = ownerMaterialStore.alignmentTask.taskId || route.query.taskId
+    if (!taskId) {
+      ElMessage.error('缺少任务ID，无法检查对平状态。')
+      return false // 缺少taskId，无法继续
+    }
+    const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1 }) // 只查询1条即可判断
+    // 如果 content 存在且长度大于0，说明有未拉平的，返回 false
+    if (response && response.data && response.data.content && response.data.content.length > 0) {
+      return false
+    }
+    // 否则，说明所有物资都已拉平，返回 true
+    return true
+  } catch (error) {
+    console.error('检查对平状态失败:', error)
+    ElMessage.error(`检查对平状态失败: ${error.message}`)
+    return false // 出错时，默认为未拉平，阻止保存
+  }
 }
 
 // 保存按钮点击事件
 async function handleSaveClick() {
-  if (!checkAllAligned()) {
+  isSaving.value = true
+  const isAligned = await checkAllAligned()
+  if (!isAligned) {
+    isSaving.value = false
     await ElMessageBox.alert('存在未拉平的物资信息，请先完成所有物资拉平操作', '无法保存', {
       confirmButtonText: '确定',
       type: 'warning'
