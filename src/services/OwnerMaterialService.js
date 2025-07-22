@@ -14,7 +14,11 @@ class OwnerMaterialService {
     }
     try {
       const response = await request.get(`/materials/partya/queryMaterialsApplyData`, { params })
-      if (response && response.data) {
+      // 处理新的返回体结构 {code, msg, data}
+      if (response && response.code === 200 && response.data) {
+        return response.data
+      } else if (response && response.data) {
+        // 兼容旧的返回格式
         return response.data
       }
       return []
@@ -61,16 +65,24 @@ class OwnerMaterialService {
     }
     try {
       const response = await request.post('/materials/partya/align', params)
-      return {
-        success: true,
-        data: response.data,
-        message: '物资对平成功'
+      // 处理新的返回体结构 {code, msg, data}
+      if (response && response.code === 200) {
+        return {
+          success: true,
+          data: response.data,
+          message: response.msg || '物资对平成功'
+        }
+      } else {
+        return {
+          success: false,
+          message: response?.msg || '物资对平失败'
+        }
       }
     } catch (error) {
       console.error('物资对平失败:', error)
       return {
         success: false,
-        message: error.response?.data?.message || '物资对平失败'
+        message: error.response?.data?.msg || error.response?.data?.message || '物资对平失败'
       }
     }
   }

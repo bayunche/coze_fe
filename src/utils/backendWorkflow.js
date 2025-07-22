@@ -314,7 +314,15 @@ export async function queryBalanceResult(params) {
       method: 'get',
       params: params
     })
-    return response
+    
+    // 处理新的返回体结构 {code, msg, data}
+    if (response && response.code === 200 && response.data) {
+      return response.data // 返回实际的分页数据
+    } else {
+      const errorMsg = response?.msg || '查询物资对平结果数据失败'
+      ElMessage.error(errorMsg)
+      throw new Error(errorMsg)
+    }
   } catch (error) {
     console.error('查询物资对平结果数据失败:', error)
     ElMessage.error(error.message || '查询物资对平结果数据失败')

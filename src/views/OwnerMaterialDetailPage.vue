@@ -76,7 +76,7 @@
         <template #default="scope">
           <span v-if="!scope.row.editing">
             <el-tag :type="getMatchingStatusTagType(scope.row.matchingStatus)">
-              {{ scope.row.matchingStatus || '/' }}
+              {{ getMatchingStatusText(scope.row.matchingStatus) }}
             </el-tag>
           </span>
           <el-input v-else v-model="scope.row.matchingStatus"></el-input>
@@ -174,41 +174,39 @@ const transformDataForTable = (data) => {
       specificationModel: balanceItem.specificationModel,
       unit: balanceItem.unit,
       requisitionQuantity: balanceItem.requisitionQuantity,
-      matchingStatus: balanceItem.balanceStatus,
-      // 假设申领数据只有一个或取第一个
-      materialCategoryCode:
-        balanceItem.sourceRequisitions.length > 0
-          ? balanceItem.sourceRequisitions[0].materialCategoryCode
-          : '/',
-      statisticalQuantity:
-        balanceItem.sourceRequisitions.length > 0
-          ? balanceItem.sourceRequisitions[0].statisticalQuantity
-          : '/',
-      supplier:
-        balanceItem.sourceRequisitions.length > 0 ? balanceItem.sourceRequisitions[0].supplier : '/'
+      matchingStatus: balanceItem.balanceStatus
     }
 
-    if (balanceItem.sourceUsages && balanceItem.sourceUsages.length > 0) {
-      balanceItem.sourceUsages.forEach((usage, index) => {
+    // 如果有 sourceRequisitions 数据，为每个申领记录创建一行
+    if (balanceItem.sourceRequisitions && balanceItem.sourceRequisitions.length > 0) {
+      balanceItem.sourceRequisitions.forEach((requisition, index) => {
         flattenedData.push({
           ...baseInfo,
           // 为每个子项创建唯一ID，防止key冲突
           rowId: `${balanceItem.id}-${index}`,
           // 标记是否为合并组的第一个子项
           isFirstChild: index === 0,
-          actualSource: usage.path,
-          actualMaterialName: usage.materialName,
-          actualSpecifications: usage.specificationModel,
-          actualUnit: usage.unit,
-          actualApplicationQuantity: usage.useCount // 假设使用数量对应申领数量
+          // 从 sourceRequisitions 获取基础物资信息
+          materialCategoryCode: requisition.materialCategoryCode || '/',
+          statisticalQuantity: requisition.statisticalQuantity || '/',
+          supplier: requisition.supplier || '/',
+          // 实际领料单相关信息也从 sourceRequisitions 获取
+          actualSource: '申领单', // 数据来源固定为申领单
+          actualMaterialName: requisition.materialName || '/',
+          actualSpecifications: requisition.specificationModel || '/',
+          actualUnit: requisition.unit || '/',
+          actualApplicationQuantity: requisition.requisitionQuantity || '/'
         })
       })
     } else {
-      // 如果没有实际使用数据，也显示一行基础信息
+      // 如果没有申领数据，显示一行基础信息
       flattenedData.push({
         ...baseInfo,
         rowId: `${balanceItem.id}-0`,
         isFirstChild: true,
+        materialCategoryCode: '/',
+        statisticalQuantity: '/',
+        supplier: '/',
         actualSource: '/',
         actualMaterialName: '/',
         actualSpecifications: '/',
@@ -388,12 +386,52 @@ const arraySpanMethod = ({ row, column, rowIndex, columnIndex }) => {
 // 根据对平情况返回ElTag的type
 const getMatchingStatusTagType = (status) => {
   switch (status) {
+    case 'BALANCED':
+      return 'success' // 绿色 - 已对平
+    case 'UNRETURNED':
+      return 'warning' // 黄色 - 未退库
+    case 'DATA_MISSING':
+      return 'danger' // 红色 - 数据缺失
+    case 'UNMATCHED':
+      return 'danger' // 红色 - 未匹配
+    // 兼容旧状态
+    case 'MATCHED':
+      return 'success' // 绿色 - 已匹配
+    case 'PARTIAL_MATCHED':
+      return 'info' // 蓝色 - 部分匹配
+    // 兼容旧的数字状态
     case 1:
       return 'success' // 绿色 - 已对平
     case 0:
       return 'warning' // 黄色 - 未退库
     default:
-      return 'danger' // 红色 - 资料缺失 (包括之前的 '部分对平' 和 '资料缺失')
+      return 'danger' // 红色 - 其他状态
+  }
+}
+
+// 根据对平情况返回显示文本
+const getMatchingStatusText = (status) => {
+  switch (status) {
+    case 'BALANCED':
+      return '已对平'
+    case 'UNRETURNED':
+      return '未退库'
+    case 'DATA_MISSING':
+      return '数据缺失'
+    case 'UNMATCHED':
+      return '异常'
+    // 兼容旧状态
+    case 'MATCHED':
+      return '已匹配'
+    case 'PARTIAL_MATCHED':
+      return '部分匹配'
+    // 兼容旧的数字状态
+    case 1:
+      return '已对平'
+    case 0:
+      return '未退库'
+    default:
+      return status || '/'
   }
 }
 
