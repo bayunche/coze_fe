@@ -381,3 +381,15 @@ export async function queryTaskLinkProjectInfo(taskId) {
     throw error
   }
 }
+
+/**
+ * 获取保存的甲供物资llmReport数据
+ * @param {string} taskId - 任务ID
+ * @returns {object|null} - llmReport数据或null
+ */
+export function getOwnerMaterialLlmReport(taskId) {
+  if (window.ownerMaterialLlmReport && window.ownerMaterialLlmReport[taskId]) {
+    return window.ownerMaterialLlmReport[taskId]
+  }
+  return null
+}

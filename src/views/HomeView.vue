@@ -92,12 +92,12 @@
 import { onMounted, onUnmounted, defineAsyncComponent, watch } from 'vue'
 import { storeToRefs } from 'pinia' // 导入 storeToRefs
 import { ArrowRight, ArrowLeft } from '@element-plus/icons-vue' // 导入图标
-import { useRouter } from 'vue-router' // 导入 useRouter
+import { useRouter, useRoute } from 'vue-router' // 导入 useRouter 和 useRoute
 import { useChatStore } from '@/stores/chat'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useParsingResultStore } from '@/stores/parsingResult'
 import { useMaterialDialogStore } from '@/stores/materialDialog'
-import { useOwnerMaterialStore } from '@/stores/ownerMaterial' // 导入甲供物资 store
+import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial' // 导入甲供物资 store
 import { functions } from '@/utils/workflowsDefinedEnum.js' // functions 仍然从这里导入
 // import CozeService from '@/services/CozeService'; // 移除 CozeService 导入
 
@@ -133,6 +133,10 @@ const workflowStore = useWorkflowStore()
 const parsingResultStore = useParsingResultStore()
 const materialDialogStore = useMaterialDialogStore()
 const ownerMaterialStore = useOwnerMaterialStore() // 初始化甲供物资 store
+
+// 路由相关
+const router = useRouter()
+const route = useRoute()
 
 // 从 Store 中解构状态和方法
 
@@ -175,7 +179,7 @@ const {
   setSupplierFileIds
 } = workflowStore
 
-const { alignmentTask } = storeToRefs(ownerMaterialStore) // 解构甲供物资任务状态
+const { taskStatusMap, currentTaskId } = storeToRefs(ownerMaterialStore) // 解构甲供物资任务状态
 
 const { editableRow, editableFieldProp, isLongText, openEditPopup } = parsingResultStore
 
@@ -244,6 +248,30 @@ const onConfigDialogClose = () => {
 
 onMounted(() => {
   resetWorkflowConfig()
+
+  // 检测是否需要触发重新解析
+  const triggerReparse = route.query.triggerReparse
+  if (triggerReparse) {
+    // 清除URL参数
+    router.replace({ query: {} })
+
+    // 延迟一点时间让页面加载完成，然后触发重新解析
+    setTimeout(async () => {
+      console.log('【诊断】HomeView - 等待页面加载完成，开始检查任务状态...')
+      console.log('【诊断】HomeView - 当前任务状态:', ownerMaterialStore.getTaskStatus(triggerReparse))
+      if (ownerMaterialStore.getTaskStatus(triggerReparse) === TaskStatus.READY_FOR_ALIGNMENT) {
+        console.log('【诊断】HomeView - 检测到 triggerReparse 参数，自动触发重新解析')
+        addMessage('检测到物资信息确认完成，开始执行重新解析...', 'system')
+        try {
+          await workflowStore.executeOwnerMaterialReparse(triggerReparse, addMessage)
+          addMessage(`甲供物资解析已完成。`, 'system')
+        } catch (error) {
+          addMessage(`甲供物资重新解析失败: ${error.message}`, 'system')
+          console.error('甲供物资重新解析失败:', error)
+        }
+      }
+    }, 1000)
+  }
 })
 
 watch(showOwnerMaterialTaskParsingDetailDialog, (newValue) => {
@@ -252,37 +280,39 @@ watch(showOwnerMaterialTaskParsingDetailDialog, (newValue) => {
 
 // 监听甲供物资对平任务状态的变化
 watch(
-  () => alignmentTask.value.status,
-  async (newStatus, oldStatus) => {
-    console.log(`【诊断】HomeView - 甲供物资任务状态变化: ${oldStatus} -> ${newStatus}`)
-    if (newStatus === 'ready_for_alignment') {
-      const taskId = alignmentTask.value.taskId
-      if (taskId) {
-        console.log(`【诊断】HomeView - 检测到任务 ${taskId} 已准备好对平，开始执行...`)
-        addMessage(
-          `接收到人工确认完成信号，即将开始对任务 ${taskId} 进行最终的物资对平...`,
-          'system'
-        )
+  [taskStatusMap, currentTaskId],
+  ([newTaskStatusMap, newCurrentTaskId], [oldTaskStatusMap, oldCurrentTaskId]) => {
+    // 检查是否有任务状态变为 ready_for_alignment
+    Object.keys(newTaskStatusMap).forEach(async (taskId) => {
+      const newStatus = newTaskStatusMap[taskId]?.status
+      const oldStatus = oldTaskStatusMap?.[taskId]?.status
+      
+      if (newStatus !== oldStatus) {
+        console.log(`【诊断】HomeView - 任务 ${taskId} 状态变化: ${oldStatus} -> ${newStatus}`)
+        
+        if (newStatus === TaskStatus.READY_FOR_ALIGNMENT) {
+          console.log(`【诊断】HomeView - 检测到任务 ${taskId} 已准备好对平，开始执行...`)
+          addMessage(
+            `接收到人工确认完成信号，即将开始对任务 ${taskId} 进行最终的物资对平...`,
+            'system'
+          )
 
-        // 更新状态为正在对平
-        ownerMaterialStore.updateStatus('aligning')
+          // 更新状态为正在对平
+          ownerMaterialStore.updateTaskStatus(taskId, TaskStatus.ALIGNING)
 
-        // 调用真实的对平工作流
-        const result = await workflowStore.executeOwnerMaterialAlignmentWorkflow(taskId, addMessage)
-
-        if (result.success) {
-          ownerMaterialStore.updateStatus('completed')
-          addMessage(`任务 ${taskId} 的物资对平已成功完成。`, 'system')
-          // 可以在这里添加显示最终结果的按钮或弹窗
-        } else {
-          ownerMaterialStore.updateStatus('failed')
-          addMessage(`任务 ${taskId} 的物资对平失败: ${result.message}`, 'system')
+          // 调用第二个甲供物资重新解析工作流
+          try {
+            await workflowStore.executeOwnerMaterialReparse(taskId, addMessage)
+            ownerMaterialStore.updateTaskStatus(taskId, TaskStatus.COMPLETED)
+            addMessage(`任务 ${taskId} 的甲供物资重新解析已完成。`, 'system')
+          } catch (error) {
+            ownerMaterialStore.updateTaskStatus(taskId, TaskStatus.FAILED)
+            addMessage(`任务 ${taskId} 的甲供物资重新解析失败: ${error.message}`, 'system')
+            console.error('甲供物资重新解析失败:', error)
+          }
         }
-
-        // 可以在这里选择是否立即重置，或者让用户查看结果后再重置
-        // ownerMaterialStore.resetTask();
       }
-    }
+    })
   },
   { deep: true }
 )

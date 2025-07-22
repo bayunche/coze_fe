@@ -611,17 +611,147 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow({ ...inputs, parseOnly: true }, '2', {
         onMessage: (event) => {
           if (event.content) {
+            let parsedContent = null
+
+            try {
+              // 尝试直接解析 event.content 为 JSON 对象
+              parsedContent = JSON.parse(event.content)
+
+              // 你可以在这里根据结构确认是期望的格式
+              if (parsedContent.taskId) {
+                taskId.value = parsedContent.taskId
+                streamingAgentMessage.task = parsedContent.taskId
+                ownerMaterialStore.setTask(parsedContent.taskId)
+              }
+            } catch (e) {
+              console.log('消息 JSON 解析失败，尝试旧格式:', e)
+            }
+
+            // 如果解析成功
+            if (parsedContent) {
+              if (parsedContent.llmReport) {
+                // 处理 llmReport 格式的内容
+                let reportText = '# 甲供物资解析报告\n\n'
+
+                Object.entries(parsedContent.llmReport).forEach(([category, content]) => {
+                  reportText += `## ${category}\n`
+                  if (typeof content === 'object') {
+                    Object.entries(content).forEach(([subcategory, details]) => {
+                      reportText += `**${subcategory}**: ${details}\n\n`
+                    })
+                  } else {
+                    reportText += `${content}\n\n`
+                  }
+                })
+
+                chatStore.appendStreamContent(streamingAgentMessage.id, reportText)
+                finalResult.push(reportText)
+              } else if (parsedContent.text) {
+                // 普通文本内容
+                chatStore.appendStreamContent(streamingAgentMessage.id, parsedContent.text)
+                finalResult.push(parsedContent.text)
+              }
+            } else {
+              // 回退旧格式解析逻辑
+              const { parsedMessage, messageContent } = parseWorkflowMessage({
+                event: 'Message',
+                data: { content_type: 'text', content: event.content }
+              })
+
+              if (parsedMessage) {
+                if (parsedMessage.task_id) {
+                  taskId.value = parsedMessage.task_id
+                  streamingAgentMessage.task = parsedMessage.task_id
+                  ownerMaterialStore.setTask(parsedMessage.task_id)
+                }
+
+                if (parsedMessage.result) {
+                  const output = {
+                    materials: parsedMessage.result.materials || [],
+                    flattened: parsedMessage.result.flattened || [],
+                    unmatched: parsedMessage.result.unmatched || [],
+                    taskId: parsedMessage.task_id
+                  }
+                  if (output.unmatched.length > 0) {
+                    output.message = '存在无法匹配的物资信息，请人工介入'
+                  }
+                  const text = JSON.stringify(output, null, 2)
+                  chatStore.appendStreamContent(streamingAgentMessage.id, text)
+                  finalResult.push(text)
+                }
+              } else if (messageContent) {
+                chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
+                finalResult.push(messageContent)
+              }
+            }
+          }
+        },
+        onError: (error) => {
+          handleExecutionError(error, loadingMessage, addMessageCallback)
+        },
+        onComplete: () => {
+          delete streamingAgentMessage.isStreaming
+          // 甲供物资解析第一个工作流不显示查看解析结果按钮
+          // if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+          //   streamingAgentMessage.showViewResultButton = true
+          // }
+          if (taskId.value) {
+            ownerMaterialStore.updateTaskStatus(taskId.value, 'needs_manual_alignment')
+          }
+          if (progressManager) progressManager.stop()
+          loadingMessage.progress = 100
+          // loadingMessage.content = '甲供物资解析任务执行完毕！'
+          finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
+        }
+      })
+    } catch (error) {
+      handleExecutionError(error, loadingMessage, addMessageCallback)
+    }
+  }
+
+  /**
+   * 处理甲供物资重新解析工作流（第二个工作流）
+   * @param {string} taskId - 任务ID
+   * @param {function} addMessageCallback - 添加消息的回调
+   */
+  const executeOwnerMaterialReparse = async (taskId, addMessageCallback) => {
+    const finalResult = []
+
+    const loadingMessage = {
+      id: Date.now(),
+      from: 'system',
+      content: '正在重新解析，请稍后......',
+      timestamp: new Date().toLocaleTimeString(),
+      sender: '系统',
+      progress: 0
+    }
+
+    const streamingAgentMessage = {
+      id: Date.now() + Math.random(),
+      from: 'agent',
+      content: '',
+      timestamp: new Date().toLocaleTimeString(),
+      sender: '甲供物资重新解析',
+      workflow: { id: '4', name: '甲供物资重新解析' },
+      isStreaming: true
+    }
+
+    try {
+      addMessageCallback(loadingMessage)
+      addMessageCallback(streamingAgentMessage)
+
+      await callStreamWorkflow({ taskId }, '4', {
+        onMessage: (event) => {
+          if (event.content) {
             const { parsedMessage, messageContent } = parseWorkflowMessage({
               event: 'Message',
               data: { content_type: 'text', content: event.content }
             })
 
             if (parsedMessage) {
-              if (parsedMessage.task_id) {
-                taskId.value = parsedMessage.task_id
-                streamingAgentMessage.task = parsedMessage.task_id
-                ownerMaterialStore.setTask(parsedMessage.task_id)
-              }
+              streamingAgentMessage.task = taskId
+              ownerMaterialStore.setTask(taskId)
+
               if (parsedMessage.result) {
                 const output = {
                   materials: parsedMessage.result.materials || [],
@@ -647,13 +777,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
-          // 甲供物资解析第一个工作流不显示查看解析结果按钮
-          // if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
-          //   streamingAgentMessage.showViewResultButton = true
-          // }
-          if (progressManager) progressManager.stop()
+          // 重新解析完成后显示查看详情按钮
+          streamingAgentMessage.showViewResultButton = true
           loadingMessage.progress = 100
-          loadingMessage.content = '甲供物资解析任务执行完毕！'
+          loadingMessage.content = '甲供物资重新解析任务执行完毕！'
+          ElMessage.success('甲供物资重新解析完成')
           finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
         }
       })
@@ -912,6 +1040,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     // Actions
     handleFunctionSelect,
     executeWorkflow,
+    executeOwnerMaterialReparse,
     finalizeWorkflowExecution,
     startWorkflowFromDialog,
     resetWorkflowConfig,

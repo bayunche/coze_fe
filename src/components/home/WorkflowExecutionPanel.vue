@@ -282,7 +282,10 @@ const handleViewResultDetail = (message) => {
     emit('view-result-detail', message.task)
   } else if (message.workflow?.name === '乙供物资解析') {
     emit('view-material-result-detail', message.task)
-  } else if (message.workflow?.name === '甲供物资解析') {
+  } else if (
+    message.workflow?.name === '甲供物资解析' ||
+    message.workflow?.name === '甲供物资重新解析'
+  ) {
     emit('view-supplier-material-result-detail', message.task)
   }
 }

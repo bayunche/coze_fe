@@ -142,7 +142,7 @@ import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { queryBalanceResult, queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
-import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
+import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
 
 const router = useRouter()
 const route = useRoute()
@@ -338,8 +338,7 @@ const handleGenerateReport = () => {
   router.push({
     name: 'OwnerMaterialReport',
     query: {
-      taskId:
-        ownerMaterialStore.alignmentTask.taskId || route.query.taskId || route.query.taskDetailId,
+      taskId: route.query.taskId || route.query.taskDetailId || ownerMaterialStore.currentTaskId,
       projectName: projectInfo.value.projectName,
       projectNumber: projectInfo.value.projectNumber
     }
@@ -459,8 +458,8 @@ const handleBack = () => {
 }
 
 onMounted(async () => {
-  // 优先从store中获取taskId，如果获取不到则从URL中解析
-  const taskId = ownerMaterialStore.alignmentTask.taskId || route.query.taskId
+  // 优先从路由获取taskId
+  const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
   
   // 先获取项目信息
   if (taskId) {

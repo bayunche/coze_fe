@@ -12,13 +12,14 @@
       </el-button>
     </div>
 
-    <el-table
-      :data="paginatedMaterials"
-      border
-      stripe
-      style="width: 100%; margin-top: 20px"
-      class="material-table"
-    >
+    <div class="main-table-container">
+      <el-table
+        :data="paginatedMaterials"
+        border
+        stripe
+        class="material-table"
+        height="100%"
+      >
       <!-- 领料单物资信息列 -->
       <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
       <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
@@ -41,33 +42,41 @@
       <el-table-column prop="dbSpec" label="数据库规格型号" min-width="140" />
       <el-table-column prop="dbUnit" label="数据库单位" min-width="80" />
       <el-table-column prop="dbQuantity" label="数据库数量" min-width="100" />
-    </el-table>
-    <el-pagination
-      background
-      layout="total, sizes, prev, pager, next, jumper"
-      :total="total"
-      :page-size="pageSize"
-      :current-page="currentPage"
-      @current-change="handlePageChange"
-      @size-change="handleSizeChange"
-      class="modern-pagination"
-    />
+      </el-table>
+    </div>
+
+    <div class="main-table-footer">
+      <el-pagination
+        background
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+        :page-size="pageSize"
+        :page-sizes="[10, 20, 50, 100]"
+        :current-page="currentPage"
+        @current-change="handlePageChange"
+        @size-change="handleSizeChange"
+        class="modern-pagination"
+      />
+    </div>
 
     <el-dialog
       v-model="showManualConfirmDialog"
       title="未对平物资确认"
-      width="80%"
+      width="90%"
+      height="80vh"
       :before-close="handleDialogClose"
       v-loading="isLoading"
+      class="fixed-height-dialog"
     >
-      <el-table
-        :data="paginatedUnalignedMaterials"
-        border
-        stripe
-        style="width: 100%"
-        class="manual-confirm-table"
-        :row-class-name="getRowClassName"
-      >
+      <div class="dialog-table-container">
+        <el-table
+          :data="paginatedUnalignedMaterials"
+          border
+          stripe
+          class="manual-confirm-table"
+          :row-class-name="getRowClassName"
+          height="100%"
+        >
         <el-table-column type="index" label="序号" width="60" />
         <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
         <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
@@ -98,17 +107,21 @@
             </el-button>
           </template>
         </el-table-column>
-      </el-table>
-      <el-pagination
-        background
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="unalignedMaterials.length"
-        :page-size="manualConfirmPageSize"
-        :current-page="manualConfirmCurrentPage"
-        @current-change="handleManualConfirmPageChange"
-        @size-change="handleManualConfirmSizeChange"
-        class="modern-pagination"
-      />
+        </el-table>
+      </div>
+      <div class="dialog-footer-content">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="unalignedMaterials.length"
+          :page-size="manualConfirmPageSize"
+          :page-sizes="[10, 15, 20, 50]"
+          :current-page="manualConfirmCurrentPage"
+          @current-change="handleManualConfirmPageChange"
+          @size-change="handleManualConfirmSizeChange"
+          class="modern-pagination dialog-pagination"
+        />
+      </div>
       <template v-slot:footer>
         <el-button @click="showManualConfirmDialog = false">关闭</el-button>
         <el-button @click="handleSaveMaterial">保存对平物资信息</el-button>
@@ -141,7 +154,7 @@
 import { computed, ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
+import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
 import {
   queryBalanceResult,
   queryUnmatchedBalanceResult,
@@ -166,7 +179,7 @@ const isLoading = ref(false)
 const isSaving = ref(false)
 
 const total = ref(0)
-const pageSize = ref(10)
+const pageSize = ref(20)
 const currentPage = ref(1)
 
 // 主表格的分页数据
@@ -178,7 +191,7 @@ const paginatedMaterials = computed(() => {
 
 // --- 弹窗相关 ---
 const showManualConfirmDialog = ref(false)
-const manualConfirmPageSize = ref(5)
+const manualConfirmPageSize = ref(15)
 const manualConfirmCurrentPage = ref(1)
 const paginatedUnalignedMaterials = computed(() => {
   const start = (manualConfirmCurrentPage.value - 1) * manualConfirmPageSize.value
@@ -208,16 +221,17 @@ const BalanceStatusEnum = {
 const fetchData = async () => {
   isLoading.value = true
   try {
-    // 优先从store中获取taskId，如果获取不到则从URL中解析
-    const taskId = ownerMaterialStore.alignmentTask.taskId || route.query.taskId
+    // 优先从路由获取taskId，然后检查store中是否存在
+    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
     if (!taskId) {
       ElMessage.error('缺少任务ID，无法加载数据。')
       return
     }
     // 注意：这里假设一次性获取所有数据，如果数据量大需要后端支持分页
     const response = await queryBalanceResult({ taskId, page: 0, size: 1000 }) // 获取足够多的数据
-    if (response && response.data && response.data.content) {
-      transformAndSetData(response.data.content)
+    console.log('获取到的数据:', response)
+    if (response && response.content) {
+      transformAndSetData(response.content)
       total.value = allMaterials.value.length
       ElMessage.success('数据加载成功！')
     } else {
@@ -545,6 +559,8 @@ async function handleSaveMaterial() {
 
       // 重新加载主表格数据以同步最新状态
       await fetchData()
+
+      // 保存成功后，标记需要进行重新解析，然后返回主页
     } else if (successCount > 0 && failureCount > 0) {
       ElMessage.warning(`保存完成：成功 ${successCount} 个，失败 ${failureCount} 个`)
 
@@ -652,7 +668,7 @@ watch(dbMaterialSearch, (newVal) => {
 // 检查所有物资是否已拉平
 async function checkAllAligned() {
   try {
-    const taskId = ownerMaterialStore.alignmentTask.taskId || route.query.taskId
+    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
     if (!taskId) {
       ElMessage.error('缺少任务ID，无法检查对平状态。')
       return false // 缺少taskId，无法继续
@@ -674,29 +690,35 @@ async function checkAllAligned() {
 // 保存按钮点击事件
 async function handleSaveClick() {
   isSaving.value = true
-  const isAligned = await checkAllAligned()
-  if (!isAligned) {
-    isSaving.value = false
-    await ElMessageBox.alert('存在未拉平的物资信息，请先完成所有物资拉平操作', '无法保存', {
-      confirmButtonText: '确定',
-      type: 'warning'
-    })
-    return
-  }
-
-  isSaving.value = true
   try {
-    // TODO: 实现真实保存逻辑
+    const isAligned = await checkAllAligned()
+    if (!isAligned) {
+      await ElMessageBox.alert('存在未拉平的物资信息，请先完成所有物资拉平操作', '无法保存', {
+        confirmButtonText: '确定',
+        type: 'warning'
+      })
+      return
+    }
+
+    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
+    if (!taskId) {
+      ElMessage.error('缺少任务ID，无法保存并返回首页。')
+      return
+    }
+
+    // 实现真实保存逻辑
     await new Promise((resolve) => setTimeout(resolve, 1000)) // 模拟API调用
     ElMessage.success('物资信息保存成功')
-    ownerMaterialStore.markAsReadyForAlignment()
+
+    // 标记状态并导航以触发重新解析
+    ownerMaterialStore.updateTaskStatus(taskId, TaskStatus.READY_FOR_ALIGNMENT)
+    router.push({ path: '/home', query: { triggerReparse: taskId } })
   } catch (error) {
     console.error('保存失败:', error)
     ElMessage.error('保存失败: ' + error.message)
   } finally {
     isSaving.value = false
   }
-  router.push('/home')
 }
 </script>
 
@@ -711,6 +733,101 @@ async function handleSaveClick() {
 .label {
   color: #666;
   margin-right: 5px;
+}
+
+/* 固定高度弹窗样式 */
+.fixed-height-dialog :deep(.el-dialog) {
+  height: 70vh;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fixed-height-dialog :deep(.el-dialog__body) {
+  flex: 1;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dialog-table-container {
+  height: 40vh;
+  min-height: 300px;
+  max-height: 60vh;
+  padding: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog-table-container .manual-confirm-table {
+  flex: 1;
+  overflow: hidden;
+}
+
+.dialog-footer-content {
+  padding: 15px 20px 5px 20px;
+  border-top: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.005), rgba(79, 70, 229, 0.002));
+  flex-shrink: 0;
+}
+
+.dialog-pagination {
+  margin-top: 0;
+  text-align: center;
+}
+
+/* 确保表格内容可以正确滚动 */
+.dialog-table-container :deep(.el-table) {
+  height: 100% !important;
+}
+
+.dialog-table-container :deep(.el-table__body-wrapper) {
+  max-height: calc(100% - 48px) !important;
+  overflow-y: auto !important;
+}
+
+/* 主表格容器样式 */
+.main-table-container {
+  height: 50vh;
+  min-height: 400px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  margin-top: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px var(--shadow-color);
+  background-color: var(--card-background);
+  border: 1px solid var(--border-color);
+}
+
+.main-table-container .material-table {
+  flex: 1;
+  overflow: hidden;
+}
+
+.main-table-container :deep(.el-table) {
+  height: 100% !important;
+  border-radius: 0;
+}
+
+.main-table-container :deep(.el-table__body-wrapper) {
+  overflow-y: auto !important;
+}
+
+.main-table-footer {
+  padding: 15px 20px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.005), rgba(79, 70, 229, 0.002));
+  border-top: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.main-table-footer .modern-pagination {
+  margin-top: 0;
+  text-align: center;
 }
 
 .owner-material-align-page {
@@ -823,12 +940,7 @@ async function handleSaveClick() {
 }
 
 .material-table {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 8px 20px var(--shadow-color);
-  flex-grow: 1;
-  background-color: var(--card-background); /* 表格背景 */
-  border: 1px solid var(--border-color);
+  /* 样式已移动到 main-table-container */
 }
 
 .material-table :deep(.el-table__header-wrapper th) {
