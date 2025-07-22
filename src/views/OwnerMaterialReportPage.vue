@@ -196,8 +196,8 @@
 
     <div class="page-footer">
       <el-button @click="handleBack">关闭</el-button>
-      <el-button type="primary" @click="handleExport" :loading="exporting">
-        {{ exporting ? '正在导出...' : '导出报告' }}
+      <el-button type="primary" @click="handleExport" :loading="exporting" :icon="exporting ? null : Printer">
+        {{ exporting ? '准备打印中...' : '打印/导出PDF' }}
       </el-button>
     </div>
   </div>
@@ -209,8 +209,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
-import { Document, Shop, Coin, DataAnalysis, Warning, InfoFilled, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
-import html2pdf from 'html2pdf.js'
+import { Document, Shop, Coin, DataAnalysis, Warning, InfoFilled, CircleCheckFilled, CircleCloseFilled, Printer } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -239,37 +238,30 @@ const handleExport = async () => {
   try {
     exporting.value = true
     
-    // 获取报告内容元素
-    const element = document.querySelector('.owner-material-report-page')
+    // 设置页面标题作为默认文件名
+    const originalTitle = document.title
+    document.title = `甲供物资解析报告_${projectInfo.value.projectName || '项目'}_${new Date().toLocaleDateString('zh-CN')}`
     
-    // 配置PDF选项
-    const options = {
-      margin: [10, 10, 10, 10],
-      filename: `甲供物资解析报告_${projectInfo.value.projectName || '项目'}_${new Date().toLocaleDateString('zh-CN')}.pdf`,
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: element.scrollWidth,
-        height: element.scrollHeight
-      },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait' 
-      },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    }
+    // 添加打印专用的body类名
+    document.body.classList.add('printing')
     
-    // 生成PDF
-    await html2pdf().set(options).from(element).save()
+    // 使用浏览器原生打印功能
+    window.print()
     
-    ElMessage.success('PDF报告导出成功！')
+    // 恢复原始标题
+    setTimeout(() => {
+      document.title = originalTitle
+      document.body.classList.remove('printing')
+    }, 1000)
+    
+    ElMessage({
+      message: '打印对话框已打开，请选择"另存为PDF"来保存报告，或选择打印机进行打印',
+      type: 'success',
+      duration: 5000
+    })
   } catch (error) {
-    console.error('导出PDF失败:', error)
-    ElMessage.error('导出PDF失败，请重试')
+    console.error('打印失败:', error)
+    ElMessage.error('打印失败，请重试')
   } finally {
     exporting.value = false
   }
@@ -628,10 +620,197 @@ onMounted(async () => {
   }
 }
 
-/* 确保导出时的样式一致性 */
+/* 确保导出时的样式一致性和文字可复制性 */
 .owner-material-report-page * {
   -webkit-print-color-adjust: exact !important;
   color-adjust: exact !important;
   print-color-adjust: exact !important;
+  
+  /* 优化文字渲染 */
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* PDF导出时的文字优化 */
+.owner-material-report-page {
+  font-family: 'Arial', 'Microsoft YaHei', '微软雅黑', sans-serif;
+}
+
+/* 确保文字在PDF中清晰可读 */
+.owner-material-report-page h1,
+.owner-material-report-page h2,
+.owner-material-report-page h3,
+.owner-material-report-page h4,
+.owner-material-report-page p,
+.owner-material-report-page span,
+.owner-material-report-page div {
+  font-weight: normal;
+  line-height: 1.6;
+  letter-spacing: 0.5px;
+}
+
+/* 页面分割线，用于更好的PDF分页 */
+.page-break-before {
+  page-break-before: always;
+  break-before: page;
+}
+
+.page-break-after {
+  page-break-after: always;
+  break-after: page;
+}
+
+/* 打印专用样式 */
+@media print {
+  /* 隐藏不需要打印的元素 */
+  .page-header .el-button,
+  .export-button,
+  button,
+  .no-print {
+    display: none !important;
+  }
+  
+  /* 页面设置 */
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+  
+  /* 重置页面样式 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+  }
+  
+  .owner-material-report-page {
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    max-width: none !important;
+    min-height: auto !important;
+  }
+  
+  /* 标题样式 */
+  .page-header {
+    margin-bottom: 20pt !important;
+    border-bottom: 1pt solid #333 !important;
+    padding-bottom: 10pt !important;
+  }
+  
+  .page-header h2 {
+    font-size: 18pt !important;
+    color: #333 !important;
+    text-shadow: none !important;
+    margin: 0 !important;
+  }
+  
+  .page-header h2::before {
+    display: none !important;
+  }
+  
+  /* 项目信息卡片 */
+  .project-info-card {
+    background: white !important;
+    border: 1pt solid #333 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 15pt !important;
+    margin-bottom: 20pt !important;
+    page-break-inside: avoid;
+  }
+  
+  /* 报告内容样式 */
+  .report-section {
+    page-break-inside: avoid;
+    margin-bottom: 15pt !important;
+  }
+  
+  .section-header {
+    font-size: 14pt !important;
+    font-weight: bold !important;
+    color: #333 !important;
+    margin-bottom: 8pt !important;
+    page-break-after: avoid;
+  }
+  
+  .section-content {
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    color: #333 !important;
+  }
+  
+  /* 分析项目样式 */
+  .analysis-item {
+    page-break-inside: avoid;
+    margin-bottom: 12pt !important;
+    border-bottom: 0.5pt solid #ddd !important;
+    padding-bottom: 8pt !important;
+  }
+  
+  .analysis-item h4 {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    margin-bottom: 5pt !important;
+    color: #333 !important;
+  }
+  
+  .analysis-item p {
+    font-size: 11pt !important;
+    margin: 0 !important;
+    line-height: 1.4 !important;
+  }
+  
+  /* 图标在打印时隐藏或简化 */
+  .el-icon {
+    display: none !important;
+  }
+  
+  /* 强制分页位置 */
+  .page-break-before {
+    page-break-before: always !important;
+  }
+  
+  .page-break-after {
+    page-break-after: always !important;
+  }
+  
+  /* 避免孤立的标题 */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    color: #333 !important;
+  }
+  
+  /* 表格样式（如果有） */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    font-size: 10pt !important;
+  }
+  
+  table, th, td {
+    border: 0.5pt solid #333 !important;
+    padding: 4pt !important;
+  }
+  
+  th {
+    background-color: #f5f5f5 !important;
+    font-weight: bold !important;
+  }
+}
+
+/* 打印状态下的body样式 */
+body.printing {
+  overflow: hidden;
 }
 </style>
