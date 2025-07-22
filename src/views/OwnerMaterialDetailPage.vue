@@ -223,7 +223,7 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
   loading.value = true
   try {
     // 优先从store中获取taskId，如果获取不到则从URL中解析
-    const taskId = ownerMaterialStore.alignmentTask.taskId || route.query.taskId
+    const taskId = ownerMaterialStore.currentTask.taskId || route.query.taskId
     if (!taskId) {
       ElMessage.error('缺少 taskId，无法加载数据。')
       loading.value = false

@@ -207,12 +207,14 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { queryTaskLinkProjectInfo, getOwnerMaterialLlmReport } from '@/utils/backendWorkflow'
+import { queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
+import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 import { Document, Shop, Coin, DataAnalysis, Warning, InfoFilled, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
 import html2pdf from 'html2pdf.js'
 
 const router = useRouter()
 const route = useRoute()
+const ownerMaterialStore = useOwnerMaterialStore()
 
 const loading = ref(false)
 const exporting = ref(false)
@@ -297,7 +299,7 @@ const loadProjectInfo = async (taskId) => {
 const loadReportData = async (taskId) => {
   try {
     // 尝试获取来自重新解析工作流的 llmReport 数据
-    const llmReport = getOwnerMaterialLlmReport(taskId)
+    const llmReport = ownerMaterialStore.getLlmReport(taskId)
     
     if (llmReport && typeof llmReport === 'object') {
       reportData.value.hasLlmReport = true

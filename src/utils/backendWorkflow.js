@@ -388,6 +388,7 @@ export async function queryTaskLinkProjectInfo(taskId) {
  * @returns {object|null} - llmReport数据或null
  */
 export function getOwnerMaterialLlmReport(taskId) {
+  // 回退到全局变量（兼容旧版本）
   if (window.ownerMaterialLlmReport && window.ownerMaterialLlmReport[taskId]) {
     return window.ownerMaterialLlmReport[taskId]
   }

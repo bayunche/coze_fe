@@ -14,7 +14,7 @@ export const TaskStatus = {
 }
 
 export const useOwnerMaterialStore = defineStore('ownerMaterial', () => {
-  // 存储多个任务的状态映射 { taskId: { status, createdAt, updatedAt } }
+  // 存储多个任务的状态映射 { taskId: { status, createdAt, updatedAt, llmReport } }
   const taskStatusMap = ref({})
   
   // 当前活跃的任务ID（用于兼容旧的单任务逻辑）
@@ -167,6 +167,42 @@ export const useOwnerMaterialStore = defineStore('ownerMaterial', () => {
     }))
   }
 
+  /**
+   * 保存任务的llmReport数据
+   * @param {string} taskId - 任务ID
+   * @param {object} llmReport - llmReport数据
+   */
+  const setLlmReport = (taskId, llmReport) => {
+    if (!taskId) {
+      console.warn('【OwnerMaterialStore】taskId 不能为空')
+      return
+    }
+    
+    if (!taskStatusMap.value[taskId]) {
+      console.warn(`【OwnerMaterialStore】任务 ${taskId} 不存在`)
+      return
+    }
+    
+    taskStatusMap.value[taskId].llmReport = llmReport
+    taskStatusMap.value[taskId].updatedAt = new Date().toISOString()
+    
+    console.log(
+      `【OwnerMaterialStore】llmReport 数据已保存: TaskID=${taskId}`
+    )
+  }
+
+  /**
+   * 获取任务的llmReport数据
+   * @param {string} taskId - 任务ID
+   * @returns {object|null} llmReport数据
+   */
+  const getLlmReport = (taskId) => {
+    if (!taskId || !taskStatusMap.value[taskId]) {
+      return null
+    }
+    return taskStatusMap.value[taskId].llmReport || null
+  }
+
   return {
     // 状态
     taskStatusMap,
@@ -181,7 +217,9 @@ export const useOwnerMaterialStore = defineStore('ownerMaterial', () => {
     removeTask,
     setCurrentTask,
     clearAllTasks,
-    getAllTasks
+    getAllTasks,
+    setLlmReport,
+    getLlmReport
   }
 }, {
   // 开启持久化存储
