@@ -143,7 +143,7 @@ const router = useRouter() // 将 useRouter 移动到顶层
 const handleViewDetail = (row) => {
   router.push({
     name: 'owner-material-detail', // 使用路由名称
-    params: { taskId: row.TASK_ID }, // taskId 作为路由参数
+    params: { taskId: props.taskId }, // taskId 作为路由参数
     query: { detailId: row.ID } // detailId 作为查询参数
   })
   dialogVisible.value = false // 关闭当前弹窗

@@ -241,6 +241,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
     let parsedMessage = null
 
     if (typeof content === 'string') {
+      // 首先尝试解析"任务编号："格式的消息
+      const taskIdMatch = content.match(/任务编号：([a-f0-9-]+)/i)
+      if (taskIdMatch) {
+        potentialTaskId = taskIdMatch[1]
+        messageContent = content
+        // 创建一个模拟的 parsedMessage 对象以保持兼容性
+        parsedMessage = { task_id: potentialTaskId }
+        return { potentialTaskId, messageContent, parsedMessage }
+      }
+
+      // 然后尝试解析 JSON 格式
       try {
         parsedMessage = JSON.parse(content)
       } catch (e) {

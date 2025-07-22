@@ -142,7 +142,11 @@ import { computed, ref, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
-import { queryBalanceResult, queryUnmatchedBalanceResult, manualMatch } from '@/utils/backendWorkflow' // 导入接口
+import {
+  queryBalanceResult,
+  queryUnmatchedBalanceResult,
+  manualMatch
+} from '@/utils/backendWorkflow' // 导入接口
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
 import { ElDialog } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
@@ -194,25 +198,26 @@ const currentEditingRow = ref(null)
 
 // --- 枚举值 ---
 const BalanceStatusEnum = {
-  BALANCED: 0,
-  UNRETURNED: 1,
-  DATA_MISSING: 2,
-  UNMATCHED: 3
+  BALANCED: 'BALANCED',
+  UNRETURNED: 'UNRETURNED',
+  DATA_MISSING: 'DATA_MISSING',
+  UNMATCHED: 'UNMATCHED'
 }
 
 // --- 数据获取和处理 ---
 const fetchData = async () => {
   isLoading.value = true
   try {
-    const taskId = route.query.taskId
+    // 优先从store中获取taskId，如果获取不到则从URL中解析
+    const taskId = ownerMaterialStore.alignmentTask.taskId || route.query.taskId
     if (!taskId) {
       ElMessage.error('缺少任务ID，无法加载数据。')
       return
     }
     // 注意：这里假设一次性获取所有数据，如果数据量大需要后端支持分页
     const response = await queryBalanceResult({ taskId, page: 0, size: 1000 }) // 获取足够多的数据
-    if (response && response.content) {
-      transformAndSetData(response.content)
+    if (response && response.data && response.data.content) {
+      transformAndSetData(response.data.content)
       total.value = allMaterials.value.length
       ElMessage.success('数据加载成功！')
     } else {
@@ -229,7 +234,8 @@ const fetchData = async () => {
 const transformAndSetData = (data) => {
   const transformed = data.map((item) => {
     const aligned = item.balanceStatus !== BalanceStatusEnum.UNMATCHED
-
+    console.log('拉平状态', aligned)
+    console.log('对平状态', item.balanceStatus)
     // 假设申领数据和实际使用数据都只取第一个作为代表
     const requisition =
       item.sourceRequisitions && item.sourceRequisitions[0] ? item.sourceRequisitions[0] : {}
@@ -294,20 +300,26 @@ const handleManualConfirmClick = async () => {
       return
     }
     const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1000 })
-    if (response && response.content && response.content.length > 0) {
-      // 转换数据以适应弹窗表格
-      unalignedMaterials.value = response.content.map((item) => ({
-        id: item.id,
-        requestCode: item.taskDetailId, // 暂时使用taskDetailId作为编码
-        requestName: item.materialName,
-        requestSpec: item.specificationModel,
-        requestUnit: item.unit,
-        requestQuantity: item.requisitionQuantity,
-        dbCode: null, // 初始化为空
-        dbName: null,
-        dbSpec: null,
-        originalData: item
-      }))
+    if (response && response.data && response.data.content && response.data.content.length > 0) {
+      // 转换数据以适应弹窗表格，使用新的响应格式
+      unalignedMaterials.value = response.data.content.map((item) => {
+        // 获取第一个申领信息作为基础数据
+        const firstRequisition =
+          item.sourceRequisitions && item.sourceRequisitions[0] ? item.sourceRequisitions[0] : {}
+
+        return {
+          id: item.id,
+          requestCode: firstRequisition.materialCategoryCode || item.taskDetailId, // 优先使用物资分类编码
+          requestName: firstRequisition.materialName || item.materialName,
+          requestSpec: firstRequisition.specificationModel || item.specificationModel,
+          requestUnit: firstRequisition.unit || item.unit,
+          requestQuantity: firstRequisition.requisitionQuantity || item.requisitionQuantity,
+          dbCode: null, // 初始化为空
+          dbName: null,
+          dbSpec: null,
+          originalData: item
+        }
+      })
       manualConfirmCurrentPage.value = 1 // 重置弹窗分页
       showManualConfirmDialog.value = true
     } else {
@@ -336,16 +348,20 @@ function handleSelectDbMaterial(row, index) {
   currentEditingRow.value = row
   dbMaterialSearch.value = ''
   dbMaterialPageNum.value = 1
-  
+
   // 调用真实的数据加载函数
   fetchDbMaterialList(1, dbMaterialPageSize.value)
-  
+
   showDbMaterialDialog.value = true
   console.log('弹窗状态:', showDbMaterialDialog.value)
 }
 
 // TODO: 实现真实数据库物资列表加载
-const fetchDbMaterialList = async (pageNum = dbMaterialPageNum.value, pageSize = dbMaterialPageSize.value, searchTerm = '') => {
+const fetchDbMaterialList = async (
+  pageNum = dbMaterialPageNum.value,
+  pageSize = dbMaterialPageSize.value,
+  searchTerm = ''
+) => {
   dbMaterialLoading.value = true
   try {
     // 使用与乙供物资解析详情相同的工作流ID: 7519455533105184809
@@ -354,60 +370,79 @@ const fetchDbMaterialList = async (pageNum = dbMaterialPageNum.value, pageSize =
       pageNum: pageNum,
       pageSize: pageSize
     }
-    
+
     // 如果有搜索条件，添加到参数中
     if (searchTerm && searchTerm.trim()) {
       params.searchTerm = searchTerm.trim()
     }
-    
+
     console.log('调用数据库物资查询工作流，参数：', params)
-    
+
     const result = await cozeWorkflowService.runWorkflow(workflowId, params)
-    
+
     if (result && result.data) {
-      // 解析返回的数据
+      // 解析返回的数据 - 新格式是字符串形式的JSON，需要先解析
       let parsedData
       if (typeof result.data === 'string') {
         parsedData = JSON.parse(result.data)
       } else {
         parsedData = result.data
       }
-      
+
       console.log('数据库物资查询结果：', parsedData)
-      
-      // 根据返回数据结构适配
-      if (parsedData && Array.isArray(parsedData.result)) {
+
+      // 根据新的返回数据结构适配 - data.output 是物资数组
+      if (parsedData && Array.isArray(parsedData.output)) {
         // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
-        dbMaterialList.value = parsedData.result.map(item => ({
-          id: item.id,
-          material_name: item.ymtd_material_name || item.material_name || item.materialName,
-          specification_model: item.ymtd_specification_model || item.specification_model || item.specificationModel,
-          tax_price: item.ymtd_tax_price || item.tax_price || item.taxPrice,
-          quarter: item.ymtd_quarter || item.quarter,
-          unit: item.ymtd_unit || item.unit,
-          code: item.ymtd_code || item.code || item.materialCode,
+        dbMaterialList.value = parsedData.output.map((item) => ({
+          id: item.p_id || item.m_id, // 使用 p_id 作为唯一标识
+          material_name: item.material_name,
+          specification_model: item.specification_model,
+          tax_price: item.tax_price,
+          quarter: item.quarter,
+          unit: item.unit,
+          code: item.material_code,
           // 保留原始数据
           originalData: item
         }))
-        
-        dbMaterialTotal.value = parsedData.totalCount || parsedData.total || parsedData.result.length
-        
+
+        dbMaterialTotal.value = parsedData.count || parsedData.output.length
+
         ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
-      } else if (parsedData && Array.isArray(parsedData)) {
-        // 如果直接返回数组
-        dbMaterialList.value = parsedData.map(item => ({
+      } else if (parsedData && parsedData.result && Array.isArray(parsedData.result)) {
+        // 兼容旧格式
+        dbMaterialList.value = parsedData.result.map((item) => ({
           id: item.id,
           material_name: item.ymtd_material_name || item.material_name || item.materialName,
-          specification_model: item.ymtd_specification_model || item.specification_model || item.specificationModel,
+          specification_model:
+            item.ymtd_specification_model || item.specification_model || item.specificationModel,
           tax_price: item.ymtd_tax_price || item.tax_price || item.taxPrice,
           quarter: item.ymtd_quarter || item.quarter,
           unit: item.ymtd_unit || item.unit,
           code: item.ymtd_code || item.code || item.materialCode,
           originalData: item
         }))
-        
+
+        dbMaterialTotal.value =
+          parsedData.totalCount || parsedData.total || parsedData.result.length
+
+        ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
+      } else if (parsedData && Array.isArray(parsedData)) {
+        // 如果直接返回数组（兼容旧格式）
+        dbMaterialList.value = parsedData.map((item) => ({
+          id: item.id,
+          material_name: item.ymtd_material_name || item.material_name || item.materialName,
+          specification_model:
+            item.ymtd_specification_model || item.specification_model || item.specificationModel,
+          tax_price: item.ymtd_tax_price || item.tax_price || item.taxPrice,
+          quarter: item.ymtd_quarter || item.quarter,
+          unit: item.ymtd_unit || item.unit,
+          code: item.ymtd_code || item.code || item.materialCode,
+          originalData: item
+        }))
+
         dbMaterialTotal.value = parsedData.length
-        
+
         ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
       } else {
         console.warn('未识别的数据格式：', parsedData)
@@ -435,15 +470,15 @@ const fetchDbMaterialList = async (pageNum = dbMaterialPageNum.value, pageSize =
 async function handleSaveMaterial() {
   try {
     // 检查是否有需要保存的未对平物资
-    const materialsToSave = unalignedMaterials.value.filter(material => 
-      material.dbCode && material.originalData && material.originalData.id
+    const materialsToSave = unalignedMaterials.value.filter(
+      (material) => material.dbCode && material.originalData && material.originalData.id
     )
-    
+
     if (materialsToSave.length === 0) {
       ElMessage.warning('没有可保存的物资匹配信息')
       return
     }
-    
+
     // 确认保存操作
     await ElMessageBox.confirm(
       `确认保存 ${materialsToSave.length} 个物资的匹配信息？`,
@@ -454,65 +489,65 @@ async function handleSaveMaterial() {
         type: 'info'
       }
     )
-    
+
     // 开始保存流程
     let successCount = 0
     let failureCount = 0
     const errors = []
-    
+
     ElMessage.info(`开始保存 ${materialsToSave.length} 个物资匹配信息...`)
-    
+
     // 逐个调用人工匹配API
     for (let i = 0; i < materialsToSave.length; i++) {
       const material = materialsToSave[i]
-      
+      console.log(`正在保存第 ${i + 1}/${materialsToSave.length} 个物资:`, material.requestName)
+      console.log('原始数据:', material.originalData)
       try {
         // 调用人工匹配API
         const matchData = {
           balanceResultId: material.originalData.id,
-          baseDataId: material.originalData.selectedBaseData?.id || 
-                     material.originalData.selectedBaseData?.code || 
-                     material.dbCode
+          baseDataId:
+            material.originalData.selectedBaseData.originalData?.m_id ||
+            material.originalData.selectedBaseData?.code ||
+            material.dbCode
         }
-        
+
         console.log(`保存第 ${i + 1}/${materialsToSave.length} 个物资匹配:`, {
           materialName: material.requestName,
           matchData
         })
-        
+
         await manualMatch(matchData)
         successCount++
-        
+
         // 更新本地状态
-        const index = unalignedMaterials.value.findIndex(item => item.id === material.id)
+        const index = unalignedMaterials.value.findIndex((item) => item.id === material.id)
         if (index !== -1) {
           unalignedMaterials.value[index].aligned = true
         }
-        
+
         // 同时更新主表格数据
-        const mainIndex = allMaterials.value.findIndex(item => item.id === material.id)
+        const mainIndex = allMaterials.value.findIndex((item) => item.id === material.id)
         if (mainIndex !== -1) {
           allMaterials.value[mainIndex].aligned = true
         }
-        
       } catch (error) {
         console.error(`保存物资 "${material.requestName}" 匹配信息失败:`, error)
         failureCount++
         errors.push(`${material.requestName}: ${error.message}`)
       }
     }
-    
+
     // 显示保存结果
     if (successCount > 0 && failureCount === 0) {
       ElMessage.success(`成功保存 ${successCount} 个物资匹配信息！`)
       showManualConfirmDialog.value = false
-      
+
       // 重新加载主表格数据以同步最新状态
       await fetchData()
-      
     } else if (successCount > 0 && failureCount > 0) {
       ElMessage.warning(`保存完成：成功 ${successCount} 个，失败 ${failureCount} 个`)
-      
+
       // 显示详细错误信息
       if (errors.length > 0) {
         await ElMessageBox.alert(
@@ -521,7 +556,6 @@ async function handleSaveMaterial() {
           { confirmButtonText: '确定', type: 'warning' }
         )
       }
-      
     } else {
       ElMessage.error(`所有物资匹配信息保存失败`)
       if (errors.length > 0) {
@@ -532,9 +566,11 @@ async function handleSaveMaterial() {
         )
       }
     }
-    
   } catch (error) {
-    if (error.message !== 'cancel') { // 用户取消操作
+    if (error === 'cancel') {
+      ElMessage.info('已取消保存操作')
+    } else if (error.message !== 'cancel') {
+      // 用户取消操作
       console.error('保存物资匹配信息失败:', error)
       ElMessage.error(`保存物资匹配信息失败: ${error.message}`)
     }
@@ -563,27 +599,29 @@ function handleDbMaterialSearch(searchTerm) {
 function handleDbMaterialSelect(selected) {
   if (currentEditingRow.value && selected) {
     // 找到未对平物资列表中的对应项
-    const unalignedIndex = unalignedMaterials.value.findIndex((m) => m.id === currentEditingRow.value.id)
+    const unalignedIndex = unalignedMaterials.value.findIndex(
+      (m) => m.id === currentEditingRow.value.id
+    )
     if (unalignedIndex !== -1) {
       // 更新未对平物资列表中的数据
       unalignedMaterials.value[unalignedIndex].dbCode = selected.code || selected.id
       unalignedMaterials.value[unalignedIndex].dbName = selected.material_name
       unalignedMaterials.value[unalignedIndex].dbSpec = selected.specification_model
       unalignedMaterials.value[unalignedIndex].dbUnit = selected.unit
-      
+
       // 保存选择的物资的完整信息，用于后续的 baseDataId
       if (!unalignedMaterials.value[unalignedIndex].originalData) {
         unalignedMaterials.value[unalignedIndex].originalData = {}
       }
       unalignedMaterials.value[unalignedIndex].originalData.selectedBaseData = selected
-      
+
       console.log('物资选择完成:', {
         materialName: unalignedMaterials.value[unalignedIndex].requestName,
         selectedMaterial: selected,
         updatedItem: unalignedMaterials.value[unalignedIndex]
       })
     }
-    
+
     // 同时更新主表格数据
     const material = allMaterials.value.find((m) => m.id === currentEditingRow.value.id)
     if (material) {
@@ -604,7 +642,7 @@ watch(dbMaterialSearch, (newVal) => {
   if (searchTimeout) {
     clearTimeout(searchTimeout)
   }
-  
+
   // 设置新的定时器，300ms后执行搜索
   searchTimeout = setTimeout(() => {
     dbMaterialPageNum.value = 1 // 重置到第一页

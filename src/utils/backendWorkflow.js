@@ -109,7 +109,26 @@ async function processMessageBlock(messageBlock, { onMessage, onError, onComplet
           if (onMessage && typeof onMessage === 'function') {
             const parsedData = JSON.parse(message.data)
             if (parsedData && parsedData.length > 0) {
-              onMessage(parsedData[0]) // 传递数组的第一个元素
+              const messageData = parsedData[0]
+              // 检查是否包含 output 字段的新格式
+              if (messageData.content && typeof messageData.content === 'string') {
+                try {
+                  const contentData = JSON.parse(messageData.content)
+                  if (contentData.output) {
+                    // 新格式：content 是字符串，包含 output 字段
+                    onMessage({ content: contentData.output })
+                  } else {
+                    // 其他格式的字符串内容
+                    onMessage({ content: messageData.content })
+                  }
+                } catch (e) {
+                  // content 不是 JSON 格式，直接传递
+                  onMessage({ content: messageData.content })
+                }
+              } else {
+                // 原有格式：直接传递数组的第一个元素
+                onMessage(messageData)
+              }
             }
           }
           break
@@ -117,7 +136,24 @@ async function processMessageBlock(messageBlock, { onMessage, onError, onComplet
         case 'Error':
           if (onError && typeof onError === 'function') {
             const parsedData = JSON.parse(message.data)
-            onError(parsedData)
+            if (parsedData && parsedData.length > 0) {
+              const errorData = parsedData[0]
+              // 格式化错误信息以便更好地显示
+              if (errorData.error_message && errorData.error_code) {
+                const formattedError = {
+                  message: errorData.error_message,
+                  code: errorData.error_code,
+                  debug_url: errorData.debug_url,
+                  node_execute_uuid: errorData.node_execute_uuid
+                }
+                console.error('工作流执行错误:', formattedError)
+                onError(formattedError)
+              } else {
+                onError(errorData)
+              }
+            } else {
+              onError(parsedData)
+            }
           }
           break
 
@@ -203,7 +239,7 @@ export async function uploadFile(file) {
 export async function queryMaterialsApplyData(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryMaterialsApplyData',
+      url: '/materials/partya/queryMaterialsApplyData',
       method: 'get',
       params: params
     })
@@ -227,7 +263,7 @@ export async function queryMaterialsApplyData(params) {
 export async function queryActualUsage(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryActualUsage',
+      url: '/materials/partya/queryActualUsage',
       method: 'get',
       params: params
     })
@@ -250,7 +286,7 @@ export async function queryActualUsage(params) {
 export async function queryUnmatchedBalanceResult(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryUnmatchedBalanceResult',
+      url: '/materials/partya/queryUnmatchedBalanceResult',
       method: 'get',
       params: params
     })
@@ -274,7 +310,7 @@ export async function queryUnmatchedBalanceResult(params) {
 export async function queryBalanceResult(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryBalanceResult',
+      url: '/materials/partya/queryBalanceResult',
       method: 'get',
       params: params
     })
@@ -296,7 +332,7 @@ export async function queryBalanceResult(params) {
 export async function manualMatch(data) {
   try {
     const response = await request({
-      url: '/api/materials/partya/manualMatch',
+      url: '/materials/partya/manualMatch',
       method: 'post',
       data: data
     })

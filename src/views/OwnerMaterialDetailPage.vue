@@ -142,9 +142,11 @@ import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { queryBalanceResult } from '@/utils/backendWorkflow'
+import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 
 const router = useRouter()
 const route = useRoute()
+const ownerMaterialStore = useOwnerMaterialStore()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -222,7 +224,8 @@ const transformDataForTable = (data) => {
 const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSize.value) => {
   loading.value = true
   try {
-    const taskId = route.query.taskId
+    // 优先从store中获取taskId，如果获取不到则从URL中解析
+    const taskId = ownerMaterialStore.alignmentTask.taskId || route.query.taskId
     if (!taskId) {
       ElMessage.error('缺少 taskId，无法加载数据。')
       loading.value = false
@@ -318,7 +321,8 @@ const handleGenerateReport = () => {
   router.push({
     name: 'OwnerMaterialReport',
     query: {
-      taskId: route.query.taskId || route.query.taskDetailId,
+      taskId:
+        ownerMaterialStore.alignmentTask.taskId || route.query.taskId || route.query.taskDetailId,
       projectName: projectInfo.value.projectName,
       projectNumber: projectInfo.value.projectNumber
     }

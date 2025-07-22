@@ -293,7 +293,7 @@ const chatStore = useChatStore()
 const handleCustomButtonClick = (message, button) => {
   if (button.action === 'confirm-material-alignment' && button.data?.taskId) {
     router.push({
-      name: 'OwnerMaterialAlign',
+      name: 'owner-material-align',
       query: { taskId: button.data.taskId }
     })
   } else {
