@@ -45,11 +45,10 @@
         </el-table-column>
 
         <!-- 数据库物资信息列 -->
-        <el-table-column prop="dbCode" label="数据库物资编码" min-width="140" />
+        <el-table-column prop="dbCode" label="数据库物资编码" min-width="180" />
         <el-table-column prop="dbName" label="数据库物资名称" min-width="160" />
-        <el-table-column prop="dbSpec" label="数据库规格型号" min-width="140" />
+        <el-table-column prop="dbSpec" label="数据库规格型号" min-width="160" />
         <el-table-column prop="dbUnit" label="数据库单位" min-width="80" />
-        <el-table-column prop="dbQuantity" label="数据库数量" min-width="100" />
       </el-table>
     </div>
 
@@ -273,9 +272,9 @@ const transformAndSetData = (data) => {
       matchScore: item.score,
       // 数据库物资信息 (如果已匹配)
       dbCode: item.baseDataId || '/',
-      dbName: aligned ? item.materialName : '/', // 匹配后显示物资名称
-      dbSpec: aligned ? item.specificationModel : '/',
-      dbUnit: aligned ? item.unit : '/',
+      dbName: aligned ? item.baseMaterialName : '/', // 匹配后显示物资名称
+      dbSpec: aligned ? item.baseSpecificationModel : '/',
+      dbUnit: aligned ? item.baseUnit : '/',
       dbQuantity: aligned ? item.quantity : '/',
       // 原始数据，用于后续操作
       originalData: item
