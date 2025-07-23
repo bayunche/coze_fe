@@ -366,26 +366,8 @@ export async function queryTaskLinkProjectInfo(taskId) {
     })
     console.log('查询任务关联的项目信息返回:', response)
     // 处理返回体结构 {code,  data, msg}
-    if (response && response.msg) {
-      // 检查data是否为字符串格式（逗号分隔）
-      if (typeof response.msg === 'string') {
-        const parts = response.msg.split(',')
-        if (parts.length >= 3) {
-          return {
-            id: parts[0] || null,
-            projectName: parts[1] || null,
-            projectCode: parts[2] || null,
-            engineeringName: parts[3] || null,
-            engineeringCode: parts[4] || null
-          }
-        } else {
-          console.warn('返回的字符串格式不正确:', response.data)
-          return null
-        }
-      } else {
-        // 如果不是字符串形式则按原来的获取逻辑（对象格式）
-        return response.data
-      }
+    if (response && response.code === 200 && response.data) {
+      return response.data // 返回实际的项目信息
     } else if (response && response.success && response.data === null) {
       // 未找到项目信息的情况
       return null

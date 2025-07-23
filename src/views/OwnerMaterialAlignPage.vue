@@ -13,35 +13,29 @@
     </div>
 
     <div class="main-table-container">
-      <el-table
-        :data="paginatedMaterials"
-        border
-        stripe
-        class="material-table"
-        height="100%"
-      >
-      <!-- 领料单物资信息列 -->
-      <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
-      <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
-      <el-table-column prop="requestSpec" label="领料单规格型号" min-width="140" />
-      <el-table-column prop="requestUnit" label="领料单单位" min-width="120" />
-      <el-table-column prop="requestQuantity" label="领料单数量" min-width="100" />
+      <el-table :data="paginatedMaterials" border stripe class="material-table" height="100%">
+        <!-- 领料单物资信息列 -->
+        <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
+        <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
+        <el-table-column prop="requestSpec" label="领料单规格型号" min-width="140" />
+        <el-table-column prop="requestUnit" label="领料单单位" min-width="120" />
+        <el-table-column prop="requestQuantity" label="领料单数量" min-width="100" />
 
-      <!-- 拉平状态列 -->
-      <el-table-column label="拉平状态" min-width="140">
-        <template #default="{ row }">
-          <el-tag :type="row.aligned ? 'success' : 'danger'">
-            {{ row.aligned ? '已拉平' : '未拉平待人工介入' }}
-          </el-tag>
-        </template>
-      </el-table-column>
+        <!-- 拉平状态列 -->
+        <el-table-column label="拉平状态" min-width="140">
+          <template #default="{ row }">
+            <el-tag :type="row.aligned ? 'success' : 'danger'">
+              {{ row.aligned ? '已拉平' : '未拉平待人工介入' }}
+            </el-tag>
+          </template>
+        </el-table-column>
 
-      <!-- 数据库物资信息列 -->
-      <el-table-column prop="dbCode" label="数据库物资编码" min-width="140" />
-      <el-table-column prop="dbName" label="数据库物资名称" min-width="160" />
-      <el-table-column prop="dbSpec" label="数据库规格型号" min-width="140" />
-      <el-table-column prop="dbUnit" label="数据库单位" min-width="80" />
-      <el-table-column prop="dbQuantity" label="数据库数量" min-width="100" />
+        <!-- 数据库物资信息列 -->
+        <el-table-column prop="dbCode" label="数据库物资编码" min-width="140" />
+        <el-table-column prop="dbName" label="数据库物资名称" min-width="160" />
+        <el-table-column prop="dbSpec" label="数据库规格型号" min-width="140" />
+        <el-table-column prop="dbUnit" label="数据库单位" min-width="80" />
+        <el-table-column prop="dbQuantity" label="数据库数量" min-width="100" />
       </el-table>
     </div>
 
@@ -77,36 +71,36 @@
           :row-class-name="getRowClassName"
           height="100%"
         >
-        <el-table-column type="index" label="序号" width="60" />
-        <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
-        <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
-        <el-table-column prop="requestSpec" label="领料单规格型号" min-width="140" />
-        <el-table-column prop="requestUnit" label="领料单位" min-width="100" />
-        <el-table-column prop="requestQuantity" label="领料数量" min-width="100" />
+          <el-table-column type="index" label="序号" width="60" />
+          <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
+          <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
+          <el-table-column prop="requestSpec" label="领料单规格型号" min-width="140" />
+          <el-table-column prop="requestUnit" label="领料单位" min-width="100" />
+          <el-table-column prop="requestQuantity" label="领料数量" min-width="100" />
 
-        <!-- 新增已选择物资信息列 -->
-        <el-table-column label="已选择物资" min-width="200">
-          <template #default="{ row }">
-            <div v-if="row.dbCode">
-              <div><span class="label">编码:</span> {{ row.dbCode }}</div>
-              <div><span class="label">名称:</span> {{ row.dbName }}</div>
-              <div><span class="label">规格:</span> {{ row.dbSpec }}</div>
-            </div>
-            <el-tag v-else type="danger" size="small">未选择</el-tag>
-          </template>
-        </el-table-column>
+          <!-- 新增已选择物资信息列 -->
+          <el-table-column label="已选择物资" min-width="200">
+            <template #default="{ row }">
+              <div v-if="row.dbCode">
+                <div><span class="label">编码:</span> {{ row.dbCode }}</div>
+                <div><span class="label">名称:</span> {{ row.dbName }}</div>
+                <div><span class="label">规格:</span> {{ row.dbSpec }}</div>
+              </div>
+              <el-tag v-else type="danger" size="small">未选择</el-tag>
+            </template>
+          </el-table-column>
 
-        <el-table-column label="操作" width="220">
-          <template #default="{ row, $index }">
-            <el-button
-              :type="row.dbCode ? 'success' : 'primary'"
-              size="small"
-              @click="handleSelectDbMaterial(row, $index)"
-            >
-              {{ row.dbCode ? '重新选择' : '选择数据库物资' }}
-            </el-button>
-          </template>
-        </el-table-column>
+          <el-table-column label="操作" width="220">
+            <template #default="{ row, $index }">
+              <el-button
+                :type="row.dbCode ? 'success' : 'primary'"
+                size="small"
+                @click="handleSelectDbMaterial(row, $index)"
+              >
+                {{ row.dbCode ? '重新选择' : '选择数据库物资' }}
+              </el-button>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
       <div class="dialog-footer-content">
@@ -337,7 +331,7 @@ const handleManualConfirmClick = async () => {
       manualConfirmCurrentPage.value = 1 // 重置弹窗分页
       showManualConfirmDialog.value = true
     } else {
-      ElMessage.success('所有物资均已对平！')
+      ElMessage.success('所有物资均已对平！请点击右下角保存物资信息按钮保存并重新解析。')
     }
   } catch (error) {
     console.error('加载未对平数据失败:', error)
