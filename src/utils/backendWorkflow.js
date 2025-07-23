@@ -331,10 +331,11 @@ export async function queryBalanceResult(params) {
 }
 
 /**
- * 人工匹配并更新对平状态
+ * 人工指定源物资匹配 (V2)
  * @param {object} data - 匹配数据
- * @param {string} data.balanceResultId - 对平结果记录的唯一ID
- * @param {string} data.baseDataId - 标准物料的唯一ID
+ * @param {string} data.sourceId - 要匹配的源记录ID
+ * @param {string} data.sourceType - 源记录的类型，必须是 'requisition' 或 'usage'
+ * @param {string} data.baseDataId - 要关联到的目标标准物料的ID
  * @returns {Promise<object>} - 后端返回的响应数据
  */
 export async function manualMatch(data) {
@@ -348,6 +349,52 @@ export async function manualMatch(data) {
   } catch (error) {
     console.error('人工匹配并更新对平状态失败:', error)
     ElMessage.error(error.message || '人工匹配并更新对平状态失败')
+    throw error
+  }
+}
+
+/**
+ * 查询详细对平结果 (V2)
+ * @param {object} params - 查询参数
+ * @param {string} params.taskId - 要查询的任务ID
+ * @param {number} [params.page=0] - 页码，从0开始
+ * @param {number} [params.size=10] - 每页显示的记录数
+ * @returns {Promise<object>} - 后端返回的分页数据
+ */
+export async function queryBalanceDetails(params) {
+  try {
+    const response = await request({
+      url: '/materials/partya/queryBalanceDetails',
+      method: 'get',
+      params: params
+    })
+    return response
+  } catch (error) {
+    console.error('查询详细对平结果失败:', error)
+    ElMessage.error(error.message || '查询详细对平结果失败')
+    throw error
+  }
+}
+
+/**
+ * 查询物资匹配状态
+ * @param {object} params - 查询参数
+ * @param {string} params.taskId - 要查询的任务ID
+ * @param {number} [params.page=0] - 页码，从0开始
+ * @param {number} [params.size=10] - 每页显示的记录数
+ * @returns {Promise<object>} - 后端返回的分页数据
+ */
+export async function queryMaterialMatchStatus(params) {
+  try {
+    const response = await request({
+      url: '/materials/partya/queryMaterialMatchStatus',
+      method: 'get',
+      params: params
+    })
+    return response
+  } catch (error) {
+    console.error('查询物资匹配状态失败:', error)
+    ElMessage.error(error.message || '查询物资匹配状态失败')
     throw error
   }
 }

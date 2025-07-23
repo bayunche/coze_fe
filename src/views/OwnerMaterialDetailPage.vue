@@ -18,16 +18,14 @@
 
     <el-table
       :data="tableData"
-      :span-method="arraySpanMethod"
-      :row-class-name="tableRowClassName"
       style="width: 100%; margin-top: 20px"
       border
       stripe
       class="material-table"
     >
       <el-table-column label="序号" width="60">
-        <template #default="{ row, $index }">
-          <span v-if="shouldShowIndex(row, $index)">{{ getMergedIndex($index) }}</span>
+        <template #default="{ $index }">
+          {{ (currentPage - 1) * pageSize + $index + 1 }}
         </template>
       </el-table-column>
       <el-table-column prop="materialName" label="物资名称" min-width="150">
@@ -106,14 +104,27 @@
           <el-input v-else v-model="scope.row.actualUnit"></el-input>
         </template>
       </el-table-column>
-      <el-table-column prop="actualApplicationQuantity" label="实际领料单申领数量" min-width="180">
+      <el-table-column prop="actualApplicationQuantity" label="交易数量" min-width="120">
         <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.actualApplicationQuantity || '/' }}</span>
+          <span v-if="!scope.row.editing">
+            <el-tag :type="scope.row.actualApplicationQuantity >= 0 ? 'success' : 'warning'">
+              {{ scope.row.actualApplicationQuantity || '/' }}
+              <span style="margin-left: 4px">{{
+                scope.row.actualApplicationQuantity >= 0 ? '(用料)' : '(退料)'
+              }}</span>
+            </el-tag>
+          </span>
           <el-input
             v-else
             v-model.number="scope.row.actualApplicationQuantity"
             type="number"
           ></el-input>
+        </template>
+      </el-table-column>
+      <el-table-column prop="transactionCount" label="关联交易数" min-width="120">
+        <template #default="scope">
+          <span v-if="!scope.row.editing">{{ scope.row.transactionCount || '/' }}</span>
+          <el-input v-else v-model.number="scope.row.transactionCount" type="number"></el-input>
         </template>
       </el-table-column>
     </el-table>
@@ -141,7 +152,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
-import { queryBalanceResult, queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
+import { queryBalanceDetails, queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
 import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
 
 const router = useRouter()
@@ -152,8 +163,6 @@ const loading = ref(false)
 const saving = ref(false)
 const tableData = ref([])
 const originalData = ref([]) // 用于存储原始数据，以便进行diff
-const spanArr = ref([]) // 用于存储合并单元格的信息
-const pos = ref(0) // 用于辅助计算合并单元格
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -164,58 +173,36 @@ const projectInfo = ref({
   projectNumber: '项目编号占位'
 })
 
-// 转换API数据为表格需要的扁平化结构
+// 转换新API数据为表格需要的结构
 const transformDataForTable = (data) => {
-  const flattenedData = []
-  data.forEach((balanceItem) => {
-    const baseInfo = {
-      id: balanceItem.id,
-      materialName: balanceItem.materialName,
-      specificationModel: balanceItem.specificationModel,
-      unit: balanceItem.unit,
-      requisitionQuantity: balanceItem.requisitionQuantity,
-      matchingStatus: balanceItem.balanceStatus
-    }
-
-    // 如果有 sourceRequisitions 数据，为每个申领记录创建一行
-    if (balanceItem.sourceRequisitions && balanceItem.sourceRequisitions.length > 0) {
-      balanceItem.sourceRequisitions.forEach((requisition, index) => {
-        flattenedData.push({
-          ...baseInfo,
-          // 为每个子项创建唯一ID，防止key冲突
-          rowId: `${balanceItem.id}-${index}`,
-          // 标记是否为合并组的第一个子项
-          isFirstChild: index === 0,
-          // 从 sourceRequisitions 获取基础物资信息
-          materialCategoryCode: requisition.materialCategoryCode || '/',
-          statisticalQuantity: requisition.statisticalQuantity || '/',
-          supplier: requisition.supplier || '/',
-          // 实际领料单相关信息也从 sourceRequisitions 获取
-          actualSource: '申领单', // 数据来源固定为申领单
-          actualMaterialName: requisition.materialName || '/',
-          actualSpecifications: requisition.specificationModel || '/',
-          actualUnit: requisition.unit || '/',
-          actualApplicationQuantity: requisition.requisitionQuantity || '/'
-        })
-      })
-    } else {
-      // 如果没有申领数据，显示一行基础信息
-      flattenedData.push({
-        ...baseInfo,
-        rowId: `${balanceItem.id}-0`,
-        isFirstChild: true,
-        materialCategoryCode: '/',
-        statisticalQuantity: '/',
-        supplier: '/',
-        actualSource: '/',
-        actualMaterialName: '/',
-        actualSpecifications: '/',
-        actualUnit: '/',
-        actualApplicationQuantity: '/'
-      })
+  return data.map((item, index) => {
+    return {
+      id: item.detailId, // 使用 detailId 作为唯一标识
+      rowId: item.detailId,
+      isFirstChild: true, // 新API每条记录都是独立的
+      // 基础物资信息（来自标准物料库）
+      materialName: item.baseMaterialName || '/',
+      materialCategoryCode: item.baseDataId || '/', // 使用 baseDataId 作为编码
+      specificationModel: item.baseSpecificationModel || '/',
+      unit: item.baseUnit || '/',
+      // 申领相关信息
+      requisitionQuantity: item.requisitionQuantity || 0,
+      statisticalQuantity: item.statisticalQuantity || 0,
+      supplier: item.supplierName || '/',
+      // 对平状态
+      matchingStatus: item.finalBalanceStatus,
+      // 实际用料信息
+      actualSource: item.dataSourcePath || '/',
+      actualMaterialName: item.usageMaterialName || '/',
+      actualSpecifications: item.usageSpecificationModel || '/',
+      actualUnit: item.baseUnit || '/', // 用料单位使用标准单位
+      actualApplicationQuantity: item.transactionQuantity || 0,
+      // 额外信息
+      transactionCount: item.transactionCountForSummary || 0,
+      // 保存原始数据
+      originalData: item
     }
   })
-  return flattenedData
 }
 
 // 获取数据
@@ -230,14 +217,14 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
       return
     }
 
-    const response = await queryBalanceResult({
+    const response = await queryBalanceDetails({
       taskId,
       page: page - 1, // 后端分页从0开始
       size
     })
 
-    if (response && response.content && response.content.length > 0) {
-      const flattenedData = transformDataForTable(response.content)
+    if (response && response.data && response.data.content && response.data.content.length > 0) {
+      const flattenedData = transformDataForTable(response.data.content)
       tableData.value = flattenedData.map((item) => ({
         ...item,
         original: { ...item },
@@ -245,8 +232,9 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
         isMergedStart: false
       }))
       originalData.value = flattenedData.map((item) => ({ ...item }))
-      totalDetails.value = response.totalElements || 0
-      getSpanArr(tableData.value) // 计算合并信息
+      totalDetails.value = response.data.totalElements || 0
+      // 新API每条记录都是独立的，不需要合并单元格
+      // getSpanArr(tableData.value) // 计算合并信息
       ElMessage.success('甲供物资详情数据加载成功！')
     } else {
       tableData.value = []
@@ -375,31 +363,7 @@ const handleSave = async () => {
   }
 }
 
-// 单元格合并方法
-const arraySpanMethod = ({ row, column, rowIndex, columnIndex }) => {
-  // 需要合并的列的 prop
-  const mergeColumns = [
-    'materialName',
-    'specificationModel',
-    'unit',
-    'requisitionQuantity',
-    'matchingStatus'
-  ]
-
-  // 如果是序号列 (columnIndex === 0) 或者需要合并的列
-  if (columnIndex === 0 || mergeColumns.includes(column.property)) {
-    const _row = spanArr.value[rowIndex]
-    const _col = _row > 0 ? 1 : 0
-    return {
-      rowspan: _row,
-      colspan: _col
-    }
-  }
-  return {
-    rowspan: 1,
-    colspan: 1
-  }
-}
+// 单元格合并方法已移除 - 新API提供独立的交易记录，无需合并
 
 // 根据对平情况返回ElTag的type
 const getMatchingStatusTagType = (status) => {
@@ -460,68 +424,17 @@ const handleBack = () => {
 onMounted(async () => {
   // 优先从路由获取taskId
   const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
-  
+
   // 先获取项目信息
   if (taskId) {
     await loadProjectInfo(taskId)
   }
-  
+
   // 再获取详情数据
   fetchOwnerMaterialDetail()
 })
 
-// 新增方法：为行添加类名
-const tableRowClassName = ({ row, rowIndex }) => {
-  if (row.isMergedStart) {
-    return 'merged-group-start'
-  } else if (spanArr.value[rowIndex] === 0) {
-    // 如果是合并组的一部分，但不是起始行
-    return 'merged-group-part'
-  }
-  return ''
-}
-
-// 新增方法：计算合并单元格的 spanArr
-const getSpanArr = (data) => {
-  spanArr.value = []
-  pos.value = 0
-  for (let i = 0; i < data.length; i++) {
-    if (i === 0) {
-      spanArr.value.push(1)
-      pos.value = 0
-      data[i].isMergedStart = true // 标记为合并起始行
-    } else {
-      // 判断当前行与上一行的合并条件是否满足
-      if (
-        // 使用 id 来判断是否属于同一个基础物资组
-        data[i].id === data[i - 1].id
-      ) {
-        spanArr.value[pos.value] += 1
-        spanArr.value.push(0)
-        data[i].isMergedStart = false // 非起始行
-      } else {
-        spanArr.value.push(1)
-        pos.value = i
-        data[i].isMergedStart = true // 标记为合并起始行
-      }
-    }
-  }
-}
-
-// 新增方法：判断序号是否显示
-const shouldShowIndex = (row, index) => {
-  return spanArr.value[index] !== 0
-}
-
-// 新增方法：获取合并后的序号
-const getMergedIndex = (index) => {
-  // 序号应该基于当前页的起始序号
-  return (
-    (currentPage.value - 1) * pageSize.value +
-    spanArr.value.slice(0, index).filter((val) => val !== 0).length +
-    1
-  )
-}
+// 合并相关方法已移除 - 新API提供独立的交易记录，无需合并单元格
 </script>
 
 <style scoped>
@@ -664,33 +577,8 @@ const getMergedIndex = (index) => {
     box-shadow 0.3s ease;
 }
 
-.material-table :deep(.el-table__row.merged-group-start) {
-  background-color: rgba(79, 70, 229, 0.02) !important;
-  border-top: 2px solid rgba(79, 70, 229, 0.15) !important;
-}
-
-.material-table :deep(.el-table__row.merged-group-part) {
-  background-color: rgba(79, 70, 229, 0.02) !important;
-}
-
-/* 确保条纹背景和hover效果在合并行上也能正常工作 */
-.material-table :deep(.el-table__row.el-table__row--striped.merged-group-start),
-.material-table :deep(.el-table__row.el-table__row--striped.merged-group-part) {
-  background-color: rgba(79, 70, 229, 0.02) !important;
-}
-
-.material-table :deep(.el-table__row.merged-group-start:hover),
-.material-table :deep(.el-table__row.merged-group-part:hover) {
-  background-color: rgba(79, 70, 229, 0.04) !important;
-}
-
-/* 原始的条纹和hover效果 */
-.material-table
-  :deep(.el-table__row.el-table__row--striped:not(.merged-group-start):not(.merged-group-part)) {
-  background-color: #fcfcfc;
-}
-
-.material-table :deep(.el-table__row:hover:not(.merged-group-start):not(.merged-group-part)) {
+/* 合并行样式已移除 - 新API提供独立交易记录 */
+.material-table :deep(.el-table__row:hover) {
   background-color: rgba(79, 70, 229, 0.015) !important;
   box-shadow: 0 2px 8px rgba(79, 70, 229, 0.04);
 }

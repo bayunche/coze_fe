@@ -21,12 +21,26 @@
         <el-table-column prop="requestUnit" label="领料单单位" min-width="120" />
         <el-table-column prop="requestQuantity" label="领料单数量" min-width="100" />
 
-        <!-- 拉平状态列 -->
-        <el-table-column label="拉平状态" min-width="140">
+        <!-- 数据来源列 -->
+        <el-table-column label="数据来源" min-width="100">
           <template #default="{ row }">
-            <el-tag :type="row.aligned ? 'success' : 'danger'">
-              {{ row.aligned ? '已拉平' : '未拉平待人工介入' }}
+            <el-tag :type="row.originalData.sourceType === 'requisition' ? 'primary' : 'warning'" size="small">
+              {{ row.originalData.sourceType === 'requisition' ? '申领' : '用料' }}
             </el-tag>
+          </template>
+        </el-table-column>
+
+        <!-- 匹配状态列 -->
+        <el-table-column label="匹配状态" min-width="160">
+          <template #default="{ row }">
+            <div>
+              <el-tag :type="getMatchingTagType(row.matchedType)" size="small">
+                {{ getMatchingStatusText(row.matchedType) }}
+              </el-tag>
+              <div v-if="row.matchScore > 0" style="font-size: 12px; color: #666; margin-top: 2px">
+                匹配度: {{ row.matchScore }}%
+              </div>
+            </div>
           </template>
         </el-table-column>
 
@@ -150,7 +164,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
 import {
-  queryBalanceResult,
+  queryMaterialMatchStatus,
   queryUnmatchedBalanceResult,
   manualMatch
 } from '@/utils/backendWorkflow' // 导入接口
@@ -221,11 +235,11 @@ const fetchData = async () => {
       ElMessage.error('缺少任务ID，无法加载数据。')
       return
     }
-    // 注意：这里假设一次性获取所有数据，如果数据量大需要后端支持分页
-    const response = await queryBalanceResult({ taskId, page: 0, size: 1000 }) // 获取足够多的数据
+    // 使用新的物资匹配状态查询API
+    const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 }) // 获取足够多的数据
     console.log('获取到的数据:', response)
-    if (response && response.content) {
-      transformAndSetData(response.content)
+    if (response && response.data && response.data.content) {
+      transformAndSetData(response.data.content)
       total.value = allMaterials.value.length
       ElMessage.success('数据加载成功！')
     } else {
@@ -241,31 +255,28 @@ const fetchData = async () => {
 
 const transformAndSetData = (data) => {
   const transformed = data.map((item) => {
-    const aligned = item.balanceStatus !== BalanceStatusEnum.UNMATCHED
-    console.log('拉平状态', aligned)
-    console.log('对平状态', item.balanceStatus)
-    // 假设申领数据和实际使用数据都只取第一个作为代表
-    const requisition =
-      item.sourceRequisitions && item.sourceRequisitions[0] ? item.sourceRequisitions[0] : {}
-    const usage = item.sourceUsages && item.sourceUsages[0] ? item.sourceUsages[0] : {}
-
+    // 根据 matchedType 判断匹配状态：0=未匹配, 1=精确匹配, 2=相似匹配, 3=历史匹配, 4=人工指定
+    const aligned = item.matchedType > 0 && item.baseDataId !== null
+    console.log('匹配状态', aligned, '匹配类型', item.matchedType)
+    
     return {
-      id: item.id,
-      // 领料单信息 (来自申领数据)
-      requestCode: requisition.materialCategoryCode || '/',
-      requestName: requisition.materialName || item.materialName, // 优先用申领的，其次用对平结果的
-      requestSpec: requisition.specificationModel || item.specificationModel,
-      requestUnit: requisition.unit || item.unit,
-      requestQuantity: requisition.requisitionQuantity || item.requisitionQuantity,
-      // 拉平状态
+      id: item.sourceId, // 使用 sourceId 作为唯一标识
+      // 领料单信息 (直接来自API响应)
+      requestCode: item.taskDetailId || item.sourceId, // 使用 taskDetailId 作为编码
+      requestName: item.materialName,
+      requestSpec: item.specificationModel,
+      requestUnit: item.unit,
+      requestQuantity: item.quantity,
+      // 匹配状态
       aligned: aligned,
-      balanceStatus: item.balanceStatus,
-      // 数据库物资信息 (来自实际使用数据或对平结果)
-      dbCode: usage.baseDataId || item.baseDataId || '/',
-      dbName: usage.materialName || item.materialName,
-      dbSpec: usage.specificationModel || item.specificationModel,
-      dbUnit: usage.unit || item.unit,
-      dbQuantity: usage.useCount || item.actualUsageQuantity,
+      matchedType: item.matchedType,
+      matchScore: item.score,
+      // 数据库物资信息 (如果已匹配)
+      dbCode: item.baseDataId || '/',
+      dbName: aligned ? item.materialName : '/', // 匹配后显示物资名称
+      dbSpec: aligned ? item.specificationModel : '/',
+      dbUnit: aligned ? item.unit : '/',
+      dbQuantity: aligned ? item.quantity : '/',
       // 原始数据，用于后续操作
       originalData: item
     }
@@ -309,29 +320,25 @@ const handleManualConfirmClick = async () => {
     }
     const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1000 })
     if (response && response.data && response.data.content && response.data.content.length > 0) {
-      // 转换数据以适应弹窗表格，使用新的响应格式
+      // 转换数据以适应弹窗表格，使用新的 queryUnmatchedSourceMaterialAPI 响应格式
       unalignedMaterials.value = response.data.content.map((item) => {
-        // 获取第一个申领信息作为基础数据
-        const firstRequisition =
-          item.sourceRequisitions && item.sourceRequisitions[0] ? item.sourceRequisitions[0] : {}
-
         return {
-          id: item.id,
-          requestCode: firstRequisition.materialCategoryCode || item.taskDetailId, // 优先使用物资分类编码
-          requestName: firstRequisition.materialName || item.materialName,
-          requestSpec: firstRequisition.specificationModel || item.specificationModel,
-          requestUnit: firstRequisition.unit || item.unit,
-          requestQuantity: firstRequisition.requisitionQuantity || item.requisitionQuantity,
+          id: item.sourceId, // 使用 sourceId 作为唯一标识
+          requestCode: item.taskDetailId || item.sourceId, // 使用 taskDetailId 或 sourceId
+          requestName: item.materialName,
+          requestSpec: item.specificationModel,
+          requestUnit: item.unit,
+          requestQuantity: item.quantity,
           dbCode: null, // 初始化为空
           dbName: null,
           dbSpec: null,
-          originalData: item
+          originalData: item // 保存原始 API 响应数据
         }
       })
       manualConfirmCurrentPage.value = 1 // 重置弹窗分页
       showManualConfirmDialog.value = true
     } else {
-      ElMessage.success('所有物资均已对平！请点击右下角保存物资信息按钮保存并重新解析。')
+      ElMessage.success('所有物资均已匹配！请点击右下角保存物资信息按钮保存并重新解析。')
     }
   } catch (error) {
     console.error('加载未对平数据失败:', error)
@@ -477,9 +484,9 @@ const fetchDbMaterialList = async (
 // 保存对平物资信息
 async function handleSaveMaterial() {
   try {
-    // 检查是否有需要保存的未对平物资
+    // 检查是否有需要保存的未匹配物资
     const materialsToSave = unalignedMaterials.value.filter(
-      (material) => material.dbCode && material.originalData && material.originalData.id
+      (material) => material.dbCode && material.originalData && material.originalData.sourceId
     )
 
     if (materialsToSave.length === 0) {
@@ -511,13 +518,36 @@ async function handleSaveMaterial() {
       console.log(`正在保存第 ${i + 1}/${materialsToSave.length} 个物资:`, material.requestName)
       console.log('原始数据:', material.originalData)
       try {
-        // 调用人工匹配API
+        // 验证必需的数据
+        if (!material.originalData.sourceId) {
+          throw new Error('缺少源记录ID (sourceId)')
+        }
+        if (!material.originalData.sourceType) {
+          throw new Error('缺少源记录类型 (sourceType)')
+        }
+        if (!['requisition', 'usage'].includes(material.originalData.sourceType)) {
+          throw new Error(
+            `无效的源记录类型: ${material.originalData.sourceType}，必须是 'requisition' 或 'usage'`
+          )
+        }
+
+        // 调用人工匹配API - 使用新的 manualMatchSourceAPI 格式
+        const selectedMaterial = material.originalData.selectedBaseData
+        const baseDataId =
+          selectedMaterial?.originalData?.m_id ||
+          selectedMaterial?.originalData?.p_id ||
+          selectedMaterial?.id ||
+          selectedMaterial?.code ||
+          material.dbCode
+
+        if (!baseDataId) {
+          throw new Error('无法获取标准物料ID，请重新选择物资')
+        }
+
         const matchData = {
-          balanceResultId: material.originalData.id,
-          baseDataId:
-            material.originalData.selectedBaseData.originalData?.m_id ||
-            material.originalData.selectedBaseData?.code ||
-            material.dbCode
+          sourceId: material.originalData.sourceId,
+          sourceType: material.originalData.sourceType,
+          baseDataId: baseDataId
         }
 
         console.log(`保存第 ${i + 1}/${materialsToSave.length} 个物资匹配:`, {
@@ -525,8 +555,15 @@ async function handleSaveMaterial() {
           matchData
         })
 
-        await manualMatch(matchData)
-        successCount++
+        const response = await manualMatch(matchData)
+
+        // 检查API响应状态
+        if (response && response.code === 200) {
+          successCount++
+          console.log(`物资 "${material.requestName}" 匹配成功:`, response.msg)
+        } else {
+          throw new Error(response?.msg || '匹配失败，未知错误')
+        }
 
         // 更新本地状态
         const index = unalignedMaterials.value.findIndex((item) => item.id === material.id)
@@ -584,6 +621,42 @@ async function handleSaveMaterial() {
       console.error('保存物资匹配信息失败:', error)
       ElMessage.error(`保存物资匹配信息失败: ${error.message}`)
     }
+  }
+}
+
+// 根据匹配类型返回ElTag的type
+const getMatchingTagType = (matchedType) => {
+  switch (matchedType) {
+    case 0:
+      return 'danger' // 红色 - 未匹配
+    case 1:
+      return 'success' // 绿色 - 精确匹配
+    case 2:
+      return 'warning' // 黄色 - 相似匹配
+    case 3:
+      return 'info' // 蓝色 - 历史匹配
+    case 4:
+      return 'success' // 绿色 - 人工指定
+    default:
+      return 'danger'
+  }
+}
+
+// 根据匹配类型返回显示文本
+const getMatchingStatusText = (matchedType) => {
+  switch (matchedType) {
+    case 0:
+      return '未匹配'
+    case 1:
+      return '精确匹配'
+    case 2:
+      return '相似匹配'
+    case 3:
+      return '历史匹配'
+    case 4:
+      return '人工指定'
+    default:
+      return '未知状态'
   }
 }
 
@@ -668,11 +741,11 @@ async function checkAllAligned() {
       return false // 缺少taskId，无法继续
     }
     const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1 }) // 只查询1条即可判断
-    // 如果 content 存在且长度大于0，说明有未拉平的，返回 false
+    // 如果 content 存在且长度大于0，说明有未匹配的物资，返回 false
     if (response && response.data && response.data.content && response.data.content.length > 0) {
       return false
     }
-    // 否则，说明所有物资都已拉平，返回 true
+    // 否则，说明所有物资都已匹配，返回 true
     return true
   } catch (error) {
     console.error('检查对平状态失败:', error)
@@ -687,7 +760,7 @@ async function handleSaveClick() {
   try {
     const isAligned = await checkAllAligned()
     if (!isAligned) {
-      await ElMessageBox.alert('存在未拉平的物资信息，请先完成所有物资拉平操作', '无法保存', {
+      await ElMessageBox.alert('存在未匹配的物资信息，请先完成所有物资匹配操作', '无法保存', {
         confirmButtonText: '确定',
         type: 'warning'
       })
@@ -931,10 +1004,6 @@ async function handleSaveClick() {
 .card-item .value:hover {
   background-color: rgba(0, 123, 255, 0.08);
   box-shadow: inset 0 0 8px rgba(0, 123, 255, 0.2);
-}
-
-.material-table {
-  /* 样式已移动到 main-table-container */
 }
 
 .material-table :deep(.el-table__header-wrapper th) {
