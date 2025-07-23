@@ -631,7 +631,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             if (parsedContent) {
               if (parsedContent.llmReport) {
                 // 处理 llmReport 格式的内容 - 不展示详细内容，替换为人工确认提示
-                const manualConfirmText = '存在无法匹配的物资信息，请人工介入\n'
+                const manualConfirmText = '\n存在无法匹配的物资信息，请人工介入\n'
                 chatStore.appendStreamContent(streamingAgentMessage.id, manualConfirmText)
                 finalResult.push(manualConfirmText)
               } else if (parsedContent.text) {
