@@ -177,8 +177,8 @@ const projectInfo = ref({
 const transformDataForTable = (data) => {
   return data.map((item, index) => {
     return {
-      id: item.detailId, // 使用 detailId 作为唯一标识
-      rowId: item.detailId,
+      id: item.id, // 使用 id 作为唯一标识
+      rowId: item.id,
       isFirstChild: true, // 新API每条记录都是独立的
       // 基础物资信息（来自标准物料库）
       materialName: item.baseMaterialName || '/',
