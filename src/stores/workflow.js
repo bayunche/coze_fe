@@ -630,22 +630,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 如果解析成功
             if (parsedContent) {
               if (parsedContent.llmReport) {
-                // 处理 llmReport 格式的内容
-                let reportText = '# 甲供物资解析报告\n\n'
-
-                Object.entries(parsedContent.llmReport).forEach(([category, content]) => {
-                  reportText += `## ${category}\n`
-                  if (typeof content === 'object') {
-                    Object.entries(content).forEach(([subcategory, details]) => {
-                      reportText += `**${subcategory}**: ${details}\n\n`
-                    })
-                  } else {
-                    reportText += `${content}\n\n`
-                  }
-                })
-
-                chatStore.appendStreamContent(streamingAgentMessage.id, reportText)
-                finalResult.push(reportText)
+                // 处理 llmReport 格式的内容 - 不展示详细内容，替换为人工确认提示
+                const manualConfirmText = '请人工确认物资信息'
+                chatStore.appendStreamContent(streamingAgentMessage.id, manualConfirmText)
+                finalResult.push(manualConfirmText)
               } else if (parsedContent.text) {
                 // 普通文本内容
                 chatStore.appendStreamContent(streamingAgentMessage.id, parsedContent.text)
