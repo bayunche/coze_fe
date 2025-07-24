@@ -2,14 +2,6 @@
   <div class="owner-material-align-page">
     <div class="page-header">
       <h2>物资信息确认</h2>
-      <el-button
-        type="primary"
-        @click="handleManualConfirmClick"
-        style="float: right; margin-left: 20px"
-        :loading="isLoading"
-      >
-        人工确认
-      </el-button>
     </div>
 
     <div class="main-table-container">
@@ -52,6 +44,44 @@
         <el-table-column prop="dbName" label="数据库物资名称" min-width="160" />
         <el-table-column prop="dbSpec" label="数据库规格型号" min-width="160" />
         <el-table-column prop="dbUnit" label="数据库单位" min-width="80" />
+
+        <!-- 已选择物资列 -->
+        <el-table-column label="已选择物资" min-width="200">
+          <template #default="{ row }">
+            <div v-if="row.selectedMaterial">
+              <div><span class="label">编码:</span> {{ row.selectedMaterial.code }}</div>
+              <div><span class="label">名称:</span> {{ row.selectedMaterial.material_name }}</div>
+              <div>
+                <span class="label">规格:</span> {{ row.selectedMaterial.specification_model }}
+              </div>
+            </div>
+            <el-tag v-else-if="!row.aligned" type="danger" size="small">未选择</el-tag>
+            <el-tag v-else type="success" size="small">已匹配</el-tag>
+          </template>
+        </el-table-column>
+
+        <!-- 操作列 -->
+        <el-table-column label="操作" width="180" v-if="hasUnalignedMaterials">
+          <template #default="{ row, $index }">
+            <el-button
+              v-if="!row.aligned"
+              :type="row.selectedMaterial ? 'success' : 'primary'"
+              size="small"
+              @click="handleSelectDbMaterial(row, $index)"
+            >
+              {{ row.selectedMaterial ? '重新选择' : '选择数据库物资' }}
+            </el-button>
+            <el-button
+              v-if="row.selectedMaterial && !row.aligned"
+              type="success"
+              size="small"
+              @click="handleSaveSingleMaterial(row)"
+              style="margin-left: 8px"
+            >
+              保存
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
     </div>
 
@@ -69,74 +99,6 @@
       />
     </div>
 
-    <el-dialog
-      v-model="showManualConfirmDialog"
-      title="未对平物资确认"
-      width="90%"
-      height="80vh"
-      :before-close="handleDialogClose"
-      v-loading="isLoading"
-      class="fixed-height-dialog"
-    >
-      <div class="dialog-table-container">
-        <el-table
-          :data="paginatedUnalignedMaterials"
-          border
-          stripe
-          class="manual-confirm-table"
-          :row-class-name="getRowClassName"
-          height="100%"
-        >
-          <el-table-column type="index" label="序号" width="60" />
-          <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
-          <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
-          <el-table-column prop="requestSpec" label="领料单规格型号" min-width="140" />
-          <el-table-column prop="requestUnit" label="领料单位" min-width="100" />
-          <el-table-column prop="requestQuantity" label="领料数量" min-width="100" />
-
-          <!-- 新增已选择物资信息列 -->
-          <el-table-column label="已选择物资" min-width="200">
-            <template #default="{ row }">
-              <div v-if="row.dbCode">
-                <div><span class="label">编码:</span> {{ row.dbCode }}</div>
-                <div><span class="label">名称:</span> {{ row.dbName }}</div>
-                <div><span class="label">规格:</span> {{ row.dbSpec }}</div>
-              </div>
-              <el-tag v-else type="danger" size="small">未选择</el-tag>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="操作" width="220">
-            <template #default="{ row, $index }">
-              <el-button
-                :type="row.dbCode ? 'success' : 'primary'"
-                size="small"
-                @click="handleSelectDbMaterial(row, $index)"
-              >
-                {{ row.dbCode ? '重新选择' : '选择数据库物资' }}
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </div>
-      <div class="dialog-footer-content">
-        <el-pagination
-          background
-          layout="total, sizes, prev, pager, next, jumper"
-          :total="unalignedMaterials.length"
-          :page-size="manualConfirmPageSize"
-          :page-sizes="[10, 15, 20, 50]"
-          :current-page="manualConfirmCurrentPage"
-          @current-change="handleManualConfirmPageChange"
-          @size-change="handleManualConfirmSizeChange"
-          class="modern-pagination dialog-pagination"
-        />
-      </div>
-      <template v-slot:footer>
-        <el-button @click="showManualConfirmDialog = false">关闭</el-button>
-        <el-button @click="handleSaveMaterial">保存对平物资信息</el-button>
-      </template>
-    </el-dialog>
     <!-- 引入数据库物资选择弹窗 -->
     <MaterialSelectionDialog
       v-model:modelValue="showDbMaterialDialog"
@@ -185,7 +147,6 @@ const cozeWorkflowService = new CozeWorkflowService()
 
 // --- 状态和数据管理 ---
 const allMaterials = ref([]) // 存储从后端获取的所有数据
-const unalignedMaterials = ref([]) // 存储需要手动对平的数据
 const isLoading = ref(false)
 const isSaving = ref(false)
 
@@ -200,14 +161,9 @@ const paginatedMaterials = computed(() => {
   return allMaterials.value.slice(start, end)
 })
 
-// --- 弹窗相关 ---
-const showManualConfirmDialog = ref(false)
-const manualConfirmPageSize = ref(15)
-const manualConfirmCurrentPage = ref(1)
-const paginatedUnalignedMaterials = computed(() => {
-  const start = (manualConfirmCurrentPage.value - 1) * manualConfirmPageSize.value
-  const end = start + manualConfirmPageSize.value
-  return unalignedMaterials.value.slice(start, end)
+// 计算是否有未对平的物资
+const hasUnalignedMaterials = computed(() => {
+  return allMaterials.value.some((material) => !material.aligned)
 })
 
 // --- 数据库物资选择弹窗相关 ---
@@ -280,13 +236,14 @@ const transformAndSetData = (data) => {
       dbSpec: aligned ? item.baseSpecificationModel : '/',
       dbUnit: aligned ? item.baseUnit : '/',
       dbQuantity: aligned ? item.quantity : '/',
+      // 选择的物资信息
+      selectedMaterial: null,
       // 原始数据，用于后续操作
       originalData: item
     }
   })
 
   allMaterials.value = transformed
-  unalignedMaterials.value = transformed.filter((item) => !item.aligned)
 }
 
 onMounted(() => {
@@ -303,63 +260,6 @@ function handleSizeChange(size) {
   currentPage.value = 1
 }
 
-// 新增行样式方法
-const getRowClassName = ({ row }) => {
-  return row.dbCode && row.dbCode !== '/' ? 'selected-row' : ''
-}
-
-function handleDialogClose(done) {
-  showManualConfirmDialog.value = false
-  done()
-}
-
-const handleManualConfirmClick = async () => {
-  isLoading.value = true
-  try {
-    const taskId = route.query.taskId
-    if (!taskId) {
-      ElMessage.error('缺少任务ID，无法加载数据。')
-      return
-    }
-    const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1000 })
-    if (response && response.data && response.data.content && response.data.content.length > 0) {
-      // 转换数据以适应弹窗表格，使用新的 queryUnmatchedSourceMaterialAPI 响应格式
-      unalignedMaterials.value = response.data.content.map((item) => {
-        return {
-          id: item.sourceId, // 使用 sourceId 作为唯一标识
-          requestCode: item.taskDetailId || item.sourceId, // 使用 taskDetailId 或 sourceId
-          requestName: item.materialName,
-          requestSpec: item.specificationModel,
-          requestUnit: item.unit,
-          requestQuantity: item.quantity,
-          dbCode: null, // 初始化为空
-          dbName: null,
-          dbSpec: null,
-          originalData: item // 保存原始 API 响应数据
-        }
-      })
-      manualConfirmCurrentPage.value = 1 // 重置弹窗分页
-      showManualConfirmDialog.value = true
-    } else {
-      ElMessage.success('所有物资均已匹配！请点击右下角保存物资信息按钮保存并重新解析。')
-    }
-  } catch (error) {
-    console.error('加载未对平数据失败:', error)
-    ElMessage.error(`加载未对平数据失败: ${error.message}`)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-function handleManualConfirmPageChange(page) {
-  manualConfirmCurrentPage.value = page
-}
-
-function handleManualConfirmSizeChange(size) {
-  manualConfirmPageSize.value = size
-  manualConfirmCurrentPage.value = 1
-}
-
 // 选择数据库物资按钮事件
 function handleSelectDbMaterial(row, index) {
   console.log('点击选择数据库物资按钮', row)
@@ -372,6 +272,79 @@ function handleSelectDbMaterial(row, index) {
 
   showDbMaterialDialog.value = true
   console.log('弹窗状态:', showDbMaterialDialog.value)
+}
+
+// 保存单个物资匹配
+async function handleSaveSingleMaterial(row) {
+  if (!row.selectedMaterial) {
+    ElMessage.warning('请先选择数据库物资')
+    return
+  }
+
+  try {
+    // 验证必需的数据
+    if (!row.originalData.sourceId) {
+      throw new Error('缺少源记录ID (sourceId)')
+    }
+    if (!row.originalData.sourceType) {
+      throw new Error('缺少源记录类型 (sourceType)')
+    }
+    if (!['requisition', 'usage'].includes(row.originalData.sourceType)) {
+      throw new Error(
+        `无效的源记录类型: ${row.originalData.sourceType}，必须是 'requisition' 或 'usage'`
+      )
+    }
+
+    // 调用人工匹配API
+    const selectedMaterial = row.selectedMaterial
+    const baseDataId =
+      selectedMaterial?.originalData?.m_id ||
+      selectedMaterial?.originalData?.p_id ||
+      selectedMaterial?.id ||
+      selectedMaterial?.code
+
+    if (!baseDataId) {
+      throw new Error('无法获取标准物料ID，请重新选择物资')
+    }
+
+    const matchData = {
+      sourceId: row.originalData.sourceId,
+      sourceType: row.originalData.sourceType,
+      baseDataId: baseDataId
+    }
+
+    console.log('保存物资匹配:', {
+      materialName: row.requestName,
+      matchData
+    })
+
+    const response = await manualMatch(matchData)
+
+    // 检查API响应状态
+    if (response && response.code === 200) {
+      console.log(`物资 "${row.requestName}" 匹配成功:`, response.msg)
+
+      // 更新本地状态
+      const index = allMaterials.value.findIndex((item) => item.id === row.id)
+      if (index !== -1) {
+        allMaterials.value[index].aligned = true
+        allMaterials.value[index].dbCode = selectedMaterial.code || selectedMaterial.id
+        allMaterials.value[index].dbName = selectedMaterial.material_name
+        allMaterials.value[index].dbSpec = selectedMaterial.specification_model
+        allMaterials.value[index].dbUnit = selectedMaterial.unit
+        allMaterials.value[index].selectedMaterial = null // 清除选择状态
+      }
+
+      ElMessage.success(`物资 "${row.requestName}" 匹配成功！`)
+      // 刷新数据
+      fetchData()
+    } else {
+      throw new Error(response?.msg || '匹配失败，未知错误')
+    }
+  } catch (error) {
+    console.error(`保存物资 "${row.requestName}" 匹配信息失败:`, error)
+    ElMessage.error(`保存失败: ${error.message}`)
+  }
 }
 
 // 使用封装的基础物资信息查询方法
@@ -435,149 +408,6 @@ const fetchDbMaterialList = async (
   }
 }
 
-// 保存对平物资信息
-async function handleSaveMaterial() {
-  try {
-    // 检查是否有需要保存的未匹配物资
-    const materialsToSave = unalignedMaterials.value.filter(
-      (material) => material.dbCode && material.originalData && material.originalData.sourceId
-    )
-
-    if (materialsToSave.length === 0) {
-      ElMessage.warning('没有可保存的物资匹配信息')
-      return
-    }
-
-    // 确认保存操作
-    await ElMessageBox.confirm(
-      `确认保存 ${materialsToSave.length} 个物资的匹配信息？`,
-      '确认保存',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'info'
-      }
-    )
-
-    // 开始保存流程
-    let successCount = 0
-    let failureCount = 0
-    const errors = []
-
-    ElMessage.info(`开始保存 ${materialsToSave.length} 个物资匹配信息...`)
-
-    // 逐个调用人工匹配API
-    for (let i = 0; i < materialsToSave.length; i++) {
-      const material = materialsToSave[i]
-      console.log(`正在保存第 ${i + 1}/${materialsToSave.length} 个物资:`, material.requestName)
-      console.log('原始数据:', material.originalData)
-      try {
-        // 验证必需的数据
-        if (!material.originalData.sourceId) {
-          throw new Error('缺少源记录ID (sourceId)')
-        }
-        if (!material.originalData.sourceType) {
-          throw new Error('缺少源记录类型 (sourceType)')
-        }
-        if (!['requisition', 'usage'].includes(material.originalData.sourceType)) {
-          throw new Error(
-            `无效的源记录类型: ${material.originalData.sourceType}，必须是 'requisition' 或 'usage'`
-          )
-        }
-
-        // 调用人工匹配API - 使用新的 manualMatchSourceAPI 格式
-        const selectedMaterial = material.originalData.selectedBaseData
-        const baseDataId =
-          selectedMaterial?.originalData?.m_id ||
-          selectedMaterial?.originalData?.p_id ||
-          selectedMaterial?.id ||
-          selectedMaterial?.code ||
-          material.dbCode
-
-        if (!baseDataId) {
-          throw new Error('无法获取标准物料ID，请重新选择物资')
-        }
-
-        const matchData = {
-          sourceId: material.originalData.sourceId,
-          sourceType: material.originalData.sourceType,
-          baseDataId: baseDataId
-        }
-
-        console.log(`保存第 ${i + 1}/${materialsToSave.length} 个物资匹配:`, {
-          materialName: material.requestName,
-          matchData
-        })
-
-        const response = await manualMatch(matchData)
-
-        // 检查API响应状态
-        if (response && response.code === 200) {
-          successCount++
-          console.log(`物资 "${material.requestName}" 匹配成功:`, response.msg)
-        } else {
-          throw new Error(response?.msg || '匹配失败，未知错误')
-        }
-
-        // 更新本地状态
-        const index = unalignedMaterials.value.findIndex((item) => item.id === material.id)
-        if (index !== -1) {
-          unalignedMaterials.value[index].aligned = true
-        }
-
-        // 同时更新主表格数据
-        const mainIndex = allMaterials.value.findIndex((item) => item.id === material.id)
-        if (mainIndex !== -1) {
-          allMaterials.value[mainIndex].aligned = true
-        }
-      } catch (error) {
-        console.error(`保存物资 "${material.requestName}" 匹配信息失败:`, error)
-        failureCount++
-        errors.push(`${material.requestName}: ${error.message}`)
-      }
-    }
-
-    // 显示保存结果
-    if (successCount > 0 && failureCount === 0) {
-      ElMessage.success(`成功保存 ${successCount} 个物资匹配信息！`)
-      showManualConfirmDialog.value = false
-
-      // 重新加载主表格数据以同步最新状态
-      await fetchData()
-
-      // 保存成功后，标记需要进行重新解析，然后返回主页
-    } else if (successCount > 0 && failureCount > 0) {
-      ElMessage.warning(`保存完成：成功 ${successCount} 个，失败 ${failureCount} 个`)
-
-      // 显示详细错误信息
-      if (errors.length > 0) {
-        await ElMessageBox.alert(
-          errors.slice(0, 5).join('\n') + (errors.length > 5 ? '\n...' : ''),
-          '部分保存失败',
-          { confirmButtonText: '确定', type: 'warning' }
-        )
-      }
-    } else {
-      ElMessage.error(`所有物资匹配信息保存失败`)
-      if (errors.length > 0) {
-        await ElMessageBox.alert(
-          errors.slice(0, 5).join('\n') + (errors.length > 5 ? '\n...' : ''),
-          '保存失败',
-          { confirmButtonText: '确定', type: 'error' }
-        )
-      }
-    }
-  } catch (error) {
-    if (error === 'cancel') {
-      ElMessage.info('已取消保存操作')
-    } else if (error.message !== 'cancel') {
-      // 用户取消操作
-      console.error('保存物资匹配信息失败:', error)
-      ElMessage.error(`保存物资匹配信息失败: ${error.message}`)
-    }
-  }
-}
-
 // 根据匹配类型返回ElTag的type
 const getMatchingTagType = (matchedType) => {
   switch (matchedType) {
@@ -635,38 +465,15 @@ function handleDbMaterialSearch(searchTerm) {
 // 选择数据库物资后覆盖当前行
 function handleDbMaterialSelect(selected) {
   if (currentEditingRow.value && selected) {
-    // 找到未对平物资列表中的对应项
-    const unalignedIndex = unalignedMaterials.value.findIndex(
-      (m) => m.id === currentEditingRow.value.id
-    )
-    if (unalignedIndex !== -1) {
-      // 更新未对平物资列表中的数据
-      unalignedMaterials.value[unalignedIndex].dbCode = selected.code || selected.id
-      unalignedMaterials.value[unalignedIndex].dbName = selected.material_name
-      unalignedMaterials.value[unalignedIndex].dbSpec = selected.specification_model
-      unalignedMaterials.value[unalignedIndex].dbUnit = selected.unit
-
-      // 保存选择的物资的完整信息，用于后续的 baseDataId
-      if (!unalignedMaterials.value[unalignedIndex].originalData) {
-        unalignedMaterials.value[unalignedIndex].originalData = {}
-      }
-      unalignedMaterials.value[unalignedIndex].originalData.selectedBaseData = selected
-
-      console.log('物资选择完成:', {
-        materialName: unalignedMaterials.value[unalignedIndex].requestName,
-        selectedMaterial: selected,
-        updatedItem: unalignedMaterials.value[unalignedIndex]
-      })
-    }
-
-    // 同时更新主表格数据
+    // 更新主表格数据
     const material = allMaterials.value.find((m) => m.id === currentEditingRow.value.id)
     if (material) {
-      material.dbCode = selected.code || selected.id
-      material.dbName = selected.material_name
-      material.dbSpec = selected.specification_model
-      material.dbUnit = selected.unit
-      material.aligned = false // 仅选择了但尚未保存，所以还未对平
+      material.selectedMaterial = selected
+
+      console.log('物资选择完成:', {
+        materialName: material.requestName,
+        selectedMaterial: selected
+      })
     }
   }
   showDbMaterialDialog.value = false
@@ -744,70 +551,9 @@ async function handleSaveClick() {
 </script>
 
 <style scoped>
-/* 新增行样式 */
-.manual-confirm-table :deep(.selected-row) {
-  --el-table-tr-bg-color: #f0f9eb;
-}
-.manual-confirm-table :deep(.selected-row:hover) {
-  --el-table-tr-bg-color: #e1f3d8;
-}
 .label {
   color: #666;
   margin-right: 5px;
-}
-
-/* 固定高度弹窗样式 */
-.fixed-height-dialog :deep(.el-dialog) {
-  height: 70vh;
-  max-height: 800px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.fixed-height-dialog :deep(.el-dialog__body) {
-  flex: 1;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.dialog-table-container {
-  height: 40vh;
-  min-height: 300px;
-  max-height: 60vh;
-  padding: 20px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.dialog-table-container .manual-confirm-table {
-  flex: 1;
-  overflow: hidden;
-}
-
-.dialog-footer-content {
-  padding: 15px 20px 5px 20px;
-  border-top: 1px solid var(--border-color);
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.005), rgba(79, 70, 229, 0.002));
-  flex-shrink: 0;
-}
-
-.dialog-pagination {
-  margin-top: 0;
-  text-align: center;
-}
-
-/* 确保表格内容可以正确滚动 */
-.dialog-table-container :deep(.el-table) {
-  height: 100% !important;
-}
-
-.dialog-table-container :deep(.el-table__body-wrapper) {
-  max-height: calc(100% - 48px) !important;
-  overflow-y: auto !important;
 }
 
 /* 主表格容器样式 */
