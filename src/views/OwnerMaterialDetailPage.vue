@@ -60,16 +60,11 @@
       </el-table-column>
       <el-table-column prop="requisitionQuantity" label="统计后申领数" min-width="150">
         <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.requisitionQuantity || '/' }}</span>
+          <span v-if="!scope.row.editing">{{ scope.row.requisitionQuantity || '0' }}</span>
           <el-input v-else v-model.number="scope.row.requisitionQuantity" type="number"></el-input>
         </template>
       </el-table-column>
-      <el-table-column prop="supplier" label="供应商" min-width="150">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.supplier || '/' }}</span>
-          <el-input v-else v-model.number="scope.row.supplier" type="number"></el-input>
-        </template>
-      </el-table-column>
+   
       <el-table-column prop="matchingStatus" label="对平情况" min-width="120">
         <template #default="scope">
           <span v-if="!scope.row.editing">
@@ -104,7 +99,7 @@
           <el-input v-else v-model="scope.row.actualUnit"></el-input>
         </template>
       </el-table-column>
-      <el-table-column prop="actualApplicationQuantity" label="交易数量" min-width="120">
+      <el-table-column prop="actualApplicationQuantity" label="领退料数量" min-width="120">
         <template #default="scope">
           <span v-if="!scope.row.editing">
             <el-tag :type="scope.row.actualApplicationQuantity >= 0 ? 'success' : 'warning'">
@@ -121,7 +116,7 @@
           ></el-input>
         </template>
       </el-table-column>
-      <el-table-column prop="transactionCount" label="关联交易数" min-width="120">
+      <el-table-column prop="transactionCount" label="关联领退料数" min-width="120">
         <template #default="scope">
           <span v-if="!scope.row.editing">{{ scope.row.transactionCount || '/' }}</span>
           <el-input v-else v-model.number="scope.row.transactionCount" type="number"></el-input>
