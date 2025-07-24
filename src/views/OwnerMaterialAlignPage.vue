@@ -4,13 +4,30 @@
       <h2>物资信息确认</h2>
     </div>
 
+    <!-- 新增筛选区域 -->
+    <div class="filter-container">
+      <el-select
+        v-model="selectedMatchStatus"
+        placeholder="筛选匹配状态"
+        clearable
+        style="width: 200px"
+      >
+        <el-option label="全部" :value="null" />
+        <el-option label="未匹配" :value="0" />
+        <el-option label="精确匹配" :value="1" />
+        <el-option label="相似匹配" :value="2" />
+        <el-option label="历史匹配" :value="3" />
+        <el-option label="人工指定" :value="4" />
+      </el-select>
+    </div>
+
     <div class="main-table-container">
       <el-table :data="paginatedMaterials" border stripe class="material-table" height="100%">
         <!-- 领料单物资信息列 -->
         <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
         <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
         <el-table-column prop="requestSpec" label="领料单规格型号" min-width="140" />
-        <el-table-column prop="requestUnit" label="领料单单位" min-width="120" />
+        <el-table-column prop="requestUnit" label="领料单单位" min-width="80" />
         <el-table-column prop="requestQuantity" label="领料单数量" min-width="100" />
 
         <!-- 数据来源列 -->
@@ -55,6 +72,14 @@
                 <span class="label">规格:</span> {{ row.selectedMaterial.specification_model }}
               </div>
             </div>
+
+            <!-- 新增：为相似匹配显示建议信息 -->
+            <div v-else-if="row.matchedType === 2 && !row.aligned">
+              <div><span class="label">编码:</span> {{ row.dbCode }}</div>
+              <div><span class="label">名称:</span> {{ row.dbName }}</div>
+              <div><span class="label">规格:</span> {{ row.dbSpec }}</div>
+              <el-tag type="warning" size="small" style="margin-top: 4px">待确认</el-tag>
+            </div>
             <el-tag v-else-if="!row.aligned" type="danger" size="small">未选择</el-tag>
             <el-tag v-else type="success" size="small">已匹配</el-tag>
           </template>
@@ -63,23 +88,40 @@
         <!-- 操作列 -->
         <el-table-column label="操作" width="180" v-if="hasUnalignedMaterials">
           <template #default="{ row, $index }">
-            <el-button
-              v-if="!row.aligned"
-              :type="row.selectedMaterial ? 'success' : 'primary'"
-              size="small"
-              @click="handleSelectDbMaterial(row, $index)"
-            >
-              {{ row.selectedMaterial ? '重新选择' : '选择数据库物资' }}
-            </el-button>
-            <el-button
-              v-if="row.selectedMaterial && !row.aligned"
-              type="success"
-              size="small"
-              @click="handleSaveSingleMaterial(row)"
-              style="margin-left: 8px"
-            >
-              保存
-            </el-button>
+            <!-- 相似匹配的操作按钮 -->
+            <div v-if="row.matchedType === 2 && !row.aligned">
+              <el-button type="success" size="small" @click="handleConfirmSimilarMaterial(row)">
+                确认匹配
+              </el-button>
+              <el-button
+                type="primary"
+                size="small"
+                @click="handleSelectDbMaterial(row, $index)"
+                style="margin-left: 8px"
+              >
+                重新选择
+              </el-button>
+            </div>
+
+            <!-- 其他未匹配情况的操作按钮 -->
+            <div v-else-if="!row.aligned">
+              <el-button
+                :type="row.selectedMaterial ? 'success' : 'primary'"
+                size="small"
+                @click="handleSelectDbMaterial(row, $index)"
+              >
+                {{ row.selectedMaterial ? '重新选择' : '选择数据库物资' }}
+              </el-button>
+              <el-button
+                v-if="row.selectedMaterial"
+                type="success"
+                size="small"
+                @click="handleSaveSingleMaterial(row)"
+                style="margin-left: 8px"
+              >
+                保存
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -153,6 +195,7 @@ const isSaving = ref(false)
 const total = ref(0)
 const pageSize = ref(20)
 const currentPage = ref(1)
+const selectedMatchStatus = ref(null) // 新增筛选状态
 
 // 主表格的分页数据
 const paginatedMaterials = computed(() => {
@@ -195,7 +238,11 @@ const fetchData = async () => {
       return
     }
     // 使用新的物资匹配状态查询API
-    const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 }) // 获取足够多的数据
+    const params = { taskId, page: 0, size: 1000 }
+    if (selectedMatchStatus.value !== null) {
+      params.matchedType = selectedMatchStatus.value
+    }
+    const response = await queryMaterialMatchStatus(params) // 获取足够多的数据
     console.log('获取到的数据:', response)
     if (response && response.data && response.data.content) {
       transformAndSetData(response.data.content)
@@ -215,7 +262,7 @@ const fetchData = async () => {
 const transformAndSetData = (data) => {
   const transformed = data.map((item) => {
     // 根据 matchedType 判断匹配状态：0=未匹配, 1=精确匹配, 2=相似匹配, 3=历史匹配, 4=人工指定
-    const aligned = item.matchedType > 0 && item.baseDataId !== null
+    const aligned = item.matchedType !== 0 && item.matchedType !== 2 && item.baseDataId !== null
     console.log('匹配状态', aligned, '匹配类型', item.matchedType)
 
     return {
@@ -232,10 +279,10 @@ const transformAndSetData = (data) => {
       matchScore: item.score,
       // 数据库物资信息 (如果已匹配)
       dbCode: item.baseDataId || '/',
-      dbName: aligned ? item.baseMaterialName : '/', // 匹配后显示物资名称
-      dbSpec: aligned ? item.baseSpecificationModel : '/',
-      dbUnit: aligned ? item.baseUnit : '/',
-      dbQuantity: aligned ? item.quantity : '/',
+      dbName: item.baseMaterialName || '/',
+      dbSpec: item.baseSpecificationModel || '/',
+      dbUnit: item.baseUnit || '/',
+      dbQuantity: item.quantity || '/',
       // 选择的物资信息
       selectedMaterial: null,
       // 原始数据，用于后续操作
@@ -344,6 +391,47 @@ async function handleSaveSingleMaterial(row) {
   } catch (error) {
     console.error(`保存物资 "${row.requestName}" 匹配信息失败:`, error)
     ElMessage.error(`保存失败: ${error.message}`)
+  }
+}
+
+// 确认相似匹配的物资
+async function handleConfirmSimilarMaterial(row) {
+  try {
+    // 验证必需的数据
+    if (!row.originalData.sourceId) {
+      throw new Error('缺少源记录ID (sourceId)')
+    }
+    if (!row.originalData.sourceType) {
+      throw new Error('缺少源记录类型 (sourceType)')
+    }
+    if (!row.originalData.baseDataId) {
+      throw new Error('缺少建议的物料ID (baseDataId)')
+    }
+
+    const matchData = {
+      sourceId: row.originalData.sourceId,
+      sourceType: row.originalData.sourceType,
+      baseDataId: row.originalData.baseDataId
+    }
+
+    console.log('确认相似物资匹配:', {
+      materialName: row.requestName,
+      matchData
+    })
+
+    const response = await manualMatch(matchData)
+
+    if (response && response.code === 200) {
+      console.log(`物资 "${row.requestName}" 确认匹配成功:`, response.msg)
+      ElMessage.success(`物资 "${row.requestName}" 确认匹配成功！`)
+      // 刷新数据以更新整个列表的状态
+      fetchData()
+    } else {
+      throw new Error(response?.msg || '确认匹配失败，未知错误')
+    }
+  } catch (error) {
+    console.error(`确认物资 "${row.requestName}" 匹配信息失败:`, error)
+    ElMessage.error(`确认失败: ${error.message}`)
   }
 }
 
@@ -493,6 +581,12 @@ watch(dbMaterialSearch, (newVal) => {
     fetchDbMaterialList(1, dbMaterialPageSize.value, newVal)
   }, 300)
 })
+
+// 监听筛选条件变化
+watch(selectedMatchStatus, () => {
+  fetchData()
+})
+
 // 检查所有物资是否已拉平
 async function checkAllAligned() {
   try {
