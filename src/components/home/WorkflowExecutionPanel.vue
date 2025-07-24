@@ -1,16 +1,5 @@
 <template>
-  <!-- 使用重构后的组件 -->
-  <WorkflowExecutionPanelRefactored
-    v-if="useRefactoredComponent"
-    :current-workflow="currentWorkflow"
-    :messages="messages"
-    @view-result-detail="$emit('view-result-detail', $event)"
-    @view-material-result-detail="$emit('view-material-result-detail', $event)"
-    @view-supplier-material-result-detail="$emit('view-supplier-material-result-detail', $event)"
-  />
-
-  <!-- 原始组件 -->
-  <el-card v-else class="execution-panel-card" shadow="hover">
+  <el-card class="execution-panel-card" shadow="hover">
     <template #header>
       <div class="card-header">
         <div class="header-info">
@@ -23,132 +12,30 @@
     </template>
 
     <div class="card-body-wrapper">
-      <div class="tabs-and-clear-button">
-        <el-tabs v-model="activeTab" class="message-tabs" @tab-click="handleTabClick">
-          <el-tab-pane label="所有消息" name="all"></el-tab-pane>
-          <el-tab-pane label="合同解析" name="contract"></el-tab-pane>
-          <el-tab-pane label="乙供物资解析" name="material"></el-tab-pane>
-          <el-tab-pane label="甲供物资解析" name="j_material"></el-tab-pane>
-          <el-tab-pane label="对话流" name="dialogue"></el-tab-pane>
-        </el-tabs>
-        <el-button
-          type="info"
-          :icon="Delete"
-          circle
-          plain
-          class="clear-messages-button"
-          @click="handleClearMessages"
-          title="清空所有消息"
-        />
-      </div>
+      <MessageTabs 
+        v-model="activeTab"
+        @tab-click="handleTabClick"
+        @clear-messages="handleClearMessages"
+      />
 
-      <div ref="messageContainer" class="message-container">
-        <div v-if="!filteredMessages.length" class="no-messages">
-          <el-empty description="当前分类下没有消息" />
-        </div>
-        <transition-group name="message-fade" tag="div" class="message-list">
-          <div
-            v-for="message in displayedMessages"
-            :key="message.id"
-            :class="['message-item', `message-from-${message.from}`]"
-          >
-            <div class="message-bubble">
-              <div class="message-sender" v-if="message.from !== 'user'">
-                <strong style="font-size: 18px">{{ message.sender }}</strong>
-                <span v-if="message.workflow" class="workflow-info-tag">
-                  (智能体功能: {{ message.workflow.name }})
-                </span>
-              </div>
-              <div class="message-content">
-                <StreamingMessage
-                  :text="message.content"
-                  :is-streaming="!!message.isStreaming"
-                  :skip-animation="activeTab !== 'all' && !message.isStreaming"
-                  @animation-end="handleAnimationEnd"
-                />
-                <div v-if="message.type === 'loading'" class="loading-progress-container">
-                  <el-progress
-                    :percentage="message.progress"
-                    :stroke-width="8"
-                    striped
-                    striped-flow
-                    :duration="20"
-                  />
-                </div>
-              </div>
-              <div
-                class="message-actions"
-                v-if="message.showViewResultButton || (message.buttons && message.buttons.length)"
-              >
-                <el-button
-                  v-if="message.showViewResultButton"
-                  type="primary"
-                  size="small"
-                  @click="handleViewResultDetail(message)"
-                >
-                  查看解析结果
-                </el-button>
-                <el-button
-                  v-for="(btn, index) in message.buttons"
-                  :key="index"
-                  type="primary"
-                  size="small"
-                  @click="handleCustomButtonClick(message, btn)"
-                >
-                  {{ btn.text }}
-                </el-button>
-              </div>
-              <div class="message-timestamp">{{ message.timestamp }}</div>
-            </div>
-          </div>
-        </transition-group>
-      </div>
+      <MessageList
+        ref="messageListRef"
+        :messages="messages"
+        :active-tab="activeTab"
+        @view-result-detail="handleViewResultDetail"
+        @custom-button-click="handleCustomButtonClick"
+      />
     </div>
   </el-card>
 </template>
 
 <script setup>
-import { ref, watch, nextTick, computed, onMounted } from 'vue'
-import StreamingMessage from './StreamingMessage.vue'
-import { useChatStore } from '@/stores/chat'
-import { Delete } from '@element-plus/icons-vue'
-import { defineAsyncComponent } from 'vue'
-
-// 异步加载重构后的组件
-const WorkflowExecutionPanelRefactored = defineAsyncComponent(() =>
-  import('./WorkflowExecutionPanelRefactored.vue')
-)
-
-// Feature Flag: 控制是否使用重构后的组件
-// 可以通过环境变量、localStorage或者props来控制
-const useRefactoredComponent = ref(
-  import.meta.env.VITE_USE_REFACTORED_COMPONENTS === 'true' || 
-  localStorage.getItem('useRefactoredComponents') === 'true' ||
-  true // 默认使用重构后的组件
-)
-
-// 开发者工具：双击Ctrl键切换组件
-let ctrlKeyCount = 0
-let ctrlKeyTimer = null
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Control') {
-    ctrlKeyCount++
-    if (ctrlKeyTimer) clearTimeout(ctrlKeyTimer)
-    
-    ctrlKeyTimer = setTimeout(() => {
-      if (ctrlKeyCount >= 2) {
-        useRefactoredComponent.value = !useRefactoredComponent.value
-        localStorage.setItem('useRefactoredComponents', useRefactoredComponent.value.toString())
-        ElMessage.success(
-          `已切换到${useRefactoredComponent.value ? '重构后' : '原始'}的WorkflowExecutionPanel组件`
-        )
-      }
-      ctrlKeyCount = 0
-    }, 500)
-  }
-})
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { isContractWorkflow, isSupplierMaterialWorkflow, isOwnerMaterialWorkflow } from '@/constants/workflowNames'
+import MessageTabs from './MessageTabs.vue'
+import MessageList from './MessageList.vue'
 
 const props = defineProps({
   messages: {
@@ -167,179 +54,51 @@ const emit = defineEmits([
   'view-supplier-material-result-detail'
 ])
 
-const messageContainer = ref(null)
+// 本地状态
 const activeTab = ref('all')
+const messageListRef = ref(null)
 
-// --- 消息队列状态 ---
-const displayedMessages = ref([])
-const messageQueue = ref([])
-const isProcessingQueue = ref(false)
-// ---
+// 路由
+const router = useRouter()
 
-const enhanceMessage = (msg) => {
-  const isParsingWorkflow =
-    msg.workflow && ['乙供物资解析', '甲供物资解析', '合同解析'].includes(msg.workflow.name)
-  const needConfirm =
-    isParsingWorkflow &&
-    typeof msg.content === 'string' &&
-    msg.content.includes('存在无法匹配的物资信息，请人工介入') &&
-    msg.task
-
-  if (needConfirm) {
-    const hasButton =
-      Array.isArray(msg.buttons) &&
-      msg.buttons.some((b) => b.action === 'confirm-material-alignment')
-    if (!hasButton) {
-      return {
-        ...msg,
-        buttons: [
-          ...(msg.buttons || []),
-          {
-            text: '物资信息确认',
-            action: 'confirm-material-alignment',
-            data: { taskId: msg.task }
-          }
-        ]
-      }
-    }
-  }
-  return msg
-}
-
-const filteredMessages = computed(() => {
-  let filtered = props.messages
-  if (activeTab.value === 'contract') {
-    filtered = props.messages.filter((m) => m.workflow?.name === '合同解析')
-  } else if (activeTab.value === 'material') {
-    filtered = props.messages.filter((m) => m.workflow?.name === '乙供物资解析')
-  } else if (activeTab.value === 'j_material') {
-    filtered = props.messages.filter((m) => m.workflow?.name === '甲供物资解析')
-  } else if (activeTab.value === 'dialogue') {
-    filtered = props.messages.filter((m) => m.from === 'user' || !m.workflow)
-  }
-  return filtered.map(enhanceMessage)
-})
-
-const scrollToBottom = () => {
-  nextTick(() => {
-    if (messageContainer.value) {
-      messageContainer.value.scrollTop = messageContainer.value.scrollHeight
-    }
-  })
-}
-
-const processQueue = () => {
-  if (isProcessingQueue.value || messageQueue.value.length === 0) {
-    return
-  }
-  isProcessingQueue.value = true
-  const nextMessage = messageQueue.value.shift()
-  displayedMessages.value.push(nextMessage)
-  scrollToBottom()
-
-  // 如果是 loading 消息，我们不等待 animation-end，而是通过 watch 来解锁
-  // 对于非 loading 消息，animation-end 会负责解锁
-  if (nextMessage.type === 'loading') {
-    // 标记正在处理，但允许 watch 解锁
-  }
-}
-
-const handleAnimationEnd = () => {
-  isProcessingQueue.value = false
-  processQueue()
-}
-
-watch(
-  filteredMessages,
-  (newMessages, oldMessages) => {
-    // 1. 更新已显示消息的状态（特别是 loading 进度）
-    const updatedDisplayedMessages = displayedMessages.value
-      .map((dMsg) => {
-        const updatedVersion = newMessages.find((nMsg) => nMsg.id === dMsg.id)
-        return updatedVersion ? { ...updatedVersion } : null // 返回新对象以触发响应性
-      })
-      .filter(Boolean) // 过滤掉已删除的消息
-
-    if (JSON.stringify(updatedDisplayedMessages) !== JSON.stringify(displayedMessages.value)) {
-      displayedMessages.value = updatedDisplayedMessages
-    }
-
-    // 2. 检查 loading 消息是否完成
-    const lastDisplayed = displayedMessages.value[displayedMessages.value.length - 1]
-    if (isProcessingQueue.value && lastDisplayed && lastDisplayed.type === 'loading') {
-      const correspondingNewMessage = newMessages.find((m) => m.id === lastDisplayed.id)
-      if (!correspondingNewMessage || correspondingNewMessage.type !== 'loading') {
-        isProcessingQueue.value = false
-        processQueue() // loading 完成，立即处理下一条
-      }
-    }
-
-    // 3. 将新消息添加到队列
-    const displayedIds = new Set(displayedMessages.value.map((m) => m.id))
-    const queuedIds = new Set(messageQueue.value.map((m) => m.id))
-    const newIncomingMessages = newMessages.filter(
-      (m) => !displayedIds.has(m.id) && !queuedIds.has(m.id)
-    )
-
-    if (newIncomingMessages.length > 0) {
-      messageQueue.value.push(...newIncomingMessages)
-      processQueue()
-    }
-
-    // 4. 处理消息清空
-    if (newMessages.length === 0 && oldMessages.length > 0) {
-      displayedMessages.value = []
-      messageQueue.value = []
-      isProcessingQueue.value = false
-    }
-  },
-  { deep: true }
-)
-
-// 切换 tab 时，重置显示
-watch(activeTab, () => {
-  messageQueue.value = []
-  displayedMessages.value = []
-  isProcessingQueue.value = false
-  // 延迟一下，让 filteredMessages 更新
-  nextTick(() => {
-    messageQueue.value.push(...filteredMessages.value)
-    processQueue()
-  })
-})
-
-onMounted(() => {
-  if (props.messages.length > 0) {
-    messageQueue.value.push(...filteredMessages.value)
-    processQueue()
-  }
-})
-
+/**
+ * 处理标签页点击
+ */
 const handleTabClick = () => {
-  scrollToBottom()
+  messageListRef.value?.scrollToBottom()
 }
 
+/**
+ * 处理清空消息
+ */
+const handleClearMessages = () => {
+  activeTab.value = 'all'
+}
+
+/**
+ * 处理查看结果详情
+ */
 const handleViewResultDetail = (message) => {
   if (!message.task) {
     ElMessage.warning('无法获取任务ID，请检查消息内容。')
     return
   }
-  if (message.workflow?.name === '合同解析') {
+  
+  const workflowName = message.workflow?.name
+  
+  if (isContractWorkflow(workflowName)) {
     emit('view-result-detail', message.task)
-  } else if (message.workflow?.name === '乙供物资解析') {
+  } else if (isSupplierMaterialWorkflow(workflowName)) {
     emit('view-material-result-detail', message.task)
-  } else if (
-    message.workflow?.name === '甲供物资解析' ||
-    message.workflow?.name === '甲供物资重新解析'
-  ) {
+  } else if (isOwnerMaterialWorkflow(workflowName)) {
     emit('view-supplier-material-result-detail', message.task)
   }
 }
 
-const router = useRouter()
-const chatStore = useChatStore()
-
-const handleCustomButtonClick = (message, button) => {
+/**
+ * 处理自定义按钮点击
+ */
+const handleCustomButtonClick = ({ message, button }) => {
   if (button.action === 'confirm-material-alignment' && button.data?.taskId) {
     router.push({
       name: 'owner-material-align',
@@ -353,72 +112,9 @@ const handleCustomButtonClick = (message, button) => {
     })
   }
 }
-
-const handleClearMessages = () => {
-  ElMessageBox.confirm('确定要清空所有消息吗？此操作不可逆。', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
-    .then(() => {
-      chatStore.resetAndInitMessages()
-      activeTab.value = 'all'
-      ElMessage.success('消息已清空。')
-    })
-    .catch(() => {
-      ElMessage.info('已取消清空操作。')
-    })
-}
 </script>
 
 <style scoped>
-/* --- Transition Animation --- */
-.message-fade-enter-active,
-.message-fade-leave-active {
-  transition:
-    opacity 0.5s,
-    transform 0.5s;
-}
-.message-list {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-.message-fade-enter-from,
-.message-fade-leave-to {
-  opacity: 0;
-  transform: translateY(20px);
-}
-
-.card-body-wrapper {
-  display: flex;
-  flex-direction: column;
-  flex-grow: 1;
-  overflow: hidden;
-}
-
-.tabs-and-clear-button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 20px;
-  flex-shrink: 0;
-}
-
-.message-tabs {
-  flex-grow: 1; /* 让 tabs 占据更多空间 */
-}
-
-:deep(.el-tabs__header) {
-  margin-bottom: 0;
-  border-bottom: none; /* 移除默认的底部边框 */
-}
-
-.clear-messages-button {
-  margin-left: 10px; /* 与 tabs 保持一定距离 */
-  flex-shrink: 0; /* 防止按钮被压缩 */
-}
-
 .execution-panel-card {
   border: none;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -452,150 +148,17 @@ const handleClearMessages = () => {
   color: white;
 }
 
-.message-container {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 20px 40px; /* 调整上下左右内边距 */
-  background: #ffffff;
+.card-body-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  height: calc(80vh - 4rem);
-  /* 响应式居中布局逻辑 */
-  --max-width-layout-container-width: 100vw;
-  --max-width-layout-large-padding: 24px;
-  --max-width-layout-small-padding: 16px;
-  --center-content-max-width: 1200px; /* 增加宽度 */
-
-  --left-side-width: 0px;
-  --right-side-width: 0px;
-
-  --width: calc(
-    var(--max-width-layout-container-width) - var(--left-side-width) - var(--right-side-width)
-  );
-  --center-content: min(var(--width), var(--center-content-max-width));
-  --total-side: calc(
-    var(--max-width-layout-container-width) - var(--center-content) - var(--left-side-width) -
-      var(--right-side-width)
-  );
-  --left-side: calc(var(--total-side) / 2);
-  --content-left: calc(var(--left-side) + var(--left-side-width));
-
-  --padding: clamp(
-    var(--max-width-layout-small-padding),
-    calc(50vw - 500px - var(--left-side-width) / 2 - var(--right-side-width) / 2),
-    /* 调整此值 */ var(--max-width-layout-large-padding)
-  );
-
-  padding-left: calc(var(--content-left) + var(--padding));
-  padding-right: calc(
-    var(--left-side) + var(--padding) + var(--right-side-width) - var(--scrollbar-width, 0px)
-  );
-
-  background: #ffffff;
-}
-/* 隐藏滚动条，保持光滑滚动 */
-.message-container::-webkit-scrollbar {
-  width: 0;
-  background: transparent;
+  flex-grow: 1;
+  overflow: hidden;
 }
 
-.no-messages {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-}
-
-.message-item {
-  display: flex;
-  /* 移除 width: 100%; 让子元素控制宽度 */
-}
-
-.message-from-user {
-  align-self: flex-end; /* 确保用户消息靠右对齐 */
-  max-width: 85%; /* 用户消息限制宽度 */
-}
-
-.message-from-agent,
-.message-from-system {
-  align-self: flex-start; /* 确保智能体/系统消息靠左对齐 */
-  max-width: 100%; /* 智能体和系统消息占满宽度 */
-  width: 100%; /* 确保占满宽度 */
-}
-
-.message-bubble {
-  line-height: 1.5;
-  /* 移除通用背景、圆角和宽度，由特定来源的消息定义 */
-  align-self: flex-end; /* 确保智能体/系统消息靠左对齐 */
-}
-
-.message-sender {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 4px;
-}
-
-.workflow-info-tag {
-  font-style: italic;
-  font-size: 18px;
-  color: #9ca3af;
-}
-
-.message-content {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.message-actions {
-  margin-top: 10px;
-}
-
-.loading-progress-container {
-  margin-top: 12px;
-}
-
-.message-timestamp {
-  font-size: 10px;
-  color: #9ca3af;
-  margin-top: 6px;
-  text-align: right;
-}
-
-/* User messages */
-.message-from-user {
-  align-self: flex-end;
-}
 :deep(.el-card__body) {
   height: 100%;
   display: flex;
   flex-direction: column;
   padding: 0;
-}
-
-.message-from-user .message-bubble {
-  background: #3b82f6;
-  color: white;
-  padding: 12px 16px; /* 用户消息的气泡内边距 */
-  border-radius: 18px; /* 用户消息的气泡圆角 */
-  width: fit-content; /* 用户消息的气泡宽度自适应 */
-}
-
-/* Agent/System messages */
-.message-from-agent,
-.message-from-system {
-  align-self: flex-start;
-  /* 智能体和系统消息直接展示，不作为气泡 */
-  /* 移除 message-bubble 的背景和圆角，直接在 message-item 层面控制 */
-}
-
-.message-from-agent .message-bubble,
-.message-from-system .message-bubble {
-  background: transparent; /* 透明背景 */
-  color: #1f2937; /* 文本颜色 */
-  padding: 0; /* 移除气泡内边距 */
-  border-radius: 0; /* 移除圆角 */
-  box-shadow: none; /* 移除阴影 */
-  width: 100%; /* 占据可用宽度 */
 }
 </style>
