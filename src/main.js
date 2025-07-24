@@ -11,4 +11,9 @@ pinia.use(createPersistedState())
 import App from './App.vue'
 import router from './router'
 
+// 开发环境下引入组件测试工具
+if (import.meta.env.DEV) {
+  import('./utils/componentTester.js')
+}
+
 createApp(App).use(pinia).use(router).mount('#app')

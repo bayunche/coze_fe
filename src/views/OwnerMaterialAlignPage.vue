@@ -24,7 +24,10 @@
         <!-- 数据来源列 -->
         <el-table-column label="数据来源" min-width="100">
           <template #default="{ row }">
-            <el-tag :type="row.originalData.sourceType === 'requisition' ? 'primary' : 'warning'" size="small">
+            <el-tag
+              :type="row.originalData.sourceType === 'requisition' ? 'primary' : 'warning'"
+              size="small"
+            >
               {{ row.originalData.sourceType === 'requisition' ? '申领' : '用料' }}
             </el-tag>
           </template>
@@ -165,7 +168,8 @@ import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
 import {
   queryMaterialMatchStatus,
   queryUnmatchedBalanceResult,
-  manualMatch
+  manualMatch,
+  queryMaterialBaseInfo
 } from '@/utils/backendWorkflow' // 导入接口
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
 import { ElDialog } from 'element-plus'
@@ -257,7 +261,7 @@ const transformAndSetData = (data) => {
     // 根据 matchedType 判断匹配状态：0=未匹配, 1=精确匹配, 2=相似匹配, 3=历史匹配, 4=人工指定
     const aligned = item.matchedType > 0 && item.baseDataId !== null
     console.log('匹配状态', aligned, '匹配类型', item.matchedType)
-    
+
     return {
       id: item.sourceId, // 使用 sourceId 作为唯一标识
       // 领料单信息 (直接来自API响应)
@@ -370,7 +374,7 @@ function handleSelectDbMaterial(row, index) {
   console.log('弹窗状态:', showDbMaterialDialog.value)
 }
 
-// TODO: 实现真实数据库物资列表加载
+// 使用封装的基础物资信息查询方法
 const fetchDbMaterialList = async (
   pageNum = dbMaterialPageNum.value,
   pageSize = dbMaterialPageSize.value,
@@ -378,94 +382,45 @@ const fetchDbMaterialList = async (
 ) => {
   dbMaterialLoading.value = true
   try {
-    // 使用与乙供物资解析详情相同的工作流ID: 7519455533105184809
-    const workflowId = '7519455533105184809'
+    // 构建请求参数，页码从0开始
     const params = {
-      pageNum: pageNum,
-      pageSize: pageSize
+      page: pageNum - 1, // API 页码从0开始，UI从1开始
+      size: pageSize
     }
 
     // 如果有搜索条件，添加到参数中
     if (searchTerm && searchTerm.trim()) {
-      params.searchTerm = searchTerm.trim()
+      params.keyword = searchTerm.trim()
     }
 
-    console.log('调用数据库物资查询工作流，参数：', params)
+    console.log('调用基础物资信息查询API，参数：', params)
 
-    const result = await cozeWorkflowService.runWorkflow(workflowId, params)
+    const result = await queryMaterialBaseInfo(params)
 
+    console.log('基础物资信息查询结果：', result)
     if (result && result.data) {
-      // 解析返回的数据 - 新格式是字符串形式的JSON，需要先解析
-      let parsedData
-      if (typeof result.data === 'string') {
-        parsedData = JSON.parse(result.data)
-      } else {
-        parsedData = result.data
-      }
+      const { content, totalElements } = result.data
 
-      console.log('数据库物资查询结果：', parsedData)
+      console.log('基础物资信息查询结果：', result.data)
 
-      // 根据新的返回数据结构适配 - data.output 是物资数组
-      if (parsedData && Array.isArray(parsedData.output)) {
-        // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
-        dbMaterialList.value = parsedData.output.map((item) => ({
-          id: item.p_id || item.m_id, // 使用 p_id 作为唯一标识
-          material_name: item.material_name,
-          specification_model: item.specification_model,
-          tax_price: item.tax_price,
-          quarter: item.quarter,
-          unit: item.unit,
-          code: item.material_code,
-          // 保留原始数据
-          originalData: item
-        }))
+      // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
+      dbMaterialList.value = content.map((item) => ({
+        id: item.id,
+        material_name: item.materialName,
+        specification_model: item.specificationModel,
+        tax_price: '', // API响应中没有价格信息，设为空
+        quarter: '', // API响应中没有季度信息，设为空
+        unit: item.unit,
+        code: item.materialCode,
+        // 保留原始数据
+        originalData: item
+      }))
 
-        dbMaterialTotal.value = parsedData.count || parsedData.output.length
+      dbMaterialTotal.value = totalElements
 
-        ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
-      } else if (parsedData && parsedData.result && Array.isArray(parsedData.result)) {
-        // 兼容旧格式
-        dbMaterialList.value = parsedData.result.map((item) => ({
-          id: item.id,
-          material_name: item.ymtd_material_name || item.material_name || item.materialName,
-          specification_model:
-            item.ymtd_specification_model || item.specification_model || item.specificationModel,
-          tax_price: item.ymtd_tax_price || item.tax_price || item.taxPrice,
-          quarter: item.ymtd_quarter || item.quarter,
-          unit: item.ymtd_unit || item.unit,
-          code: item.ymtd_code || item.code || item.materialCode,
-          originalData: item
-        }))
-
-        dbMaterialTotal.value =
-          parsedData.totalCount || parsedData.total || parsedData.result.length
-
-        ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
-      } else if (parsedData && Array.isArray(parsedData)) {
-        // 如果直接返回数组（兼容旧格式）
-        dbMaterialList.value = parsedData.map((item) => ({
-          id: item.id,
-          material_name: item.ymtd_material_name || item.material_name || item.materialName,
-          specification_model:
-            item.ymtd_specification_model || item.specification_model || item.specificationModel,
-          tax_price: item.ymtd_tax_price || item.tax_price || item.taxPrice,
-          quarter: item.ymtd_quarter || item.quarter,
-          unit: item.ymtd_unit || item.unit,
-          code: item.ymtd_code || item.code || item.materialCode,
-          originalData: item
-        }))
-
-        dbMaterialTotal.value = parsedData.length
-
-        ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
-      } else {
-        console.warn('未识别的数据格式：', parsedData)
-        dbMaterialList.value = []
-        dbMaterialTotal.value = 0
-        ElMessage.info('未查询到相关数据')
-      }
+      ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
     } else {
-      console.warn('工作流返回数据为空')
+      console.warn('API返回数据为空')
       dbMaterialList.value = []
       dbMaterialTotal.value = 0
       ElMessage.info('未查询到相关数据')

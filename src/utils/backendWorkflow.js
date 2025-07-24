@@ -441,3 +441,27 @@ export function getOwnerMaterialLlmReport(taskId) {
   }
   return null
 }
+
+/**
+ * 查询基础物资信息（分页）
+ * @param {object} params - 查询参数
+ * @param {string} [params.keyword] - 用于模糊搜索的关键字，搜索范围包括物资名称、规格型号、单位、物资编码和序列号
+ * @param {number} [params.page=0] - 页码，从0开始
+ * @param {number} [params.size=10] - 每页显示的记录数
+ * @param {string} [params.sort] - 排序参数，例如 'materialName,asc' 或 'materialCode,desc'
+ * @returns {Promise<object>} - 后端返回的分页数据
+ */
+export async function queryMaterialBaseInfo(params) {
+  try {
+    const response = await request({
+      url: '/api/materials/base-info/search',
+      method: 'get',
+      params: params
+    })
+    return response
+  } catch (error) {
+    console.error('查询基础物资信息失败:', error)
+    ElMessage.error(error.message || '查询基础物资信息失败')
+    throw error
+  }
+}

@@ -1,5 +1,16 @@
 <template>
-  <el-card class="execution-panel-card" shadow="hover">
+  <!-- 使用重构后的组件 -->
+  <WorkflowExecutionPanelRefactored
+    v-if="useRefactoredComponent"
+    :current-workflow="currentWorkflow"
+    :messages="messages"
+    @view-result-detail="$emit('view-result-detail', $event)"
+    @view-material-result-detail="$emit('view-material-result-detail', $event)"
+    @view-supplier-material-result-detail="$emit('view-supplier-material-result-detail', $event)"
+  />
+
+  <!-- 原始组件 -->
+  <el-card v-else class="execution-panel-card" shadow="hover">
     <template #header>
       <div class="card-header">
         <div class="header-info">
@@ -101,6 +112,41 @@ import { ref, watch, nextTick, computed, onMounted } from 'vue'
 import StreamingMessage from './StreamingMessage.vue'
 import { useChatStore } from '@/stores/chat'
 import { Delete } from '@element-plus/icons-vue'
+import { defineAsyncComponent } from 'vue'
+
+// 异步加载重构后的组件
+const WorkflowExecutionPanelRefactored = defineAsyncComponent(() =>
+  import('./WorkflowExecutionPanelRefactored.vue')
+)
+
+// Feature Flag: 控制是否使用重构后的组件
+// 可以通过环境变量、localStorage或者props来控制
+const useRefactoredComponent = ref(
+  import.meta.env.VITE_USE_REFACTORED_COMPONENTS === 'true' || 
+  localStorage.getItem('useRefactoredComponents') === 'true' ||
+  true // 默认使用重构后的组件
+)
+
+// 开发者工具：双击Ctrl键切换组件
+let ctrlKeyCount = 0
+let ctrlKeyTimer = null
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Control') {
+    ctrlKeyCount++
+    if (ctrlKeyTimer) clearTimeout(ctrlKeyTimer)
+    
+    ctrlKeyTimer = setTimeout(() => {
+      if (ctrlKeyCount >= 2) {
+        useRefactoredComponent.value = !useRefactoredComponent.value
+        localStorage.setItem('useRefactoredComponents', useRefactoredComponent.value.toString())
+        ElMessage.success(
+          `已切换到${useRefactoredComponent.value ? '重构后' : '原始'}的WorkflowExecutionPanel组件`
+        )
+      }
+      ctrlKeyCount = 0
+    }, 500)
+  }
+})
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 

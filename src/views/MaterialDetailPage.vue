@@ -305,6 +305,7 @@ import { useChatStore } from '@/stores/chat.js'
 import MaterialService from '@/services/MaterialService.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflow.js' // 引入 workflowStore
+import { queryMaterialBaseInfo } from '@/utils/backendWorkflow'
 
 const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
 
@@ -705,16 +706,34 @@ const handleEdit = async (row) => {
 const fetchSelectionList = async (pageNum, pageSize) => {
   loading.value = true
   try {
-    const workflowId = '7519455533105184809'
+    // 构建请求参数，页码从0开始
     const params = {
-      pageNum,
-      pageSize
+      page: pageNum - 1, // API 页码从0开始，UI从1开始
+      size: pageSize
     }
-    const result = await cozeService.runWorkflow(workflowId, params)
+
+    console.log('调用基础物资信息查询API，参数：', params)
+
+    const result = await queryMaterialBaseInfo(params)
+
     if (result && result.data) {
-      const parsed = JSON.parse(result.data)
-      showSelectionList.value = parsed.output || parsed
-      showSelectionTotal.value = parsed.count || 0
+      const { content, totalElements } = result.data
+
+      console.log('基础物资信息查询结果：', result.data)
+
+      // 格式化数据以匹配原有结构
+      showSelectionList.value = content.map((item) => ({
+        id: item.id,
+        material_name: item.materialName,
+        specification_model: item.specificationModel,
+        tax_price: '', // API响应中没有价格信息，设为空
+        quarter: '', // API响应中没有季度信息，设为空
+        unit: item.unit,
+        material_code: item.materialCode,
+        // 保留原始数据
+        originalData: item
+      }))
+      showSelectionTotal.value = totalElements
     } else {
       showSelectionList.value = []
       showSelectionTotal.value = 0
