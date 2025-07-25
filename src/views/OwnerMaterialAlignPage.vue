@@ -8,7 +8,7 @@
     <div class="filter-container">
       <el-select
         v-model="selectedMatchStatus"
-        placeholder="筛选匹配状态"
+        placeholder="筛选匹配类型"
         clearable
         style="width: 200px"
       >
@@ -43,7 +43,7 @@
         </el-table-column>
 
         <!-- 匹配状态列 -->
-        <el-table-column label="匹配状态" min-width="160">
+        <el-table-column label="匹配类型" min-width="160">
           <template #default="{ row }">
             <div>
               <el-tag :type="getMatchingTagType(row.matchedType)" size="small">
@@ -55,7 +55,14 @@
             </div>
           </template>
         </el-table-column>
-
+        <!-- 确认状态 -->
+        <el-table-column label="确认状态" min-width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.aligned ? 'success' : 'danger'" size="small">
+              {{ row.aligned ? '已确认' : '未确认' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <!-- 数据库物资信息列 -->
         <el-table-column prop="dbCode" label="数据库物资编码" min-width="180" />
         <el-table-column prop="dbName" label="数据库物资名称" min-width="160" />
@@ -243,11 +250,9 @@ const fetchData = async () => {
       params.matchedType = selectedMatchStatus.value
     }
     const response = await queryMaterialMatchStatus(params) // 获取足够多的数据
-    console.log('获取到的数据:', response)
     if (response && response.data && response.data.content) {
       transformAndSetData(response.data.content)
       total.value = allMaterials.value.length
-      ElMessage.success('数据加载成功！')
     } else {
       ElMessage.info('未查询到相关数据。')
     }
@@ -273,8 +278,8 @@ const transformAndSetData = (data) => {
       requestSpec: item.specificationModel,
       requestUnit: item.unit,
       requestQuantity: item.quantity,
-      // 匹配状态
-      aligned: aligned,
+      // 确认状态
+      aligned: item.confirmationStatus,
       matchedType: item.matchedType,
       matchScore: item.score,
       // 数据库物资信息 (如果已匹配)
@@ -411,7 +416,7 @@ async function handleConfirmSimilarMaterial(row) {
     const matchData = {
       sourceId: row.originalData.sourceId,
       sourceType: row.originalData.sourceType,
-      baseDataId: row.originalData.baseDataId
+      baseDataId: row.selectedMaterial?.id || row.originalData.baseDataId
     }
 
     console.log('确认相似物资匹配:', {
@@ -454,15 +459,10 @@ const fetchDbMaterialList = async (
       params.keyword = searchTerm.trim()
     }
 
-    console.log('调用基础物资信息查询API，参数：', params)
-
     const result = await queryMaterialBaseInfo(params)
 
-    console.log('基础物资信息查询结果：', result)
     if (result && result.data) {
       const { content, totalElements } = result.data
-
-      console.log('基础物资信息查询结果：', result.data)
 
       // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
       dbMaterialList.value = content.map((item) => ({
@@ -478,8 +478,6 @@ const fetchDbMaterialList = async (
       }))
 
       dbMaterialTotal.value = totalElements
-
-      ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
     } else {
       console.warn('API返回数据为空')
       dbMaterialList.value = []
@@ -595,31 +593,31 @@ async function checkAllAligned() {
       ElMessage.error('缺少任务ID，无法检查对平状态。')
       return false // 缺少taskId，无法继续
     }
-    
+
     // 获取1000条内的所有物资数据
     const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 })
-    
+
     if (!response || !response.data || !response.data.content) {
       ElMessage.error('无法获取物资数据')
       return false
     }
-    
+
     const materials = response.data.content
-    
+
     // 统计各种匹配状态的物资数量
-    const unmatchedMaterials = materials.filter(item => item.matchedType === 0) // 未匹配
-    const similarMatchedMaterials = materials.filter(item => item.matchedType === 2) // 相似匹配
-    const exactlyMatchedMaterials = materials.filter(item => 
-      item.matchedType === 1 || item.matchedType === 3 || item.matchedType === 4
+    const unmatchedMaterials = materials.filter((item) => item.matchedType === 0) // 未匹配
+    const similarMatchedMaterials = materials.filter((item) => item.matchedType === 2) // 相似匹配
+    const exactlyMatchedMaterials = materials.filter(
+      (item) => item.matchedType === 1 || item.matchedType === 3 || item.matchedType === 4
     ) // 精确匹配、历史匹配、人工指定
-    
+
     console.log('物资匹配状态统计:', {
       total: materials.length,
       unmatched: unmatchedMaterials.length,
       similarMatched: similarMatchedMaterials.length,
       exactlyMatched: exactlyMatchedMaterials.length
     })
-    
+
     // 如果有未匹配的物资，提示用户先处理
     if (unmatchedMaterials.length > 0) {
       await ElMessageBox.alert(
@@ -632,9 +630,9 @@ async function checkAllAligned() {
       )
       return false
     }
-    
-    // 如果全部为相似匹配，进行批量确认保存
-    if (similarMatchedMaterials.length > 0 && exactlyMatchedMaterials.length === 0) {
+
+    // 如果剩余的全部为相似匹配，进行批量确认保存
+    if (similarMatchedMaterials.length > 0) {
       try {
         // 询问用户是否批量确认相似匹配
         await ElMessageBox.confirm(
@@ -646,13 +644,13 @@ async function checkAllAligned() {
             type: 'info'
           }
         )
-        
+
         // 批量循环调用保存接口
         let successCount = 0
         let failCount = 0
-        
+
         ElMessage.info(`开始批量保存 ${similarMatchedMaterials.length} 条相似匹配物资...`)
-        
+
         for (const material of similarMatchedMaterials) {
           try {
             const matchData = {
@@ -660,7 +658,7 @@ async function checkAllAligned() {
               sourceType: material.sourceType,
               baseDataId: material.baseDataId
             }
-            
+
             const saveResponse = await manualMatch(matchData)
             if (saveResponse && saveResponse.code === 200) {
               successCount++
@@ -673,7 +671,7 @@ async function checkAllAligned() {
             console.error(`保存物资异常 (ID: ${material.sourceId}):`, error)
           }
         }
-        
+
         if (failCount === 0) {
           ElMessage.success(`批量保存成功！共处理 ${successCount} 条相似匹配物资`)
           // 刷新数据
@@ -691,15 +689,14 @@ async function checkAllAligned() {
         return false
       }
     }
-    
+
     // 如果全部已精确匹配，返回true
     if (unmatchedMaterials.length === 0 && similarMatchedMaterials.length === 0) {
       return true
     }
-    
+
     // 其他情况，返回false
     return false
-    
   } catch (error) {
     console.error('检查对平状态失败:', error)
     ElMessage.error(`检查对平状态失败: ${error.message}`)
