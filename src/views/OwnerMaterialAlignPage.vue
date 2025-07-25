@@ -595,13 +595,111 @@ async function checkAllAligned() {
       ElMessage.error('缺少任务ID，无法检查对平状态。')
       return false // 缺少taskId，无法继续
     }
-    const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1 }) // 只查询1条即可判断
-    // 如果 content 存在且长度大于0，说明有未匹配的物资，返回 false
-    if (response && response.data && response.data.content && response.data.content.length > 0) {
+    
+    // 获取1000条内的所有物资数据
+    const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 })
+    
+    if (!response || !response.data || !response.data.content) {
+      ElMessage.error('无法获取物资数据')
       return false
     }
-    // 否则，说明所有物资都已匹配，返回 true
-    return true
+    
+    const materials = response.data.content
+    
+    // 统计各种匹配状态的物资数量
+    const unmatchedMaterials = materials.filter(item => item.matchedType === 0) // 未匹配
+    const similarMatchedMaterials = materials.filter(item => item.matchedType === 2) // 相似匹配
+    const exactlyMatchedMaterials = materials.filter(item => 
+      item.matchedType === 1 || item.matchedType === 3 || item.matchedType === 4
+    ) // 精确匹配、历史匹配、人工指定
+    
+    console.log('物资匹配状态统计:', {
+      total: materials.length,
+      unmatched: unmatchedMaterials.length,
+      similarMatched: similarMatchedMaterials.length,
+      exactlyMatched: exactlyMatchedMaterials.length
+    })
+    
+    // 如果有未匹配的物资，提示用户先处理
+    if (unmatchedMaterials.length > 0) {
+      await ElMessageBox.alert(
+        `检测到 ${unmatchedMaterials.length} 条未匹配的物资，请先为这些物资选择匹配的数据库物资后再进行保存操作。`,
+        '存在未匹配物资',
+        {
+          confirmButtonText: '确定',
+          type: 'warning'
+        }
+      )
+      return false
+    }
+    
+    // 如果全部为相似匹配，进行批量确认保存
+    if (similarMatchedMaterials.length > 0 && exactlyMatchedMaterials.length === 0) {
+      try {
+        // 询问用户是否批量确认相似匹配
+        await ElMessageBox.confirm(
+          `检测到 ${similarMatchedMaterials.length} 条相似匹配的物资，是否批量确认这些匹配结果？`,
+          '批量确认相似匹配',
+          {
+            confirmButtonText: '确认批量保存',
+            cancelButtonText: '取消',
+            type: 'info'
+          }
+        )
+        
+        // 批量循环调用保存接口
+        let successCount = 0
+        let failCount = 0
+        
+        ElMessage.info(`开始批量保存 ${similarMatchedMaterials.length} 条相似匹配物资...`)
+        
+        for (const material of similarMatchedMaterials) {
+          try {
+            const matchData = {
+              sourceId: material.sourceId,
+              sourceType: material.sourceType,
+              baseDataId: material.baseDataId
+            }
+            
+            const saveResponse = await manualMatch(matchData)
+            if (saveResponse && saveResponse.code === 200) {
+              successCount++
+            } else {
+              failCount++
+              console.error(`保存物资失败 (ID: ${material.sourceId}):`, saveResponse?.msg)
+            }
+          } catch (error) {
+            failCount++
+            console.error(`保存物资异常 (ID: ${material.sourceId}):`, error)
+          }
+        }
+        
+        if (failCount === 0) {
+          ElMessage.success(`批量保存成功！共处理 ${successCount} 条相似匹配物资`)
+          // 刷新数据
+          await fetchData()
+          return true
+        } else {
+          ElMessage.warning(`批量保存完成：成功 ${successCount} 条，失败 ${failCount} 条`)
+          // 刷新数据
+          await fetchData()
+          return false
+        }
+      } catch (cancelError) {
+        // 用户取消批量保存
+        console.log('用户取消批量保存操作')
+        return false
+      }
+    }
+    
+    // 如果全部已精确匹配，返回true
+    if (unmatchedMaterials.length === 0 && similarMatchedMaterials.length === 0) {
+      return true
+    }
+    
+    // 其他情况，返回false
+    return false
+    
   } catch (error) {
     console.error('检查对平状态失败:', error)
     ElMessage.error(`检查对平状态失败: ${error.message}`)
