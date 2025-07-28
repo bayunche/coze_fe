@@ -44,7 +44,7 @@ const handleSendMessageWrapper = () => {
 .chat-input-area {
   width: 100%;
   max-height: 168px;
-  background-color: #ffffff;
+  background-color: var(--theme-bg-primary);
   box-sizing: border-box;
   margin: 0 auto;
   display: flex; /* 确保父容器是flex布局 */
@@ -92,13 +92,14 @@ const handleSendMessageWrapper = () => {
   align-items: center;
   width: 100%;
   padding: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--theme-shadow-md);
   border-radius: 12px;
-  background-color: #ffffff;
+  background-color: var(--theme-bg-card);
+  border: 1px solid var(--theme-border-primary);
 }
 .chat-input {
   flex: 1;
-  background-color: #ffffff;
+  background-color: transparent;
 }
 
 :deep(.el-textarea__inner) {
@@ -106,15 +107,17 @@ const handleSendMessageWrapper = () => {
   padding: 12px 16px !important;
   font-size: 16px !important;
   resize: none !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-
+  box-shadow: none !important;
+  background-color: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-border-secondary) !important;
   transition: all 0.2s ease;
   min-height: 56px !important;
 }
 
 :deep(.el-textarea__inner):focus {
-  border-color: #10a37f;
-  box-shadow: 0 0 0 2px rgba(16, 163, 127, 0.2);
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary), 0.2) !important;
 }
 
 :deep(.el-input-group__append) {
@@ -131,19 +134,19 @@ const handleSendMessageWrapper = () => {
   border-radius: 8px;
   padding: 10px 16px;
   font-weight: 500;
-  background-color: #10a37f;
-  border-color: #10a37f;
-  color: white;
+  background-color: var(--theme-primary);
+  border-color: var(--theme-primary);
+  color: var(--theme-text-inverse);
   transition: all 0.2s ease;
 }
 
 .el-button:hover {
-  background-color: #0d8e6f;
-  border-color: #0d8e6f;
+  background-color: var(--theme-primary-light);
+  border-color: var(--theme-primary-light);
 }
 
 .el-button:active {
-  background-color: #0b7a5f;
-  border-color: #0b7a5f;
+  background-color: var(--theme-primary-dark);
+  border-color: var(--theme-primary-dark);
 }
 </style>

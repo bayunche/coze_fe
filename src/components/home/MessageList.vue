@@ -167,7 +167,7 @@ defineExpose({
   flex-grow: 1;
   overflow-y: auto;
   padding: 20px 40px;
-  background: #ffffff;
+  background: var(--theme-bg-primary);
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -204,7 +204,7 @@ defineExpose({
     var(--left-side) + var(--padding) + var(--right-side-width) - var(--scrollbar-width, 0px)
   );
 
-  background: #ffffff;
+  background: var(--theme-bg-primary);
 }
 
 /* 隐藏滚动条，保持光滑滚动 */

@@ -99,14 +99,14 @@ const emit = defineEmits([
 
 .message-sender {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--theme-text-secondary);
   margin-bottom: 4px;
 }
 
 .workflow-info-tag {
   font-style: italic;
   font-size: 18px;
-  color: #9ca3af;
+  color: var(--theme-text-tertiary);
 }
 
 .message-content {
@@ -124,7 +124,7 @@ const emit = defineEmits([
 
 .message-timestamp {
   font-size: 10px;
-  color: #9ca3af;
+  color: var(--theme-text-tertiary);
   margin-top: 6px;
   text-align: right;
 }
@@ -135,8 +135,8 @@ const emit = defineEmits([
 }
 
 .message-from-user .message-bubble {
-  background: #3b82f6;
-  color: white;
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
   padding: 12px 16px;
   border-radius: 18px;
   width: fit-content;
@@ -151,7 +151,7 @@ const emit = defineEmits([
 .message-from-agent .message-bubble,
 .message-from-system .message-bubble {
   background: transparent;
-  color: #1f2937;
+  color: var(--theme-text-primary);
   padding: 0;
   border-radius: 0;
   box-shadow: none;

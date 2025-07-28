@@ -63,13 +63,14 @@ const toggleSidebar = () => {
 .agent-dashboard {
   display: flex;
   height: 100vh;
-  background: #ffffff;
+  background: var(--theme-bg-primary);
+  transition: all 0.3s ease;
 }
 
 .main-container {
   flex: 1;
   display: flex;
-  background: #ffffff;
+  background: var(--theme-bg-primary);
   font-size: 14px;
 }
 
@@ -87,7 +88,7 @@ const toggleSidebar = () => {
   min-width: 72rem;
   max-width: 100%;
   margin: 0 auto;
-  background: #ffffff;
+  background: var(--theme-bg-primary);
 }
 
 .chat-container {
@@ -109,7 +110,7 @@ const toggleSidebar = () => {
   bottom: 1.5rem;
   width: 100%;
   padding: 16px 0;
-  background: #ffffff;
+  background: var(--theme-bg-primary);
 }
 
 .toggle-sidebar-button {
@@ -117,7 +118,7 @@ const toggleSidebar = () => {
   bottom: 20px;
   transition: left 0.3s ease;
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--theme-shadow-lg);
 }
 
 :deep(.el-input__inner) {
@@ -140,8 +141,8 @@ const toggleSidebar = () => {
 }
 
 :deep(.el-aside) {
-  background-color: #f0f2f5;
-  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.1);
+  background-color: var(--theme-bg-tertiary);
+  box-shadow: var(--theme-shadow-md);
   padding: 20px;
   box-sizing: border-box;
 }

@@ -32,11 +32,12 @@ defineEmits(['show-workflow-config'])
 
 <style scoped>
 .header {
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  background: var(--theme-glass-bg);
+  backdrop-filter: var(--theme-backdrop-blur);
+  box-shadow: var(--theme-shadow-lg);
   padding: 0 32px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--theme-border-secondary);
+  transition: all 0.3s ease;
 }
 
 .header-content {
@@ -50,8 +51,8 @@ defineEmits(['show-workflow-config'])
   margin: 0 0 4px 0;
   font-size: 24px;
   font-weight: 700;
-  color: #1f2937;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: var(--theme-text-primary);
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }

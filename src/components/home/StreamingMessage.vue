@@ -151,26 +151,26 @@ span {
   border-collapse: collapse;
   margin: 1em 0;
   font-size: 0.9em;
-  color: #333;
+  color: var(--theme-text-primary);
 }
 
 :deep(th),
 :deep(td) {
-  border: 1px solid #ddd;
+  border: 1px solid var(--theme-border-primary);
   padding: 8px;
   text-align: left;
 }
 
 :deep(th) {
-  background-color: #f2f2f2;
+  background-color: var(--theme-bg-tertiary);
   font-weight: bold;
 }
 
 :deep(tr:nth-child(even)) {
-  background-color: #f9f9f9;
+  background-color: var(--theme-bg-secondary);
 }
 
 :deep(tr:hover) {
-  background-color: #f1f1f1;
+  background-color: var(--theme-bg-tertiary);
 }
 </style>

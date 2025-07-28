@@ -116,12 +116,13 @@ const handleCustomButtonClick = ({ message, button }) => {
 
 <style scoped>
 .execution-panel-card {
-  border: none;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--theme-border-primary);
+  box-shadow: var(--theme-shadow-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--theme-bg-card);
 }
 
 .card-header {
@@ -139,13 +140,13 @@ const handleCustomButtonClick = ({ message, button }) => {
 .card-title {
   font-size: 22px;
   font-weight: 800;
-  color: #1f2937;
+  color: var(--theme-text-primary);
 }
 
 .workflow-tag {
-  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  background: linear-gradient(135deg, var(--theme-primary-light), var(--theme-primary));
   border: none;
-  color: white;
+  color: var(--theme-text-inverse);
 }
 
 .card-body-wrapper {

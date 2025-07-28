@@ -4,6 +4,7 @@ import { createPersistedState } from 'pinia-plugin-persistedstate'
 import 'element-plus/dist/index.css'
 
 import '@/assets/style/style.css'
+import '@/styles/themes.css'
 
 const pinia = createPinia()
 pinia.use(createPersistedState())

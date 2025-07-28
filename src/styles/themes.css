@@ -1,0 +1,340 @@
+/* 主题配色系统 */
+
+/* 默认主题（浅色） */
+:root {
+  /* 主色调 */
+  --theme-primary: #165dff;
+  --theme-primary-light: #409eff;
+  --theme-primary-lighter: #79bbff;
+  --theme-primary-dark: #0d47a1;
+  
+  /* Element Plus 变量覆盖 */
+  --el-color-primary: #165dff;
+  --el-color-primary-light-3: #409eff;
+  --el-color-primary-light-5: #79bbff;
+  --el-color-primary-light-7: #b3d8ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #0d47a1;
+  
+  /* 背景色 */
+  --theme-bg-primary: #ffffff;
+  --theme-bg-secondary: #f5f7fa;
+  --theme-bg-tertiary: #f0f2f5;
+  --theme-bg-card: rgba(255, 255, 255, 0.9);
+  
+  /* Element Plus 背景色 */
+  --el-bg-color: #ffffff;
+  --el-bg-color-page: #f5f7fa;
+  --el-bg-color-overlay: rgba(255, 255, 255, 0.9);
+  --el-fill-color: #f0f2f5;
+  --el-fill-color-light: #f5f7fa;
+  --el-fill-color-lighter: #fafafa;
+  --el-fill-color-extra-light: #fafcff;
+  
+  /* 文字颜色 */
+  --theme-text-primary: #1f2937;
+  --theme-text-secondary: #6b7280;
+  --theme-text-tertiary: #9ca3af;
+  --theme-text-inverse: #ffffff;
+  
+  /* Element Plus 文字颜色 */
+  --el-text-color-primary: #1f2937;
+  --el-text-color-regular: #6b7280;
+  --el-text-color-secondary: #9ca3af;
+  --el-text-color-placeholder: #a8abb2;
+  --el-text-color-disabled: #c0c4cc;
+  
+  /* 边框颜色 */
+  --theme-border-primary: #e5e7eb;
+  --theme-border-secondary: #f3f4f6;
+  
+  /* Element Plus 边框颜色 */
+  --el-border-color: #e5e7eb;
+  --el-border-color-light: #f3f4f6;
+  --el-border-color-lighter: #fafafa;
+  --el-border-color-extra-light: #f5f7fa;
+  --el-border-color-dark: #d0d7de;
+  --el-border-color-darker: #c0c4cc;
+  
+  /* 状态颜色 */
+  --theme-success: #10b981;
+  --theme-warning: #f59e0b;
+  --theme-error: #ef4444;
+  --theme-info: #3b82f6;
+  
+  /* 阴影 */
+  --theme-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --theme-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --theme-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* 毛玻璃效果 */
+  --theme-backdrop-blur: blur(10px);
+  --theme-glass-bg: rgba(255, 255, 255, 0.8);
+}
+
+/* 暗黑主题 */
+[data-theme="dark"] {
+  /* 主色调 */
+  --theme-primary: #409eff;
+  --theme-primary-light: #66b3ff;
+  --theme-primary-lighter: #93c5ff;
+  --theme-primary-dark: #2e7df7;
+  
+  /* Element Plus 主色调 */
+  --el-color-primary: #409eff;
+  --el-color-primary-light-3: #66b3ff;
+  --el-color-primary-light-5: #93c5ff;
+  --el-color-primary-light-7: #b3d8ff;
+  --el-color-primary-light-8: #d9ecff;
+  --el-color-primary-light-9: #ecf5ff;
+  --el-color-primary-dark-2: #2e7df7;
+  
+  /* 背景色 */
+  --theme-bg-primary: #1a1a1a;
+  --theme-bg-secondary: #2d2d2d;
+  --theme-bg-tertiary: #3a3a3a;
+  --theme-bg-card: rgba(45, 45, 45, 0.9);
+  
+  /* Element Plus 背景色 */
+  --el-bg-color: #1a1a1a;
+  --el-bg-color-page: #2d2d2d;
+  --el-bg-color-overlay: rgba(45, 45, 45, 0.9);
+  --el-fill-color: #3a3a3a;
+  --el-fill-color-light: #262727;
+  --el-fill-color-lighter: #1d1e1f;
+  --el-fill-color-extra-light: #191a1b;
+  
+  /* 文字颜色 */
+  --theme-text-primary: #f9fafb;
+  --theme-text-secondary: #d1d5db;
+  --theme-text-tertiary: #9ca3af;
+  --theme-text-inverse: #1f2937;
+  
+  /* Element Plus 文字颜色 */
+  --el-text-color-primary: #f9fafb;
+  --el-text-color-regular: #d1d5db;
+  --el-text-color-secondary: #9ca3af;
+  --el-text-color-placeholder: #8d9095;
+  --el-text-color-disabled: #6c6e72;
+  
+  /* 边框颜色 */
+  --theme-border-primary: #4b5563;
+  --theme-border-secondary: #374151;
+  
+  /* Element Plus 边框颜色 */
+  --el-border-color: #4b5563;
+  --el-border-color-light: #374151;
+  --el-border-color-lighter: #2d3748;
+  --el-border-color-extra-light: #1a202c;
+  --el-border-color-dark: #6b7280;
+  --el-border-color-darker: #9ca3af;
+  
+  /* 状态颜色 */
+  --theme-success: #10b981;
+  --theme-warning: #f59e0b;
+  --theme-error: #ef4444;
+  --theme-info: #3b82f6;
+  
+  /* 阴影 */
+  --theme-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --theme-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+  --theme-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+  
+  /* 毛玻璃效果 */
+  --theme-backdrop-blur: blur(10px);
+  --theme-glass-bg: rgba(45, 45, 45, 0.8);
+}
+
+/* 科技蓝主题 */
+[data-theme="tech-blue"] {
+  /* 主色调 */
+  --theme-primary: #00d4ff;
+  --theme-primary-light: #33ddff;
+  --theme-primary-lighter: #66e6ff;
+  --theme-primary-dark: #00a8cc;
+  
+  /* Element Plus 主色调 */
+  --el-color-primary: #00d4ff;
+  --el-color-primary-light-3: #33ddff;
+  --el-color-primary-light-5: #66e6ff;
+  --el-color-primary-light-7: #99eeff;
+  --el-color-primary-light-8: #ccf7ff;
+  --el-color-primary-light-9: #e6fbff;
+  --el-color-primary-dark-2: #00a8cc;
+  
+  /* 背景色 */
+  --theme-bg-primary: #0a0e1a;
+  --theme-bg-secondary: #1a2332;
+  --theme-bg-tertiary: #243447;
+  --theme-bg-card: rgba(26, 35, 50, 0.9);
+  
+  /* Element Plus 背景色 */
+  --el-bg-color: #0a0e1a;
+  --el-bg-color-page: #1a2332;
+  --el-bg-color-overlay: rgba(26, 35, 50, 0.9);
+  --el-fill-color: #243447;
+  --el-fill-color-light: #1a2332;
+  --el-fill-color-lighter: #0f1419;
+  --el-fill-color-extra-light: #0a0e1a;
+  
+  /* 文字颜色 */
+  --theme-text-primary: #e2f1ff;
+  --theme-text-secondary: #b3d9ff;
+  --theme-text-tertiary: #7db3d9;
+  --theme-text-inverse: #0a0e1a;
+  
+  /* Element Plus 文字颜色 */
+  --el-text-color-primary: #e2f1ff;
+  --el-text-color-regular: #b3d9ff;
+  --el-text-color-secondary: #7db3d9;
+  --el-text-color-placeholder: #5a8fb3;
+  --el-text-color-disabled: #4a7a99;
+  
+  /* 边框颜色 */
+  --theme-border-primary: #3d5a80;
+  --theme-border-secondary: #2c4866;
+  
+  /* Element Plus 边框颜色 */
+  --el-border-color: #3d5a80;
+  --el-border-color-light: #2c4866;
+  --el-border-color-lighter: #1a2332;
+  --el-border-color-extra-light: #0f1419;
+  --el-border-color-dark: #4a6b99;
+  --el-border-color-darker: #5a8fb3;
+  
+  /* 状态颜色 */
+  --theme-success: #00ff88;
+  --theme-warning: #ffaa00;
+  --theme-error: #ff4466;
+  --theme-info: #00aaff;
+  
+  /* 阴影 */
+  --theme-shadow-sm: 0 1px 3px rgba(0, 212, 255, 0.2);
+  --theme-shadow-md: 0 4px 6px rgba(0, 212, 255, 0.2);
+  --theme-shadow-lg: 0 10px 15px rgba(0, 212, 255, 0.2);
+  
+  /* 毛玻璃效果 */
+  --theme-backdrop-blur: blur(10px);
+  --theme-glass-bg: rgba(26, 35, 50, 0.8);
+}
+
+/* 紫色梦幻主题 */
+[data-theme="purple-dream"] {
+  /* 主色调 */
+  --theme-primary: #8b5cf6;
+  --theme-primary-light: #a78bfa;
+  --theme-primary-lighter: #c4b5fd;
+  --theme-primary-dark: #7c3aed;
+  
+  /* 背景色 */
+  --theme-bg-primary: #faf5ff;
+  --theme-bg-secondary: #f3e8ff;
+  --theme-bg-tertiary: #ede9fe;
+  --theme-bg-card: rgba(250, 245, 255, 0.9);
+  
+  /* 文字颜色 */
+  --theme-text-primary: #581c87;
+  --theme-text-secondary: #7c2d12;
+  --theme-text-tertiary: #a855f7;
+  --theme-text-inverse: #faf5ff;
+  
+  /* 边框颜色 */
+  --theme-border-primary: #d8b4fe;
+  --theme-border-secondary: #e9d5ff;
+  
+  /* 状态颜色 */
+  --theme-success: #10b981;
+  --theme-warning: #f59e0b;
+  --theme-error: #ef4444;
+  --theme-info: #8b5cf6;
+  
+  /* 阴影 */
+  --theme-shadow-sm: 0 1px 3px rgba(139, 92, 246, 0.1);
+  --theme-shadow-md: 0 4px 6px rgba(139, 92, 246, 0.1);
+  --theme-shadow-lg: 0 10px 15px rgba(139, 92, 246, 0.1);
+  
+  /* 毛玻璃效果 */
+  --theme-backdrop-blur: blur(10px);
+  --theme-glass-bg: rgba(250, 245, 255, 0.8);
+}
+
+/* 森林绿主题 */
+[data-theme="forest-green"] {
+  /* 主色调 */
+  --theme-primary: #059669;
+  --theme-primary-light: #10b981;
+  --theme-primary-lighter: #34d399;
+  --theme-primary-dark: #047857;
+  
+  /* 背景色 */
+  --theme-bg-primary: #f0fdf4;
+  --theme-bg-secondary: #dcfce7;
+  --theme-bg-tertiary: #bbf7d0;
+  --theme-bg-card: rgba(240, 253, 244, 0.9);
+  
+  /* 文字颜色 */
+  --theme-text-primary: #064e3b;
+  --theme-text-secondary: #047857;
+  --theme-text-tertiary: #059669;
+  --theme-text-inverse: #f0fdf4;
+  
+  /* 边框颜色 */
+  --theme-border-primary: #a7f3d0;
+  --theme-border-secondary: #d1fae5;
+  
+  /* 状态颜色 */
+  --theme-success: #10b981;
+  --theme-warning: #f59e0b;
+  --theme-error: #ef4444;
+  --theme-info: #059669;
+  
+  /* 阴影 */
+  --theme-shadow-sm: 0 1px 3px rgba(5, 150, 105, 0.1);
+  --theme-shadow-md: 0 4px 6px rgba(5, 150, 105, 0.1);
+  --theme-shadow-lg: 0 10px 15px rgba(5, 150, 105, 0.1);
+  
+  /* 毛玻璃效果 */
+  --theme-backdrop-blur: blur(10px);
+  --theme-glass-bg: rgba(240, 253, 244, 0.8);
+}
+
+/* 橙色活力主题 */
+[data-theme="orange-energy"] {
+  /* 主色调 */
+  --theme-primary: #ea580c;
+  --theme-primary-light: #f97316;
+  --theme-primary-lighter: #fb923c;
+  --theme-primary-dark: #c2410c;
+  
+  /* 背景色 */
+  --theme-bg-primary: #fffbeb;
+  --theme-bg-secondary: #fef3c7;
+  --theme-bg-tertiary: #fed7aa;
+  --theme-bg-card: rgba(255, 251, 235, 0.9);
+  
+  /* 文字颜色 */
+  --theme-text-primary: #7c2d12;
+  --theme-text-secondary: #9a3412;
+  --theme-text-tertiary: #c2410c;
+  --theme-text-inverse: #fffbeb;
+  
+  /* 边框颜色 */
+  --theme-border-primary: #fdba74;
+  --theme-border-secondary: #fde68a;
+  
+  /* 状态颜色 */
+  --theme-success: #10b981;
+  --theme-warning: #f59e0b;
+  --theme-error: #ef4444;
+  --theme-info: #ea580c;
+  
+  /* 阴影 */
+  --theme-shadow-sm: 0 1px 3px rgba(234, 88, 12, 0.1);
+  --theme-shadow-md: 0 4px 6px rgba(234, 88, 12, 0.1);
+  --theme-shadow-lg: 0 10px 15px rgba(234, 88, 12, 0.1);
+  
+  /* 毛玻璃效果 */
+  --theme-backdrop-blur: blur(10px);
+  --theme-glass-bg: rgba(255, 251, 235, 0.8);
+}
