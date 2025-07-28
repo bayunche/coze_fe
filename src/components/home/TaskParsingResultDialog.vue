@@ -33,7 +33,7 @@
               :stroke-width="8"
               style="flex-grow: 1; margin-right: 10px"
             />
-            <span style="font-size: 12px; color: #909399">
+            <span style="font-size: 12px; color: var(--theme-text-secondary)">
               {{ scope.row.file_done_count || 0 }} /
               {{ scope.row.file_count || 0 }}
             </span>
@@ -166,7 +166,153 @@ const handleClose = () => {
 </script>
 
 <style scoped>
-.task-parsing-result-dialog .el-dialog__body {
+/* 对话框主题样式 */
+:deep(.task-parsing-result-dialog) {
+  background: var(--theme-dialog-bg);
+  border: 1px solid var(--theme-dialog-border);
+  box-shadow: var(--theme-dialog-shadow);
+}
+
+:deep(.task-parsing-result-dialog .el-dialog__header) {
+  background: var(--theme-dialog-header-bg);
+  color: var(--theme-text-primary);
+  border-bottom: 1px solid var(--theme-border-secondary);
+}
+
+:deep(.task-parsing-result-dialog .el-dialog__body) {
   padding: 20px 30px;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+}
+
+:deep(.task-parsing-result-dialog .el-dialog__footer) {
+  background: var(--theme-dialog-header-bg);
+  border-top: 1px solid var(--theme-border-secondary);
+}
+
+/* 表格样式 */
+:deep(.el-table) {
+  background: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: var(--theme-table-header-bg) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-table-border) !important;
+}
+
+:deep(.el-table td.el-table__cell) {
+  border-color: var(--theme-table-border) !important;
+  background: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: var(--theme-table-stripe-bg) !important;
+}
+
+:deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
+  background: var(--theme-table-hover-bg) !important;
+}
+
+/* 标签样式 */
+:deep(.el-tag) {
+  background: var(--theme-tag-bg) !important;
+  color: var(--theme-tag-text) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+:deep(.el-tag--success) {
+  background: var(--theme-success) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-tag--primary) {
+  background: var(--theme-primary) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-tag--warning) {
+  background: var(--theme-warning) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-tag--info) {
+  background: var(--theme-info) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+/* 按钮样式 */
+:deep(.el-button) {
+  background: var(--theme-bg-tertiary);
+  border-color: var(--theme-border-primary);
+  color: var(--theme-text-primary);
+}
+
+:deep(.el-button--primary) {
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+  color: var(--theme-text-inverse);
+}
+
+:deep(.el-button:hover) {
+  opacity: 0.8;
+}
+
+/* 分页器样式 */
+:deep(.el-pagination) {
+  color: var(--theme-text-primary);
+}
+
+:deep(.el-pagination .el-pager li) {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-primary);
+}
+
+:deep(.el-pagination .el-pager li.is-active) {
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
+  border-color: var(--theme-primary);
+}
+
+:deep(.el-pagination button) {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-primary);
+}
+
+:deep(.el-pagination button:hover) {
+  background: var(--theme-primary);
+  color: var(--theme-text-inverse);
+}
+
+/* 进度条样式 */
+:deep(.el-progress-bar__outer) {
+  background: var(--theme-bg-tertiary);
+  border: 1px solid var(--theme-border-primary);
+}
+
+:deep(.el-progress-bar__inner) {
+  background: var(--theme-primary);
+}
+
+/* Tabs 样式 */
+:deep(.el-tabs__header) {
+  background: transparent;
+  border-bottom: 1px solid var(--theme-border-secondary);
+}
+
+:deep(.el-tabs__item) {
+  color: var(--theme-text-secondary);
+}
+
+:deep(.el-tabs__item.is-active) {
+  color: var(--theme-primary);
+}
+
+:deep(.el-tabs__active-bar) {
+  background: var(--theme-primary);
 }
 </style>

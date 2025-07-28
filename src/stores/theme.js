@@ -39,6 +39,12 @@ export const useThemeStore = defineStore('theme', () => {
       name: '橙色活力',
       description: '充满活力的橙色主题',
       preview: '#ea580c'
+    },
+    {
+      id: 'apple-glass',
+      name: '苹果毛玻璃',
+      description: '仿苹果系统的毛玻璃透明主题',
+      preview: '#007aff'
     }
   ])
 

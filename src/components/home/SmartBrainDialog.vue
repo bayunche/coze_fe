@@ -127,9 +127,27 @@ const handleClose = () => {
 </script>
 
 <style scoped>
-.smart-brain-dialog .el-dialog__body {
+/* 智能大脑对话框样式 */
+:deep(.smart-brain-dialog) {
+  background: var(--theme-dialog-bg);
+  border: 1px solid var(--theme-dialog-border);
+  box-shadow: var(--theme-dialog-shadow);
+}
+
+:deep(.smart-brain-dialog .el-dialog__header) {
+  background: var(--theme-dialog-header-bg);
+  color: var(--theme-text-primary);
+  border-bottom: 1px solid var(--theme-border-secondary);
+}
+
+:deep(.smart-brain-dialog .el-dialog__body) {
   padding: 20px 30px;
-  background-color: #f4f7f9;
+  background-color: var(--theme-bg-secondary);
+}
+
+:deep(.smart-brain-dialog .el-dialog__footer) {
+  background: var(--theme-dialog-header-bg);
+  border-top: 1px solid var(--theme-border-secondary);
 }
 
 .agent-stats-grid {
@@ -140,14 +158,27 @@ const handleClose = () => {
 
 .agent-card {
   border-radius: 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--theme-card-border);
   transition: all 0.3s ease;
   cursor: pointer;
+  background: var(--theme-card-bg);
+  box-shadow: var(--theme-card-shadow);
 }
 
 .agent-card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--theme-card-hover-shadow);
+  border-color: var(--theme-primary);
+}
+
+/* Element Plus 卡片内部样式覆盖 */
+:deep(.agent-card .el-card__header) {
+  background: var(--theme-bg-primary);
+  border-bottom: 1px solid var(--theme-border-secondary);
+}
+
+:deep(.agent-card .el-card__body) {
+  background: var(--theme-bg-primary);
 }
 
 .card-header {
@@ -155,7 +186,7 @@ const handleClose = () => {
   justify-content: space-between;
   align-items: center;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--theme-text-primary);
 }
 
 .stats-container {
@@ -173,12 +204,37 @@ const handleClose = () => {
 .stat-value {
   font-size: 24px;
   font-weight: bold;
-  color: #3b82f6;
+  color: var(--theme-primary);
 }
 
 .stat-label {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--theme-text-secondary);
   margin-top: 4px;
+}
+
+/* 暗黑模式下的特殊优化 */
+[data-theme="dark"] .agent-card:hover,
+[data-theme="tech-blue"] .agent-card:hover {
+  box-shadow: 
+    var(--theme-card-hover-shadow),
+    0 0 20px rgba(64, 158, 255, 0.3);
+}
+
+/* 状态标签样式优化 */
+:deep(.el-tag) {
+  background: var(--theme-tag-bg) !important;
+  color: var(--theme-tag-text) !important;
+  border-color: var(--theme-border-primary) !important;
+}
+
+:deep(.el-tag--success) {
+  background: var(--theme-success) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-tag--info) {
+  background: var(--theme-info) !important;
+  color: var(--theme-text-inverse) !important;
 }
 </style>

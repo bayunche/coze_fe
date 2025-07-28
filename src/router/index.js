@@ -43,6 +43,16 @@ const router = createRouter({
       path: '/owner-material-report',
       name: 'OwnerMaterialReport',
       component: () => import('../views/OwnerMaterialReportPage.vue')
+    },
+    {
+      path: '/smart-brain',
+      name: 'smart-brain',
+      component: () => import('../pages/SmartBrainPage.vue')
+    },
+    {
+      path: '/smart-brain/material-management',
+      name: 'material-management',
+      component: () => import('../pages/MaterialManagementPage.vue')
     }
   ]
 })

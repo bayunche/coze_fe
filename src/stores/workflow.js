@@ -952,6 +952,22 @@ export const useWorkflowStore = defineStore('workflow', () => {
     supplierFileDetailIds.value = ids
   }
 
+  // 智能大脑数据获取方法 - 独立页面使用
+  const handleSmartBrain = async () => {
+    try {
+      const fetchPromises = smartAgents.value.map(async (agent) => {
+        await fetchAgentTaskCounts(agent)
+        await fetchAgentTaskLists(agent)
+      })
+
+      await Promise.all(fetchPromises)
+      console.log('智能体任务数据获取成功')
+    } catch (error) {
+      console.error('获取智能大脑数据失败:', error)
+      ElMessage.error('获取智能大脑数据失败，请稍后重试。')
+    }
+  }
+
   const handleFunctionSelect = async (key, addMessageCallback) => {
     if (key === 'smartBrain') {
       await handleSmartBrainSelection(addMessageCallback)
@@ -1053,6 +1069,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     getAllowedFileTypes,
     // Actions
     handleFunctionSelect,
+    handleSmartBrain,
     executeWorkflow,
     executeOwnerMaterialReparse,
     finalizeWorkflowExecution,

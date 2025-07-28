@@ -13,7 +13,7 @@
         stripe
         class="result-table"
         max-height="60vh"
-        :header-cell-style="{ background: '#fafafa', color: '#333' }"
+        :header-cell-style="{ background: 'var(--theme-table-header-bg)', color: 'var(--theme-text-primary)' }"
       >
         <template v-for="column in tableColumns" :key="column.prop">
           <el-table-column
@@ -122,30 +122,104 @@ export default {
 </script>
 
 <style>
+/* 对话框主题样式 */
 .result-detail-dialog .el-dialog__body {
   padding: 20px;
+  background: var(--theme-dialog-bg);
+  color: var(--theme-text-primary);
 }
+
 .result-detail-dialog .el-dialog__header {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--theme-dialog-border);
   padding: 16px 20px;
+  background: var(--theme-dialog-header-bg);
+  color: var(--theme-text-primary);
 }
+
 .result-detail-dialog .el-dialog__title {
   font-weight: 600;
+  color: var(--theme-text-primary);
 }
+
 .result-detail-dialog .el-dialog__footer {
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--theme-dialog-border);
   padding: 10px 20px;
   text-align: center;
+  background: var(--theme-dialog-header-bg);
 }
+
+/* 表格主题样式 */
 .result-table {
   border-radius: 8px;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--theme-table-border);
+  background: var(--theme-bg-primary);
 }
+
 .result-table th {
   font-weight: 600;
-  background-color: #f7f8fa !important;
+  background-color: var(--theme-table-header-bg) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-table-border) !important;
 }
-.result-table .el-table__row:hover {
-  background-color: #f5f7fa;
+
+.result-table td {
+  background-color: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-table-border) !important;
+}
+
+.result-table .el-table__row:hover td {
+  background-color: var(--theme-table-hover-bg) !important;
+}
+
+.result-table .el-table__row--striped td {
+  background-color: var(--theme-table-stripe-bg) !important;
+}
+
+/* 按钮样式优化 */
+.result-detail-dialog .el-button {
+  background: var(--theme-bg-tertiary);
+  border-color: var(--theme-border-primary);
+  color: var(--theme-text-primary);
+}
+
+.result-detail-dialog .el-button--primary {
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
+  color: var(--theme-text-inverse);
+}
+
+.result-detail-dialog .el-button--success {
+  background: var(--theme-success);
+  border-color: var(--theme-success);
+  color: var(--theme-text-inverse);
+}
+
+.result-detail-dialog .el-button:hover {
+  opacity: 0.8;
+}
+
+/* 输入框样式 */
+.result-detail-dialog .el-input__inner {
+  background: var(--theme-input-bg);
+  border-color: var(--theme-input-border);
+  color: var(--theme-text-primary);
+}
+
+.result-detail-dialog .el-input__inner:focus {
+  border-color: var(--theme-input-focus-border);
+}
+
+.result-detail-dialog .el-input__inner::placeholder {
+  color: var(--theme-input-placeholder);
+}
+
+/* 空状态样式 */
+.result-detail-dialog .el-empty {
+  background: transparent;
+}
+
+.result-detail-dialog .el-empty__description {
+  color: var(--theme-text-secondary);
 }
 </style>

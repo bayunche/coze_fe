@@ -7,11 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is a Vue 3 frontend application that integrates with Coze APIs to provide a rich, interactive interface for managing and executing workflows. The project focuses on real-time, streaming execution for tasks like contract parsing, supplier material analysis, and owner-supplied material processing.
 
 ### Core Features
+
 - **Workflow Integration**: Deep integration with Coze APIs for both streaming and non-streaming workflow execution.
 - **Material Parsing**: Specialized workflows for parsing various documents like contracts and material lists.
 - **Real-time Interaction**: Utilizes WebSocket-like patterns to provide real-time feedback and results from workflow execution.
 - **Dynamic UI**: Features for data generation, editing, and visualization of structured data extracted from documents.
-
 
 ## Development Commands
 
@@ -122,3 +122,14 @@ Development proxy configuration in `vite.config.js`:
 - Messages are appended to the chat store with unique IDs.
 - Progress is tracked with loading states and completion callbacks.
 
+## 代码规范
+
+注释清晰，避免注释无意义代码
+
+函数粒度小，每个函数只做一件事
+
+保持组件逻辑紧凑：模板简洁，逻辑抽离
+
+不要重复造轮子：可复用逻辑抽到 composables 中
+
+创建一个可复用的组件时，应该在src/components下创建一个页面的文件夹，里面包含组件文件本身，常量文件(constants.js)和业务运辑工具文件(utils.js)，并由index.js导出组件文件，并确保这个组件能够脱离业务单独工作

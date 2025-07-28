@@ -7,7 +7,7 @@
         <SidebarNav
           :functions="functions"
           :active-function="activeFunction"
-          @select="(key) => handleFunctionSelect(key, addMessage)"
+          @select="(key) => handleCustomFunctionSelect(key)"
         />
       </el-aside>
       
@@ -37,6 +37,7 @@
 
 <script setup>
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { ArrowRight, ArrowLeft } from '@element-plus/icons-vue'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useChatStore } from '@/stores/chat'
@@ -47,11 +48,23 @@ import ChatInputArea from '@/components/home/ChatInputArea.vue'
 // Stores
 const workflowStore = useWorkflowStore()
 const chatStore = useChatStore()
+const router = useRouter()
 
 // 从 Store 中解构状态和方法
 const { isSidebarOpen, activeFunction } = storeToRefs(workflowStore)
 const { handleFunctionSelect } = workflowStore
 const { addMessage } = chatStore
+
+// 自定义函数选择处理逻辑
+const handleCustomFunctionSelect = (key) => {
+  if (key === 'smartBrain') {
+    // 跳转到智能大脑页面
+    router.push('/smart-brain')
+  } else {
+    // 其他功能保持原有逻辑
+    handleFunctionSelect(key, addMessage)
+  }
+}
 
 // 侧边栏切换逻辑
 const toggleSidebar = () => {
