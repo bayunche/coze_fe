@@ -1,82 +1,122 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    title="乙供物资解析任务列表"
-    width="60%"
-    :before-close="handleClose"
-    custom-class="task-parsing-result-dialog"
+    :title="DIALOG_CONFIG.TITLE"
+    :width="DIALOG_CONFIG.WIDTH"
+    :before-close="() => closeDialog(emit)"
+    :custom-class="DIALOG_CONFIG.CUSTOM_CLASS"
   >
-    <el-tabs v-model="activeTab" @tab-click="handleTabClick">
-      <el-tab-pane label="全部" name="all"></el-tab-pane>
-      <el-tab-pane label="已完成" name="completed"></el-tab-pane>
-      <el-tab-pane label="进行中" name="inProgress"></el-tab-pane>
+    <el-tabs 
+      v-model="activeTab" 
+      @tab-click="() => switchTab(() => currentPage = 1)"
+    >
+      <el-tab-pane 
+        v-for="tab in TAB_CONFIG"
+        :key="tab.name"
+        :label="tab.label" 
+        :name="tab.name"
+      />
     </el-tabs>
-    <el-table :data="paginatedData" style="width: 100%" v-loading="loading">
-      <el-table-column prop="ID" label="任务编号" width="180"></el-table-column>
-      <el-table-column prop="CREATED_TIME" label="任务创建时间" width="200">
-        <template #default="scope">
-          <span>{{ formatTimestamp(scope.row.CREATED_TIME) }}</span>
+    
+    <el-table 
+      :data="paginatedData" 
+      style="width: 100%" 
+      v-loading="loading"
+    >
+      <el-table-column 
+        v-for="column in TABLE_COLUMNS"
+        :key="column.prop || column.label"
+        v-bind="column"
+      >
+        <template v-if="column.prop === 'CREATED_TIME'" #default="{ row }">
+          <span>{{ formatTimestamp(row.CREATED_TIME) }}</span>
         </template>
-      </el-table-column>
-      <el-table-column label="状态" width="120">
-        <template #default="scope">
-          <el-tag :type="getTaskStatus(scope.row).type" size="small">
-            {{ getTaskStatus(scope.row).text }}
+        
+        <template v-else-if="column.label === '状态'" #default="{ row }">
+          <el-tag :type="getTaskStatus(row).type" size="small">
+            {{ getTaskStatus(row).text }}
           </el-tag>
         </template>
-      </el-table-column>
-      <el-table-column label="进度" min-width="200">
-        <template #default="scope">
+        
+        <template v-else-if="column.label === '进度'" #default="{ row }">
           <div style="display: flex; align-items: center">
             <el-progress
-              :percentage="calculateProgress(scope.row.file_count, scope.row.file_done_count)"
+              :percentage="calculateProgress(row.file_count, row.file_done_count)"
               :stroke-width="8"
               style="flex-grow: 1; margin-right: 10px"
             />
             <span style="font-size: 12px; color: var(--theme-text-secondary)">
-              {{ scope.row.file_done_count || 0 }} /
-              {{ scope.row.file_count || 0 }}
+              {{ row.file_done_count || 0 }} / {{ row.file_count || 0 }}
             </span>
           </div>
         </template>
-      </el-table-column>
-      <el-table-column prop="file_error_count" label="失败数" width="100"></el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
-        <template #default="scope">
-          <el-button type="primary" size="small" @click="viewTaskDetails(scope.row)"
-            >查看详情</el-button
+        
+        <template v-else-if="column.label === '操作'" #default="{ row }">
+          <el-button 
+            type="primary" 
+            size="small" 
+            @click="() => viewTaskDetails(row, setCurrentTaskId, setOwnerDialogVisible)"
           >
+            {{ BUTTON_LABELS.VIEW_DETAILS }}
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
+    
     <el-pagination
-      v-if="filteredTasks.length > pageSize"
+      v-if="filteredTasks.length > PAGINATION_CONFIG.DEFAULT_PAGE_SIZE"
       background
-      layout="prev, pager, next"
+      :layout="PAGINATION_CONFIG.LAYOUT"
       :total="filteredTasks.length"
-      :page-size="pageSize"
+      :page-size="PAGINATION_CONFIG.DEFAULT_PAGE_SIZE"
       v-model:current-page="currentPage"
       style="margin-top: 20px; text-align: right"
-    >
-    </el-pagination>
+    />
+    
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="handleClose">关闭</el-button>
+        <el-button @click="() => closeDialog(emit)">
+          {{ BUTTON_LABELS.CLOSE }}
+        </el-button>
       </span>
     </template>
   </el-dialog>
+  
   <OwnerMaterialTaskParsingDetailDialog
     v-model="showOwnerMaterialTaskParsingDetailDialog"
     :taskId="currentTaskIdForDetail"
-    @view-detail="handleViewDetailFromTaskParsing"
+    @view-detail="(params) => navigateToDetail(params, router)"
   />
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import OwnerMaterialTaskParsingDetailDialog from './OwnerMaterialTaskParsingDetailDialog.vue'
-import { useRouter } from 'vue-router' // 导入 useRouter
+import { useRouter } from 'vue-router'
+import OwnerMaterialTaskParsingDetailDialog from '../OwnerMaterialTaskParsingDetailDialog.vue'
 
+// 导入常量和工具函数
+import {
+  DIALOG_CONFIG,
+  TAB_CONFIG,
+  TABLE_COLUMNS,
+  BUTTON_LABELS,
+  PAGINATION_CONFIG
+} from './constants.js'
+
+import {
+  formatTimestamp,
+  getTaskStatus,
+  calculateProgress,
+  filterTasks,
+  paginateData,
+  switchTab,
+  viewTaskDetails,
+  closeDialog,
+  navigateToDetail,
+  getSafeTasksData
+} from './utils.js'
+
+// Props定义
 const props = defineProps({
   show: {
     type: Boolean,
@@ -93,93 +133,50 @@ const props = defineProps({
   }
 })
 
+// Emits定义
 const emit = defineEmits(['update:show'])
 
+// 路由
+const router = useRouter()
+
+// 响应式数据
+const activeTab = ref('all')
+const currentPage = ref(1)
+const showOwnerMaterialTaskParsingDetailDialog = ref(false)
+const currentTaskIdForDetail = ref(null)
+
+// 计算属性 - 主对话框可见性
 const dialogVisible = computed({
   get: () => props.show,
   set: (value) => emit('update:show', value)
 })
 
-const activeTab = ref('all')
-const showMaterialDetailDialog = ref(false)
-const currentDetailIdForDetail = ref(null)
-const showOwnerMaterialTaskParsingDetailDialog = ref(false)
-const currentTaskIdForDetail = ref(null)
-const currentPage = ref(1)
-const pageSize = ref(10)
+// 计算属性 - 安全的任务数据
+const safeTasksData = computed(() => {
+  return getSafeTasksData(props.tasks)
+})
 
+// 计算属性 - 过滤后的任务
 const filteredTasks = computed(() => {
-  return props.tasks[activeTab.value] || []
+  return filterTasks(safeTasksData.value, activeTab.value)
 })
 
+// 计算属性 - 分页数据
 const paginatedData = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value
-  const end = start + pageSize.value
-  return filteredTasks.value.slice(start, end)
+  return paginateData(
+    filteredTasks.value, 
+    currentPage.value, 
+    PAGINATION_CONFIG.DEFAULT_PAGE_SIZE
+  )
 })
 
-const handleTabClick = () => {
-  currentPage.value = 1
+// 业务方法
+const setCurrentTaskId = (taskId) => {
+  currentTaskIdForDetail.value = taskId
 }
 
-const formatTimestamp = (timestamp) => {
-  if (!timestamp) return ''
-  const cleanTimestamp = timestamp.split(' +')[0]
-  const date = new Date(cleanTimestamp)
-  const year = date.getFullYear()
-  const month = ('0' + (date.getMonth() + 1)).slice(-2)
-  const day = ('0' + date.getDate()).slice(-2)
-  const hours = ('0' + date.getHours()).slice(-2)
-  const minutes = ('0' + date.getMinutes()).slice(-2)
-  const seconds = ('0' + date.getSeconds()).slice(-2)
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
-}
-
-const getTaskStatus = (task) => {
-  const total = parseInt(task.file_count, 10) || 0
-  const processed = parseInt(task.file_done_count, 10) || 0
-  const failed = parseInt(task.file_error_count, 10) || 0
-
-  if (processed < total) {
-    return { text: '进行中', type: 'primary' }
-  }
-  if (processed === total) {
-    if (failed > 0) {
-      return { text: '部分失败', type: 'warning' }
-    }
-    return { text: '已完成', type: 'success' }
-  }
-  return { text: '未知', type: 'info' }
-}
-
-const calculateProgress = (total, processed) => {
-  const totalNum = parseInt(total, 10) || 0
-  const processedNum = parseInt(processed, 10) || 0
-  if (totalNum === 0) {
-    return 0
-  }
-  return Math.round((processedNum / totalNum) * 100)
-}
-
-const viewTaskDetails = (task) => {
-  // selectedTask.value = task; // 暂时不使用 MaterialDetailDialog
-  // showTaskDetailDialog.value = true; // 暂时不使用 MaterialDetailDialog
-  currentTaskIdForDetail.value = task.ID
-  showOwnerMaterialTaskParsingDetailDialog.value = true
-  console.log('查看详情', task.ID)
-}
-
-const handleClose = () => {
-  dialogVisible.value = false
-}
-
-const router = useRouter() // 将 useRouter 移动到顶层
-
-const handleViewDetailFromTaskParsing = ({ detailId, taskId }) => {
-  router.push({
-    path: '/material-detail',
-    query: { taskId, detailId }
-  })
+const setOwnerDialogVisible = (visible) => {
+  showOwnerMaterialTaskParsingDetailDialog.value = visible
 }
 </script>
 

@@ -1,40 +1,41 @@
 <template>
-  <div :class="['message-item', `message-from-${message.from}`]">
+  <div :class="['message-item', messageItemClass]">
     <div class="message-bubble">
-      <div class="message-sender" v-if="message.from !== 'user'">
+      <!-- 发送者信息 -->
+      <div v-if="shouldShowSenderInfo" class="message-sender">
         <strong style="font-size: 18px">{{ message.sender }}</strong>
         <span v-if="message.workflow" class="workflow-info-tag">
-          (智能体功能: {{ message.workflow.name }})
+          {{ workflowInfo }}
         </span>
       </div>
       
+      <!-- 消息内容 -->
       <div class="message-content">
         <StreamingMessage
           :text="message.content"
           :is-streaming="!!message.isStreaming"
           :skip-animation="skipAnimation"
-          @animation-end="$emit('animation-end')"
+          @animation-end="emitAnimationEnd"
         />
-        <div v-if="message.type === 'loading'" class="loading-progress-container">
+        <!-- 加载进度条 -->
+        <div v-if="isLoadingType" class="loading-progress-container">
           <el-progress
             :percentage="message.progress"
-            :stroke-width="8"
+            :stroke-width="UI_CONFIG.PROGRESS_STROKE_WIDTH"
             striped
             striped-flow
-            :duration="20"
+            :duration="UI_CONFIG.PROGRESS_DURATION"
           />
         </div>
       </div>
       
-      <div
-        class="message-actions"
-        v-if="message.showViewResultButton || (message.buttons && message.buttons.length)"
-      >
+      <!-- 操作按钮 -->
+      <div v-if="shouldShowActionButtons" class="message-actions">
         <el-button
           v-if="message.showViewResultButton"
           type="primary"
           size="small"
-          @click="$emit('view-result-detail', message)"
+          @click="viewResultDetail"
         >
           查看解析结果
         </el-button>
@@ -43,19 +44,30 @@
           :key="index"
           type="primary"
           size="small"
-          @click="$emit('custom-button-click', { message, button: btn })"
+          @click="clickCustomButton(btn)"
         >
           {{ btn.text }}
         </el-button>
       </div>
       
+      <!-- 时间戳 -->
       <div class="message-timestamp">{{ message.timestamp }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import StreamingMessage from './StreamingMessage.vue'
+import { computed } from 'vue'
+import StreamingMessage from '../../home/StreamingMessage.vue'
+import { EMIT_EVENTS, UI_CONFIG } from './constants.js'
+import { 
+  isUserMessage, 
+  isLoadingMessage, 
+  shouldShowSender, 
+  shouldShowActions, 
+  getMessageItemClass,
+  formatWorkflowInfo
+} from './utils.js'
 
 const props = defineProps({
   message: {
@@ -69,10 +81,33 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'animation-end',
-  'view-result-detail',
-  'custom-button-click'
+  EMIT_EVENTS.ANIMATION_END,
+  EMIT_EVENTS.VIEW_RESULT_DETAIL,
+  EMIT_EVENTS.CUSTOM_BUTTON_CLICK
 ])
+
+// 计算属性
+const messageItemClass = computed(() => getMessageItemClass(props.message.from))
+const shouldShowSenderInfo = computed(() => shouldShowSender(props.message.from))
+const shouldShowActionButtons = computed(() => shouldShowActions(props.message))
+const isLoadingType = computed(() => isLoadingMessage(props.message.type))
+const workflowInfo = computed(() => formatWorkflowInfo(props.message.workflow))
+
+// 事件处理方法
+const emitAnimationEnd = () => {
+  emit(EMIT_EVENTS.ANIMATION_END)
+}
+
+const viewResultDetail = () => {
+  emit(EMIT_EVENTS.VIEW_RESULT_DETAIL, props.message)
+}
+
+const clickCustomButton = (button) => {
+  emit(EMIT_EVENTS.CUSTOM_BUTTON_CLICK, { 
+    message: props.message, 
+    button 
+  })
+}
 </script>
 
 <style scoped>
@@ -82,13 +117,13 @@ const emit = defineEmits([
 
 .message-from-user {
   align-self: flex-end;
-  max-width: 85%;
+  max-width: v-bind('UI_CONFIG.MESSAGE_MAX_WIDTH_USER');
 }
 
 .message-from-agent,
 .message-from-system {
   align-self: flex-start;
-  max-width: 100%;
+  max-width: v-bind('UI_CONFIG.MESSAGE_MAX_WIDTH_AGENT');
   width: 100%;
 }
 

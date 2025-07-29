@@ -9,7 +9,7 @@
   <OwnerMaterialTaskParsingDetailDialog
     v-model="showOwnerMaterialTaskParsingDetailDialog"
     :taskId="ownerMaterialTaskParsingDetailTaskId"
-    @view-detail="handleViewOwnerMaterialDetail"
+    @view-detail="viewOwnerMaterialDetail"
     style="z-index: 2000"
   />
 
@@ -17,7 +17,7 @@
   <SupplierMaterialTaskParsingDetailDialog
     v-model="showSupplierMaterialTaskParsingDetailDialog"
     :taskId="supplierMaterialTaskParsingDetailTaskId"
-    @view-detail="handleViewSupplierMaterialDetail"
+    @view-detail="viewSupplierMaterialDetail"
     style="z-index: 2000"
   />
 
@@ -56,7 +56,7 @@ import { useChatStore } from '@/stores/chat'
 
 // 异步加载弹窗组件
 const MaterialParsingResultDialog = defineAsyncComponent(() =>
-  import('@/components/home/MaterialParsingResultDialog.vue')
+  import('@/components/home/MaterialParsingResultDialog')
 )
 const OwnerMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
   import('@/components/home/OwnerMaterialTaskParsingDetailDialog.vue')
@@ -65,10 +65,10 @@ const SupplierMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
   import('@/components/home/SupplierMaterialTaskParsingDetailDialog.vue')
 )
 const WorkflowConfigDialog = defineAsyncComponent(() =>
-  import('@/components/home/WorkflowConfigDialog.vue')
+  import('@/components/workflow/WorkflowConfigDialog')
 )
 const SmartBrainDialog = defineAsyncComponent(() =>
-  import('@/components/home/SmartBrainDialog.vue')
+  import('@/components/home/SmartBrainDialog')
 )
 const ResultDetailTableDialog = defineAsyncComponent(() =>
   import('@/components/home/ResultDetailTableDialog.vue')
@@ -112,14 +112,14 @@ const {
 const { addMessage } = chatStore
 
 // 事件处理函数
-const handleViewOwnerMaterialDetail = (row) => {
+const viewOwnerMaterialDetail = (row) => {
   console.log(
     '【诊断】DialogManager - 接收到 OwnerMaterialTaskParsingDetailDialog 的 view-detail 事件:',
     row
   )
 }
 
-const handleViewSupplierMaterialDetail = (row) => {
+const viewSupplierMaterialDetail = (row) => {
   console.log(
     '【诊断】DialogManager - 接收到 SupplierMaterialTaskParsingDetailDialog 的 view-detail 事件:',
     row

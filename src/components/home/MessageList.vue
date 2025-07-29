@@ -10,7 +10,7 @@
         :key="message.id"
         :message="message"
         :skip-animation="props.activeTab !== 'all'"
-        @animation-end="handleAnimationEnd"
+        @animation-end="onAnimationEnd"
         @view-result-detail="$emit('view-result-detail', $event)"
         @custom-button-click="$emit('custom-button-click', $event)"
       />
@@ -20,7 +20,7 @@
 
 <script setup>
 import { ref, watch, onMounted, nextTick, computed, toRef } from 'vue'
-import MessageItem from './MessageItem.vue'
+import MessageItem from '@/components/message/MessageItem'
 import { useMessageQueue } from '@/composables/useMessageQueue'
 import { useMessageFilters } from '@/composables/useMessageFilters'
 
@@ -51,11 +51,11 @@ const {
   handleAnimationEnd: handleQueueAnimationEnd,
   resetQueue,
   initializeQueue,
-  handleFilteredMessagesChange
+  processFilteredMessagesChange: handleFilteredMessagesChange
 } = useMessageQueue(filteredMessages)
 
 // 处理动画结束
-const handleAnimationEnd = () => {
+const onAnimationEnd = () => {
   handleQueueAnimationEnd(messageContainer)
 }
 
@@ -81,7 +81,7 @@ watch(
       console.log('  - New count:', newMessages?.length || 0)
       console.log('  - New messages:', newMessages)
     }
-    handleFilteredMessagesChange(newMessages, oldMessages, messageContainer)
+    processFilteredMessagesChange(newMessages, oldMessages, messageContainer)
   },
   { deep: true }
 )

@@ -1,26 +1,26 @@
 <template>
   <el-dialog
     :model-value="show"
-    :title="`${currentFunctionName} `"
+    :title="`${currentFunctionName}`"
     width="40vw"
     draggable
-    @update:model-value="$emit('update:show', $event)"
-    @close="handleClose"
+    @update:model-value="updateShow"
+    @close="closeDialog"
   >
     <div class="workflow-config">
       <el-form :model="config">
-        <!-- Default Upload Component -->
-        <el-form-item v-if="needsFileUpload && !isOwnerMaterialWorkflow">
+        <!-- 通用文件上传组件 -->
+        <el-form-item v-if="needsFileUpload && !isOwnerMaterial">
           <el-upload
             ref="uploadRef"
             v-model:file-list="config.files"
             :auto-upload="false"
             multiple
-            :limit="10"
+            :limit="FILE_UPLOAD_CONFIG.DEFAULT_LIMIT"
             :drag="true"
             :accept="acceptFileTypes"
             :before-upload="beforeUpload"
-            :on-exceed="handleExceed"
+            :on-exceed="exceedFileLimit"
             class="upload-demo"
           >
             <div class="el-upload-dragger-content">
@@ -29,26 +29,27 @@
             </div>
             <template #tip>
               <div class="el-upload__tip">
-                支持 {{ allowedFileTypes }} 格式，最多上传10个文件，文件总大小控制50m之内
+                支持 {{ allowedFileTypes }} 格式，最多上传{{ FILE_UPLOAD_CONFIG.DEFAULT_LIMIT }}个文件，文件总大小控制{{ FILE_UPLOAD_CONFIG.MAX_FILE_SIZE }}M之内
               </div>
             </template>
           </el-upload>
         </el-form-item>
 
-        <!-- Owner Material Upload Components -->
-        <div v-if="needsFileUpload && isOwnerMaterialWorkflow" class="owner-material-upload-grid">
+        <!-- 甲供物资专用上传组件 -->
+        <div v-if="needsFileUpload && isOwnerMaterial" class="owner-material-upload-grid">
+          <!-- 综合申领文件 -->
           <div class="upload-grid-item">
-            <div class="upload-label">综合申领 (Excel)</div>
+            <div class="upload-label">{{ UPLOAD_LABELS.COMPREHENSIVE_CLAIM }}</div>
             <el-upload
               ref="comprehensiveClaimRef"
               v-model:file-list="comprehensiveClaimFiles"
               :auto-upload="false"
-              :limit="1"
+              :limit="FILE_UPLOAD_CONFIG.SINGLE_FILE_LIMIT"
               drag
               accept=".xls,.xlsx"
-              :before-upload="(file) => beforeUpload(file, ['.xls', '.xlsx'])"
-              :on-change="handleComprehensiveClaimChange"
-              :on-exceed="handleComprehensiveClaimExceed"
+              :before-upload="(file) => validateFileBeforeUpload(file, FILE_TYPES.EXCEL)"
+              :on-change="updateComprehensiveClaimFiles"
+              :on-exceed="(files) => exceedSingleFileLimit(files, comprehensiveClaimRef)"
               class="upload-demo"
             >
               <div class="el-upload-dragger-content">
@@ -57,18 +58,20 @@
               </div>
             </el-upload>
           </div>
+
+          <!-- 实际用料文件 -->
           <div class="upload-grid-item">
-            <div class="upload-label">实际用料 (PDF, 必填)</div>
+            <div class="upload-label">{{ UPLOAD_LABELS.ACTUAL_USAGE_1 }}</div>
             <el-upload
               ref="actualUsageRef1"
               v-model:file-list="actualUsageFiles1"
               :auto-upload="false"
-              :limit="1"
+              :limit="FILE_UPLOAD_CONFIG.SINGLE_FILE_LIMIT"
               drag
               accept=".pdf"
-              :before-upload="(file) => beforeUpload(file, ['.pdf'])"
-              :on-change="handleActualUsage1Change"
-              :on-exceed="handleActualUsage1Exceed"
+              :before-upload="(file) => validateFileBeforeUpload(file, FILE_TYPES.PDF)"
+              :on-change="updateActualUsageFiles1"
+              :on-exceed="(files) => exceedSingleFileLimit(files, actualUsageRef1)"
               class="upload-demo"
             >
               <div class="el-upload-dragger-content">
@@ -77,18 +80,20 @@
               </div>
             </el-upload>
           </div>
+
+          <!-- 实际退料文件 -->
           <div class="upload-grid-item">
-            <div class="upload-label">实际退料 (PDF, 必填)</div>
+            <div class="upload-label">{{ UPLOAD_LABELS.ACTUAL_USAGE_2 }}</div>
             <el-upload
               ref="actualUsageRef2"
               v-model:file-list="actualUsageFiles2"
               :auto-upload="false"
-              :limit="1"
+              :limit="FILE_UPLOAD_CONFIG.SINGLE_FILE_LIMIT"
               drag
               accept=".pdf"
-              :before-upload="(file) => beforeUpload(file, ['.pdf'])"
-              :on-change="handleActualUsage2Change"
-              :on-exceed="handleActualUsage2Exceed"
+              :before-upload="(file) => validateFileBeforeUpload(file, FILE_TYPES.PDF)"
+              :on-change="updateActualUsageFiles2"
+              :on-exceed="(files) => exceedSingleFileLimit(files, actualUsageRef2)"
               class="upload-demo"
             >
               <div class="el-upload-dragger-content">
@@ -97,8 +102,10 @@
               </div>
             </el-upload>
           </div>
+
+          <!-- 其他文件 -->
           <div class="upload-grid-item">
-            <div class="upload-label">其他文件 (选填)</div>
+            <div class="upload-label">{{ UPLOAD_LABELS.OTHER_FILES }}</div>
             <el-upload
               ref="otherFilesRef"
               v-model:file-list="otherFiles"
@@ -116,20 +123,21 @@
           </div>
         </div>
 
+        <!-- 动态参数配置 -->
         <el-form-item v-for="param in currentFunctionParams" :key="param.key" :label="param.label">
           <el-input
-            v-if="param.type === 'text'"
+            v-if="param.type === PARAM_TYPES.TEXT"
             v-model="config.params[param.key]"
             :placeholder="param.placeholder"
           />
           <el-input-number
-            v-else-if="param.type === 'number'"
+            v-else-if="param.type === PARAM_TYPES.NUMBER"
             v-model="config.params[param.key]"
             :min="param.min"
             :max="param.max"
           />
           <el-select
-            v-else-if="param.type === 'select'"
+            v-else-if="param.type === PARAM_TYPES.SELECT"
             v-model="config.params[param.key]"
             :placeholder="param.placeholder"
           >
@@ -140,15 +148,15 @@
               :value="option.value"
             />
           </el-select>
-          <el-switch v-else-if="param.type === 'boolean'" v-model="config.params[param.key]" />
+          <el-switch v-else-if="param.type === PARAM_TYPES.BOOLEAN" v-model="config.params[param.key]" />
         </el-form-item>
       </el-form>
     </div>
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="$emit('update:show', false)">取消</el-button>
-        <el-button type="primary" @click="handleSubmit">开始执行</el-button>
+        <el-button @click="updateShow(false)">取消</el-button>
+        <el-button type="primary" @click="submitWorkflow">开始执行</el-button>
       </div>
     </template>
   </el-dialog>
@@ -157,7 +165,23 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { UploadFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { 
+  FILE_UPLOAD_CONFIG,
+  FILE_TYPES,
+  UPLOAD_LABELS,
+  PARAM_TYPES,
+  EMIT_EVENTS
+} from './constants.js'
+import { 
+  isOwnerMaterialWorkflow,
+  validateFileBeforeUpload,
+  formatAcceptFileTypes,
+  validateOwnerMaterialFiles,
+  buildOwnerMaterialFilesList,
+  clearAllUploadFiles,
+  handleFileExceed,
+  handleSingleFileExceed
+} from './utils.js'
 
 const props = defineProps({
   show: Boolean,
@@ -168,129 +192,102 @@ const props = defineProps({
   currentFunctionParams: Array
 })
 
-const emit = defineEmits(['update:show', 'close', 'start-workflow'])
+const emit = defineEmits([
+  EMIT_EVENTS.UPDATE_SHOW,
+  EMIT_EVENTS.CLOSE,
+  EMIT_EVENTS.START_WORKFLOW
+])
 
+// 上传组件引用
 const uploadRef = ref(null)
 const comprehensiveClaimRef = ref(null)
 const actualUsageRef1 = ref(null)
 const actualUsageRef2 = ref(null)
 const otherFilesRef = ref(null)
 
+// 甲供物资文件状态
 const comprehensiveClaimFiles = ref([])
 const actualUsageFiles1 = ref([])
 const actualUsageFiles2 = ref([])
 const otherFiles = ref([])
 
-const isOwnerMaterialWorkflow = computed(() => props.currentFunctionName === '甲供物资解析')
+// 计算属性
+const isOwnerMaterial = computed(() => isOwnerMaterialWorkflow(props.currentFunctionName))
+const acceptFileTypes = computed(() => formatAcceptFileTypes(props.allowedFileTypes))
 
-const handleComprehensiveClaimChange = (file, fileList) => {
+// 文件变更处理方法
+const updateComprehensiveClaimFiles = (file, fileList) => {
   comprehensiveClaimFiles.value = fileList
 }
 
-const handleActualUsage1Change = (file, fileList) => {
+const updateActualUsageFiles1 = (file, fileList) => {
   actualUsageFiles1.value = fileList
 }
 
-const handleActualUsage2Change = (file, fileList) => {
+const updateActualUsageFiles2 = (file, fileList) => {
   actualUsageFiles2.value = fileList
 }
 
-const handleComprehensiveClaimExceed = (files) => {
-  comprehensiveClaimRef.value.clearFiles()
-  comprehensiveClaimRef.value.handleStart(files[0])
+// 文件超限处理方法
+const exceedSingleFileLimit = (files, uploadRef) => {
+  handleSingleFileExceed(files, uploadRef)
 }
 
-const handleActualUsage1Exceed = (files) => {
-  actualUsageRef1.value.clearFiles()
-  actualUsageRef1.value.handleStart(files[0])
+const exceedFileLimit = (files) => {
+  handleFileExceed(files, props.config.files?.length || 0)
 }
 
-const handleActualUsage2Exceed = (files) => {
-  actualUsageRef2.value.clearFiles()
-  actualUsageRef2.value.handleStart(files[0])
+// 通用文件验证方法
+const beforeUpload = (rawFile) => {
+  return validateFileBeforeUpload(rawFile)
 }
 
-const handleClose = () => {
-  if (uploadRef.value) {
-    uploadRef.value.clearFiles()
+// 对话框事件处理
+const updateShow = (value) => {
+  emit(EMIT_EVENTS.UPDATE_SHOW, value)
+}
+
+const closeDialog = () => {
+  const refs = {
+    uploadRef,
+    comprehensiveClaimRef,
+    actualUsageRef1,
+    actualUsageRef2,
+    otherFilesRef
   }
-  if (comprehensiveClaimRef.value) comprehensiveClaimRef.value.clearFiles()
-  if (actualUsageRef1.value) actualUsageRef1.value.clearFiles()
-  if (actualUsageRef2.value) actualUsageRef2.value.clearFiles()
-  if (otherFilesRef.value) otherFilesRef.value.clearFiles()
-
+  
+  clearAllUploadFiles(refs)
+  
+  // 重置文件状态
   comprehensiveClaimFiles.value = []
   actualUsageFiles1.value = []
   actualUsageFiles2.value = []
   otherFiles.value = []
 
-  emit('close')
+  emit(EMIT_EVENTS.CLOSE)
 }
 
-const handleSubmit = () => {
-  if (isOwnerMaterialWorkflow.value) {
-    if (comprehensiveClaimFiles.value.length === 0) {
-      ElMessage.error('请上传“综合申领 (Excel)”文件')
-      return
-    }
-    if (actualUsageFiles1.value.length === 0) {
-      ElMessage.error('请上传第一个“实际用料 (PDF, 必填)”文件')
-      return
-    }
-    if (actualUsageFiles2.value.length === 0) {
-      ElMessage.error('请上传“实际退料 (PDF, 必填)”文件')
+const submitWorkflow = () => {
+  if (isOwnerMaterial.value) {
+    // 验证甲供物资必需文件
+    if (!validateOwnerMaterialFiles(
+      comprehensiveClaimFiles.value,
+      actualUsageFiles1.value,
+      actualUsageFiles2.value
+    )) {
       return
     }
 
-    // Assign categorized files with excel_type
-    const assignExcelType = (files, type) => files.map((file) => ({ ...file, excel_type: type }))
-
-    props.config.files = [
-      ...assignExcelType(comprehensiveClaimFiles.value, 'applyExcelFile'),
-      ...assignExcelType(actualUsageFiles1.value, 'useMaterualPdfUrl'),
-      ...assignExcelType(actualUsageFiles2.value, 'backMaterualPdfUrl'),
-      ...assignExcelType(otherFiles.value, 'other')
-    ]
+    // 构建文件列表
+    props.config.files = buildOwnerMaterialFilesList(
+      comprehensiveClaimFiles.value,
+      actualUsageFiles1.value,
+      actualUsageFiles2.value,
+      otherFiles.value
+    )
   }
 
-  emit('start-workflow')
-}
-
-const acceptFileTypes = computed(() => {
-  if (!props.allowedFileTypes) return ''
-  return props.allowedFileTypes
-    .split(',')
-    .map((type) => {
-      const trimmedType = type.trim()
-      return trimmedType.includes('/') ? trimmedType : `.${trimmedType}`
-    })
-    .join(',')
-})
-
-const beforeUpload = (rawFile, allowedTypes) => {
-  const fileExtension = `.${rawFile.name.split('.').pop()}`.toLowerCase()
-
-  if (allowedTypes) {
-    const isAllowedType = allowedTypes.map((t) => t.toLowerCase()).includes(fileExtension)
-    if (!isAllowedType) {
-      ElMessage.error(`文件类型不符合要求，只支持 ${allowedTypes.join(', ')} 格式!`)
-      return false
-    }
-  }
-
-  if (rawFile.size / 1024 / 1024 > 50) {
-    ElMessage.error('文件大小不能超过 50MB!')
-    return false
-  }
-  return true
-}
-
-const handleExceed = (files) => {
-  ElMessage.warning(
-    `当前限制选择 10 个文件，本次选择了 ${files.length} 个文件，共选择了 ${
-      files.length + (props.config.files ? props.config.files.length : 0)
-    } 个文件`
-  )
+  emit(EMIT_EVENTS.START_WORKFLOW)
 }
 </script>
 
@@ -303,18 +300,17 @@ const handleExceed = (files) => {
 .owner-material-upload-grid {
   position: relative;
   width: 100%;
-  height: 488px; /* 固定容器高度，确保能容纳两行 */
+  height: 488px;
 }
 
 .upload-grid-item {
   position: absolute;
   display: flex;
   flex-direction: column;
-  width: calc(50% - 12px); /* 宽度为50%减去一半的间隙 */
-  height: 220px; /* 为每个上传框设置固定高度 */
+  width: calc(50% - 12px);
+  height: 220px;
 }
 
-/* 使用 :nth-child 精确定位每个上传框 */
 .upload-grid-item:nth-child(1) {
   top: 0;
   left: 0;
@@ -324,17 +320,17 @@ const handleExceed = (files) => {
   left: calc(50% + 12px);
 }
 .upload-grid-item:nth-child(3) {
-  top: 244px; /* 220px (item-height) + 24px (gap) */
+  top: 244px;
   left: 0;
 }
 .upload-grid-item:nth-child(4) {
-  top: 244px; /* 220px (item-height) + 24px (gap) */
+  top: 244px;
   left: calc(50% + 12px);
 }
 
 .upload-label {
   font-size: 14px;
-  color: #1c1e21; /* Meta-like dark text */
+  color: #1c1e21;
   margin-bottom: 12px;
   font-weight: 500;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -344,7 +340,7 @@ const handleExceed = (files) => {
   width: 100%;
   display: flex;
   flex-direction: column;
-  height: 100%; /* Ensure it fills the grid item */
+  height: 100%;
 }
 
 .upload-demo :deep(.el-upload) {
@@ -359,9 +355,9 @@ const handleExceed = (files) => {
   align-items: center;
   justify-content: center;
   flex-grow: 1;
-  background-color: transparent; /* No background */
-  border: 1.5px dashed #ced0d4; /* Softer, thinner dash */
-  border-radius: 12px; /* Larger radius */
+  background-color: transparent;
+  border: 1.5px dashed #ced0d4;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease-in-out;
   min-height: 120px;
@@ -369,9 +365,9 @@ const handleExceed = (files) => {
 
 .upload-demo :deep(.el-upload-dragger):hover,
 .upload-demo :deep(.el-upload-dragger.is-dragover) {
-  border-color: #0052ff; /* Apple-like blue */
-  background-color: rgba(0, 82, 255, 0.05); /* Subtle background on hover */
-  box-shadow: 0 4px 12px rgba(0, 82, 255, 0.1); /* Soft shadow */
+  border-color: #0052ff;
+  background-color: rgba(0, 82, 255, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 82, 255, 0.1);
 }
 
 .upload-demo .el-upload-dragger-content {
@@ -379,11 +375,11 @@ const handleExceed = (files) => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: #65676b; /* Softer text color */
+  color: #65676b;
 }
 
 .upload-demo :deep(.el-upload-dragger) .el-icon--upload {
-  font-size: 36px; /* Smaller icon */
+  font-size: 36px;
   margin-bottom: 12px;
   color: #0052ff;
 }
@@ -402,20 +398,19 @@ const handleExceed = (files) => {
 }
 
 .upload-demo :deep(.el-upload__tip) {
-  display: none; /* Hide the default tip */
+  display: none;
 }
 
 .upload-demo :deep(.el-upload-list) {
   margin-top: 12px;
   height: 54px;
   overflow-y: auto;
-  border: none; /* Remove border */
+  border: none;
   border-radius: 0;
   padding: 0;
   background-color: transparent;
 }
 
-/* Custom scrollbar styling */
 .upload-demo :deep(.el-upload-list::-webkit-scrollbar) {
   width: 4px;
 }
@@ -429,10 +424,10 @@ const handleExceed = (files) => {
 
 .upload-demo :deep(.el-upload-list__item) {
   margin-top: 0 !important;
-  margin-bottom: 8px; /* Space between items */
+  margin-bottom: 8px;
   background-color: #fff;
   border: 1px solid #eef0f2;
-  border-radius: 8px; /* Softer corners */
+  border-radius: 8px;
   padding: 0 12px;
   height: 40px;
   line-height: 40px;
