@@ -1,22 +1,25 @@
 <template>
-  <div class="agent-dashboard">
+  <div :class="LAYOUT_CLASSES.AGENT_DASHBOARD">
     <!-- 主内容区 -->
-    <el-container class="main-container">
+    <el-container :class="LAYOUT_CLASSES.MAIN_CONTAINER">
       <!-- 侧边栏 -->
-      <el-aside :width="isSidebarOpen ? '280px' : '0px'" class="sidebar-aside">
+      <el-aside 
+        :width="getSidebarWidth(isSidebarOpen)" 
+        :class="LAYOUT_CLASSES.SIDEBAR_ASIDE"
+      >
         <SidebarNav
           :functions="functions"
           :active-function="activeFunction"
-          @select="(key) => handleCustomFunctionSelect(key)"
+          @select="customFunctionSelectHandler"
         />
       </el-aside>
       
-      <el-container class="right-panel">
-        <div class="chat-container">
-          <div class="messages-wrapper">
+      <el-container :class="LAYOUT_CLASSES.RIGHT_PANEL">
+        <div :class="LAYOUT_CLASSES.CHAT_CONTAINER">
+          <div :class="LAYOUT_CLASSES.MESSAGES_WRAPPER">
             <slot name="content" />
           </div>
-          <div class="input-area-wrapper">
+          <div :class="LAYOUT_CLASSES.INPUT_AREA_WRAPPER">
             <ChatInputArea />
           </div>
         </div>
@@ -25,12 +28,12 @@
 
     <!-- 侧边栏展开按钮 -->
     <el-button
-      class="toggle-sidebar-button"
+      :class="LAYOUT_CLASSES.TOGGLE_BUTTON"
       type="primary"
       :icon="isSidebarOpen ? ArrowLeft : ArrowRight"
       circle
-      @click="toggleSidebar"
-      :style="{ left: isSidebarOpen ? '290px' : '20px' }"
+      @click="toggleSidebarHandler"
+      :style="{ left: getToggleButtonPosition(isSidebarOpen) }"
     />
   </div>
 </template>
@@ -45,6 +48,21 @@ import { functions } from '@/utils/workflowsDefinedEnum.js'
 import SidebarNav from '@/components/home/SidebarNav.vue'
 import ChatInputArea from '@/components/home/ChatInputArea.vue'
 
+// 导入常量和工具函数
+import { 
+  LAYOUT_CLASSES, 
+  ANIMATION_CONFIG, 
+  LAYOUT_CONFIG, 
+  SPACING, 
+  Z_INDEX 
+} from './constants.js'
+import {
+  getSidebarWidth,
+  getToggleButtonPosition,
+  createToggleSidebar,
+  createCustomFunctionSelectHandler
+} from './utils.js'
+
 // Stores
 const workflowStore = useWorkflowStore()
 const chatStore = useChatStore()
@@ -55,21 +73,13 @@ const { isSidebarOpen, activeFunction } = storeToRefs(workflowStore)
 const { handleFunctionSelect } = workflowStore
 const { addMessage } = chatStore
 
-// 自定义函数选择处理逻辑
-const handleCustomFunctionSelect = (key) => {
-  if (key === 'smartBrain') {
-    // 跳转到智能大脑页面
-    router.push('/smart-brain')
-  } else {
-    // 其他功能保持原有逻辑
-    handleFunctionSelect(key, addMessage)
-  }
-}
-
-// 侧边栏切换逻辑
-const toggleSidebar = () => {
-  isSidebarOpen.value = !isSidebarOpen.value
-}
+// 创建处理函数
+const toggleSidebarHandler = createToggleSidebar(isSidebarOpen)
+const customFunctionSelectHandler = createCustomFunctionSelectHandler(
+  router, 
+  handleFunctionSelect, 
+  addMessage
+)
 </script>
 
 <style scoped>

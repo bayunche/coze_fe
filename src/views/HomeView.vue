@@ -27,7 +27,7 @@ import { useMaterialDialogStore } from '@/stores/materialDialog'
 import { useEventHandlers } from '@/composables/useEventHandlers'
 
 // 导入子组件
-import MainLayout from '@/components/home/MainLayout.vue'
+import MainLayout from '@/components/home/MainLayout'
 import WorkflowExecutionPanel from '@/components/home/WorkflowExecutionPanel.vue'
 import DialogManager from '@/components/home/DialogManager.vue'
 import TaskStatusWatcher from '@/components/home/TaskStatusWatcher.vue'

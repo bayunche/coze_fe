@@ -62,7 +62,7 @@ const OwnerMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
   import('@/components/home/OwnerMaterialTaskParsingDetailDialog.vue')
 )
 const SupplierMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
-  import('@/components/home/SupplierMaterialTaskParsingDetailDialog.vue')
+  import('@/components/home/SupplierMaterialTaskParsingDetailDialog')
 )
 const WorkflowConfigDialog = defineAsyncComponent(() =>
   import('@/components/workflow/WorkflowConfigDialog')
