@@ -1,0 +1,4 @@
+import OwnerMaterialTaskParsingDetailDialog from './OwnerMaterialTaskParsingDetailDialog.vue'
+
+export default OwnerMaterialTaskParsingDetailDialog
+export { OwnerMaterialTaskParsingDetailDialog }

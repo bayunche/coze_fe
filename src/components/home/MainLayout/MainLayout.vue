@@ -45,8 +45,8 @@ import { ArrowRight, ArrowLeft } from '@element-plus/icons-vue'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useChatStore } from '@/stores/chat'
 import { functions } from '@/utils/workflowsDefinedEnum.js'
-import SidebarNav from '@/components/home/SidebarNav.vue'
-import ChatInputArea from '@/components/home/ChatInputArea.vue'
+import SidebarNav from '@/components/home/SidebarNav'
+import ChatInputArea from '@/components/home/ChatInputArea'
 
 // 导入常量和工具函数
 import { 
@@ -70,14 +70,14 @@ const router = useRouter()
 
 // 从 Store 中解构状态和方法
 const { isSidebarOpen, activeFunction } = storeToRefs(workflowStore)
-const { handleFunctionSelect } = workflowStore
+const { selectFunction } = workflowStore
 const { addMessage } = chatStore
 
 // 创建处理函数
 const toggleSidebarHandler = createToggleSidebar(isSidebarOpen)
 const customFunctionSelectHandler = createCustomFunctionSelectHandler(
   router, 
-  handleFunctionSelect, 
+  selectFunction, 
   addMessage
 )
 </script>

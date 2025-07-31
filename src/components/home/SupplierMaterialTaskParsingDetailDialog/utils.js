@@ -151,7 +151,7 @@ export const downloadFile = (row) => {
  * @param {Function} setCurrentPage - 设置当前页函数
  * @param {Function} fetchData - 获取数据函数
  */
-export const handleCurrentChange = (page, setCurrentPage, fetchData) => {
+export const onCurrentChange = (page, setCurrentPage, fetchData) => {
   setCurrentPage(page)
   fetchData()
 }
@@ -163,7 +163,7 @@ export const handleCurrentChange = (page, setCurrentPage, fetchData) => {
  * @param {Function} setCurrentPage - 设置当前页函数
  * @param {Function} fetchData - 获取数据函数
  */
-export const handleSizeChange = (size, setPageSize, setCurrentPage, fetchData) => {
+export const onSizeChange = (size, setPageSize, setCurrentPage, fetchData) => {
   setPageSize(size)
   setCurrentPage(1) // 改变每页大小时重置到第一页
   fetchData()

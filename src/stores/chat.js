@@ -43,7 +43,7 @@ export const useChatStore = defineStore(
       }
     }
 
-    async function handleSendMessage(query, workflowId, handleFunctionSelectCallback) {
+    async function sendMessage(query, workflowId, onFunctionSelect) {
       if (!query.trim()) return
       const userMsg = query
       userInput.value = ''
@@ -71,13 +71,13 @@ export const useChatStore = defineStore(
               addMessage(agentMessage)
               if (!agentMessage.actionTriggered) {
                 if (agentMessage.content.includes('解析合同')) {
-                  handleFunctionSelectCallback('contractParsing')
+                  onFunctionSelect('contractParsing')
                   agentMessage.actionTriggered = true
                 } else if (agentMessage.content.includes('解析乙供物资功能')) {
-                  handleFunctionSelectCallback('supplierMaterialParsing')
+                  onFunctionSelect('supplierMaterialParsing')
                   agentMessage.actionTriggered = true
                 } else if (agentMessage.content.includes('解析甲供物资功能')) {
-                  handleFunctionSelectCallback('ownerSuppliedMaterialParsing')
+                  onFunctionSelect('ownerSuppliedMaterialParsing')
                   agentMessage.actionTriggered = true
                 }
               }
@@ -135,7 +135,7 @@ export const useChatStore = defineStore(
       userInput,
       displayedMessages,
       addMessage,
-      handleSendMessage,
+      sendMessage,
       initDefaultMessage,
       resetAndInitMessages,
       appendStreamContent // 暴露新方法

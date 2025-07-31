@@ -71,7 +71,7 @@ export const setAgentDialogState = async (agentId, dialogStates, dialogVisibilit
  * @param {Object} dialogStates - 对话框状态对象
  * @param {Object} dialogVisibility - 对话框可见性对象
  */
-export const handleAgentCardClick = async (
+export const onAgentCardClick = async (
   agent,
   tasksByAgent,
   selectedTasks,

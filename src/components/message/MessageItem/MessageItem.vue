@@ -8,7 +8,7 @@
           {{ workflowInfo }}
         </span>
       </div>
-      
+
       <!-- 消息内容 -->
       <div class="message-content">
         <StreamingMessage
@@ -28,7 +28,7 @@
           />
         </div>
       </div>
-      
+
       <!-- 操作按钮 -->
       <div v-if="shouldShowActionButtons" class="message-actions">
         <el-button
@@ -49,7 +49,7 @@
           {{ btn.text }}
         </el-button>
       </div>
-      
+
       <!-- 时间戳 -->
       <div class="message-timestamp">{{ message.timestamp }}</div>
     </div>
@@ -58,13 +58,13 @@
 
 <script setup>
 import { computed } from 'vue'
-import StreamingMessage from '../../home/StreamingMessage.vue'
+import StreamingMessage from '@/components/home/StreamingMessage/StreamingMessage.vue'
 import { EMIT_EVENTS, UI_CONFIG } from './constants.js'
-import { 
-  isUserMessage, 
-  isLoadingMessage, 
-  shouldShowSender, 
-  shouldShowActions, 
+import {
+  isUserMessage,
+  isLoadingMessage,
+  shouldShowSender,
+  shouldShowActions,
   getMessageItemClass,
   formatWorkflowInfo
 } from './utils.js'
@@ -103,9 +103,9 @@ const viewResultDetail = () => {
 }
 
 const clickCustomButton = (button) => {
-  emit(EMIT_EVENTS.CUSTOM_BUTTON_CLICK, { 
-    message: props.message, 
-    button 
+  emit(EMIT_EVENTS.CUSTOM_BUTTON_CLICK, {
+    message: props.message,
+    button
   })
 }
 </script>

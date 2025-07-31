@@ -14,15 +14,15 @@ export function useEventHandlers() {
    * 处理查看结果详情
    * @param {string} taskIdFromMessage - 消息中的任务ID
    */
-  const handleViewResultDetail = async (taskIdFromMessage) => {
-    await parsingResultStore.handleViewResultDetail(taskIdFromMessage)
+  const viewResultDetail = async (taskIdFromMessage) => {
+    await parsingResultStore.viewResultDetail(taskIdFromMessage)
   }
 
   /**
    * 处理查看乙供物资结果详情
    * @param {string} taskId - 任务ID
    */
-  const handleViewMaterialResultDetail = (taskId) => {
+  const viewMaterialResultDetail = (taskId) => {
     if (taskId) {
       materialDialogStore.ownerMaterialTaskParsingDetailTaskId = taskId
       materialDialogStore.showOwnerMaterialTaskParsingDetailDialog = true
@@ -35,7 +35,7 @@ export function useEventHandlers() {
    * 处理查看甲供物资结果详情
    * @param {string} taskId - 任务ID
    */
-  const handleViewSupplierMaterialResultDetail = (taskId) => {
+  const viewSupplierMaterialResultDetail = (taskId) => {
     if (taskId) {
       materialDialogStore.supplierMaterialTaskParsingDetailTaskId = taskId
       materialDialogStore.showSupplierMaterialTaskParsingDetailDialog = true
@@ -48,7 +48,7 @@ export function useEventHandlers() {
    * 处理乙供物资详情查看事件
    * @param {Object} row - 行数据
    */
-  const handleViewOwnerMaterialDetail = (row) => {
+  const viewOwnerMaterialDetail = (row) => {
     console.log(
       '【诊断】useEventHandlers - 接收到 OwnerMaterialTaskParsingDetailDialog 的 view-detail 事件:',
       row
@@ -59,7 +59,7 @@ export function useEventHandlers() {
    * 处理甲供物资详情查看事件
    * @param {Object} row - 行数据
    */
-  const handleViewSupplierMaterialDetail = (row) => {
+  const viewSupplierMaterialDetail = (row) => {
     console.log(
       '【诊断】useEventHandlers - 接收到 SupplierMaterialTaskParsingDetailDialog 的 view-detail 事件:',
       row
@@ -67,10 +67,10 @@ export function useEventHandlers() {
   }
 
   return {
-    handleViewResultDetail,
-    handleViewMaterialResultDetail,
-    handleViewSupplierMaterialResultDetail,
-    handleViewOwnerMaterialDetail,
-    handleViewSupplierMaterialDetail,
+    viewResultDetail,
+    viewMaterialResultDetail,
+    viewSupplierMaterialResultDetail,
+    viewOwnerMaterialDetail,
+    viewSupplierMaterialDetail,
   }
 }

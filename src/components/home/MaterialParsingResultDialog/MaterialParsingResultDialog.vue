@@ -6,24 +6,12 @@
     :before-close="() => closeDialog(emit)"
     :custom-class="DIALOG_CONFIG.CUSTOM_CLASS"
   >
-    <el-tabs 
-      v-model="activeTab" 
-      @tab-click="() => switchTab(() => currentPage = 1)"
-    >
-      <el-tab-pane 
-        v-for="tab in TAB_CONFIG"
-        :key="tab.name"
-        :label="tab.label" 
-        :name="tab.name"
-      />
+    <el-tabs v-model="activeTab" @tab-click="() => switchTab(() => (currentPage = 1))">
+      <el-tab-pane v-for="tab in TAB_CONFIG" :key="tab.name" :label="tab.label" :name="tab.name" />
     </el-tabs>
-    
-    <el-table 
-      :data="paginatedData" 
-      style="width: 100%" 
-      v-loading="loading"
-    >
-      <el-table-column 
+
+    <el-table :data="paginatedData" style="width: 100%" v-loading="loading">
+      <el-table-column
         v-for="column in TABLE_COLUMNS"
         :key="column.prop || column.label"
         v-bind="column"
@@ -31,13 +19,13 @@
         <template v-if="column.prop === 'CREATED_TIME'" #default="{ row }">
           <span>{{ formatTimestamp(row.CREATED_TIME) }}</span>
         </template>
-        
+
         <template v-else-if="column.label === '状态'" #default="{ row }">
           <el-tag :type="getTaskStatus(row).type" size="small">
             {{ getTaskStatus(row).text }}
           </el-tag>
         </template>
-        
+
         <template v-else-if="column.label === '进度'" #default="{ row }">
           <div style="display: flex; align-items: center">
             <el-progress
@@ -50,11 +38,11 @@
             </span>
           </div>
         </template>
-        
+
         <template v-else-if="column.label === '操作'" #default="{ row }">
-          <el-button 
-            type="primary" 
-            size="small" 
+          <el-button
+            type="primary"
+            size="small"
             @click="() => viewTaskDetails(row, setCurrentTaskId, setOwnerDialogVisible)"
           >
             {{ BUTTON_LABELS.VIEW_DETAILS }}
@@ -62,7 +50,7 @@
         </template>
       </el-table-column>
     </el-table>
-    
+
     <el-pagination
       v-if="filteredTasks.length > PAGINATION_CONFIG.DEFAULT_PAGE_SIZE"
       background
@@ -72,7 +60,7 @@
       v-model:current-page="currentPage"
       style="margin-top: 20px; text-align: right"
     />
-    
+
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="() => closeDialog(emit)">
@@ -81,7 +69,7 @@
       </span>
     </template>
   </el-dialog>
-  
+
   <OwnerMaterialTaskParsingDetailDialog
     v-model="showOwnerMaterialTaskParsingDetailDialog"
     :taskId="currentTaskIdForDetail"
@@ -92,7 +80,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import OwnerMaterialTaskParsingDetailDialog from '../OwnerMaterialTaskParsingDetailDialog.vue'
+import OwnerMaterialTaskParsingDetailDialog from '@/components/home/OwnerMaterialTaskParsingDetailDialog/OwnerMaterialTaskParsingDetailDialog.vue'
 
 // 导入常量和工具函数
 import {
@@ -163,11 +151,7 @@ const filteredTasks = computed(() => {
 
 // 计算属性 - 分页数据
 const paginatedData = computed(() => {
-  return paginateData(
-    filteredTasks.value, 
-    currentPage.value, 
-    PAGINATION_CONFIG.DEFAULT_PAGE_SIZE
-  )
+  return paginateData(filteredTasks.value, currentPage.value, PAGINATION_CONFIG.DEFAULT_PAGE_SIZE)
 })
 
 // 业务方法

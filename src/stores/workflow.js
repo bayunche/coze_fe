@@ -179,7 +179,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * @param {Object} loadingMessage - 加载消息对象
    * @param {function} addMessageCallback - 添加消息的回调
    */
-  const handleExecutionError = (error, loadingMessage, addMessageCallback) => {
+  const onExecutionError = (error, loadingMessage, addMessageCallback) => {
     console.error('Workflow execution failed:', error)
     if (progressManager) progressManager.stop()
     if (timeInterval) clearInterval(timeInterval)
@@ -365,7 +365,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * 处理智能大脑功能选择，获取所有智能体数据
    * @param {function} addMessageCallback - 添加消息的回调
    */
-  const handleSmartBrainSelection = async (addMessageCallback) => {
+  const selectSmartBrain = async (addMessageCallback) => {
     try {
       if (typeof addMessageCallback === 'function') {
         addMessageCallback('正在查询智能体任务数据...', 'system')
@@ -467,7 +467,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * @param {Array<{file_id: string}>} inputs - 文件输入
    * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
    */
-  const handleContractParsing = (inputs, context) => {
+  const executeContractParsing = (inputs, context) => {
     const { workflow, loadingMessage, addMessageCallback } = context
     const finalResult = []
     let isFirstMessage = true
@@ -513,7 +513,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
           loadingMessage.content = '任务执行完毕！'
           finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
         } else if (event.event === 'Error') {
-          handleExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
+          onExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
         }
       }
     })
@@ -524,7 +524,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * @param {Array<{file_id: string}>} inputs - 文件输入
    * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
    */
-  const handleSupplierMaterialParsing = (inputs, context) => {
+  const executeSupplierMaterialParsing = (inputs, context) => {
     const { workflow, loadingMessage, addMessageCallback } = context
     const finalResult = []
     let isFirstMessage = true
@@ -579,7 +579,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
           ElMessage.success('乙供物资解析完成')
           finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
         } else if (event.event === 'Error') {
-          handleExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
+          onExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
         }
       }
     })
@@ -590,7 +590,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * @param {Array<{file_id: string}|{file_path: string}>} inputs - 文件输入
    * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
    */
-  const handleOwnerMaterialParsing = async (inputs, context) => {
+  const executeOwnerMaterialParsing = async (inputs, context) => {
     const { workflow, loadingMessage, addMessageCallback } = context
     const finalResult = []
 
@@ -675,7 +675,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
           }
         },
         onError: (error) => {
-          handleExecutionError(error, loadingMessage, addMessageCallback)
+          onExecutionError(error, loadingMessage, addMessageCallback)
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
@@ -693,7 +693,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
       })
     } catch (error) {
-      handleExecutionError(error, loadingMessage, addMessageCallback)
+      onExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
 
@@ -787,7 +787,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
           }
         },
         onError: (error) => {
-          handleExecutionError(error, loadingMessage, addMessageCallback)
+          onExecutionError(error, loadingMessage, addMessageCallback)
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
@@ -800,7 +800,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
       })
     } catch (error) {
-      handleExecutionError(error, loadingMessage, addMessageCallback)
+      onExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
 
@@ -868,19 +868,19 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
       switch (func.id) {
         case 'contractParsing':
-          handleContractParsing(inputs, context)
+          executeContractParsing(inputs, context)
           break
         case 'supplierMaterialParsing':
-          handleSupplierMaterialParsing(inputs, context)
+          executeSupplierMaterialParsing(inputs, context)
           break
         case 'ownerSuppliedMaterialParsing':
-          handleOwnerMaterialParsing(inputs, context)
+          executeOwnerMaterialParsing(inputs, context)
           break
         default:
           throw new Error(`Unsupported function ID: ${func.id}`)
       }
     } catch (error) {
-      handleExecutionError(error, loadingMessage, addMessageCallback)
+      onExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
 
@@ -953,7 +953,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   // 智能大脑数据获取方法 - 独立页面使用
-  const handleSmartBrain = async () => {
+  const executeSmartBrain = async () => {
     try {
       const fetchPromises = smartAgents.value.map(async (agent) => {
         await fetchAgentTaskCounts(agent)
@@ -968,9 +968,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
     }
   }
 
-  const handleFunctionSelect = async (key, addMessageCallback) => {
+  const selectFunction = async (key, addMessageCallback) => {
     if (key === 'smartBrain') {
-      await handleSmartBrainSelection(addMessageCallback)
+      await selectSmartBrain(addMessageCallback)
       return
     }
     activeFunction.value = key
@@ -1068,8 +1068,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
     needsFileUpload,
     getAllowedFileTypes,
     // Actions
-    handleFunctionSelect,
-    handleSmartBrain,
+    selectFunction,
+    executeSmartBrain,
     executeWorkflow,
     executeOwnerMaterialReparse,
     finalizeWorkflowExecution,

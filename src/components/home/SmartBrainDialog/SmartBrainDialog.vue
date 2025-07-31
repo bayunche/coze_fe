@@ -12,7 +12,7 @@
         :key="agent.id"
         class="agent-card"
         shadow="hover"
-        @click="() => handleAgentCardClick(agent, tasksByAgent, selectedTasks, dialogStates, dialogVisibility)"
+        @click="() => onAgentCardClick(agent, tasksByAgent, selectedTasks, dialogStates, dialogVisibility)"
       >
         <template #header>
           <div class="card-header">
@@ -75,7 +75,7 @@
 import { computed, ref, reactive } from 'vue'
 import TaskParsingResultDialog from '../TaskParsingResultDialog'
 import MaterialParsingResultDialog from '../MaterialParsingResultDialog'
-import OwnerMaterialParsingResultDialog from '../OwnerMaterialParsingResultDialog.vue'
+import OwnerMaterialParsingResultDialog from '../OwnerMaterialParsingResultDialog'
 
 // 导入常量和工具函数
 import {
@@ -86,7 +86,7 @@ import {
 } from './constants.js'
 
 import {
-  handleAgentCardClick,
+  onAgentCardClick,
   closeMainDialog,
   formatStatValue,
   filterValidAgents

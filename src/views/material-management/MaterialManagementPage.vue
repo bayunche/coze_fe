@@ -143,7 +143,7 @@
           v-loading="loading"
           stripe
           @selection-change="
-            (selection) => handleTableSelectionChange(selection, selectedMaterials)
+            (selection) => onTableSelectionChange(selection, selectedMaterials)
           "
         >
           <el-table-column
@@ -311,7 +311,7 @@
           style="width: 100%"
           v-loading="loading"
           stripe
-          @selection-change="(selection) => handleTableSelectionChange(selection, selectedPrices)"
+          @selection-change="(selection) => onTableSelectionChange(selection, selectedPrices)"
         >
           <el-table-column
             v-for="column in PRICE_COLUMNS"
@@ -534,9 +534,9 @@ import {
   openImportDialog,
   confirmSingleDelete,
   confirmBatchDelete,
-  handleTableSelectionChange,
+  onTableSelectionChange,
   exportCurrentData,
-  handleFileUpload,
+  uploadFile,
   formatDisplayTime,
   formatPriceDisplay,
   calculateStats

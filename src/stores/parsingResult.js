@@ -92,7 +92,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
    * 处理查看解析结果详情的逻辑。
    * @param {string} taskIdToFetch - 要获取详情的任务ID。
    */
-  const handleViewResultDetail = async (options = {}) => {
+  const viewResultDetail = async (options = {}) => {
     const { isSupplierMaterial = false, specificTaskId = null } = options
     const workflowStore = useWorkflowStore()
     let taskIdToFetch = specificTaskId // 优先使用传入的 specificTaskId
@@ -251,7 +251,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   /**
    * 提交所有修改到后端。
    */
-  const handleSaveAll = async () => {
+  const saveAll = async () => {
     savingAllEdits.value = true
     try {
       const payloads = editFormModels.value.map((item) => {
@@ -299,7 +299,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   /**
    * 确认所有解析结果。
    */
-  const handleConfirm = async () => {
+  const confirm = async () => {
     if (!tableData.value || tableData.value.length === 0) {
       ElMessage.warning('没有可确认的数据。')
       return
@@ -358,15 +358,15 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     editableField,
     editableFieldProp,
     parseResultJsonData,
-    handleViewResultDetail,
+    viewResultDetail,
     isLongText,
     openEditPopup,
     saveLongText,
     startRowEdit,
     cancelRowEdit,
     saveRowEdit,
-    handleSaveAll,
-    handleConfirm,
+    saveAll,
+    confirm,
     // 导出辅助函数，因为它们在 ResultDetailTableDialog.vue 中被直接使用
     translateHeader,
     formatCellValue

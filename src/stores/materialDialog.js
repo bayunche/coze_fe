@@ -39,7 +39,7 @@ export const useMaterialDialogStore = defineStore('materialDialog', () => {
    * 处理查看乙供物资解析结果详情的逻辑。
    * @param {string | {id: string}} message - 任务ID或包含任务ID的对象。
    */
-  const handleViewMaterialResultDetail = (message) => {
+  const viewMaterialResultDetail = (message) => {
     const taskIdToUse =
       typeof message === 'object' && message !== null && message.id ? message.id : message
     if (!taskIdToUse) {
@@ -50,7 +50,7 @@ export const useMaterialDialogStore = defineStore('materialDialog', () => {
       materialParsingResultTask.value = { id: taskIdToUse }
       showMaterialParsingResultDialog.value = true
       console.log(
-        '【诊断】materialDialogStore - handleViewMaterialResultDetail 接收到任务ID:',
+        '【诊断】materialDialogStore - viewMaterialResultDetail 接收到任务ID:',
         taskIdToUse
       )
       console.log(
@@ -74,6 +74,6 @@ export const useMaterialDialogStore = defineStore('materialDialog', () => {
     ownerMaterialTaskParsingDetailTaskId,
     showSupplierMaterialTaskParsingDetailDialog,
     supplierMaterialTaskParsingDetailTaskId,
-    handleViewMaterialResultDetail
+    viewMaterialResultDetail
   }
 })

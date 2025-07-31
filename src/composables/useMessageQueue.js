@@ -59,7 +59,7 @@ export function useMessageQueue(filteredMessages) {
   /**
    * 处理动画结束
    */
-  const handleAnimationEnd = (messageContainer) => {
+  const onAnimationEnd = (messageContainer) => {
     isProcessingQueue.value = false
     processQueue(messageContainer)
   }
@@ -95,9 +95,9 @@ export function useMessageQueue(filteredMessages) {
   /**
    * 处理过滤消息变化的函数，需要在组件中调用
    */
-  const handleFilteredMessagesChange = (newMessages, oldMessages, messageContainer) => {
+  const onFilteredMessagesChange = (newMessages, oldMessages, messageContainer) => {
     if (import.meta.env.DEV) {
-      console.log('⚡ [useMessageQueue] handleFilteredMessagesChange called:')
+      console.log('⚡ [useMessageQueue] onFilteredMessagesChange called:')
       console.log('  - newMessages:', newMessages.length, 'messages')
       console.log('  - oldMessages:', oldMessages?.length || 0, 'messages')
       console.log('  - displayedMessages:', displayedMessages.value.length, 'messages')
@@ -163,9 +163,9 @@ export function useMessageQueue(filteredMessages) {
     isProcessingQueue,
     scrollToBottom,
     processQueue,
-    handleAnimationEnd,
+    onAnimationEnd,
     resetQueue,
     initializeQueue,
-    handleFilteredMessagesChange,
+    onFilteredMessagesChange,
   }
 }

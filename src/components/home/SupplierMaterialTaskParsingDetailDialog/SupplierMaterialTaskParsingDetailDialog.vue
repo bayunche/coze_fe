@@ -39,13 +39,13 @@
         <template v-else-if="column.label === '操作'" #default="{ row }">
           <el-button 
             type="text" 
-            @click="() => handleViewDetail(row)"
+            @click="() => onViewDetail(row)"
           >
             {{ BUTTON_LABELS.VIEW_DETAIL }}
           </el-button>
           <el-button 
             type="text" 
-            @click="() => handleDownloadFile(row)"
+            @click="() => onDownloadFile(row)"
           >
             {{ BUTTON_LABELS.VIEW_SOURCE_FILE }}
           </el-button>
@@ -54,8 +54,8 @@
     </el-table>
     
     <el-pagination
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
+      @size-change="onSizeChange"
+      @current-change="onCurrentChange"
       :current-page="currentPage"
       :page-sizes="PAGINATION_CONFIG.PAGE_SIZES"
       :page-size="pageSize"
@@ -87,8 +87,8 @@ import {
   createRouter,
   viewDetail,
   downloadFile,
-  handleCurrentChange as utilHandleCurrentChange,
-  handleSizeChange as utilHandleSizeChange,
+  onCurrentChange as utilOnCurrentChange,
+  onSizeChange as utilOnSizeChange,
   createFetchDataFunction,
   shouldFetchData
 } from './utils.js'
@@ -151,20 +151,20 @@ const closeDialog = () => {
 }
 
 // 事件处理函数
-const handleViewDetail = (row) => {
+const onViewDetail = (row) => {
   viewDetail(row, router, closeDialog)
 }
 
-const handleDownloadFile = (row) => {
+const onDownloadFile = (row) => {
   downloadFile(row)
 }
 
-const handleCurrentChange = (page) => {
-  utilHandleCurrentChange(page, setCurrentPage, fetchDetailList)
+const onCurrentChange = (page) => {
+  utilOnCurrentChange(page, setCurrentPage, fetchDetailList)
 }
 
-const handleSizeChange = (size) => {
-  utilHandleSizeChange(size, setPageSize, setCurrentPage, fetchDetailList)
+const onSizeChange = (size) => {
+  utilOnSizeChange(size, setPageSize, setCurrentPage, fetchDetailList)
 }
 
 // 监听对话框显示和任务ID变化

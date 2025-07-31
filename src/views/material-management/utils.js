@@ -202,7 +202,7 @@ export const confirmBatchDelete = async (selectedItems, deleteCallback) => {
  * @param {Array} selection - 选中的项目
  * @param {Ref} selectedItems - 选中项目的引用
  */
-export const handleTableSelectionChange = (selection, selectedItems) => {
+export const onTableSelectionChange = (selection, selectedItems) => {
   selectedItems.value = selection
 }
 
@@ -233,7 +233,7 @@ export const exportCurrentData = (data, filename, currentTab) => {
  * @param {File} file - 上传的文件
  * @param {Function} uploadCallback - 上传成功回调
  */
-export const handleFileUpload = async (file, uploadCallback) => {
+export const uploadFile = async (file, uploadCallback) => {
   try {
     // 这里应该调用实际的上传API
     const result = await uploadCallback(file)

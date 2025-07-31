@@ -147,7 +147,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useWorkflowStore } from '@/stores/workflow'
 import TaskParsingResultDialog from '@/components/home/TaskParsingResultDialog/TaskParsingResultDialog.vue'
 import MaterialParsingResultDialog from '@/components/home/MaterialParsingResultDialog/MaterialParsingResultDialog.vue'
-import OwnerMaterialParsingResultDialog from '@/components/home/OwnerMaterialParsingResultDialog.vue'
+import OwnerMaterialParsingResultDialog from '@/components/home/OwnerMaterialParsingResultDialog'
 
 import { 
   OVERVIEW_CARD_CONFIG,
@@ -235,7 +235,7 @@ const viewHistoryDetail = (row) => {
 // 页面初始化
 const initializePage = async () => {
   try {
-    await workflowStore.handleSmartBrain()
+    await workflowStore.executeSmartBrain()
   } catch (error) {
     console.error('初始化智能大脑数据失败:', error)
   }
