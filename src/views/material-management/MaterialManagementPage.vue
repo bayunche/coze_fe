@@ -977,6 +977,7 @@ onMounted(() => {
 
 .tabs-section {
   margin-bottom: 24px;
+  padding: 4px;
 }
 
 .management-tabs {
