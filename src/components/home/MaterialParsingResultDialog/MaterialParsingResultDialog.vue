@@ -80,7 +80,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import OwnerMaterialTaskParsingDetailDialog from '@/components/home/OwnerMaterialTaskParsingDetailDialog/OwnerMaterialTaskParsingDetailDialog.vue'
+import OwnerMaterialTaskParsingDetailDialog from '@/components/home/OwnerMaterialTaskParsingDetailDialog'
 
 // 导入常量和工具函数
 import {

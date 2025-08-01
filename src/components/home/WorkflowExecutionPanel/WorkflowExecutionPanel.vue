@@ -34,8 +34,8 @@ import {
   isSupplierMaterialWorkflow,
   isOwnerMaterialWorkflow
 } from '@/constants/workflowNames'
-import MessageTabs from '@/components/home/MessageTabs/MessageTabs.vue'
-import MessageList from '@/components/home/MessageList/MessageList.vue'
+import MessageTabs from '@/components/home/MessageTabs'
+import MessageList from '@/components/home/MessageList'
 
 const props = defineProps({
   messages: {

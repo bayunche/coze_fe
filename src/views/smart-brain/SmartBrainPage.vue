@@ -145,8 +145,8 @@ import { ref, computed, onMounted, nextTick, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkflowStore } from '@/stores/workflow'
-import TaskParsingResultDialog from '@/components/home/TaskParsingResultDialog/TaskParsingResultDialog.vue'
-import MaterialParsingResultDialog from '@/components/home/MaterialParsingResultDialog/MaterialParsingResultDialog.vue'
+import TaskParsingResultDialog from '@/components/home/TaskParsingResultDialog'
+import MaterialParsingResultDialog from '@/components/home/MaterialParsingResultDialog'
 import OwnerMaterialParsingResultDialog from '@/components/home/OwnerMaterialParsingResultDialog'
 
 import { 

@@ -59,7 +59,7 @@ const MaterialParsingResultDialog = defineAsyncComponent(() =>
   import('@/components/home/MaterialParsingResultDialog')
 )
 const OwnerMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
-  import('@/components/home/OwnerMaterialTaskParsingDetailDialog.vue')
+  import('@/components/home/OwnerMaterialTaskParsingDetailDialog')
 )
 const SupplierMaterialTaskParsingDetailDialog = defineAsyncComponent(() =>
   import('@/components/home/SupplierMaterialTaskParsingDetailDialog')
@@ -71,10 +71,10 @@ const SmartBrainDialog = defineAsyncComponent(() =>
   import('@/components/home/SmartBrainDialog')
 )
 const ResultDetailTableDialog = defineAsyncComponent(() =>
-  import('@/components/home/ResultDetailTableDialog.vue')
+  import('@/components/home/ResultDetailTableDialog')
 )
 const LongTextEditPopup = defineAsyncComponent(() =>
-  import('@/components/home/LongTextEditPopup.vue')
+  import('@/components/home/LongTextEditPopup')
 )
 
 // Stores

@@ -51,7 +51,7 @@ const {
   onAnimationEnd: onQueueAnimationEnd,
   resetQueue,
   initializeQueue,
-  processFilteredMessagesChange: onFilteredMessagesChange
+  onFilteredMessagesChange
 } = useMessageQueue(filteredMessages)
 
 // 处理动画结束

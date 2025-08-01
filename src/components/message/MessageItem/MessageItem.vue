@@ -58,7 +58,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import StreamingMessage from '@/components/home/StreamingMessage/StreamingMessage.vue'
+import StreamingMessage from '@/components/home/StreamingMessage'
 import { EMIT_EVENTS, UI_CONFIG } from './constants.js'
 import {
   isUserMessage,

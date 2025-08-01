@@ -91,7 +91,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import TaskDetailDialog from '../TaskDetailDialog.vue'
+import TaskDetailDialog from '../TaskDetailDialog'
 
 // 导入常量和工具函数
 import {

@@ -1,6 +1,6 @@
 // ThemeManager 组件工具函数
 
-import { DISPLAY_MODES } from './constants.js'
+import { DISPLAY_MODES, DEFAULT_CONFIG, POPUP_TYPES, PLACEMENT_OPTIONS } from './constants.js'
 
 /**
  * 处理主题选择
@@ -96,7 +96,7 @@ export const formatThemeGrid = (themes) => {
  * @returns {Object} 验证后的配置
  */
 export const validateConfig = (config) => {
-  const { DEFAULT_CONFIG, DISPLAY_MODES, POPUP_TYPES, PLACEMENT_OPTIONS } = require('./constants.js')
+  // 常量已在文件顶部导入
   
   return {
     mode: Object.values(DISPLAY_MODES).includes(config.mode) ? config.mode : DEFAULT_CONFIG.MODE,

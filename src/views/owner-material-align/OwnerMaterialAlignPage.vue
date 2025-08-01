@@ -184,7 +184,7 @@ import {
 } from '@/utils/backendWorkflow' // 导入接口
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
 import { ElDialog } from 'element-plus'
-import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
+import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog'
 import CozeWorkflowService from '@/services/CozeWorkflowService'
 
 const router = useRouter()
