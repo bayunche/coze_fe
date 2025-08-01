@@ -679,10 +679,15 @@ export const useWorkflowStore = defineStore('workflow', () => {
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
-          // 甲供物资解析第一个工作流不显示查看解析结果按钮
-          // if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
-          //   streamingAgentMessage.showViewResultButton = true
-          // }
+          
+          // 在消息最后追加固定文字
+          const fixedMessage = '\n存在无法匹配的物资信息，请人工介入\n'
+          chatStore.appendStreamContent(streamingAgentMessage.id, fixedMessage)
+          finalResult.push(fixedMessage)
+          
+          // 不显示查看解析结果按钮
+          // streamingAgentMessage.showViewResultButton = true
+          
           if (taskId.value) {
             ownerMaterialStore.updateTaskStatus(taskId.value, 'needs_manual_alignment')
           }
