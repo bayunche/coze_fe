@@ -6,10 +6,6 @@
         <h1 class="page-title">
           <span style="color: #333; background-color: #ffff">📦 </span>基础物资管理
         </h1>
-        <el-breadcrumb separator="/">
-          <el-breadcrumb-item @click="navigateToSmartBrain">智能大脑</el-breadcrumb-item>
-          <el-breadcrumb-item>基础物资管理</el-breadcrumb-item>
-        </el-breadcrumb>
       </div>
       <div class="header-right">
         <el-button @click="navigateToSmartBrain">返回智能大脑</el-button>
@@ -37,7 +33,7 @@
     <div class="tabs-section">
       <el-tabs
         v-model="currentTab"
-        @tab-click="(tab) => switchTab(tab.name, currentTab, loadCurrentTabData)"
+        @tab-click="(tab) => { currentTab = tab.name; loadCurrentTabData(); }"
         class="management-tabs"
       >
         <el-tab-pane v-for="tab in TAB_CONFIG" :key="tab.name" :label="tab.label" :name="tab.name">
@@ -142,9 +138,7 @@
           style="width: 100%"
           v-loading="loading"
           stripe
-          @selection-change="
-            (selection) => onTableSelectionChange(selection, selectedMaterials)
-          "
+          @selection-change="(selection) => onTableSelectionChange(selection, selectedMaterials)"
         >
           <el-table-column
             v-for="column in MATERIAL_COLUMNS"
@@ -155,7 +149,7 @@
               <el-tag type="info" size="small">{{ row.priceCount }}条</el-tag>
             </template>
             <template v-else-if="column.prop === 'createTime'" #default="{ row }">
-              {{ formatDisplayTime(row.createTime) }}
+              {{ row.createTime || '--' }}
             </template>
             <template v-else-if="column.label === '操作'" #default="{ row }">
               <div class="table-actions">
@@ -205,29 +199,30 @@
       <div class="filter-section">
         <el-form :model="priceSearchForm" inline ref="priceSearchFormRef">
           <el-form-item label="物资名称:">
-            <el-select
-              v-model="priceSearchForm.materialId"
-              placeholder="请选择物资"
+            <el-input
+              v-model="priceSearchForm.materialName"
+              placeholder="请输入物资名称"
               style="width: 200px"
               clearable
-              filterable
-            >
-              <el-option
-                v-for="material in materialList"
-                :key="material.id"
-                :label="`${material.materialName} (${material.specification})`"
-                :value="material.id"
-              />
-            </el-select>
+            />
           </el-form-item>
           <el-form-item
-            v-for="(config, key) in SEARCH_FORM_CONFIG.PRICES"
+            v-for="(config, key) in filteredPriceSearchConfig"
             :key="key"
-            v-if="key !== 'materialId'"
             :label="`${config.label}:`"
             :prop="key"
           >
+            <el-date-picker
+              v-if="config.type === 'date'"
+              v-model="priceSearchForm[key]"
+              type="month"
+              :placeholder="config.placeholder"
+              style="width: 200px"
+              format="YYYY年第Q季度"
+              value-format="YYYY-[Q]Q"
+            />
             <el-select
+              v-else
               v-model="priceSearchForm[key]"
               :placeholder="config.placeholder"
               style="width: 200px"
@@ -313,6 +308,11 @@
           stripe
           @selection-change="(selection) => onTableSelectionChange(selection, selectedPrices)"
         >
+          <template #empty>
+            <div class="empty-data">
+              <el-empty description="暂无价格数据" />
+            </div>
+          </template>
           <el-table-column
             v-for="column in PRICE_COLUMNS"
             :key="column.prop || column.type || column.label"
@@ -324,10 +324,10 @@
               </span>
             </template>
             <template v-else-if="column.prop === 'createTime'" #default="{ row }">
-              {{ formatDisplayTime(row.createTime) }}
+              {{ row.createTime || '--' }}
             </template>
             <template v-else-if="column.prop === 'updateTime'" #default="{ row }">
-              {{ formatDisplayTime(row.updateTime) }}
+              {{ row.updateTime || '--' }}
             </template>
             <template v-else-if="column.label === '操作'" #default="{ row }">
               <div class="table-actions">
@@ -423,7 +423,7 @@
         <el-form-item label="季度" prop="quarter">
           <el-select v-model="priceForm.quarter" style="width: 100%">
             <el-option
-              v-for="option in SEARCH_FORM_CONFIG.PRICES.quarter.options"
+              v-for="option in priceFormQuarterOptions"
               :key="option.value"
               :label="option.label"
               :value="option.value"
@@ -498,10 +498,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive, watchEffect } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
+import MaterialService from '@/services/MaterialService'
 
 // 导入常量和工具函数
 import {
@@ -509,13 +510,11 @@ import {
   TAB_CONFIG,
   MATERIAL_COLUMNS,
   PRICE_COLUMNS,
-  BUTTON_ACTIONS,
   PAGINATION_CONFIG,
   SEARCH_FORM_CONFIG,
   DIALOG_TYPES,
   DIALOG_TITLES,
-  FORM_RULES,
-  IMPORT_FILE_CONFIG
+  FORM_RULES
 } from './constants.js'
 
 import {
@@ -528,18 +527,14 @@ import {
   initPagination,
   resetPagination,
   openAddMaterialDialog,
-  openEditMaterialDialog,
   openAddPriceDialog,
-  openEditPriceDialog,
   openImportDialog,
   confirmSingleDelete,
   confirmBatchDelete,
   onTableSelectionChange,
   exportCurrentData,
-  uploadFile,
   formatDisplayTime,
-  formatPriceDisplay,
-  calculateStats
+  formatPriceDisplay
 } from './utils.js'
 
 const router = useRouter()
@@ -584,7 +579,7 @@ const materialSearchForm = reactive({
 })
 
 const priceSearchForm = reactive({
-  materialId: '',
+  materialName: '', // 改为物资名称输入
   quarter: ''
 })
 
@@ -611,141 +606,59 @@ const importForm = reactive({
   file: null
 })
 
-// 模拟数据
-const materialList = ref([
-  {
-    id: 1,
-    materialName: '水泥',
-    specification: '425#',
-    unit: '吨',
-    category: '建筑材料',
-    priceCount: 8,
-    createTime: '2024-01-15 10:30:25',
-    creator: '张三'
-  },
-  {
-    id: 2,
-    materialName: '钢筋',
-    specification: 'HRB400 Φ12',
-    unit: '吨',
-    category: '钢材',
-    priceCount: 12,
-    createTime: '2024-01-20 09:15:30',
-    creator: '王五'
-  },
-  {
-    id: 3,
-    materialName: '砖块',
-    specification: '标准红砖',
-    unit: '块',
-    category: '砌体材料',
-    priceCount: 6,
-    createTime: '2024-02-01 11:20:15',
-    creator: '张三'
-  }
-])
+// 响应式数据 - 从API获取
+const materialList = ref([])
+const priceList = ref([])
 
-const priceList = ref([
-  {
-    id: 1,
-    materialId: 1,
-    materialName: '水泥',
-    specification: '425#',
-    price: 350.0,
-    quarter: '2024-Q1',
-    createTime: '2024-01-15 10:30:25',
-    updateTime: '2024-03-10 14:20:15'
-  },
-  {
-    id: 2,
-    materialId: 1,
-    materialName: '水泥',
-    specification: '425#',
-    price: 365.0,
-    quarter: '2024-Q2',
-    createTime: '2024-04-01 10:30:25',
-    updateTime: '2024-06-10 14:20:15'
-  },
-  {
-    id: 3,
-    materialId: 2,
-    materialName: '钢筋',
-    specification: 'HRB400 Φ12',
-    price: 4200.0,
-    quarter: '2024-Q1',
-    createTime: '2024-01-20 09:15:30',
-    updateTime: '2024-02-28 16:45:20'
-  }
-])
-
-// 计算属性 - 过滤后的数据
-const filteredMaterialData = computed(() => {
-  let filtered = materialList.value
-
-  if (materialSearchForm.materialName) {
-    filtered = filtered.filter((item) =>
-      item.materialName.includes(materialSearchForm.materialName)
-    )
-  }
-
-  if (materialSearchForm.specification) {
-    filtered = filtered.filter((item) =>
-      item.specification.includes(materialSearchForm.specification)
-    )
-  }
-
-  if (materialSearchForm.category) {
-    filtered = filtered.filter((item) => item.category.includes(materialSearchForm.category))
-  }
-
-  return filtered
-})
-
-const filteredPriceData = computed(() => {
-  let filtered = priceList.value
-
-  if (priceSearchForm.materialId) {
-    filtered = filtered.filter((item) => item.materialId === priceSearchForm.materialId)
-  }
-
-  if (priceSearchForm.quarter) {
-    filtered = filtered.filter((item) => item.quarter === priceSearchForm.quarter)
-  }
-
-  return filtered
-})
-
-// 表格数据（分页后）
-const materialTableData = computed(() => {
-  const start = (materialPagination.current - 1) * materialPagination.pageSize
-  const end = start + materialPagination.pageSize
-  return filteredMaterialData.value.slice(start, end)
-})
-
-const priceTableData = computed(() => {
-  const start = (pricePagination.current - 1) * pricePagination.pageSize
-  const end = start + pricePagination.pageSize
-  return filteredPriceData.value.slice(start, end)
-})
+// 表格数据 - 直接使用从API获取的数据 (已分页)
+const materialTableData = computed(() => materialList.value)
+const priceTableData = computed(() => priceList.value)
 
 // 当前数据（用于导出）
 const currentData = computed(() => {
   return currentTab.value === TAB_NAMES.MATERIALS ? materialTableData.value : priceTableData.value
 })
 
+// 过滤后的价格搜索配置（排除materialId）
+const filteredPriceSearchConfig = computed(() => {
+  const config = { ...SEARCH_FORM_CONFIG.PRICES }
+  delete config.materialId
+  return config
+})
+
+// 价格表单的季度选项
+const priceFormQuarterOptions = [
+  { label: '2023年第一季度', value: '2023-Q1' },
+  { label: '2023年第二季度', value: '2023-Q2' },
+  { label: '2023年第三季度', value: '2023-Q3' },
+  { label: '2023年第四季度', value: '2023-Q4' },
+  { label: '2024年第一季度', value: '2024-Q1' },
+  { label: '2024年第二季度', value: '2024-Q2' },
+  { label: '2024年第三季度', value: '2024-Q3' },
+  { label: '2024年第四季度', value: '2024-Q4' },
+  { label: '2025年第一季度', value: '2025-Q1' },
+  { label: '2025年第二季度', value: '2025-Q2' },
+  { label: '2025年第三季度', value: '2025-Q3' },
+  { label: '2025年第四季度', value: '2025-Q4' }
+]
+
 // 统计数据
 const materialStats = computed(() => {
   const hasPriceCount = materialList.value.filter((item) => item.priceCount > 0).length
+  // 使用分页数据中的总数
+  const totalMaterials = materialPagination.total || 0
+  const currentTime = new Date()
+  
   return {
-    totalMaterials: materialList.value.length.toLocaleString(),
+    totalMaterials: totalMaterials.toLocaleString(),
     materialWithPrices: hasPriceCount.toLocaleString(),
-    lastUpdate: '2024-03-20'
+    lastUpdate: formatDisplayTime(currentTime)
   }
 })
 
 const priceStats = computed(() => {
-  const filtered = filteredPriceData.value
-  const totalPrice = filtered.reduce((sum, item) => sum + item.price, 0)
+  const prices = priceList.value
+  const totalPrice = prices.reduce((sum, item) => sum + (item.price || item.taxPrice || 0), 0)
   const currentQuarter =
     new Date().getMonth() < 3
       ? 'Q1'
@@ -754,12 +667,16 @@ const priceStats = computed(() => {
       : new Date().getMonth() < 9
       ? 'Q3'
       : 'Q4'
+  
+  // 使用分页数据中的总数
+  const totalPrices = pricePagination.total || 0
+  const currentTime = new Date()
 
   return {
-    totalPrices: priceList.value.length.toLocaleString(),
+    totalPrices: totalPrices.toLocaleString(),
     currentQuarter: `${new Date().getFullYear()}-${currentQuarter}`,
-    averagePrice: filtered.length > 0 ? totalPrice / filtered.length : 0,
-    lastUpdate: '2024-03-20'
+    averagePrice: prices.length > 0 ? totalPrice / prices.length : 0,
+    lastUpdate: formatDisplayTime(currentTime)
   }
 })
 
@@ -768,20 +685,146 @@ const navigateToSmartBrain = () => {
   router.push('/smart-brain')
 }
 
-const loadMaterials = () => {
+const loadMaterials = async () => {
   loading.value = true
-  // 这里应该调用API加载数据
-  setTimeout(() => {
+  try {
+    const params = {
+      page: materialPagination.current - 1, // API页码从0开始
+      size: materialPagination.pageSize
+    }
+    
+    // 添加搜索条件
+    if (materialSearchForm.materialName) {
+      params.keyword = materialSearchForm.materialName
+    }
+    
+    const response = await MaterialService.searchMaterials(params)
+    
+    if (response && response.data) {
+      const { content, totalElements } = response.data
+      // 字段映射适配：后端字段 -> 前端字段
+      materialList.value = (content || []).map(item => ({
+        ...item,
+        specification: item.specificationModel, // 后端specificationModel -> 前端specification
+        category: item.type, // 后端type -> 前端category
+        updateTime: formatDisplayTime(item.bstudioCreateTime) // 格式化时间显示
+      }))
+      materialPagination.total = totalElements || 0
+    }
+  } catch (error) {
+    ElMessage.error('加载物资数据失败: ' + error.message)
+    materialList.value = []
+    materialPagination.total = 0
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
-const loadPrices = () => {
+const loadPrices = async () => {
   loading.value = true
-  // 这里应该调用API加载数据
-  setTimeout(() => {
+  try {
+    const params = {
+      page: pricePagination.current - 1, // API页码从0开始
+      size: pricePagination.pageSize
+    }
+    
+    // 添加搜索条件
+    if (priceSearchForm.materialName) {
+      // 通过物资名称搜索对应的物资ID
+      try {
+        const materialResponse = await MaterialService.searchMaterials({ 
+          keyword: priceSearchForm.materialName, 
+          size: 1000 // 获取足够多的数据用于匹配
+        })
+        
+        if (materialResponse && materialResponse.data && materialResponse.data.content) {
+          const matchedMaterials = materialResponse.data.content.filter(item => 
+            item.materialName && item.materialName.includes(priceSearchForm.materialName)
+          )
+          
+          if (matchedMaterials.length > 0) {
+            // 如果找到匹配的物资，取第一个的ID
+            params.baseInfoId = matchedMaterials[0].id
+          } else {
+            // 没有找到匹配的物资，返回空结果
+            priceList.value = []
+            pricePagination.total = 0
+            loading.value = false
+            return
+          }
+        } else {
+          // 搜索物资失败，返回空结果
+          priceList.value = []
+          pricePagination.total = 0
+          loading.value = false
+          return
+        }
+      } catch (materialError) {
+        console.error('搜索物资失败:', materialError)
+        priceList.value = []
+        pricePagination.total = 0
+        loading.value = false
+        return
+      }
+    }
+    // 如果没有搜索条件，直接查询所有价格数据
+    
+    const response = await MaterialService.searchPrices(params)
+    
+    if (response && response.data) {
+      const { content, totalElements } = response.data
+      // 字段映射适配：后端字段 -> 前端字段，并关联物资信息
+      const pricesWithMaterialInfo = await Promise.all((content || []).map(async (item) => {
+        let materialInfo = { materialName: '未知物资', specification: '--' }
+        
+        // 尝试从当前物资列表中查找
+        const material = materialList.value.find(m => m.id === item.baseInfoId)
+        if (material) {
+          materialInfo = {
+            materialName: material.materialName,
+            specification: material.specification || material.specificationModel
+          }
+        } else if (item.baseInfoId) {
+          // 如果当前列表中没有，则单独查询
+          try {
+            const materialResponse = await MaterialService.getMaterialById(item.baseInfoId)
+            if (materialResponse && materialResponse.data) {
+              materialInfo = {
+                materialName: materialResponse.data.materialName,
+                specification: materialResponse.data.specificationModel
+              }
+            }
+          } catch (error) {
+            console.warn('查询物资信息失败:', error)
+          }
+        }
+        
+        return {
+          ...item,
+          price: item.taxPrice, // 后端taxPrice -> 前端price
+          materialName: materialInfo.materialName,
+          specification: materialInfo.specification,
+          materialId: item.baseInfoId, // 保留原字段以备后用
+          updateTime: item.updateTime ? formatDisplayTime(item.updateTime) : '--' // 格式化时间或显示默认值
+        }
+      }))
+      
+      priceList.value = pricesWithMaterialInfo
+      pricePagination.total = totalElements || 0
+    }
+  } catch (error) {
+    console.error('加载价格数据失败:', error)
+    // 暂时不显示错误消息，直接显示空数据让表格正常展示
+    if (error.response && error.response.status === 404) {
+      console.warn('价格API服务未启动或路径不正确')
+    } else {
+      ElMessage.error('加载价格数据失败: ' + error.message)
+    }
+    priceList.value = []
+    pricePagination.total = 0
+  } finally {
     loading.value = false
-  }, 500)
+  }
 }
 
 const loadCurrentTabData = () => {
@@ -795,101 +838,148 @@ const loadCurrentTabData = () => {
 const editMaterial = (row) => {
   dialogState.isEditingMaterial = true
   dialogState.currentMaterial = { ...row }
-  Object.assign(materialForm, row)
+  // 字段映射适配：确保从row正确映射到表单
+  Object.assign(materialForm, {
+    materialName: row.materialName,
+    specification: row.specification || row.specificationModel, // 兼容两种字段名
+    unit: row.unit,
+    category: row.category || row.type // 兼容两种字段名
+  })
   dialogState.showMaterialDialog = true
 }
 
 const editPrice = (row) => {
   dialogState.isEditingPrice = true
   dialogState.currentPrice = { ...row }
-  Object.assign(priceForm, row)
+  // 字段映射适配：确保从row正确映射到表单
+  Object.assign(priceForm, {
+    materialId: row.materialId || row.baseInfoId, // 兼容两种字段名
+    quarter: row.quarter,
+    price: row.price || row.taxPrice // 兼容两种字段名
+  })
   dialogState.showPriceDialog = true
 }
 
-const manageMaterialPrices = (row) => {
-  priceSearchForm.materialId = row.id
+const manageMaterialPrices = async (row) => {
+  // 切换到价格管理tab
   currentTab.value = TAB_NAMES.PRICES
+  // 设置搜索条件为当前物资名称
+  priceSearchForm.materialName = row.materialName
+  // 重置价格分页
+  resetPagination(pricePagination)
+  // 加载该物资的价格数据
+  await loadPrices()
 }
 
 const deleteMaterials = async (ids) => {
-  // 模拟删除API调用
-  materialList.value = materialList.value.filter((item) => !ids.includes(item.id))
-  selectedMaterials.value = []
+  try {
+    loading.value = true
+    
+    // 逐个删除物资（后端API不支持批量删除）
+    for (const id of ids) {
+      await MaterialService.deleteMaterial(id)
+    }
+    
+    ElMessage.success(`成功删除${ids.length}个物资`)
+    selectedMaterials.value = []
+    
+    // 重新加载数据
+    await loadMaterials()
+  } catch (error) {
+    ElMessage.error('删除失败: ' + error.message)
+  } finally {
+    loading.value = false
+  }
 }
 
 const deletePrices = async (ids) => {
-  // 模拟删除API调用
-  priceList.value = priceList.value.filter((item) => !ids.includes(item.id))
-  selectedPrices.value = []
+  try {
+    loading.value = true
+    
+    // 批量删除价格
+    await MaterialService.deletePrices(ids)
+    
+    ElMessage.success(`成功删除${ids.length}个价格记录`)
+    selectedPrices.value = []
+    
+    // 重新加载数据
+    await loadPrices()
+  } catch (error) {
+    ElMessage.error('删除失败: ' + error.message)
+  } finally {
+    loading.value = false
+  }
 }
 
-const saveMaterial = () => {
-  materialFormRef.value.validate((valid) => {
+const saveMaterial = async () => {
+  materialFormRef.value.validate(async (valid) => {
     if (valid) {
-      if (dialogState.isEditingMaterial) {
-        // 编辑物资
-        const index = materialList.value.findIndex(
-          (item) => item.id === dialogState.currentMaterial.id
-        )
-        if (index > -1) {
-          materialList.value[index] = { ...materialList.value[index], ...materialForm }
+      loading.value = true
+      try {
+        // 准备API数据格式，适配后端字段
+        const apiData = {
+          materialName: materialForm.materialName,
+          specificationModel: materialForm.specification, // 前端字段 -> 后端字段
+          unit: materialForm.unit,
+          type: materialForm.category // 前端category -> 后端type
         }
-        ElMessage.success('编辑成功')
-      } else {
-        // 新增物资
-        const newMaterial = {
-          id: Date.now(),
-          ...materialForm,
-          priceCount: 0,
-          createTime: new Date().toLocaleString('zh-CN'),
-          creator: '当前用户'
+
+        if (dialogState.isEditingMaterial) {
+          // 编辑物资
+          apiData.id = dialogState.currentMaterial.id
+          await MaterialService.updateMaterial(apiData)
+          ElMessage.success('编辑成功')
+        } else {
+          // 新增物资
+          await MaterialService.createMaterial(apiData)
+          ElMessage.success('新增成功')
         }
-        materialList.value.unshift(newMaterial)
-        ElMessage.success('新增成功')
+
+        dialogState.showMaterialDialog = false
+        resetMaterialForm()
+        // 重新加载数据
+        await loadMaterials()
+      } catch (error) {
+        ElMessage.error('保存失败: ' + error.message)
+      } finally {
+        loading.value = false
       }
-      dialogState.showMaterialDialog = false
-      resetMaterialForm()
     }
   })
 }
 
-const savePrice = () => {
-  priceFormRef.value.validate((valid) => {
+const savePrice = async () => {
+  priceFormRef.value.validate(async (valid) => {
     if (valid) {
-      if (dialogState.isEditingPrice) {
-        // 编辑价格
-        const index = priceList.value.findIndex((item) => item.id === dialogState.currentPrice.id)
-        if (index > -1) {
-          const material = materialList.value.find((m) => m.id === priceForm.materialId)
-          priceList.value[index] = {
-            ...priceList.value[index],
-            ...priceForm,
-            materialName: material?.materialName || '',
-            specification: material?.specification || '',
-            updateTime: new Date().toLocaleString('zh-CN')
-          }
+      loading.value = true
+      try {
+        // 准备API数据格式，适配后端字段
+        const apiData = {
+          baseInfoId: priceForm.materialId, // 前端materialId -> 后端baseInfoId
+          quarter: priceForm.quarter,
+          taxPrice: priceForm.price // 前端price -> 后端taxPrice
         }
-        ElMessage.success('编辑成功')
-      } else {
-        // 新增价格
-        const material = materialList.value.find((m) => m.id === priceForm.materialId)
-        const newPrice = {
-          id: Date.now(),
-          ...priceForm,
-          materialName: material?.materialName || '',
-          specification: material?.specification || '',
-          createTime: new Date().toLocaleString('zh-CN'),
-          updateTime: new Date().toLocaleString('zh-CN')
+
+        if (dialogState.isEditingPrice) {
+          // 编辑价格
+          apiData.id = dialogState.currentPrice.id
+          await MaterialService.updatePrice(apiData)
+          ElMessage.success('编辑成功')
+        } else {
+          // 新增价格
+          await MaterialService.createPrice(apiData)
+          ElMessage.success('新增成功')
         }
-        priceList.value.unshift(newPrice)
-        // 更新物资价格记录数
-        if (material) {
-          material.priceCount++
-        }
-        ElMessage.success('新增成功')
+
+        dialogState.showPriceDialog = false
+        resetPriceForm()
+        // 重新加载数据
+        await loadPrices()
+      } catch (error) {
+        ElMessage.error('保存失败: ' + error.message)
+      } finally {
+        loading.value = false
       }
-      dialogState.showPriceDialog = false
-      resetPriceForm()
     }
   })
 }
@@ -934,17 +1024,15 @@ const startImport = () => {
   dialogState.showImportDialog = false
 }
 
-// 监听筛选数据变化，更新分页总数
-watchEffect(() => {
-  materialPagination.total = filteredMaterialData.value.length
-})
+// 分页总数现在由API响应直接设置，不需要监听
 
-watchEffect(() => {
-  pricePagination.total = filteredPriceData.value.length
-})
-
-onMounted(() => {
-  loadCurrentTabData()
+onMounted(async () => {
+  // 先加载物资数据，确保价格管理tab中的物资选择有数据
+  await loadMaterials()
+  // 然后根据当前tab加载对应数据
+  if (currentTab.value === TAB_NAMES.PRICES) {
+    await loadPrices()
+  }
 })
 </script>
 

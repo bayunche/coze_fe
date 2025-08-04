@@ -247,7 +247,7 @@ export const uploadFile = async (file, uploadCallback) => {
 }
 
 /**
- * 格式化显示时间
+ * 格式化显示时间为YYYY-MM-DD HH:mm:ss格式
  * @param {string|Date} time - 时间
  * @returns {string} 格式化后的时间字符串
  */
@@ -257,13 +257,15 @@ export const formatDisplayTime = (time) => {
   const date = new Date(time)
   if (isNaN(date.getTime())) return '--'
   
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
+  // 格式化为YYYY-MM-DD HH:mm:ss
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
 }
 
 /**

@@ -5,6 +5,7 @@
     :width="DIALOG_CONFIG.WIDTH"
     :before-close="() => closeDialog(emit)"
     :custom-class="DIALOG_CONFIG.CUSTOM_CLASS"
+    append-to-body
   >
     <el-tabs v-model="activeTab" @tab-click="() => switchTab(() => (currentPage = 1))">
       <el-tab-pane v-for="tab in TAB_CONFIG" :key="tab.name" :label="tab.label" :name="tab.name" />

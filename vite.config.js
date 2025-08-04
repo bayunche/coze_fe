@@ -45,7 +45,7 @@ export default defineConfig({
         rewrite: (path) => {
           const newPath = path.replace(/^\/api\/backend-api/, '')
           console.log(`[/api/backend-api] 路径转换: ${path} -> ${newPath}`)
-          console.log(`[/api/backend-api] 最终请求: http://159.75.127.84:1207${newPath}`)
+          console.log(`[/api/backend-api] 最终请求: http://159.75.127.84:1202${newPath}`)
           return newPath
         }
       },
@@ -53,10 +53,10 @@ export default defineConfig({
         target: 'http://159.75.127.84:1207',
         changeOrigin: true,
         rewrite: (path) => {
-          const newPath = path.replace(/^\/api/, '')
-          console.log(`[/api] 路径转换: ${path} -> ${newPath}`)
-          console.log(`[/api] 最终请求: http://159.75.127.84:1207${newPath}`)
-          return newPath
+          // 不移除/api前缀，保持完整路径
+          console.log(`[/api] 路径转换: ${path} -> ${path}`)
+          console.log(`[/api] 最终请求: http://159.75.127.84:1207${path}`)
+          return path
         }
       },
       '/backend-api': {
@@ -65,7 +65,7 @@ export default defineConfig({
         rewrite: (path) => {
           const newPath = path.replace(/^\/backend-api/, '')
           console.log(`[/backend-api] 路径转换: ${path} -> ${newPath}`)
-          console.log(`[/backend-api] 最终请求: http://159.75.127.84:1207${newPath}`)
+          console.log(`[/backend-api] 最终请求: http://159.75.127.84:1202${newPath}`)
           return newPath
         }
       }

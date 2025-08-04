@@ -4,6 +4,7 @@
     v-model="dialogVisible"
     width="60%"
     :close-on-click-modal="false"
+    append-to-body
   >
     <el-table :data="tableData" v-loading="loading" style="width: 100%">
       <!-- 序号 -->

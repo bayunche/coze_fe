@@ -1,5 +1,5 @@
 <template>
-  <el-dialog v-model="longTextEditVisible" :title="`编辑 ${editableField}`" width="40%">
+  <el-dialog v-model="longTextEditVisible" :title="`编辑 ${editableField}`" width="40%" append-to-body>
     <el-input v-model="longTextValue" type="textarea" :rows="10" />
     <template #footer>
       <span class="dialog-footer">

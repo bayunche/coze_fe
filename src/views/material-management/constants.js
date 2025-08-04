@@ -84,13 +84,7 @@ export const SEARCH_FORM_CONFIG = {
     quarter: {
       label: '所属季度',
       placeholder: '请选择季度',
-      type: 'select',
-      options: [
-        { label: '2024年第一季度', value: '2024-Q1' },
-        { label: '2024年第二季度', value: '2024-Q2' },
-        { label: '2024年第三季度', value: '2024-Q3' },
-        { label: '2024年第四季度', value: '2024-Q4' }
-      ]
+      type: 'date'
     }
   }
 }
@@ -131,6 +125,9 @@ export const FORM_RULES = {
   ],
   category: [
     { required: true, message: '请选择物资分类', trigger: 'change' }
+  ],
+  materialId: [
+    { required: true, message: '请选择物资', trigger: 'change' }
   ],
   price: [
     { required: true, message: '请输入价格', trigger: 'blur' },

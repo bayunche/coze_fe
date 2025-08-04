@@ -4,6 +4,7 @@
     title="合同解析结果详情"
     width="80%"
     custom-class="result-detail-dialog"
+    append-to-body
   >
     <div v-loading="isFetchingDetails" class="result-detail-content">
       <el-table
