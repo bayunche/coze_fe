@@ -301,10 +301,10 @@ import { ref, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog'
 import CozeService from '@/utils/coze.js'
-import { useChatStore } from '@/stores/chat.js'
+import { useChatStore } from '@/stores/chat'
 import MaterialService from '@/services/MaterialService.js'
 import { useRoute, useRouter } from 'vue-router'
-import { useWorkflowStore } from '@/stores/workflow.js' // 引入 workflowStore
+import { useWorkflowStore } from '@/stores/workflow' // 引入 workflowStore
 import { queryMaterialBaseInfo } from '@/utils/backendWorkflow'
 
 const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
