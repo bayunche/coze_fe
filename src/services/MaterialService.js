@@ -100,6 +100,24 @@ class MaterialService {
     }
   }
 
+  /**
+   * 获取物资统计信息
+   * @param {string} keyword - 搜索关键字(可选)
+   * @returns {Promise<Object>} 统计结果
+   */
+  async getMaterialStatistics(keyword = '') {
+    try {
+      const queryParams = new URLSearchParams()
+      if (keyword) queryParams.append('keyword', keyword)
+      
+      const response = await request.get(`/materials/base-info/statistics?${queryParams}`)
+      return response
+    } catch (error) {
+      console.error('获取物资统计信息失败:', error)
+      throw error
+    }
+  }
+
   // ==================== 物资价格管理API ====================
 
   /**

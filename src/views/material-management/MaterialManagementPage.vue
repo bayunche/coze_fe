@@ -33,7 +33,12 @@
     <div class="tabs-section">
       <el-tabs
         v-model="currentTab"
-        @tab-click="(tab) => { currentTab = tab.name; loadCurrentTabData(); }"
+        @tab-click="
+          (tab) => {
+            currentTab = tab.name
+            loadCurrentTabData()
+          }
+        "
         class="management-tabs"
       >
         <el-tab-pane v-for="tab in TAB_CONFIG" :key="tab.name" :label="tab.label" :name="tab.name">
@@ -112,10 +117,20 @@
 
         <el-card class="stats-card">
           <div class="stats-content">
-            <div class="stats-icon">📊</div>
+            <div class="stats-icon">📏</div>
             <div class="stats-info">
-              <div class="stats-title">有价格物资</div>
-              <div class="stats-value">{{ materialStats.materialWithPrices }}</div>
+              <div class="stats-title">不同规格型号</div>
+              <div class="stats-value">{{ materialStats.totalSpecifications }}</div>
+            </div>
+          </div>
+        </el-card>
+
+        <el-card class="stats-card">
+          <div class="stats-content">
+            <div class="stats-icon">📂</div>
+            <div class="stats-info">
+              <div class="stats-title">不同物资类型</div>
+              <div class="stats-value">{{ materialStats.totalCategories }}</div>
             </div>
           </div>
         </el-card>
@@ -212,15 +227,20 @@
             :label="`${config.label}:`"
             :prop="key"
           >
-            <el-date-picker
+            <el-select
               v-if="config.type === 'date'"
-              v-model="priceSearchForm[key]"
-              type="month"
+              v-model="priceSearchForm.quarter"
               :placeholder="config.placeholder"
               style="width: 200px"
-              format="YYYY年第Q季度"
-              value-format="YYYY-[Q]Q"
-            />
+              clearable
+            >
+              <el-option
+                v-for="option in quarterOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
             <el-select
               v-else
               v-model="priceSearchForm[key]"
@@ -421,9 +441,9 @@
           </el-select>
         </el-form-item>
         <el-form-item label="季度" prop="quarter">
-          <el-select v-model="priceForm.quarter" style="width: 100%">
+          <el-select v-model="priceForm.quarter" style="width: 100%" placeholder="请选择季度">
             <el-option
-              v-for="option in priceFormQuarterOptions"
+              v-for="option in quarterOptions"
               :key="option.value"
               :label="option.label"
               :value="option.value"
@@ -518,7 +538,6 @@ import {
 } from './constants.js'
 
 import {
-  switchTab,
   performMaterialSearch,
   performPriceSearch,
   resetSearchForm,
@@ -580,7 +599,7 @@ const materialSearchForm = reactive({
 
 const priceSearchForm = reactive({
   materialName: '', // 改为物资名称输入
-  quarter: ''
+  quarter: '' // 直接存储季度值(如2024-Q1)
 })
 
 // 分页配置
@@ -609,6 +628,11 @@ const importForm = reactive({
 // 响应式数据 - 从API获取
 const materialList = ref([])
 const priceList = ref([])
+const materialStatisticsData = ref({
+  totalMaterials: 0,
+  totalSpecifications: 0,
+  totalCategories: 0
+})
 
 // 表格数据 - 直接使用从API获取的数据 (已分页)
 const materialTableData = computed(() => materialList.value)
@@ -626,33 +650,46 @@ const filteredPriceSearchConfig = computed(() => {
   return config
 })
 
-// 价格表单的季度选项
-const priceFormQuarterOptions = [
-  { label: '2023年第一季度', value: '2023-Q1' },
-  { label: '2023年第二季度', value: '2023-Q2' },
-  { label: '2023年第三季度', value: '2023-Q3' },
-  { label: '2023年第四季度', value: '2023-Q4' },
-  { label: '2024年第一季度', value: '2024-Q1' },
-  { label: '2024年第二季度', value: '2024-Q2' },
-  { label: '2024年第三季度', value: '2024-Q3' },
-  { label: '2024年第四季度', value: '2024-Q4' },
-  { label: '2025年第一季度', value: '2025-Q1' },
-  { label: '2025年第二季度', value: '2025-Q2' },
-  { label: '2025年第三季度', value: '2025-Q3' },
-  { label: '2025年第四季度', value: '2025-Q4' }
-]
+// 季度选项数据
+const quarterOptions = computed(() => {
+  const currentYear = new Date().getFullYear()
+  const options = []
+
+  // 生成近3年的季度选项（去年、今年、明年）
+  for (let year = currentYear - 1; year <= currentYear + 1; year++) {
+    for (let quarter = 1; quarter <= 4; quarter++) {
+      options.push({
+        value: `${year}-Q${quarter}`,
+        label: `${year}年第${quarter}季度`
+      })
+    }
+  }
+
+  return options
+})
 
 // 统计数据
 const materialStats = computed(() => {
-  const hasPriceCount = materialList.value.filter((item) => item.priceCount > 0).length
-  // 使用分页数据中的总数
-  const totalMaterials = materialPagination.total || 0
-  const currentTime = new Date()
-  
+  // 获取最早更新时间
+  const getEarliestUpdateTime = () => {
+    if (materialList.value.length === 0) return null
+
+    const updateTimes = materialList.value
+      .map((item) => item.updateTime || item.createTime)
+      .filter((time) => time)
+      .map((time) => new Date(time))
+      .filter((date) => !isNaN(date.getTime()))
+
+    if (updateTimes.length === 0) return null
+
+    return new Date(Math.min(...updateTimes))
+  }
+
   return {
-    totalMaterials: totalMaterials.toLocaleString(),
-    materialWithPrices: hasPriceCount.toLocaleString(),
-    lastUpdate: formatDisplayTime(currentTime)
+    totalMaterials: (materialStatisticsData.value.totalMaterials || 0).toLocaleString(),
+    totalSpecifications: (materialStatisticsData.value.totalSpecifications || 0).toLocaleString(),
+    totalCategories: (materialStatisticsData.value.totalCategories || 0).toLocaleString(),
+    lastUpdate: formatDisplayTime(getEarliestUpdateTime())
   }
 })
 
@@ -667,22 +704,58 @@ const priceStats = computed(() => {
       : new Date().getMonth() < 9
       ? 'Q3'
       : 'Q4'
-  
+
   // 使用分页数据中的总数
   const totalPrices = pricePagination.total || 0
-  const currentTime = new Date()
+
+  // 获取价格列表中的最早更新时间
+  const getEarliestPriceUpdateTime = () => {
+    if (prices.length === 0) return null
+
+    const updateTimes = prices
+      .map((item) => item.updateTime || item.createTime)
+      .filter((time) => time)
+      .map((time) => new Date(time))
+      .filter((date) => !isNaN(date.getTime()))
+
+    if (updateTimes.length === 0) return null
+
+    return new Date(Math.min(...updateTimes))
+  }
 
   return {
     totalPrices: totalPrices.toLocaleString(),
     currentQuarter: `${new Date().getFullYear()}-${currentQuarter}`,
     averagePrice: prices.length > 0 ? totalPrice / prices.length : 0,
-    lastUpdate: formatDisplayTime(currentTime)
+    lastUpdate: formatDisplayTime(getEarliestPriceUpdateTime())
   }
 })
 
 // 业务方法
 const navigateToSmartBrain = () => {
   router.push('/smart-brain')
+}
+
+const loadMaterialStatistics = async () => {
+  try {
+    const keyword = materialSearchForm.materialName || ''
+    const response = await MaterialService.getMaterialStatistics(keyword)
+
+    if (response && response.data) {
+      materialStatisticsData.value = {
+        totalMaterials: response.data.totalMaterials || 0,
+        totalSpecifications: response.data.totalSpecifications || 0,
+        totalCategories: response.data.totalCategories || 0
+      }
+    }
+  } catch (error) {
+    console.error('加载物资统计数据失败:', error)
+    materialStatisticsData.value = {
+      totalMaterials: 0,
+      totalSpecifications: 0,
+      totalCategories: 0
+    }
+  }
 }
 
 const loadMaterials = async () => {
@@ -692,18 +765,18 @@ const loadMaterials = async () => {
       page: materialPagination.current - 1, // API页码从0开始
       size: materialPagination.pageSize
     }
-    
+
     // 添加搜索条件
     if (materialSearchForm.materialName) {
       params.keyword = materialSearchForm.materialName
     }
-    
+
     const response = await MaterialService.searchMaterials(params)
-    
+
     if (response && response.data) {
       const { content, totalElements } = response.data
       // 字段映射适配：后端字段 -> 前端字段
-      materialList.value = (content || []).map(item => ({
+      materialList.value = (content || []).map((item) => ({
         ...item,
         specification: item.specificationModel, // 后端specificationModel -> 前端specification
         category: item.type, // 后端type -> 前端category
@@ -718,6 +791,9 @@ const loadMaterials = async () => {
   } finally {
     loading.value = false
   }
+
+  // 独立加载统计数据，不受物资列表加载结果影响
+  await loadMaterialStatistics()
 }
 
 const loadPrices = async () => {
@@ -727,21 +803,21 @@ const loadPrices = async () => {
       page: pricePagination.current - 1, // API页码从0开始
       size: pricePagination.pageSize
     }
-    
+
     // 添加搜索条件
     if (priceSearchForm.materialName) {
       // 通过物资名称搜索对应的物资ID
       try {
-        const materialResponse = await MaterialService.searchMaterials({ 
-          keyword: priceSearchForm.materialName, 
+        const materialResponse = await MaterialService.searchMaterials({
+          keyword: priceSearchForm.materialName,
           size: 1000 // 获取足够多的数据用于匹配
         })
-        
+
         if (materialResponse && materialResponse.data && materialResponse.data.content) {
-          const matchedMaterials = materialResponse.data.content.filter(item => 
-            item.materialName && item.materialName.includes(priceSearchForm.materialName)
+          const matchedMaterials = materialResponse.data.content.filter(
+            (item) => item.materialName && item.materialName.includes(priceSearchForm.materialName)
           )
-          
+
           if (matchedMaterials.length > 0) {
             // 如果找到匹配的物资，取第一个的ID
             params.baseInfoId = matchedMaterials[0].id
@@ -768,49 +844,59 @@ const loadPrices = async () => {
       }
     }
     // 如果没有搜索条件，直接查询所有价格数据
-    
+
     const response = await MaterialService.searchPrices(params)
-    
+
     if (response && response.data) {
-      const { content, totalElements } = response.data
+      const { content } = response.data
       // 字段映射适配：后端字段 -> 前端字段，并关联物资信息
-      const pricesWithMaterialInfo = await Promise.all((content || []).map(async (item) => {
-        let materialInfo = { materialName: '未知物资', specification: '--' }
-        
-        // 尝试从当前物资列表中查找
-        const material = materialList.value.find(m => m.id === item.baseInfoId)
-        if (material) {
-          materialInfo = {
-            materialName: material.materialName,
-            specification: material.specification || material.specificationModel
-          }
-        } else if (item.baseInfoId) {
-          // 如果当前列表中没有，则单独查询
-          try {
-            const materialResponse = await MaterialService.getMaterialById(item.baseInfoId)
-            if (materialResponse && materialResponse.data) {
-              materialInfo = {
-                materialName: materialResponse.data.materialName,
-                specification: materialResponse.data.specificationModel
-              }
+      const pricesWithMaterialInfo = await Promise.all(
+        (content || []).map(async (item) => {
+          let materialInfo = { materialName: '未知物资', specification: '--' }
+
+          // 尝试从当前物资列表中查找
+          const material = materialList.value.find((m) => m.id === item.baseInfoId)
+          if (material) {
+            materialInfo = {
+              materialName: material.materialName,
+              specification: material.specification || material.specificationModel
             }
-          } catch (error) {
-            console.warn('查询物资信息失败:', error)
+          } else if (item.baseInfoId) {
+            // 如果当前列表中没有，则单独查询
+            try {
+              const materialResponse = await MaterialService.getMaterialById(item.baseInfoId)
+              if (materialResponse && materialResponse.data) {
+                materialInfo = {
+                  materialName: materialResponse.data.materialName,
+                  specification: materialResponse.data.specificationModel
+                }
+              }
+            } catch (error) {
+              console.warn('查询物资信息失败:', error)
+            }
           }
-        }
-        
-        return {
-          ...item,
-          price: item.taxPrice, // 后端taxPrice -> 前端price
-          materialName: materialInfo.materialName,
-          specification: materialInfo.specification,
-          materialId: item.baseInfoId, // 保留原字段以备后用
-          updateTime: item.updateTime ? formatDisplayTime(item.updateTime) : '--' // 格式化时间或显示默认值
-        }
-      }))
-      
-      priceList.value = pricesWithMaterialInfo
-      pricePagination.total = totalElements || 0
+
+          return {
+            ...item,
+            price: item.taxPrice, // 后端taxPrice -> 前端price
+            materialName: materialInfo.materialName,
+            specification: materialInfo.specification,
+            materialId: item.baseInfoId, // 保留原字段以备后用
+            updateTime: item.updateTime ? formatDisplayTime(item.updateTime) : '--' // 格式化时间或显示默认值
+          }
+        })
+      )
+
+      // 如果有季度筛选条件，进行前端筛选
+      let filteredPrices = pricesWithMaterialInfo
+      if (priceSearchForm.quarter) {
+        filteredPrices = pricesWithMaterialInfo.filter(
+          (item) => item.quarter === priceSearchForm.quarter
+        )
+      }
+
+      priceList.value = filteredPrices
+      pricePagination.total = filteredPrices.length
     }
   } catch (error) {
     console.error('加载价格数据失败:', error)
@@ -854,7 +940,7 @@ const editPrice = (row) => {
   // 字段映射适配：确保从row正确映射到表单
   Object.assign(priceForm, {
     materialId: row.materialId || row.baseInfoId, // 兼容两种字段名
-    quarter: row.quarter,
+    quarter: row.quarter, // 直接使用季度值，无需转换
     price: row.price || row.taxPrice // 兼容两种字段名
   })
   dialogState.showPriceDialog = true
@@ -874,15 +960,15 @@ const manageMaterialPrices = async (row) => {
 const deleteMaterials = async (ids) => {
   try {
     loading.value = true
-    
+
     // 逐个删除物资（后端API不支持批量删除）
     for (const id of ids) {
       await MaterialService.deleteMaterial(id)
     }
-    
+
     ElMessage.success(`成功删除${ids.length}个物资`)
     selectedMaterials.value = []
-    
+
     // 重新加载数据
     await loadMaterials()
   } catch (error) {
@@ -895,13 +981,13 @@ const deleteMaterials = async (ids) => {
 const deletePrices = async (ids) => {
   try {
     loading.value = true
-    
+
     // 批量删除价格
     await MaterialService.deletePrices(ids)
-    
+
     ElMessage.success(`成功删除${ids.length}个价格记录`)
     selectedPrices.value = []
-    
+
     // 重新加载数据
     await loadPrices()
   } catch (error) {
@@ -1029,6 +1115,8 @@ const startImport = () => {
 onMounted(async () => {
   // 先加载物资数据，确保价格管理tab中的物资选择有数据
   await loadMaterials()
+  // 独立加载统计数据，确保统计卡片有数据
+  await loadMaterialStatistics()
   // 然后根据当前tab加载对应数据
   if (currentTab.value === TAB_NAMES.PRICES) {
     await loadPrices()
@@ -1065,7 +1153,7 @@ onMounted(async () => {
 
 .tabs-section {
   margin-bottom: 24px;
-  padding: 4px;
+  padding: 16px; /* 增加内边距 */
 }
 
 .management-tabs {
@@ -1224,10 +1312,119 @@ onMounted(async () => {
   overflow: hidden;
   box-shadow: var(--theme-card-shadow);
   transition: all 0.3s ease;
+  margin-top: 24px;
+}
+
+.table-section .el-table {
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+.table-section .el-table__header-wrapper {
+  border-radius: 0;
+}
+
+.table-section .el-table .el-table__cell {
+  border-bottom: 1px solid var(--theme-border-primary);
+  padding: 12px 0;
+  height: auto;
+}
+
+.table-section .el-table__header .el-table__cell {
+  background-color: var(--theme-bg-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--theme-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--theme-primary);
+  height: 48px;
+}
+
+.table-section .el-table__body .el-table__cell {
+  padding: 16px 0;
+  vertical-align: middle;
+}
+
+.table-section .el-table__row:hover {
+  background-color: var(--theme-bg-hover) !important;
+}
+
+.table-section .el-table__row:nth-child(even) {
+  background-color: var(--theme-bg-stripe);
 }
 
 .table-section:hover {
   box-shadow: var(--theme-card-hover-shadow);
+}
+
+/* 标签页样式优化 */
+.tabs-section {
+  margin-bottom: 24px;
+  background: var(--theme-card-bg);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--theme-card-border);
+  box-shadow: var(--theme-card-shadow);
+}
+
+.management-tabs {
+  --el-tabs-header-height: 48px;
+}
+
+.management-tabs .el-tabs__header {
+  margin: 0;
+  border-bottom: 2px solid var(--theme-border-primary);
+}
+
+.management-tabs .el-tabs__nav-wrap {
+  padding: 0;
+}
+
+.management-tabs .el-tabs__item {
+  height: 48px;
+  line-height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--theme-text-secondary);
+  border: none;
+  margin-right: 32px;
+  padding: 0 16px;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.management-tabs .el-tabs__item:before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--theme-primary), var(--theme-primary-light));
+  border-radius: 2px;
+  transform: translateX(-50%);
+  transition: width 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.management-tabs .el-tabs__item:hover {
+  color: var(--theme-primary);
+  transform: translateY(-1px);
+}
+
+.management-tabs .el-tabs__item.is-active {
+  color: var(--theme-primary);
+  font-weight: 600;
+}
+
+.management-tabs .el-tabs__item.is-active:before {
+  width: 100%;
+}
+
+.management-tabs .el-tabs__active-bar {
+  display: none;
 }
 
 .pagination-wrapper {
@@ -1263,14 +1460,52 @@ onMounted(async () => {
 
 .table-actions .el-button {
   transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  border-radius: 6px;
+  border-radius: 8px;
   font-weight: 500;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  font-size: 12px;
+  padding: 8px 16px;
+  min-width: 64px;
+  height: 32px;
+  border-width: 1px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .table-actions .el-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.table-actions .el-button.el-button--primary {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-light));
+  border-color: var(--theme-primary);
+  color: white;
+}
+
+.table-actions .el-button.el-button--primary:hover {
+  background: linear-gradient(135deg, var(--theme-primary-light), var(--theme-primary));
+  transform: translateY(-2px) scale(1.05);
+}
+
+.table-actions .el-button.el-button--danger {
+  background: linear-gradient(135deg, #f56565, #e53e3e);
+  border-color: #e53e3e;
+  color: white;
+}
+
+.table-actions .el-button.el-button--danger:hover {
+  background: linear-gradient(135deg, #e53e3e, #c53030);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.table-actions .el-button.el-button--warning {
+  background: linear-gradient(135deg, #ed8936, #dd6b20);
+  border-color: #dd6b20;
+  color: white;
+}
+
+.table-actions .el-button.el-button--warning:hover {
+  background: linear-gradient(135deg, #dd6b20, #c05621);
+  transform: translateY(-2px) scale(1.05);
 }
 
 /* 响应式设计 */
@@ -1283,6 +1518,7 @@ onMounted(async () => {
     flex-direction: column;
     gap: 16px;
     align-items: flex-start;
+    padding: 16px;
   }
 
   .header-right {
@@ -1304,22 +1540,202 @@ onMounted(async () => {
 
   .filter-section .el-form {
     flex-direction: column;
+    align-items: stretch;
   }
 
   .filter-section .el-form-item {
     margin-right: 0;
     margin-bottom: 16px;
+    width: 100%;
+  }
+
+  .filter-section .el-form-item .el-input,
+  .filter-section .el-form-item .el-select,
+  .filter-section .el-form-item .el-date-picker {
+    width: 100% !important;
   }
 
   .table-actions {
     flex-direction: column !important;
-    gap: 2px;
+    gap: 6px;
+    align-items: center;
   }
 
   .table-actions .el-button {
-    width: 100% !important;
-    font-size: 12px;
-    padding: 4px 8px;
+    width: 90% !important;
+    max-width: 120px;
+    font-size: 11px;
+    padding: 6px 8px;
+    min-height: 28px;
+    border-radius: 6px;
   }
+
+  .tabs-section {
+    margin-bottom: 16px;
+    padding: 12px;
+  }
+
+  .management-tabs .el-tabs__item {
+    height: 40px;
+    line-height: 40px;
+    font-size: 14px;
+    margin-right: 16px;
+    padding: 0 12px;
+  }
+
+  .stats-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stats-card {
+    margin-bottom: 8px;
+  }
+
+  .stats-content {
+    gap: 12px;
+  }
+
+  .stats-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+  }
+
+  .stats-title {
+    font-size: 12px;
+  }
+
+  .stats-value {
+    font-size: 20px;
+  }
+
+  .table-section {
+    margin-top: 16px;
+    border-radius: 8px;
+  }
+
+  .table-section .el-table__cell {
+    padding: 8px 0;
+    font-size: 12px;
+  }
+
+  .table-section .el-table__header .el-table__cell {
+    height: 40px;
+    font-size: 11px;
+  }
+
+  .table-section .el-table__body .el-table__cell {
+    padding: 12px 0;
+  }
+
+  .pagination-wrapper {
+    padding: 16px;
+  }
+
+  .batch-actions {
+    padding: 16px;
+  }
+}
+
+/* Element Plus 组件主题优化 */
+.material-management-page .el-button {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.material-management-page .el-button:hover {
+  transform: translateY(-1px);
+}
+
+.material-management-page .el-input__wrapper {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.material-management-page .el-input__wrapper:hover {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.material-management-page .el-select .el-input.is-focus .el-input__wrapper {
+  box-shadow: 0 0 0 1px var(--theme-primary);
+}
+
+.material-management-page .el-date-editor .el-input__wrapper {
+  border-radius: 8px;
+}
+
+.material-management-page .el-pagination {
+  --el-pagination-font-size: 14px;
+  --el-pagination-bg-color: transparent;
+  --el-pagination-text-color: var(--theme-text-secondary);
+  --el-pagination-border-radius: 8px;
+}
+
+.material-management-page .el-pagination .btn-next,
+.material-management-page .el-pagination .btn-prev {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.material-management-page .el-pagination .btn-next:hover,
+.material-management-page .el-pagination .btn-prev:hover {
+  transform: translateY(-1px);
+  background-color: var(--theme-primary);
+  color: white;
+}
+
+.material-management-page .el-pager li {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  margin: 0 2px;
+}
+
+.material-management-page .el-pager li:hover {
+  transform: translateY(-1px);
+  background-color: var(--theme-primary-light);
+  color: white;
+}
+
+.material-management-page .el-pager li.is-active {
+  background-color: var(--theme-primary);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.material-management-page .el-dialog {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.material-management-page .el-dialog__header {
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-light));
+  color: white;
+  padding: 20px 24px;
+}
+
+.material-management-page .el-dialog__title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.material-management-page .el-dialog__body {
+  padding: 24px;
+}
+
+.material-management-page .el-form-item__label {
+  font-weight: 500;
+  color: var(--theme-text-primary);
+}
+
+.material-management-page .el-empty {
+  padding: 40px 0;
+}
+
+.material-management-page .el-empty__description {
+  color: var(--theme-text-tertiary);
+  font-size: 14px;
 }
 </style>

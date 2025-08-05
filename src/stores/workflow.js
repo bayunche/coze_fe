@@ -4,6 +4,7 @@ import { ElMessage } from 'element-plus'
 import { functions } from '@/utils/workflowsDefinedEnum.js'
 import CozeWorkflowService from '@/services/CozeWorkflowService'
 import CozeParsingService from '@/services/CozeParsingService'
+import SmartBrainService from '@/services/SmartBrainService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
 import { callStreamWorkflow, uploadFile } from '@/utils/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
@@ -297,34 +298,59 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
   // #region Actions - Smart Brain
   /**
-   * 获取单个智能体的任务数量
-   * @param {SmartAgent} agent - 智能体对象
+   * 获取所有智能体的任务统计数据
+   * 使用新的智能体任务详情API
    */
-  const fetchAgentTaskCounts = async (agent) => {
-    const domain = BUSINESS_DOMAINS[agent.id]
-    if (!domain) return
-
+  const fetchAllAgentTaskCounts = async () => {
     try {
-      const result = await cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_COUNTS, {
-        businessDomain: domain
-      })
-      if (result && result.data) {
-        const outerParsed = JSON.parse(result.data)
-        if (outerParsed && outerParsed.output) {
-          const innerParsed = JSON.parse(outerParsed.output)
-          const domainData = innerParsed.find((item) => item.BUSINESS_DOMAIN === domain)
-          if (domainData) {
-            agent.tasks.completed = parseInt(domainData.finished_count) || 0
-            agent.tasks.inProgress = parseInt(domainData.running_count) || 0
-            agent.tasks.total = parseInt(domainData.total_count) || 0
-          }
-        }
+      const agentTaskDetails = await SmartBrainService.getAgentTaskDetails()
+      
+      // 创建API名称到前端智能体名称的映射
+      const apiNameToFrontendName = {
+        '合同业务': '合同解析',
+        '甲供物资业务': '甲供物资解析', 
+        '乙供物资业务': '乙供物资解析'
       }
+      
+      // 创建智能体名称到任务数据的映射
+      const taskDataMap = new Map()
+      agentTaskDetails.forEach(item => {
+        const frontendName = apiNameToFrontendName[item.agentName] || item.agentName
+        taskDataMap.set(frontendName, {
+          total: item.totalTaskCount || 0,
+          completed: item.completedTaskCount || 0,
+          inProgress: item.processingTaskCount || 0
+        })
+      })
+      
+      console.log('API返回的任务统计数据:', agentTaskDetails)
+      console.log('转换后的任务数据映射:', Array.from(taskDataMap.entries()))
+      
+      // 更新智能体任务统计数据
+      smartAgents.value.forEach(agent => {
+        const taskData = taskDataMap.get(agent.name)
+        console.log(`智能体 ${agent.name} 的任务数据:`, taskData)
+        if (taskData) {
+          agent.tasks.total = taskData.total
+          agent.tasks.completed = taskData.completed
+          agent.tasks.inProgress = taskData.inProgress
+        } else {
+          // 如果API中没有对应的智能体数据，设置为0
+          agent.tasks = { completed: 0, inProgress: 0, total: 0 }
+        }
+      })
+      
+      console.log('智能体任务统计数据更新成功，当前智能体数据:', smartAgents.value.map(a => ({name: a.name, tasks: a.tasks})))
     } catch (error) {
-      console.error(`解析 ${agent.name} 任务数量数据失败:`, error)
-      agent.tasks = { completed: 0, inProgress: 0, total: 0 }
+      console.error('获取智能体任务统计数据失败:', error)
+      
+      // API调用失败时，将所有智能体任务数据设置为0
+      smartAgents.value.forEach(agent => {
+        agent.tasks = { completed: 0, inProgress: 0, total: 0 }
+      })
     }
   }
+
 
   /**
    * 获取单个智能体的任务列表
@@ -371,12 +397,15 @@ export const useWorkflowStore = defineStore('workflow', () => {
         addMessageCallback('正在查询智能体任务数据...', 'system')
       }
 
-      const fetchPromises = smartAgents.value.map(async (agent) => {
-        await fetchAgentTaskCounts(agent)
+      // 使用新的批量获取任务统计数据的方法
+      await fetchAllAgentTaskCounts()
+      
+      // 获取每个智能体的任务列表
+      const fetchListPromises = smartAgents.value.map(async (agent) => {
         await fetchAgentTaskLists(agent)
       })
-
-      await Promise.all(fetchPromises)
+      
+      await Promise.all(fetchListPromises)
 
       ElMessage.success('智能体任务数据查询成功！')
       showSmartBrainDialog.value = true
@@ -960,12 +989,15 @@ export const useWorkflowStore = defineStore('workflow', () => {
   // 智能大脑数据获取方法 - 独立页面使用
   const executeSmartBrain = async () => {
     try {
-      const fetchPromises = smartAgents.value.map(async (agent) => {
-        await fetchAgentTaskCounts(agent)
+      // 使用新的批量获取任务统计数据的方法
+      await fetchAllAgentTaskCounts()
+      
+      // 获取每个智能体的任务列表
+      const fetchListPromises = smartAgents.value.map(async (agent) => {
         await fetchAgentTaskLists(agent)
       })
-
-      await Promise.all(fetchPromises)
+      
+      await Promise.all(fetchListPromises)
       console.log('智能体任务数据获取成功')
     } catch (error) {
       console.error('获取智能大脑数据失败:', error)
