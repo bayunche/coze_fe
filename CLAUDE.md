@@ -187,7 +187,7 @@ yarn format
 - 利用 Vue 3 的 `<script setup>` 语法
 - 使用 TypeScript 类型注解提高代码质量
 - UI 与业务解耦
--
+- 每次修改完代码后在完成任务前都需要执行lint，避免引入新的问题。
 
 ### 状态管理规范
 

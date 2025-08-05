@@ -16,6 +16,13 @@
   --el-color-primary-light-8: #d9ecff;
   --el-color-primary-light-9: #ecf5ff;
   --el-color-primary-dark-2: #0d47a1;
+  
+  /* Element Plus Table 主题变量 */
+  --el-table-bg-color: var(--theme-card-bg);
+  --el-table-tr-bg-color: transparent;
+  --el-table-header-bg-color: var(--theme-table-header-bg);
+  --el-table-row-hover-bg-color: var(--theme-table-hover-bg);
+  --el-table-border-color: var(--theme-table-border);
 
   /* 背景色 */
   --theme-bg-primary: #ffffff;

@@ -21,23 +21,23 @@ export const TAB_CONFIG = [
 export const MATERIAL_COLUMNS = [
   { type: 'selection', width: 55 },
   { type: 'index', label: '序号', width: 80 },
-  { prop: 'materialName', label: '物资名称', minWidth: 150 },
-  { prop: 'specification', label: '规格型号', minWidth: 120 },
-  { prop: 'unit', label: '单位', width: 80 },
-  { prop: 'category', label: '物资分类', width: 120 },
+  { prop: 'materialName', label: '物资名称', minWidth: 180, showOverflowTooltip: true },
+  { prop: 'specification', label: '规格型号', minWidth: 150, showOverflowTooltip: true },
+  { prop: 'unit', label: '单位', width: 100 },
+  { prop: 'category', label: '物资分类', width: 140 },
   { prop: 'updateTime', label: '更新时间', width: 180 },
-  { label: '操作', width: 160, fixed: 'right' }
+  { label: '操作', width: 200, fixed: 'right' }
 ]
 
 export const PRICE_COLUMNS = [
   { type: 'selection', width: 55 },
   { type: 'index', label: '序号', width: 80 },
-  { prop: 'materialName', label: '物资名称', minWidth: 120 },
-  { prop: 'specification', label: '规格型号', minWidth: 120 },
-  { prop: 'price', label: '物资价格', width: 120 },
-  { prop: 'quarter', label: '所属季度', width: 100 },
+  { prop: 'materialName', label: '物资名称', minWidth: 150, showOverflowTooltip: true },
+  { prop: 'specification', label: '规格型号', minWidth: 130, showOverflowTooltip: true },
+  { prop: 'price', label: '物资价格', width: 130, align: 'right' },
+  { prop: 'quarter', label: '所属季度', width: 120 },
   { prop: 'updateTime', label: '更新时间', width: 180 },
-  { label: '操作', width: 120, fixed: 'right' }
+  { label: '操作', width: 160, fixed: 'right' }
 ]
 
 export const BUTTON_ACTIONS = {
