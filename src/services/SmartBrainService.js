@@ -30,6 +30,61 @@ class SmartBrainService {
       return []
     }
   }
+
+  /**
+   * 根据任务ID查询任务详情列表
+   * @param {string} taskId - 任务ID
+   * @param {Object} params - 查询参数
+   * @param {string} params.fileName - 文件名筛选条件（支持模糊匹配，可选）
+   * @param {number} params.page - 页码，从0开始（可选，默认0）
+   * @param {number} params.size - 每页大小（可选，默认10）
+   * @param {string} params.sort - 排序字段（可选，默认按创建时间倒序）
+   * @returns {Promise<Object>} 分页数据对象，包含content数组和分页信息
+   */
+  async getTaskDetailsList(taskId, params = {}) {
+    try {
+      const response = await request.get(`/smart-brain/agents/tasks/${taskId}/details`, {
+        params
+      })
+      
+      // 接口返回的是标准的Spring Data分页格式
+      if (response && response.data) {
+        return response.data
+      }
+      
+      // 如果API直接返回分页数据（没有额外的包装）
+      if (response && response.content && typeof response.totalElements === 'number') {
+        return response
+      }
+      
+      // 异常情况，返回空的分页结构
+      console.warn('任务详情列表API返回格式异常:', response)
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: params.size || 10,
+        number: params.page || 0,
+        first: true,
+        last: true,
+        numberOfElements: 0
+      }
+    } catch (error) {
+      console.error('获取任务详情列表失败:', error)
+      
+      // 异常时返回空的分页结构
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size: params.size || 10,
+        number: params.page || 0,
+        first: true,
+        last: true,
+        numberOfElements: 0
+      }
+    }
+  }
 }
 
 export default new SmartBrainService()

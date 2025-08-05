@@ -10,25 +10,25 @@
       <!-- 序号 -->
       <el-table-column type="index" prop="" label="序号" width="60"></el-table-column>
 
-      <el-table-column prop="file_name" label="文件名称"></el-table-column>
-      <el-table-column prop="start_time" label="开始时间">
+      <el-table-column prop="fileName" label="文件名称"></el-table-column>
+      <el-table-column prop="startTime" label="开始时间">
         <template #default="{ row }">
-          {{ row.start_time ? new Date(row.start_time).toLocaleString() : '未开始' }}
+          {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
         </template>
       </el-table-column>
-      <el-table-column prop="end_time" label="结束时间">
+      <el-table-column prop="endTime" label="结束时间">
         <template #default="{ row }">
-          {{ row.end_time ? new Date(row.end_time).toLocaleString() : '未结束' }}
+          {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
         </template>
       </el-table-column>
-      <el-table-column prop="TASK_DETAIL_STATUS" label="任务解析状态">
+      <el-table-column prop="taskDetailStatus" label="任务解析状态">
         <template #default="{ row }">
-          {{ formatTaskDetailStatus(row.TASK_DETAIL_STATUS) }}
+          {{ formatTaskDetailStatus(row.taskDetailStatus) }}
         </template>
       </el-table-column>
-      <el-table-column prop="ERROR_REASON" label="失败原因">
+      <el-table-column prop="errorReason" label="失败原因">
         <template #default="{ row }">
-          {{ row.ERROR_REASON || '无' }}
+          {{ row.errorReason || '无' }}
         </template>
       </el-table-column>
 
@@ -57,7 +57,7 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import CozeService from '@/utils/coze.js'
+import smartBrainService from '@/services/SmartBrainService.js'
 import { useRouter } from 'vue-router' // 导入 useRouter
 
 const props = defineProps({
@@ -75,15 +75,17 @@ const props = defineProps({
 console.log('OwnerMaterialTaskParsingDetailDialog setup - initial modelValue:', props.modelValue)
 
 const formatTaskDetailStatus = (status) => {
-  switch (status) {
-    case '0':
-      return '未开始'
-    case '1':
-      return '进行中'
-    case '2':
-      return '已完成'
-    case '-1':
-      return '失败'
+  switch (Number(status)) {
+    case 0:
+      return '排队中'
+    case 1:
+      return '处理中'
+    case 2:
+      return '处理完成'
+    case 3:
+      return '已确认'
+    case -1:
+      return '错误中断'
     default:
       return '未知状态'
   }
@@ -100,38 +102,28 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
 
 const fetchDetailList = async () => {
   loading.value = true
   try {
-    const workflowId = '7519167663710257193' // 乙供物资解析详情列表ID
+    // 调用后端接口获取任务详情列表，页码从0开始
     const params = {
-      task_id: props.taskId,
-      pageNumber: currentPage.value,
-      pageSize: pageSize.value
+      page: currentPage.value - 1, // 前端页码从1开始，后端从0开始
+      size: pageSize.value
     }
-    const result = await cozeService.runWorkflow(workflowId, params)
-    if (result && result.data) {
-      try {
-        const parsedContent = JSON.parse(result.data)
-        const outputArray = JSON.parse(parsedContent.output)
-        const countArray = JSON.parse(parsedContent.count)
-
-        tableData.value = outputArray
-        total.value = countArray.length > 0 ? countArray[0]['count(*)'] : 0
-      } catch (e) {
-        ElMessage.error('解析数据失败: ' + e.message)
-        tableData.value = []
-        total.value = 0
-      }
+    
+    const result = await smartBrainService.getTaskDetailsList(props.taskId, params)
+    
+    if (result && result.content && Array.isArray(result.content)) {
+      tableData.value = result.content
+      total.value = result.totalElements || 0
     } else {
       tableData.value = []
       total.value = 0
     }
   } catch (error) {
-    console.error('获取乙供物资解析详情列表失败:', error)
-    ElMessage.error('获取乙供物资解析详情列表失败: ' + (error.message || '未知错误'))
+    console.error('获取甲供物资解析详情列表失败:', error)
+    ElMessage.error('获取甲供物资解析详情列表失败: ' + (error.message || '未知错误'))
     tableData.value = []
     total.value = 0
   } finally {
@@ -144,8 +136,8 @@ const router = useRouter() // 将 useRouter 移动到顶层
 const handleViewDetail = (row) => {
   router.push({
     name: 'MaterialDetailPage', // 使用路由名称
-    params: { taskId: row.TASK_ID }, // taskId 作为路由参数
-    query: { detailId: row.ID } // detailId 作为查询参数
+    params: { taskId: row.taskId }, // taskId 作为路由参数
+    query: { detailId: row.id } // detailId 作为查询参数
   })
   dialogVisible.value = false // 关闭当前弹窗
 }
@@ -180,7 +172,7 @@ const downLoadFile = (row) => {
   console.log('下载文件:', row)
   // 实现文件下载逻辑
   const url =
-    row.FILE_URL ||
+    row.fileUrl ||
     'https://p26-bot-workflow-sign.byteimg.com/tos-cn-i-mdko3gqilj/6aac8a6b025b4bd5812db0fc55de3e83.xlsx~tplv-mdko3gqilj-image.image?rk3s=81d4c505&x-expires=1782007995&x-signature=MShxLvZFXq%2FzGHhtntc73tmzQDs%3D&x-wf-file_name=LGJ2025JI011559-090000WP20220865+%E5%AE%A1%E6%A0%B8%E6%8A%A5%E5%91%8A.xlsx'
   // if (!url) {
   //   ElMessage.error('文件URL不存在')

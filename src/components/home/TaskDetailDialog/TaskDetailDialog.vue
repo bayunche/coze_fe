@@ -97,8 +97,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import CozeService from '@/utils/coze.js'
+import smartBrainService from '@/services/SmartBrainService.js'
 import { useChatStore } from '@/stores/chat'
 
 const props = defineProps({
@@ -116,9 +117,6 @@ const emit = defineEmits(['update:show'])
 
 const chatStore = useChatStore()
 
-const hasResultStatusOne = computed(() => {
-  return editFormModels.value.some((item) => Number(item.result_status) === 1)
-})
 const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
 
 const isFetchingDetails = ref(false)
@@ -127,7 +125,6 @@ const tableColumns = ref([])
 const editFormModels = ref([]) // 用于编辑的表单数据模型
 
 // 编辑功能
-const isConfirming = ref(false)
 const longTextEditVisible = ref(false)
 const longTextValue = ref('')
 const editableRow = ref(null)
@@ -142,6 +139,22 @@ const dialogVisible = computed({
 
 // 表头中英文映射
 const headerMapping = {
+  // 后端接口返回的WmesTasksDetailDO字段映射
+  id: '详情记录ID',
+  taskId: '任务ID',
+  taskDetailStatus: '任务状态',
+  errorReason: '错误原因',
+  startTime: '开始时间',
+  endTime: '结束时间',
+  fileGroup: '文件组',
+  createdBy: '创建人',
+  createdTime: '创建时间',
+  updatedBy: '更新人',
+  updatedTime: '更新时间',
+  fileName: '文件名称',
+  fileUrl: '文件地址',
+  
+  // 保留原有的合同解析相关映射
   name: '合同名称',
   number: '合同编号',
   money: '合同金额',
@@ -153,7 +166,6 @@ const headerMapping = {
   position: '职位',
   salary: '薪水',
   hire_date: '入职日期',
-  id: '编号',
   task_id: '任务ID',
   status: '状态',
   created_at: '创建时间',
@@ -169,27 +181,11 @@ const headerMapping = {
   contract_name: '合同名称',
   contract_number: '合同编号',
   contract_amount: '合同金额',
-  pay_result: '付款依据',
   signing_time: '签订时间',
-  fixed_rate: '包干率',
   safety_rate: '安全文明施工费是否下浮',
   temporary_rate: '临时设施费是否下浮',
   result_status: '解析状态',
-  salary: '薪水',
-  hire_date: '入职日期',
-  ID: 'ID',
-  contract_name: '合同名称',
-  contract_number: '合同编号',
-  contract_amount: '合同金额',
-  pay_result: '付款依据',
-  signing_time: '签订时间',
-  fixed_rate: '包干率',
-  safety_rate: '安全文明施工费是否下浮',
-  temporary_rate: '临时设施费是否下浮',
-  result_status: '解析状态',
-  position: '职位',
-  salary: '薪水',
-  hire_date: '入职日期'
+  ID: 'ID'
 }
 
 const translateHeader = (prop) => {
@@ -205,6 +201,16 @@ const formatCellValue = (value, prop) => {
     if (Number(value) === 1) return '已确认'
     return value
   }
+  if (prop === 'taskDetailStatus') {
+    switch (Number(value)) {
+      case 0: return '排队中'
+      case 1: return '处理中'
+      case 2: return '处理完成'
+      case 3: return '已确认'
+      case -1: return '错误中断'
+      default: return value
+    }
+  }
   if (typeof value === 'boolean') {
     return value ? '是' : '否'
   }
@@ -219,52 +225,35 @@ const fetchTaskDetails = async (taskId) => {
   tableColumns.value = []
 
   try {
-    const result = await cozeService.runTableGenerationWorkflow(taskId)
-    if (result && result.data) {
-      const jsonString = result.data.replace(/("id":\s*)(\d{16,})/g, '$1"$2"')
-      const parsedData = JSON.parse(jsonString)?.output
+    // 调用后端接口获取任务详情列表，默认获取所有数据
+    const result = await smartBrainService.getTaskDetailsList(taskId, {
+      page: 0,
+      size: 1000 // 获取大量数据以展示在表格中
+    })
 
-      if (Array.isArray(parsedData) && parsedData.length > 0) {
-        // 判断parsedData的结构是否包含result_json字段，表示表格数据多包了一层
-        let tableJsonData = null
-        if (parsedData[0].hasOwnProperty('result_json')) {
-          // 当result_json字段是字符串形式的JSON数组时，将所有解析合并为一个大数组
-          tableJsonData = []
-          for (const item of parsedData) {
-            if (item.result_json) {
-              try {
-                const parsedResult = JSON.parse(item.result_json)
-                if (Array.isArray(parsedResult)) {
-                  tableJsonData.push(...parsedResult)
-                } else if (parsedResult && typeof parsedResult === 'object') {
-                  tableJsonData.push(parsedResult)
-                }
-              } catch {
-                // 解析失败则忽略
-              }
-            }
-          }
-        } else {
-          tableJsonData = parsedData
-        }
+    if (result && result.content && Array.isArray(result.content)) {
+      const tableJsonData = result.content
 
-        if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
-          tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
-            prop: key,
-            label: key
-          }))
-          const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
-          tableData.value = JSON.parse(JSON.stringify(rawData))
-          // 为编辑创建一个深拷贝
-          editFormModels.value = JSON.parse(JSON.stringify(rawData))
-        } else {
-          throw new Error('解析后的result_json格式不正确或为空。')
-        }
+      if (tableJsonData.length > 0) {
+        // 根据返回的数据生成表格列
+        tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
+          prop: key,
+          label: key
+        }))
+        
+        // 为每个数据项添加editing标志
+        const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
+        tableData.value = JSON.parse(JSON.stringify(rawData))
+        // 为编辑创建一个深拷贝
+        editFormModels.value = JSON.parse(JSON.stringify(rawData))
       } else {
-        throw new Error('解析后的数据格式不正确或为空。')
+        // 没有数据时清空表格
+        tableColumns.value = []
+        tableData.value = []
+        editFormModels.value = []
       }
     } else {
-      throw new Error('任务未返回有效的表格数据。')
+      throw new Error('后端接口未返回有效的任务详情数据。')
     }
   } catch (error) {
     console.error('获取任务详情失败:', error)
@@ -377,51 +366,6 @@ const handleSaveAll = async () => {
   }
 }
 
-const handleConfirm = async () => {
-  if (!tableData.value || tableData.value.length === 0) {
-    ElMessage.warning('没有可确认的数据。')
-    return
-  }
-
-  isConfirming.value = true
-
-  try {
-    const confirmPromises = tableData.value.map((item) =>
-      cozeService.runConfirmWorkflow({ id: item.id })
-    )
-
-    const results = await Promise.allSettled(confirmPromises)
-
-    let successCount = 0
-    let failureCount = 0
-
-    results.forEach((result, index) => {
-      const item = tableData.value[index]
-      if (result.status === 'fulfilled') {
-        successCount++
-      } else {
-        failureCount++
-        console.error(`确认失败 (ID: ${item.id}):`, result.reason)
-      }
-    })
-
-    if (failureCount > 0) {
-      ElMessage.warning(`${successCount} 条记录确认成功，${failureCount} 条失败。`)
-    } else {
-      ElMessage.success(`所有 ${successCount} 条记录均已成功确认！`)
-      chatStore.addMessage(
-        `已确认 ${successCount} 个 ${props.task?.name || '未知'} 解析结果`,
-        'system'
-      )
-    }
-    handleClose() // 关闭对话框
-  } catch (error) {
-    console.error('执行确认工作流时发生意外错误:', error)
-    ElMessage.error(`确认过程中发生错误: ${error.message}`)
-  } finally {
-    isConfirming.value = false
-  }
-}
 
 const handleClose = () => {
   dialogVisible.value = false

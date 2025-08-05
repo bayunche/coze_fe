@@ -83,7 +83,6 @@ import {
   formatStartTime,
   formatEndTime,
   formatErrorReason,
-  createCozeService,
   createRouter,
   viewDetail,
   downloadFile,
@@ -123,8 +122,7 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-// 创建服务和路由实例
-const cozeService = createCozeService(import.meta.env.VITE_COZE_API_KEY)
+// 创建路由实例
 const router = createRouter()
 
 // 数据设置函数
@@ -136,7 +134,6 @@ const setPageSize = (size) => { pageSize.value = size }
 
 // 创建获取数据函数
 const fetchDetailList = createFetchDataFunction({
-  cozeService,
   taskId: computed(() => props.taskId),
   currentPage,
   pageSize,

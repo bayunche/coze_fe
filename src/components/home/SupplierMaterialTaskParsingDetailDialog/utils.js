@@ -2,11 +2,11 @@
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import CozeService from '@/utils/coze.js'
+import smartBrainService from '@/services/SmartBrainService.js'
 import { 
   TASK_DETAIL_STATUS_MAP, 
   DEFAULT_VALUES, 
-  MESSAGE_LABELS,
-  API_CONFIG
+  MESSAGE_LABELS
 } from './constants.js'
 
 /**
@@ -64,43 +64,29 @@ export const createCozeService = (apiKey) => {
   return new CozeService(apiKey)
 }
 
-/**
- * 解析工作流响应数据
- * @param {Object} result - 工作流执行结果
- * @returns {Object} 解析后的数据 { tableData, total }
- */
-export const parseWorkflowResponse = (result) => {
-  if (!result || !result.data) {
-    return { tableData: [], total: 0 }
-  }
-
-  try {
-    const parsedContent = JSON.parse(result.data)
-    const outputArray = JSON.parse(parsedContent.output)
-    const countArray = JSON.parse(parsedContent.count)
-
-    return {
-      tableData: outputArray,
-      total: countArray.length > 0 ? countArray[0]['count(*)'] : 0
-    }
-  } catch (e) {
-    ElMessage.error(`${MESSAGE_LABELS.PARSE_ERROR}: ${e.message}`)
-    return { tableData: [], total: 0 }
-  }
-}
 
 /**
  * 获取任务详情列表
- * @param {CozeService} cozeService - Coze服务实例
+ * @param {string} taskId - 任务ID
  * @param {Object} params - 请求参数
- * @returns {Promise<Object>} 获取结果
+ * @returns {Promise<Object>} 获取结果 { tableData, total }
  */
-export const fetchDetailList = async (cozeService, params) => {
+export const fetchDetailList = async (taskId, params) => {
   try {
-    const result = await cozeService.runWorkflow(API_CONFIG.WORKFLOW_ID, params)
-    return parseWorkflowResponse(result)
+    // 调用后端接口获取任务详情列表，页码从0开始
+    const apiParams = {
+      page: params.pageNumber - 1, // 前端页码从1开始，后端从0开始
+      size: params.pageSize
+    }
+    
+    const result = await smartBrainService.getTaskDetailsList(taskId, apiParams)
+    
+    return {
+      tableData: result.content || [],
+      total: result.totalElements || 0
+    }
   } catch (error) {
-    console.error('获取甲供物资解析详情列表失败:', error)
+    console.error('获取乙供物资解析详情列表失败:', error)
     ElMessage.error(`${MESSAGE_LABELS.FETCH_ERROR}: ${error.message || '未知错误'}`)
     return { tableData: [], total: 0 }
   }
@@ -124,8 +110,8 @@ export const viewDetail = (row, router, closeDialog) => {
   router.push({
     name: 'owner-material-detail',
     query: {
-      taskId: row.TASK_ID,
-      detailId: row.ID
+      taskId: row.taskId,
+      detailId: row.id
     }
   })
   closeDialog()
@@ -139,7 +125,7 @@ export const downloadFile = (row) => {
   console.log('下载文件:', row)
   
   // 使用默认URL或行数据中的URL
-  const url = row.FILE_URL || 
+  const url = row.fileUrl || 
     'https://p26-bot-workflow-sign.byteimg.com/tos-cn-i-mdko3gqilj/6aac8a6b025b4bd5812db0fc55de3e83.xlsx~tplv-mdko3gqilj-image.image?rk3s=81d4c505&x-expires=1782007995&x-signature=MShxLvZFXq%2FzGHhtntc73tmzQDs%3D&x-wf-file_name=LGJ2025JI011559-090000WP20220865+%E5%AE%A1%E6%A0%B8%E6%8A%A5%E5%91%8A.xlsx'
   
   window.open(url, '_blank')
@@ -175,7 +161,6 @@ export const onSizeChange = (size, setPageSize, setCurrentPage, fetchData) => {
  * @returns {Function} 获取数据函数
  */
 export const createFetchDataFunction = ({ 
-  cozeService, 
   taskId, 
   currentPage, 
   pageSize, 
@@ -188,12 +173,11 @@ export const createFetchDataFunction = ({
     
     try {
       const params = {
-        task_id: taskId.value,
         pageNumber: currentPage.value,
         pageSize: pageSize.value
       }
       
-      const { tableData, total } = await fetchDetailList(cozeService, params)
+      const { tableData, total } = await fetchDetailList(taskId.value, params)
       setTableData(tableData)
       setTotal(total)
     } finally {
