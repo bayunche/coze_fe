@@ -162,7 +162,7 @@ const generateOwnerMaterialData = () => {
       totalPrice: 2250000,
       supplier: '钢铁集团有限公司',
       deliveryDate: '2024-03-15',
-      materialStatus: '已交付',
+      materialStatus: '已拉平',
       remark: '按计划交付，质量符合要求'
     },
     {
@@ -175,7 +175,7 @@ const generateOwnerMaterialData = () => {
       totalPrice: 280000,
       supplier: '预制构件有限公司',
       deliveryDate: '2024-04-20',
-      materialStatus: '运输中',
+      materialStatus: '已拉平',
       remark: '预计按期到达现场'
     },
     {
@@ -188,7 +188,7 @@ const generateOwnerMaterialData = () => {
       totalPrice: 425000,
       supplier: '防水材料有限公司',
       deliveryDate: '2024-05-10',
-      materialStatus: '待发货',
+      materialStatus: '已拉平',
       remark: '等待供应商排产'
     }
   ]
@@ -208,7 +208,7 @@ const generateSupplierMaterialData = () => {
       totalCost: 230000,
       contractor: '电力工程有限公司',
       completionRate: 75,
-      materialStatus: '施工中',
+
       remark: '按计划进行，预计本月底完成'
     },
     {
@@ -222,7 +222,7 @@ const generateSupplierMaterialData = () => {
       totalCost: 98400,
       contractor: '通风工程有限公司',
       completionRate: 85,
-      materialStatus: '已完成',
+
       remark: '已验收合格'
     },
     {
@@ -236,7 +236,7 @@ const generateSupplierMaterialData = () => {
       totalCost: 2720000,
       contractor: '电梯安装有限公司',
       completionRate: 60,
-      materialStatus: '安装中',
+
       remark: '设备已到场，正在安装调试'
     }
   ]
