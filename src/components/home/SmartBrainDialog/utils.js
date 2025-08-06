@@ -23,7 +23,7 @@ export const getAgentTasks = (tasksByAgent, agentId) => {
 export const resetDialogStates = (dialogStates) => {
   Object.keys(dialogStates).forEach(key => {
     if (key.startsWith('is') && key.endsWith('Parsing')) {
-      dialogStates[key].value = false
+      dialogStates[key] = false
     }
   })
 }
@@ -44,18 +44,18 @@ export const setAgentDialogState = async (agentId, dialogStates, dialogVisibilit
   // 根据智能体类型设置对应状态
   switch (agentId) {
     case AGENT_TYPES.CONTRACT_PARSING:
-      dialogStates.isContractParsing.value = true
-      dialogVisibility.taskParsingResultDialogVisible.value = true
+      dialogStates.isContractParsing = true
+      dialogVisibility.taskParsingResultDialogVisible = true
       break
       
     case AGENT_TYPES.SUPPLIER_MATERIAL_PARSING:
-      dialogStates.isSupplierMaterialParsing.value = true
-      dialogVisibility.supplierMaterialParsingResultDialogVisible.value = true
+      dialogStates.isSupplierMaterialParsing = true
+      dialogVisibility.supplierMaterialParsingResultDialogVisible = true
       break
       
     case AGENT_TYPES.OWNER_MATERIAL_PARSING:
-      dialogStates.isOwnerMaterialParsing.value = true
-      dialogVisibility.ownerMaterialParsingResultDialogVisible.value = true
+      dialogStates.isOwnerMaterialParsing = true
+      dialogVisibility.ownerMaterialParsingResultDialogVisible = true
       break
       
     default:
@@ -66,21 +66,14 @@ export const setAgentDialogState = async (agentId, dialogStates, dialogVisibilit
 /**
  * 处理智能体卡片点击事件
  * @param {Object} agent - 智能体对象
- * @param {Object} tasksByAgent - 按智能体分组的任务数据
- * @param {Object} selectedTasks - 选中任务的引用
  * @param {Object} dialogStates - 对话框状态对象
  * @param {Object} dialogVisibility - 对话框可见性对象
  */
 export const onAgentCardClick = async (
   agent,
-  tasksByAgent,
-  selectedTasks,
   dialogStates,
   dialogVisibility
 ) => {
-  // 获取智能体的任务数据
-  selectedTasks.value = getAgentTasks(tasksByAgent, agent.id)
-  
   // 设置对话框状态
   await setAgentDialogState(agent.id, dialogStates, dialogVisibility)
 }

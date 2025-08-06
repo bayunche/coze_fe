@@ -68,19 +68,6 @@ export const getStatusType = (status) => {
   }
 }
 
-/**
- * 格式化智能体任务数据
- * @param {Object} taskListsByAgent - 按智能体分组的任务列表
- * @param {string} agentId - 智能体ID
- * @returns {Object} 格式化后的任务数据
- */
-export const formatAgentTasks = (taskListsByAgent, agentId) => {
-  return taskListsByAgent[agentId] || { 
-    all: [], 
-    completed: [], 
-    inProgress: [] 
-  }
-}
 
 /**
  * 判断功能是否可用

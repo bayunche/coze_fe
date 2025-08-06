@@ -16,113 +16,17 @@
       </div>
     </el-card>
 
-    <el-table
-      :data="tableData"
-      style="width: 100%; margin-top: 20px"
-      border
-      stripe
+    <!-- 动态表格组件 -->
+    <DynamicTable
+      :table-data="paginatedData"
+      :dynamic-columns="currentColumns"
+      :loading="loading"
+      :show-actions="false"
+      :show-pagination="false"
+      height="auto"
+      style="margin-top: 20px"
       class="material-table"
-    >
-      <el-table-column label="序号" width="60">
-        <template #default="{ $index }">
-          {{ (currentPage - 1) * pageSize + $index + 1 }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="materialName" label="物资名称" min-width="150">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.materialName || '/' }}</span>
-          <el-input v-else v-model="scope.row.materialName"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="materialCategoryCode" label="物资品类编码" min-width="180">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.materialCategoryCode || '/' }}</span>
-          <el-input v-else v-model="scope.row.materialCategoryCode"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="specificationModel" label="规格型号" min-width="180">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.specificationModel || '/' }}</span>
-          <el-input v-else v-model="scope.row.specificationModel"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="unit" label="计量单位" min-width="100">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.unit || '/' }}</span>
-          <el-input v-else v-model="scope.row.unit"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="statisticalQuantity" label="统计数据数" min-width="100">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.statisticalQuantity || '/' }}</span>
-          <el-input v-else v-model="scope.row.unit"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="requisitionQuantity" label="统计后申领数" min-width="150">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.requisitionQuantity || '0' }}</span>
-          <el-input v-else v-model.number="scope.row.requisitionQuantity" type="number"></el-input>
-        </template>
-      </el-table-column>
-   
-      <el-table-column prop="matchingStatus" label="对平情况" min-width="120">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">
-            <el-tag :type="getMatchingStatusTagType(scope.row.matchingStatus)">
-              {{ getMatchingStatusText(scope.row.matchingStatus) }}
-            </el-tag>
-          </span>
-          <el-input v-else v-model="scope.row.matchingStatus"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="actualSource" label="实际领料单数据来源" min-width="180">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.actualSource || '/' }}</span>
-          <el-input v-else v-model="scope.row.actualSource"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="actualMaterialName" label="实际领料单物资名称" min-width="180">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.actualMaterialName || '/' }}</span>
-          <el-input v-else v-model="scope.row.actualMaterialName"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="actualSpecifications" label="实际领料单规格型号" min-width="180">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.actualSpecifications || '/' }}</span>
-          <el-input v-else v-model="scope.row.actualSpecifications"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="actualUnit" label="实际领料单计量单位" min-width="150">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.actualUnit || '/' }}</span>
-          <el-input v-else v-model="scope.row.actualUnit"></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="actualApplicationQuantity" label="领退料数量" min-width="120">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">
-            <el-tag :type="scope.row.actualApplicationQuantity >= 0 ? 'success' : 'warning'">
-              {{ scope.row.actualApplicationQuantity || '/' }}
-              <span style="margin-left: 4px">{{
-                scope.row.actualApplicationQuantity >= 0 ? '(用料)' : '(退料)'
-              }}</span>
-            </el-tag>
-          </span>
-          <el-input
-            v-else
-            v-model.number="scope.row.actualApplicationQuantity"
-            type="number"
-          ></el-input>
-        </template>
-      </el-table-column>
-      <el-table-column prop="transactionCount" label="关联领退料数" min-width="120">
-        <template #default="scope">
-          <span v-if="!scope.row.editing">{{ scope.row.transactionCount || '/' }}</span>
-          <el-input v-else v-model.number="scope.row.transactionCount" type="number"></el-input>
-        </template>
-      </el-table-column>
-    </el-table>
+    />
     <el-pagination
       background
       layout="total, sizes, prev, pager, next, jumper"
@@ -144,11 +48,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { queryBalanceDetails, queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
 import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
+import DynamicTable from '@/views/project-data-management/components/DynamicTable.vue'
+import { generateDynamicColumns } from '@/views/project-data-management/utils.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -168,32 +74,34 @@ const projectInfo = ref({
   projectNumber: '项目编号占位'
 })
 
-// 转换新API数据为表格需要的结构
+// 动态列配置
+const currentColumns = computed(() => {
+  return generateDynamicColumns('ownerMaterialDetail')
+})
+
+// 分页数据
+const paginatedData = computed(() => {
+  return tableData.value
+})
+
+// 转换新API数据为表格需要的结构（专注于物资信息）
 const transformDataForTable = (data) => {
   return data.map((item, index) => {
     return {
       id: item.id, // 使用 id 作为唯一标识
-      rowId: item.id,
-      isFirstChild: true, // 新API每条记录都是独立的
-      // 基础物资信息（来自标准物料库）
-      materialName: item.baseMaterialName || '/',
-      materialCategoryCode: item.baseDataId || '/', // 使用 baseDataId 作为编码
-      specificationModel: item.baseSpecificationModel || '/',
-      unit: item.baseUnit || '/',
-      // 申领相关信息
-      requisitionQuantity: item.requisitionQuantity || 0,
-      statisticalQuantity: item.statisticalQuantity || 0,
-      supplier: item.supplierName || '/',
-      // 对平状态
-      matchingStatus: item.finalBalanceStatus,
-      // 实际用料信息
-      actualSource: item.dataSourcePath || '/',
-      actualMaterialName: item.usageMaterialName || '/',
-      actualSpecifications: item.usageSpecificationModel || '/',
-      actualUnit: item.baseUnit || '/', // 用料单位使用标准单位
-      actualApplicationQuantity: item.transactionQuantity || 0,
-      // 额外信息
-      transactionCount: item.transactionCountForSummary || 0,
+      materialId: item.baseDataId || `OM-${index + 1}`,
+      materialName: item.baseMaterialName || '未知物资',
+      specification: item.baseSpecificationModel || '/',
+      unit: item.baseUnit || '个',
+      quantity: item.requisitionQuantity || 0,
+      unitPrice: item.estimatedUnitPrice || 0,
+      totalPrice: (item.requisitionQuantity || 0) * (item.estimatedUnitPrice || 0),
+      supplier: item.supplierName || '待确定',
+      deliveryDate: item.expectedDeliveryDate || '/',
+      materialStatus: item.finalBalanceStatus === 'BALANCED' ? '已交付' : 
+                     item.finalBalanceStatus === 'UNRETURNED' ? '运输中' :
+                     item.finalBalanceStatus === 'DATA_MISSING' ? '待发货' : '待确定',
+      remark: item.remark || '/',
       // 保存原始数据
       originalData: item
     }
@@ -294,27 +202,6 @@ const handleSizeChange = (newSize) => {
   fetchOwnerMaterialDetail(currentPage.value, newSize)
 }
 
-const handleEdit = (row) => {
-  row.editing = true
-}
-
-const handleSaveEdit = (row) => {
-  row.editing = false
-  // 自动创建一个新的对象以供提交，这里我们直接修改row，并在保存时进行diff
-  // 实际应用中，你可能需要一个单独的editedItems数组来收集这些对象
-}
-
-const handleCancelEdit = (row) => {
-  row.editing = false
-  // 恢复原始数据
-  const originalItem = originalData.value.find((item) => item.id === row.id)
-  if (originalItem) {
-    // 使用 Object.assign 恢复原始值，但保留 editing 状态
-    const currentEditingState = row.editing
-    Object.assign(row, originalItem)
-    row.editing = currentEditingState
-  }
-}
 
 const handleGenerateReport = () => {
   // 导航到甲供物资解析报告页面
@@ -328,89 +215,9 @@ const handleGenerateReport = () => {
   })
 }
 
-const handleSave = async () => {
-  const changedItems = []
-  tableData.value.forEach((currentItem) => {
-    const originalItem = originalData.value.find((item) => item.id === currentItem.id)
-    if (originalItem) {
-      const diff = {}
-      let hasDiff = false
-      for (const key in currentItem) {
-        // 排除非数据字段，如 editing 和 original
-        if (key !== 'editing' && key !== 'original' && currentItem[key] !== originalItem[key]) {
-          diff[key] = currentItem[key]
-          hasDiff = true
-        }
-      }
-      if (hasDiff) {
-        changedItems.push({ id: currentItem.id, ...diff })
-      }
-    }
-  })
-
-  if (changedItems.length > 0) {
-    console.log('检测到修改的数据:', changedItems)
-    await saveOwnerMaterialDetail(changedItems)
-    // 保存成功后，更新原始数据
-    await fetchOwnerMaterialDetail(currentPage.value, pageSize.value)
-  } else {
-    ElMessage.info('未检测到修改的数据，无需保存。')
-  }
-}
 
 // 单元格合并方法已移除 - 新API提供独立的交易记录，无需合并
 
-// 根据对平情况返回ElTag的type
-const getMatchingStatusTagType = (status) => {
-  switch (status) {
-    case 'BALANCED':
-      return 'success' // 绿色 - 已对平
-    case 'UNRETURNED':
-      return 'warning' // 黄色 - 未退库
-    case 'DATA_MISSING':
-      return 'danger' // 红色 - 数据缺失
-    case 'UNMATCHED':
-      return 'danger' // 红色 - 未匹配
-    // 兼容旧状态
-    case 'MATCHED':
-      return 'success' // 绿色 - 已匹配
-    case 'PARTIAL_MATCHED':
-      return 'info' // 蓝色 - 部分匹配
-    // 兼容旧的数字状态
-    case 1:
-      return 'success' // 绿色 - 已对平
-    case 0:
-      return 'warning' // 黄色 - 未退库
-    default:
-      return 'danger' // 红色 - 其他状态
-  }
-}
-
-// 根据对平情况返回显示文本
-const getMatchingStatusText = (status) => {
-  switch (status) {
-    case 'BALANCED':
-      return '已对平'
-    case 'UNRETURNED':
-      return '未退库'
-    case 'DATA_MISSING':
-      return '数据缺失'
-    case 'UNMATCHED':
-      return '异常'
-    // 兼容旧状态
-    case 'MATCHED':
-      return '已匹配'
-    case 'PARTIAL_MATCHED':
-      return '部分匹配'
-    // 兼容旧的数字状态
-    case 1:
-      return '已对平'
-    case 0:
-      return '未退库'
-    default:
-      return status || '/'
-  }
-}
 
 const handleBack = () => {
   router.back()

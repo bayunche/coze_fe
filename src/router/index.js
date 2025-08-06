@@ -46,6 +46,11 @@ const router = createRouter({
       path: '/smart-brain/material-management',
       name: 'material-management',
       component: () => import('../views/material-management')
+    },
+    {
+      path: '/project-data-management',
+      name: 'project-data-management',
+      component: () => import('../views/project-data-management')
     }
   ]
 })

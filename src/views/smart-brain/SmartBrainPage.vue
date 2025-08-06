@@ -10,24 +10,19 @@
           {{ userRoleTag.text }}
         </el-tag>
         <!-- 临时权限切换按钮 -->
-        <el-button 
-          @click="toggleUserRole" 
-          size="small" 
-          type="primary"
-          style="margin-left: 12px"
-        >
+        <el-button @click="toggleUserRole" size="small" type="primary" style="margin-left: 12px">
           切换角色
+        </el-button>
+        <!-- 返回首页按钮 -->
+        <el-button @click="goToHome" size="small" style="margin-left: 12px">
+          返回首页
         </el-button>
       </div>
     </div>
 
     <!-- 总览数据卡片区 -->
     <div class="overview-cards">
-      <el-card 
-        v-for="(config, key) in OVERVIEW_CARD_CONFIG" 
-        :key="key"
-        class="overview-card"
-      >
+      <el-card v-for="(config, key) in OVERVIEW_CARD_CONFIG" :key="key" class="overview-card">
         <div class="card-content">
           <div class="card-icon">{{ config.icon }}</div>
           <div class="card-info">
@@ -55,7 +50,7 @@
               <el-tag type="success" size="small">在线</el-tag>
             </div>
           </template>
-          
+
           <div class="agent-stats">
             <div class="stat-item">
               <span class="stat-value">{{ agent.tasks.completed }}</span>
@@ -78,7 +73,7 @@
     <div v-if="authStore.isAdmin" class="management-section">
       <h2 class="section-title">管理功能</h2>
       <div class="management-grid">
-        <el-card 
+        <el-card
           v-for="(feature, key) in availableFeatures"
           :key="key"
           class="management-card"
@@ -96,8 +91,30 @@
       </div>
     </div>
 
+    <!-- 数据管理区（所有用户可见） -->
+    <div class="data-management-section">
+      <h2 class="section-title">数据管理</h2>
+      <div class="data-management-grid">
+        <el-card
+          v-for="(feature, key) in availableDataFeatures"
+          :key="key"
+          class="data-management-card"
+          shadow="hover"
+          @click="navigateToFeature(feature.route)"
+        >
+          <div class="data-management-content">
+            <div class="data-management-icon">{{ feature.icon }}</div>
+            <div class="data-management-info">
+              <div class="data-management-title">{{ feature.title }}</div>
+              <div class="data-management-desc">{{ feature.description }}</div>
+            </div>
+          </div>
+        </el-card>
+      </div>
+    </div>
+
     <!-- 历史操作记录区 -->
-    <div class="history-section">
+    <!-- <div class="history-section">
       <h2 class="section-title">历史操作记录</h2>
       <el-table :data="executionHistory" style="width: 100%">
         <el-table-column 
@@ -119,23 +136,23 @@
           </template>
         </el-table-column>
       </el-table>
-    </div>
+    </div> -->
 
     <!-- 任务详情弹窗 -->
     <TaskParsingResultDialog
       v-if="dialogStates.isContractParsing"
       v-model:show="dialogStates.taskParsingResultDialogVisible"
-      :tasks="selectedTasks"
+      agent-id="contractParsing"
     />
     <MaterialParsingResultDialog
       v-if="dialogStates.isSupplierMaterialParsing"
       v-model:show="dialogStates.supplierMaterialParsingResultDialogVisible"
-      :tasks="selectedTasks"
+      agent-id="supplierMaterialParsing"
     />
     <OwnerMaterialParsingResultDialog
       v-if="dialogStates.isOwnerMaterialParsing"
       v-model:show="dialogStates.ownerMaterialParsingResultDialogVisible"
-      :tasks="selectedTasks"
+      agent-id="ownerSuppliedMaterialParsing"
     />
   </div>
 </template>
@@ -149,18 +166,18 @@ import TaskParsingResultDialog from '@/components/home/TaskParsingResultDialog'
 import MaterialParsingResultDialog from '@/components/home/MaterialParsingResultDialog'
 import OwnerMaterialParsingResultDialog from '@/components/home/OwnerMaterialParsingResultDialog'
 
-import { 
+import {
   OVERVIEW_CARD_CONFIG,
   MANAGEMENT_FEATURES,
+  DATA_MANAGEMENT_FEATURES,
   TABLE_CONFIG,
   MOCK_EXECUTION_HISTORY
 } from './constants.js'
-import { 
+import {
   calculateOverviewData,
   getDialogTypeByAgentId,
   getStatusLabel,
   getStatusType,
-  formatAgentTasks,
   isFeatureAvailable,
   getUserRoleTag,
   createRouteNavigator,
@@ -176,7 +193,6 @@ const navigateToFeature = createRouteNavigator(router)
 
 // 对话框状态管理
 const dialogStates = reactive(resetDialogStates())
-const selectedTasks = ref({})
 
 // 计算属性
 const smartAgents = computed(() => workflowStore.smartAgents)
@@ -190,6 +206,13 @@ const availableFeatures = computed(() => {
   )
 })
 
+// 数据管理功能列表（仅显示可用功能）
+const availableDataFeatures = computed(() => {
+  return Object.fromEntries(
+    Object.entries(DATA_MANAGEMENT_FEATURES).filter(([, feature]) => isFeatureAvailable(feature))
+  )
+})
+
 // 历史记录数据（可以后续替换为从API获取）
 const executionHistory = ref(MOCK_EXECUTION_HISTORY)
 
@@ -198,29 +221,43 @@ const toggleUserRole = () => {
   authStore.toggleRole()
 }
 
+const goToHome = () => {
+  router.push('/home')
+}
+
 const openAgentDialog = async (agent) => {
   // 重置所有对话框状态
   Object.assign(dialogStates, resetDialogStates())
-  
-  // 格式化任务数据
-  selectedTasks.value = formatAgentTasks(workflowStore.taskListsByAgent, agent.id)
-  
-  await nextTick()
 
   // 根据智能体类型显示对应对话框
   const dialogType = getDialogTypeByAgentId(agent.id)
+
   if (dialogType) {
+    // 先设置组件渲染条件
     switch (dialogType) {
       case 'contractParsing':
         dialogStates.isContractParsing = true
-        dialogStates.taskParsingResultDialogVisible = true
         break
       case 'supplierMaterialParsing':
         dialogStates.isSupplierMaterialParsing = true
-        dialogStates.supplierMaterialParsingResultDialogVisible = true
         break
       case 'ownerSuppliedMaterialParsing':
         dialogStates.isOwnerMaterialParsing = true
+        break
+    }
+
+    // 等待DOM更新，让组件渲染完成
+    await nextTick()
+
+    // 再设置弹窗可见性
+    switch (dialogType) {
+      case 'contractParsing':
+        dialogStates.taskParsingResultDialogVisible = true
+        break
+      case 'supplierMaterialParsing':
+        dialogStates.supplierMaterialParsingResultDialogVisible = true
+        break
+      case 'ownerSuppliedMaterialParsing':
         dialogStates.ownerMaterialParsingResultDialogVisible = true
         break
     }
@@ -451,6 +488,63 @@ onMounted(() => {
   color: var(--theme-text-secondary);
 }
 
+.data-management-section {
+  margin-bottom: 40px;
+}
+
+.data-management-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.data-management-card {
+  border: 1px solid var(--theme-card-border);
+  border-radius: 12px;
+  background: var(--theme-card-bg);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.data-management-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--theme-card-hover-shadow);
+  border-color: var(--theme-primary);
+}
+
+.data-management-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.data-management-icon {
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--theme-bg-tertiary);
+  border-radius: 12px;
+}
+
+.data-management-info {
+  flex: 1;
+}
+
+.data-management-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  margin-bottom: 4px;
+}
+
+.data-management-desc {
+  font-size: 14px;
+  color: var(--theme-text-secondary);
+}
+
 .history-section {
   margin-bottom: 40px;
 }
@@ -499,22 +593,26 @@ onMounted(() => {
   .smart-brain-page {
     padding: 16px;
   }
-  
+
   .page-header {
     flex-direction: column;
     gap: 16px;
     align-items: flex-start;
   }
-  
+
   .overview-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .agents-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .management-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .data-management-grid {
     grid-template-columns: 1fr;
   }
 }

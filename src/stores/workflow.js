@@ -134,7 +134,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
         tasks: { completed: 0, inProgress: 0, total: 0 }
       }))
   )
-  const taskListsByAgent = ref({})
 
   const workflowConfig = reactive({
     files: [],
@@ -272,28 +271,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     return { potentialTaskId, messageContent, parsedMessage }
   }
 
-  /**
-   * 从工作流结果中解析任务列表
-   * @param {Object} result - 工作流执行结果
-   * @returns {Array<Object>}
-   */
-  const parseTaskListFromResult = (result) => {
-    try {
-      const data = result?.data
-      if (!data) return []
-      const output = JSON.parse(data).output
-      if (!output) return []
-      if (Array.isArray(output)) return output
-      if (typeof output === 'string') {
-        const parsed = JSON.parse(output)
-        return Array.isArray(parsed) ? parsed : []
-      }
-      return []
-    } catch (e) {
-      console.error('Failed to parse workflow output:', e, result?.data)
-      return []
-    }
-  }
   // #endregion
 
   // #region Actions - Smart Brain
@@ -353,38 +330,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
 
   /**
-   * 获取单个智能体的任务列表
-   * @param {SmartAgent} agent - 智能体对象
+   * 获取业务域名映射
+   * @param {string} agentId - 智能体ID
+   * @returns {string} 业务域名
    */
-  const fetchAgentTaskLists = async (agent) => {
-    const domain = BUSINESS_DOMAINS[agent.id]
-    if (!domain) return
-
-    try {
-      const [inProgressListResult, completedListResult, allListResult] = await Promise.all([
-        cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_LIST, {
-          status: '1',
-          businessDomain: domain
-        }),
-        cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_LIST, {
-          status: '2',
-          businessDomain: domain
-        }),
-        cozeWorkflowService.runWorkflow(WORKFLOW_IDS.GET_TASK_LIST, {
-          status: '5',
-          businessDomain: domain
-        })
-      ])
-
-      taskListsByAgent.value[agent.id] = {
-        inProgress: parseTaskListFromResult(inProgressListResult),
-        completed: parseTaskListFromResult(completedListResult),
-        all: parseTaskListFromResult(allListResult)
-      }
-    } catch (error) {
-      console.error(`获取 ${agent.name} 任务列表失败:`, error)
-      taskListsByAgent.value[agent.id] = { all: [], completed: [], inProgress: [] }
-    }
+  const getBusinessDomain = (agentId) => {
+    return BUSINESS_DOMAINS[agentId] || null
   }
 
   /**
@@ -399,13 +350,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
       // 使用新的批量获取任务统计数据的方法
       await fetchAllAgentTaskCounts()
-      
-      // 获取每个智能体的任务列表
-      const fetchListPromises = smartAgents.value.map(async (agent) => {
-        await fetchAgentTaskLists(agent)
-      })
-      
-      await Promise.all(fetchListPromises)
 
       ElMessage.success('智能体任务数据查询成功！')
       showSmartBrainDialog.value = true
@@ -991,13 +935,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     try {
       // 使用新的批量获取任务统计数据的方法
       await fetchAllAgentTaskCounts()
-      
-      // 获取每个智能体的任务列表
-      const fetchListPromises = smartAgents.value.map(async (agent) => {
-        await fetchAgentTaskLists(agent)
-      })
-      
-      await Promise.all(fetchListPromises)
       console.log('智能体任务数据获取成功')
     } catch (error) {
       console.error('获取智能大脑数据失败:', error)
@@ -1094,7 +1031,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     executionHistory,
     lastExecutionResult,
     smartAgents,
-    taskListsByAgent,
     taskId,
     supplierFileDetailIds,
     showSmartBrainDialog,
@@ -1116,6 +1052,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     exportHistory,
     viewExecutionDetail,
     setTaskId,
-    setSupplierFileIds
+    setSupplierFileIds,
+    getBusinessDomain
   }
 })

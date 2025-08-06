@@ -6,74 +6,66 @@
     :before-close="() => closeDialog(emit)"
     :custom-class="DIALOG_CONFIG.CUSTOM_CLASS"
     append-to-body
+    top="5vh"
   >
-    <el-tabs 
-      v-model="activeTab" 
-      @tab-click="() => switchTab(() => currentPage = 1)"
-    >
-      <el-tab-pane 
-        v-for="tab in TAB_CONFIG"
-        :key="tab.name"
-        :label="tab.label" 
-        :name="tab.name"
-      />
+    <el-tabs v-model="activeTab" @tab-click="() => switchTab(() => (currentPage = 1))">
+      <el-tab-pane v-for="tab in TAB_CONFIG" :key="tab.name" :label="tab.label" :name="tab.name" />
     </el-tabs>
-    
-    <el-table 
-      :data="paginatedData" 
-      style="width: 100%" 
-      v-loading="loading"
-    >
-      <el-table-column 
-        v-for="column in TABLE_COLUMNS"
-        :key="column.prop || column.label"
-        v-bind="column"
-      >
-        <template v-if="column.prop === 'CREATED_TIME'" #default="{ row }">
-          <span>{{ formatTimestamp(row.CREATED_TIME) }}</span>
-        </template>
-        
-        <template v-else-if="column.label === '状态'" #default="{ row }">
-          <el-tag :type="getTaskStatus(row).type" size="small">
-            {{ getTaskStatus(row).text }}
-          </el-tag>
-        </template>
-        
-        <template v-else-if="column.label === '进度'" #default="{ row }">
-          <div style="display: flex; align-items: center">
-            <el-progress
-              :percentage="calculateProgress(row.file_count, row.file_done_count)"
-              :stroke-width="8"
-              style="flex-grow: 1; margin-right: 10px"
-            />
-            <span style="font-size: 12px; color: var(--theme-text-secondary)">
-              {{ row.file_done_count || 0 }} / {{ row.file_count || 0 }}
-            </span>
-          </div>
-        </template>
-        
-        <template v-else-if="column.label === '操作'" #default="{ row }">
-          <el-button 
-            type="primary" 
-            size="small" 
-            @click="() => viewTaskDetails(row, setSelectedTask, setDialogVisible)"
-          >
-            {{ BUTTON_LABELS.VIEW_DETAILS }}
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
-    
+    <div style="height: 40vh">
+      <el-table :data="taskData" style="width: 100%; height: 100%" v-loading="loading">
+        <el-table-column
+          v-for="column in TABLE_COLUMNS"
+          :key="column.prop || column.label"
+          v-bind="column"
+        >
+          <template v-if="column.prop === 'createdTime'" #default="{ row }">
+            <span>{{ formatTimestamp(row.createdTime) }}</span>
+          </template>
+
+          <template v-else-if="column.label === '状态'" #default="{ row }">
+            <el-tag :type="getTaskStatus(row).type" size="small">
+              {{ getTaskStatus(row).text }}
+            </el-tag>
+          </template>
+
+          <template v-else-if="column.label === '进度'" #default="{ row }">
+            <div style="display: flex; align-items: center">
+              <el-progress
+                :percentage="calculateProgress(row.fileCount, row.fileDoneCount)"
+                :stroke-width="8"
+                style="flex-grow: 1; margin-right: 10px"
+              />
+              <span style="font-size: 12px; color: var(--theme-text-secondary)">
+                {{ row.fileDoneCount || 0 }} / {{ row.fileCount || 0 }}
+              </span>
+            </div>
+          </template>
+
+          <template v-else-if="column.label === '操作'" #default="{ row }">
+            <el-button
+              type="primary"
+              size="small"
+              @click="() => viewTaskDetails(row, setSelectedTask, setDialogVisible)"
+            >
+              {{ BUTTON_LABELS.VIEW_DETAILS }}
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
     <el-pagination
-      v-if="filteredTasks.length > PAGINATION_CONFIG.DEFAULT_PAGE_SIZE"
+      v-if="total > 0"
       background
-      :layout="PAGINATION_CONFIG.LAYOUT"
-      :total="filteredTasks.length"
-      :page-size="PAGINATION_CONFIG.DEFAULT_PAGE_SIZE"
+      layout="total, sizes, prev, pager, next, jumper"
+      :total="total"
+      :page-size="pageSize"
+      :page-sizes="PAGINATION_CONFIG.PAGE_SIZES"
       v-model:current-page="currentPage"
+      v-model:page-size="pageSize"
+      @size-change="fetchTasks"
       style="margin-top: 20px; text-align: right"
     />
-    
+
     <template #footer>
       <span class="dialog-footer">
         <el-button @click="() => closeDialog(emit)">
@@ -82,17 +74,15 @@
       </span>
     </template>
   </el-dialog>
-  
-  <TaskDetailDialog 
-    v-if="selectedTask" 
-    v-model:show="showTaskDetailDialog" 
-    :task="selectedTask" 
-  />
+
+  <TaskDetailDialog v-if="selectedTask" v-model:show="showTaskDetailDialog" :task="selectedTask" />
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import TaskDetailDialog from '../TaskDetailDialog'
+import SmartBrainService from '@/services/SmartBrainService'
+import { useWorkflowStore } from '@/stores/workflow'
 
 // 导入常量和工具函数
 import {
@@ -107,12 +97,8 @@ import {
   formatTimestamp,
   getTaskStatus,
   calculateProgress,
-  filterTasks,
-  paginateData,
-  switchTab,
   viewTaskDetails,
-  closeDialog,
-  getSafeTasksData
+  closeDialog
 } from './utils.js'
 
 // Props定义
@@ -121,25 +107,27 @@ const props = defineProps({
     type: Boolean,
     required: true
   },
-  tasks: {
-    type: Object,
-    required: true,
-    default: () => ({ all: [], completed: [], inProgress: [] })
-  },
-  loading: {
-    type: Boolean,
-    default: false
+  agentId: {
+    type: String,
+    required: true
   }
 })
 
 // Emits定义
 const emit = defineEmits(['update:show'])
 
+// Store
+const workflowStore = useWorkflowStore()
+
 // 响应式数据
 const activeTab = ref('all')
 const currentPage = ref(1)
+const pageSize = ref(PAGINATION_CONFIG.DEFAULT_PAGE_SIZE)
 const showTaskDetailDialog = ref(false)
 const selectedTask = ref(null)
+const loading = ref(false)
+const taskData = ref([])
+const total = ref(0)
 
 // 计算属性 - 主对话框可见性
 const dialogVisible = computed({
@@ -147,25 +135,76 @@ const dialogVisible = computed({
   set: (value) => emit('update:show', value)
 })
 
-// 计算属性 - 安全的任务数据
-const safeTasksData = computed(() => {
-  return getSafeTasksData(props.tasks)
+// 获取任务状态过滤条件
+const getStatusFilter = () => {
+  switch (activeTab.value) {
+    case 'inProgress':
+      return [0, 1] // 排队中、处理中
+    case 'completed':
+      return [2, 3] // 处理完成、已确认
+    default:
+      return null // 全部
+  }
+}
+
+// 获取任务列表
+const fetchTasks = async () => {
+  console.log('fetchTasks被调用，agentId:', props.agentId)
+  const domain = workflowStore.getBusinessDomain(props.agentId)
+  console.log('获取到的业务域:', domain)
+
+  if (!domain) {
+    console.warn('无法获取业务域，agentId:', props.agentId)
+    return
+  }
+
+  loading.value = true
+  try {
+    const params = {
+      page: currentPage.value - 1,
+      size: pageSize.value,
+      sort: 'created_time,desc'
+    }
+
+    const statusFilter = getStatusFilter()
+    if (statusFilter) {
+      params.taskStatus = statusFilter.join(',')
+    }
+
+    const result = await SmartBrainService.getAgentTasksList(domain, params)
+
+    taskData.value = result.content || []
+    total.value = result.totalElements || 0
+  } catch (error) {
+    console.error('获取任务列表失败:', error)
+    taskData.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+// 监听弹窗显示状态，显示时加载数据
+watch(
+  () => props.show,
+  (newShow) => {
+    if (newShow) {
+      currentPage.value = 1
+      fetchTasks()
+    }
+  },
+  { immediate: true }
+)
+
+// 监听标签切换
+watch(activeTab, () => {
+  currentPage.value = 1
+  fetchTasks()
 })
 
-// 计算属性 - 过滤后的任务
-const filteredTasks = computed(() => {
-  const tasks = filterTasks(safeTasksData.value, activeTab.value)
-  console.log('Filtered tasks:', tasks)
-  return tasks
-})
-
-// 计算属性 - 分页数据
-const paginatedData = computed(() => {
-  return paginateData(
-    filteredTasks.value, 
-    currentPage.value, 
-    PAGINATION_CONFIG.DEFAULT_PAGE_SIZE
-  )
+// 监听页码变化
+watch(currentPage, () => {
+  fetchTasks()
 })
 
 // 业务方法
@@ -175,6 +214,10 @@ const setSelectedTask = (task) => {
 
 const setDialogVisible = (visible) => {
   showTaskDetailDialog.value = visible
+}
+
+const switchTab = () => {
+  // 标签切换逻辑已在watch中处理
 }
 </script>
 
@@ -186,16 +229,18 @@ const setDialogVisible = (visible) => {
   box-shadow: var(--theme-dialog-shadow);
 }
 
+:deep(.task-parsing-result-dialog .el-dialog__body) {
+  height: 40vh;
+  overflow-y: auto;
+  padding: 20px 30px;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+}
+
 :deep(.task-parsing-result-dialog .el-dialog__header) {
   background: var(--theme-dialog-header-bg);
   color: var(--theme-text-primary);
   border-bottom: 1px solid var(--theme-border-secondary);
-}
-
-:deep(.task-parsing-result-dialog .el-dialog__body) {
-  padding: 20px 30px;
-  background: var(--theme-bg-primary);
-  color: var(--theme-text-primary);
 }
 
 :deep(.task-parsing-result-dialog .el-dialog__footer) {

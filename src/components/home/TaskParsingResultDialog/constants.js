@@ -1,7 +1,7 @@
 // TaskParsingResultDialog 组件相关常量
 
 export const DIALOG_CONFIG = {
-  TITLE: '智能体任务列表',
+  TITLE: '合同解析智能体任务列表',
   WIDTH: '60%',
   CUSTOM_CLASS: 'task-parsing-result-dialog'
 }
@@ -19,11 +19,11 @@ export const TAB_CONFIG = [
 ]
 
 export const TABLE_COLUMNS = [
-  { prop: 'ID', label: '任务编号', width: 180 },
-  { prop: 'CREATED_TIME', label: '任务创建时间', width: 200 },
+  { prop: 'id', label: '任务编号', width: 180 },
+  { prop: 'createdTime', label: '任务创建时间', width: 200 },
   { label: '状态', width: 120 },
   { label: '进度', minWidth: 200 },
-  { prop: 'file_error_count', label: '失败数', width: 100 },
+  { prop: 'fileErrorCount', label: '失败数', width: 100 },
   { label: '操作', width: 120, fixed: 'right' }
 ]
 

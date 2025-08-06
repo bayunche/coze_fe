@@ -9,8 +9,8 @@ import { TASK_STATUS, TASK_STATUS_CONFIG } from './constants.js'
 export const formatTimestamp = (timestamp) => {
   if (!timestamp) return ''
   
-  const cleanTimestamp = timestamp.split(' +')[0]
-  const date = new Date(cleanTimestamp)
+  // 处理ISO格式的时间字符串
+  const date = new Date(timestamp)
   
   if (isNaN(date.getTime())) return timestamp
   
@@ -30,22 +30,27 @@ export const formatTimestamp = (timestamp) => {
  * @returns {Object} 状态配置对象
  */
 export const getTaskStatus = (task) => {
-  const total = parseInt(task.file_count, 10) || 0
-  const processed = parseInt(task.file_done_count, 10) || 0
-  const failed = parseInt(task.file_error_count, 10) || 0
-
-  if (processed < total) {
-    return TASK_STATUS_CONFIG[TASK_STATUS.IN_PROGRESS]
-  }
+  const taskStatus = Number(task.taskStatus)
   
-  if (processed === total) {
-    if (failed > 0) {
-      return TASK_STATUS_CONFIG[TASK_STATUS.PARTIAL_FAILED]
+  // 根据新的任务状态值进行判断
+  switch (taskStatus) {
+    case 0: // 排队中
+    case 1: // 处理中
+      return TASK_STATUS_CONFIG[TASK_STATUS.IN_PROGRESS]
+    case 2: // 处理完成
+    case 3: { // 已确认
+      // 检查是否有失败的文件
+      const failed = parseInt(task.fileErrorCount, 10) || 0
+      if (failed > 0) {
+        return TASK_STATUS_CONFIG[TASK_STATUS.PARTIAL_FAILED]
+      }
+      return TASK_STATUS_CONFIG[TASK_STATUS.COMPLETED]
     }
-    return TASK_STATUS_CONFIG[TASK_STATUS.COMPLETED]
+    case -1: // 错误中断
+      return TASK_STATUS_CONFIG[TASK_STATUS.PARTIAL_FAILED]
+    default:
+      return TASK_STATUS_CONFIG[TASK_STATUS.UNKNOWN]
   }
-  
-  return TASK_STATUS_CONFIG[TASK_STATUS.UNKNOWN]
 }
 
 /**

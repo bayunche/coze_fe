@@ -37,7 +37,6 @@
   <SmartBrainDialog
     v-model:show="showSmartBrainDialog"
     :agents="smartAgents"
-    :tasks-by-agent="taskListsByAgent"
   />
 
   <!-- 结果详情对话框 -->
@@ -88,7 +87,6 @@ const {
   showSmartBrainDialog,
   workflowConfig,
   smartAgents,
-  taskListsByAgent,
 } = storeToRefs(workflowStore)
 
 const {

@@ -12,7 +12,7 @@
         :key="agent.id"
         class="agent-card"
         shadow="hover"
-        @click="() => onAgentCardClick(agent, tasksByAgent, selectedTasks, dialogStates, dialogVisibility)"
+        @click="() => onAgentCardClick(agent, dialogStates, dialogVisibility)"
       >
         <template #header>
           <div class="card-header">
@@ -53,21 +53,21 @@
   <TaskParsingResultDialog
     v-if="dialogStates.isContractParsing"
     v-model:show="dialogVisibility.taskParsingResultDialogVisible"
-    :tasks="selectedTasks"
+    agent-id="contractParsing"
   />
   
   <!-- 乙供物资解析结果对话框 -->
   <MaterialParsingResultDialog
     v-if="dialogStates.isSupplierMaterialParsing"
     v-model:show="dialogVisibility.supplierMaterialParsingResultDialogVisible"
-    :tasks="selectedTasks"
+    agent-id="supplierMaterialParsing"
   />
   
   <!-- 甲供物资解析结果对话框 -->
   <OwnerMaterialParsingResultDialog
     v-if="dialogStates.isOwnerMaterialParsing"
     v-model:show="dialogVisibility.ownerMaterialParsingResultDialogVisible"
-    :tasks="selectedTasks"
+    agent-id="ownerSuppliedMaterialParsing"
   />
 </template>
 
@@ -102,11 +102,6 @@ const props = defineProps({
     type: Array,
     required: true,
     validator: (value) => Array.isArray(value)
-  },
-  tasksByAgent: {
-    type: Object,
-    required: true,
-    validator: (value) => value && typeof value === 'object'
   }
 })
 
@@ -126,20 +121,18 @@ const validAgents = computed(() => {
 
 // 响应式数据 - 对话框状态
 const dialogStates = reactive({
-  isContractParsing: ref(false),
-  isSupplierMaterialParsing: ref(false),
-  isOwnerMaterialParsing: ref(false)
+  isContractParsing: false,
+  isSupplierMaterialParsing: false,
+  isOwnerMaterialParsing: false
 })
 
 // 响应式数据 - 对话框可见性
 const dialogVisibility = reactive({
-  taskParsingResultDialogVisible: ref(false),
-  supplierMaterialParsingResultDialogVisible: ref(false),
-  ownerMaterialParsingResultDialogVisible: ref(false)
+  taskParsingResultDialogVisible: false,
+  supplierMaterialParsingResultDialogVisible: false,
+  ownerMaterialParsingResultDialogVisible: false
 })
 
-// 响应式数据 - 选中的任务
-const selectedTasks = ref({})
 </script>
 
 <style scoped>

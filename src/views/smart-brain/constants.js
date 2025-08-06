@@ -14,7 +14,11 @@ export const CARD_ICONS = {
 
 export const MANAGEMENT_ICONS = {
   MATERIAL_MANAGEMENT: '📦',
-  VECTOR_DATABASE: '🗄️'
+  VECTOR_DATABASE: '🗄️',
+  DATA_MANAGEMENT: '📊',
+  BACKUP_RESTORE: '💾',
+  SYSTEM_CONFIG: '⚙️',
+  LOG_ANALYSIS: '📋'
 }
 
 export const OVERVIEW_CARD_CONFIG = {
@@ -49,6 +53,16 @@ export const MANAGEMENT_FEATURES = {
     description: '管理AI训练数据',
     route: '/smart-brain/vector-management',
     available: false
+  }
+}
+
+export const DATA_MANAGEMENT_FEATURES = {
+  PROJECT_DATA: {
+    icon: MANAGEMENT_ICONS.DATA_MANAGEMENT,
+    title: '项目数据管理',
+    description: '管理项目相关的数据信息',
+    route: '/project-data-management',
+    available: true
   }
 }
 
