@@ -34,6 +34,20 @@
               {{ getTagText(row[column.prop], column.prop) }}
             </el-tag>
           </template>
+
+          <template #default="{ row }" v-else-if="column.type === 'contract'">
+            <div class="contract-info">
+              <div class="contract-name" :title="row[column.prop]">
+                {{ row[column.prop] }}
+              </div>
+            </div>
+          </template>
+
+          <template #default="{ row }" v-else-if="column.type === 'currency'">
+            <span class="currency-value">
+              ¥{{ (row[column.prop] || 0).toLocaleString('zh-CN') }}
+            </span>
+          </template>
         </el-table-column>
 
         <!-- 固定操作列 -->
@@ -367,6 +381,37 @@ const onPageSizeChange = (size) => {
   overflow: auto;
   height: calc(40vh - 100px);
 }
+/* 合同信息显示样式 */
+.contract-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.contract-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+
+/* 货币值样式 */
+.currency-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--success-color);
+  background: rgba(13, 148, 136, 0.05);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(13, 148, 136, 0.15);
+}
+
 /* 标签样式 */
 :deep(.el-tag) {
   font-weight: 600;

@@ -35,88 +35,63 @@
       
     </div>
 
-    <!-- Tab切换区 -->
-    <div class="tabs-section">
-      <el-tabs
-        v-model="activeTab"
-        @tab-click="onTabChange"
-        class="data-management-tabs"
-      >
-        <el-tab-pane
-          v-for="tab in Object.values(TAB_CONFIG)"
-          :key="tab.name"
-          :label="`${tab.icon} ${tab.label}`"
-          :name="tab.name"
-        >
-          <!-- 动态表格组件 -->
-          <DynamicTable
-            :table-data="paginatedData"
-            :dynamic-columns="currentColumns"
-            :loading="tableLoading"
-            :show-actions="true"
-            :show-link-button="activeTab === 'contract'"
-            :show-pagination="true"
-            :current-page="pagination.currentPage"
-            :page-size="pagination.pageSize"
-            :page-sizes="PAGINATION_CONFIG.pageSizes"
-            :total-count="filteredData.length"
-            height="500px"
-            @view-detail="onViewDetail"
-            @link-project="onLinkProject"
-            @page-change="onPageChange"
-            @page-size-change="onPageSizeChange"
-          />
-        </el-tab-pane>
-      </el-tabs>
+    <!-- 项目列表区域 -->
+    <div class="project-list-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="section-icon">📊</span>
+          项目数据总览
+        </h2>
+        <div class="section-actions">
+          <el-button @click="handleImport" size="small" type="success">
+            导入数据
+          </el-button>
+          <el-button @click="handleExport" size="small" type="primary">
+            导出数据
+          </el-button>
+        </div>
+      </div>
+      
+      <!-- 动态表格组件 -->
+      <DynamicTable
+        :table-data="paginatedData"
+        :dynamic-columns="currentColumns"
+        :loading="tableLoading"
+        :show-actions="true"
+        :show-link-button="false"
+        :show-pagination="true"
+        :current-page="pagination.currentPage"
+        :page-size="pagination.pageSize"
+        :page-sizes="PAGINATION_CONFIG.pageSizes"
+        :total-count="filteredData.length"
+        height="500px"
+        @view-detail="onViewDetail"
+        @page-change="onPageChange"
+        @page-size-change="onPageSizeChange"
+      />
     </div>
 
-    <!-- 项目详情弹窗 -->
-    <ProjectDetailDialog
-      v-model="detailDialogVisible"
-      :project-data="selectedProjectData"
-    />
-
-    <!-- 项目关联弹窗 -->
-    <ProjectDataLinkDialog
-      v-model="linkDialogVisible"
-      :contract-data="selectedContractData"
-      @confirm="onLinkConfirm"
-    />
-
-    <!-- 物资详情弹窗 -->
-    <MaterialDetailDialog
-      v-model="materialDetailDialogVisible"
-      :project-data="selectedProjectData"
-      :material-type="currentMaterialType"
-    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 
 // 导入组件
 import DynamicTable from './components/DynamicTable.vue'
-import ProjectDetailDialog from './components/ProjectDetailDialog.vue'
-import ProjectDataLinkDialog from './components/ProjectDataLinkDialog.vue'
-import MaterialDetailDialog from './components/MaterialDetailDialog.vue'
 
 // 导入常量和工具函数
 import { 
-  TAB_CONFIG, 
   PAGINATION_CONFIG 
 } from './constants.js'
 import {
   generateDynamicColumns,
   getMockData,
-  createTabChangeHandler,
   createExportHandler,
   createImportHandler,
-  createViewDetailHandler,
-  createLinkProjectHandler,
   filterData,
   paginateData
 } from './utils.js'
@@ -124,15 +99,8 @@ import {
 const router = useRouter()
 
 // 响应式数据
-const activeTab = ref('overview') // 默认显示项目数据总览
 const searchKeyword = ref('')
 const tableLoading = ref(false)
-const detailDialogVisible = ref(false)
-const linkDialogVisible = ref(false)
-const materialDetailDialogVisible = ref(false)
-const selectedProjectData = ref(null)
-const selectedContractData = ref(null)
-const currentMaterialType = ref('owner')
 
 // 原始数据存储
 const rawData = ref({})
@@ -145,11 +113,11 @@ const pagination = ref({
 
 // 计算属性
 const currentColumns = computed(() => {
-  return generateDynamicColumns(activeTab.value)
+  return generateDynamicColumns('overview')
 })
 
 const currentRawData = computed(() => {
-  return rawData.value[activeTab.value] || []
+  return rawData.value.overview || []
 })
 
 const filteredData = computed(() => {
@@ -166,22 +134,22 @@ const paginatedData = computed(() => {
 })
 
 // 方法定义
-const loadTabData = async (tabName) => {
+const loadProjectData = async () => {
   tableLoading.value = true
   
   try {
     // 模拟异步数据加载
     await new Promise(resolve => setTimeout(resolve, 300))
     
-    // 获取Mock数据
-    rawData.value[tabName] = getMockData(tabName)
+    // 获取Mock数据 - 只加载项目总览数据
+    rawData.value.overview = getMockData('overview')
     
     // 重置分页
     pagination.value.currentPage = 1
     
   } catch (error) {
-    ElMessage.error('数据加载失败')
-    console.error('加载数据失败:', error)
+    ElMessage.error('项目数据加载失败')
+    console.error('加载项目数据失败:', error)
   } finally {
     tableLoading.value = false
   }
@@ -192,57 +160,23 @@ const goBack = () => {
 }
 
 // 事件处理函数
-const onTabChange = createTabChangeHandler(loadTabData)
-
 const onSearchChange = () => {
   pagination.value.currentPage = 1
 }
 
+const handleExport = createExportHandler('overview', filteredData.value)
 
-const handleExport = createExportHandler(activeTab.value, filteredData.value)
-
-const handleImport = createImportHandler(activeTab.value, () => {
-  loadTabData(activeTab.value)
+const handleImport = createImportHandler('overview', () => {
+  loadProjectData()
 })
 
-const onViewDetail = createViewDetailHandler((rowData) => {
-  selectedProjectData.value = rowData
-  
-  // 根据当前tab决定打开哪个对话框
-  if (activeTab.value === 'ownerMaterial') {
-    currentMaterialType.value = 'owner'
-    materialDetailDialogVisible.value = true
-  } else if (activeTab.value === 'supplierMaterial') {
-    currentMaterialType.value = 'supplier'
-    materialDetailDialogVisible.value = true
-  } else {
-    // 项目总览和合同数据使用原来的详情对话框
-    detailDialogVisible.value = true
-  }
-})
-
-const onLinkProject = createLinkProjectHandler(async (rowData) => {
-  // 检查合同是否已关联
-  if (rowData.linkStatus === '已关联') {
-    try {
-      await ElMessageBox.confirm(
-        '该合同已关联项目，是否确认修改关联信息？',
-        '确认操作',
-        {
-          confirmButtonText: '确认修改',
-          cancelButtonText: '取消',
-          type: 'warning',
-          center: true
-        }
-      )
-    } catch {
-      return // 用户取消操作
-    }
-  }
-  
-  selectedContractData.value = rowData
-  linkDialogVisible.value = true
-})
+const onViewDetail = (rowData) => {
+  // 跳转到项目详情页面，而不是打开弹窗
+  router.push({
+    name: 'project-detail',
+    params: { projectId: rowData.projectId }
+  })
+}
 
 const onPageChange = (page) => {
   pagination.value.currentPage = page
@@ -253,27 +187,9 @@ const onPageSizeChange = (size) => {
   pagination.value.currentPage = 1
 }
 
-const onLinkConfirm = (linkData) => {
-  // 处理关联确认逻辑
-  console.log('关联的数据:', linkData)
-  ElMessage.success('物资数据关联成功')
-  linkDialogVisible.value = false
-  
-  // 刷新当前tab数据
-  loadTabData(activeTab.value)
-}
-
-// 监听activeTab变化，更新导入导出函数
-watch(activeTab, (newTab) => {
-  // 如果数据还没加载，则加载数据
-  if (!rawData.value[newTab]) {
-    loadTabData(newTab)
-  }
-})
-
 // 页面初始化
 onMounted(() => {
-  loadTabData(activeTab.value)
+  loadProjectData()
 })
 </script>
 
@@ -367,7 +283,7 @@ onMounted(() => {
   box-shadow: 0 12px 25px rgba(79, 70, 229, 0.08);
 }
 
-.tabs-section {
+.project-list-section {
   background: var(--card-background);
   border-radius: 12px;
   border: 1px solid var(--border-color);
@@ -376,67 +292,38 @@ onMounted(() => {
   flex: 1;
   display: flex;
   flex-direction: column;
+  padding: 24px;
 }
 
-/* Tab样式自定义 */
-.data-management-tabs {
-  background: var(--card-background);
-  flex: 1;
+.section-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border-color);
 }
 
-:deep(.el-tabs__header) {
-  margin: 0;
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.01));
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
-}
-
-:deep(.el-tabs__nav-wrap) {
-  padding: 0 30px;
-}
-
-:deep(.el-tabs__item) {
-  color: var(--text-light);
-  font-weight: 600;
-  font-size: 15px;
-  padding: 18px 24px;
-  transition: all 0.3s ease;
-  border-radius: 8px 8px 0 0;
-  margin-right: 4px;
-}
-
-:deep(.el-tabs__item:hover) {
-  color: var(--accent-color);
-  background: rgba(79, 70, 229, 0.05);
-}
-
-:deep(.el-tabs__item.is-active) {
-  color: var(--accent-color);
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
   font-weight: 700;
-  background: var(--card-background);
+  color: var(--text-dark);
+  margin: 0;
 }
 
-:deep(.el-tabs__active-bar) {
-  background: var(--accent-color);
-  height: 3px;
-  border-radius: 2px;
+.section-icon {
+  font-size: 24px;
 }
 
-:deep(.el-tabs__content) {
-  padding: 0;
-  flex: 1;
+.section-actions {
   display: flex;
-  flex-direction: column;
+  gap: 12px;
+  align-items: center;
 }
 
-:deep(.el-tab-pane) {
-  padding: 30px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
 
 /* 搜索输入框样式 */
 :deep(.el-input) {
