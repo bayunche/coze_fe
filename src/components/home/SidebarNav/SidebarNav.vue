@@ -210,6 +210,51 @@ const selectFunction = (key) => {
   padding: 20px 0;
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* 美化滚动条 */
+.functions-section::-webkit-scrollbar {
+  width: 6px;
+}
+
+.functions-section::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.functions-section::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+  transition: all 0.3s ease;
+}
+
+.functions-section::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* 暗黑模式下的滚动条 */
+[data-theme="dark"] .functions-section::-webkit-scrollbar-thumb,
+[data-theme="tech-blue"] .functions-section::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .functions-section::-webkit-scrollbar-thumb:hover,
+[data-theme="tech-blue"] .functions-section::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Firefox 滚动条样式 */
+@supports (scrollbar-width: thin) {
+  .functions-section {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+  }
+  
+  [data-theme="dark"] .functions-section,
+  [data-theme="tech-blue"] .functions-section {
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  }
 }
 
 .section-title {
@@ -315,7 +360,7 @@ const selectFunction = (key) => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .workflow-count {

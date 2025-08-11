@@ -1,120 +1,119 @@
 <template>
-  <div class="smart-brain-page">
-    <!-- 顶部信息区 -->
-    <div class="page-header">
-      <div class="header-left">
-        <h1 class="page-title">🧠 智能大脑</h1>
-      </div>
-      <div class="header-right">
-        <el-tag :type="userRoleTag.type" size="large">
-          {{ userRoleTag.text }}
-        </el-tag>
-        <!-- 临时权限切换按钮 -->
-        <el-button @click="toggleUserRole" size="small" type="primary" style="margin-left: 12px">
-          切换角色
-        </el-button>
-        <!-- 返回首页按钮 -->
-        <el-button @click="goToHome" size="small" style="margin-left: 12px">
-          返回首页
-        </el-button>
-      </div>
-    </div>
-
-    <!-- 总览数据卡片区 -->
-    <div class="overview-cards">
-      <el-card v-for="(config, key) in OVERVIEW_CARD_CONFIG" :key="key" class="overview-card">
-        <div class="card-content">
-          <div class="card-icon">{{ config.icon }}</div>
-          <div class="card-info">
-            <div class="card-title">{{ config.title }}</div>
-            <div class="card-value">{{ overviewData[config.key] }}</div>
-          </div>
+  <div class="page-container">
+    <div class="smart-brain-page">
+      <!-- 顶部信息区 -->
+      <div class="page-header">
+        <div class="header-left">
+          <h1 class="page-title">🧠 智能大脑</h1>
         </div>
-      </el-card>
-    </div>
+        <div class="header-right">
+          <el-tag :type="userRoleTag.type" size="large">
+            {{ userRoleTag.text }}
+          </el-tag>
+          <!-- 临时权限切换按钮 -->
+          <el-button @click="toggleUserRole" size="small" type="primary" style="margin-left: 12px">
+            切换角色
+          </el-button>
+          <!-- 返回首页按钮 -->
+          <el-button @click="goToHome" size="small" style="margin-left: 12px"> 返回首页 </el-button>
+        </div>
+      </div>
 
-    <!-- 智能体监控区 -->
-    <div class="agents-section">
-      <h2 class="section-title">智能体监控</h2>
-      <div class="agents-grid">
-        <el-card
-          v-for="agent in smartAgents"
-          :key="agent.id"
-          class="agent-card"
-          shadow="hover"
-          @click="openAgentDialog(agent)"
-        >
-          <template #header>
-            <div class="agent-header">
-              <span class="agent-name">{{ agent.name }}</span>
-              <el-tag type="success" size="small">在线</el-tag>
-            </div>
-          </template>
-
-          <div class="agent-stats">
-            <div class="stat-item">
-              <span class="stat-value">{{ agent.tasks.completed }}</span>
-              <span class="stat-label">已完成</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-value">{{ agent.tasks.inProgress }}</span>
-              <span class="stat-label">进行中</span>
-            </div>
-            <div class="stat-item">
-              <span class="stat-value">{{ agent.tasks.total }}</span>
-              <span class="stat-label">总任务</span>
+      <!-- 总览数据卡片区 -->
+      <div class="overview-cards">
+        <el-card v-for="(config, key) in OVERVIEW_CARD_CONFIG" :key="key" class="overview-card">
+          <div class="card-content">
+            <div class="card-icon">{{ config.icon }}</div>
+            <div class="card-info">
+              <div class="card-title">{{ config.title }}</div>
+              <div class="card-value">{{ overviewData[config.key] }}</div>
             </div>
           </div>
         </el-card>
       </div>
-    </div>
 
-    <!-- 管理功能入口区（仅管理员可见） -->
-    <div v-if="authStore.isAdmin" class="management-section">
-      <h2 class="section-title">管理功能</h2>
-      <div class="management-grid">
-        <el-card
-          v-for="(feature, key) in availableFeatures"
-          :key="key"
-          class="management-card"
-          shadow="hover"
-          @click="navigateToFeature(feature.route)"
-        >
-          <div class="management-content">
-            <div class="management-icon">{{ feature.icon }}</div>
-            <div class="management-info">
-              <div class="management-title">{{ feature.title }}</div>
-              <div class="management-desc">{{ feature.description }}</div>
+      <!-- 智能体监控区 -->
+      <div class="agents-section">
+        <h2 class="section-title">智能体监控</h2>
+        <div class="agents-grid">
+          <el-card
+            v-for="agent in smartAgents"
+            :key="agent.id"
+            class="agent-card"
+            shadow="hover"
+            @click="openAgentDialog(agent)"
+          >
+            <template #header>
+              <div class="agent-header">
+                <span class="agent-name">{{ agent.name }}</span>
+                <el-tag type="success" size="small">在线</el-tag>
+              </div>
+            </template>
+
+            <div class="agent-stats">
+              <div class="stat-item">
+                <span class="stat-value">{{ agent.tasks.completed }}</span>
+                <span class="stat-label">已完成</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ agent.tasks.inProgress }}</span>
+                <span class="stat-label">进行中</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-value">{{ agent.tasks.total }}</span>
+                <span class="stat-label">总任务</span>
+              </div>
             </div>
-          </div>
-        </el-card>
+          </el-card>
+        </div>
       </div>
-    </div>
 
-    <!-- 数据管理区（所有用户可见） -->
-    <div class="data-management-section">
-      <h2 class="section-title">数据管理</h2>
-      <div class="data-management-grid">
-        <el-card
-          v-for="(feature, key) in availableDataFeatures"
-          :key="key"
-          class="data-management-card"
-          shadow="hover"
-          @click="navigateToFeature(feature.route)"
-        >
-          <div class="data-management-content">
-            <div class="data-management-icon">{{ feature.icon }}</div>
-            <div class="data-management-info">
-              <div class="data-management-title">{{ feature.title }}</div>
-              <div class="data-management-desc">{{ feature.description }}</div>
+      <!-- 管理功能入口区（仅管理员可见） -->
+      <div v-if="authStore.isAdmin" class="management-section">
+        <h2 class="section-title">管理功能</h2>
+        <div class="management-grid">
+          <el-card
+            v-for="(feature, key) in availableFeatures"
+            :key="key"
+            class="management-card"
+            shadow="hover"
+            @click="navigateToFeature(feature.route)"
+          >
+            <div class="management-content">
+              <div class="management-icon">{{ feature.icon }}</div>
+              <div class="management-info">
+                <div class="management-title">{{ feature.title }}</div>
+                <div class="management-desc">{{ feature.description }}</div>
+              </div>
             </div>
-          </div>
-        </el-card>
+          </el-card>
+        </div>
       </div>
-    </div>
 
-    <!-- 历史操作记录区 -->
-    <!-- <div class="history-section">
+      <!-- 数据管理区（所有用户可见） -->
+      <div class="data-management-section">
+        <h2 class="section-title">数据管理</h2>
+        <div class="data-management-grid">
+          <el-card
+            v-for="(feature, key) in availableDataFeatures"
+            :key="key"
+            class="data-management-card"
+            shadow="hover"
+            @click="navigateToFeature(feature.route)"
+          >
+            <div class="data-management-content">
+              <div class="data-management-icon">{{ feature.icon }}</div>
+              <div class="data-management-info">
+                <div class="data-management-title">{{ feature.title }}</div>
+                <div class="data-management-desc">{{ feature.description }}</div>
+              </div>
+            </div>
+          </el-card>
+        </div>
+      </div>
+
+      <!-- 历史操作记录区 -->
+      <!-- <div class="history-section">
       <h2 class="section-title">历史操作记录</h2>
       <el-table :data="executionHistory" style="width: 100%">
         <el-table-column 
@@ -138,22 +137,23 @@
       </el-table>
     </div> -->
 
-    <!-- 任务详情弹窗 -->
-    <TaskParsingResultDialog
-      v-if="dialogStates.isContractParsing"
-      v-model:show="dialogStates.taskParsingResultDialogVisible"
-      agent-id="contractParsing"
-    />
-    <MaterialParsingResultDialog
-      v-if="dialogStates.isSupplierMaterialParsing"
-      v-model:show="dialogStates.supplierMaterialParsingResultDialogVisible"
-      agent-id="supplierMaterialParsing"
-    />
-    <OwnerMaterialParsingResultDialog
-      v-if="dialogStates.isOwnerMaterialParsing"
-      v-model:show="dialogStates.ownerMaterialParsingResultDialogVisible"
-      agent-id="ownerSuppliedMaterialParsing"
-    />
+      <!-- 任务详情弹窗 -->
+      <TaskParsingResultDialog
+        v-if="dialogStates.isContractParsing"
+        v-model:show="dialogStates.taskParsingResultDialogVisible"
+        agent-id="contractParsing"
+      />
+      <MaterialParsingResultDialog
+        v-if="dialogStates.isSupplierMaterialParsing"
+        v-model:show="dialogStates.supplierMaterialParsingResultDialogVisible"
+        agent-id="supplierMaterialParsing"
+      />
+      <OwnerMaterialParsingResultDialog
+        v-if="dialogStates.isOwnerMaterialParsing"
+        v-model:show="dialogStates.ownerMaterialParsingResultDialogVisible"
+        agent-id="ownerSuppliedMaterialParsing"
+      />
+    </div>
   </div>
 </template>
 
@@ -586,6 +586,12 @@ onMounted(() => {
 
 :deep(.el-card__body) {
   background: var(--theme-bg-primary);
+}
+.page-container {
+  background: var(--theme-bg-primary);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
 }
 
 /* 响应式设计 */

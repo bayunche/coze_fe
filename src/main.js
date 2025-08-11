@@ -5,6 +5,7 @@ import 'element-plus/dist/index.css'
 
 import '@/assets/style/style.css'
 import '@/styles/themes.css'
+import '@/styles/element-plus-theme.css'
 
 const pinia = createPinia()
 pinia.use(createPersistedState())

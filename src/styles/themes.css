@@ -7,6 +7,13 @@
   --theme-primary-light: #409eff;
   --theme-primary-lighter: #79bbff;
   --theme-primary-dark: #0d47a1;
+  
+  /* RGB 值 (用于透明度) */
+  --theme-primary-rgb: 22, 93, 255;
+  --theme-success-rgb: 16, 185, 129;
+  --theme-warning-rgb: 245, 158, 11;
+  --theme-error-rgb: 239, 68, 68;
+  --theme-info-rgb: 59, 130, 246;
 
   /* Element Plus 变量覆盖 */
   --el-color-primary: #165dff;
@@ -127,6 +134,13 @@
   --theme-primary-light: #66b3ff;
   --theme-primary-lighter: #93c5ff;
   --theme-primary-dark: #2e7df7;
+  
+  /* RGB 值 (用于透明度) */
+  --theme-primary-rgb: 64, 158, 255;
+  --theme-success-rgb: 16, 185, 129;
+  --theme-warning-rgb: 245, 158, 11;
+  --theme-error-rgb: 239, 68, 68;
+  --theme-info-rgb: 59, 130, 246;
 
   /* Element Plus 主色调 */
   --el-color-primary: #409eff;
@@ -240,6 +254,13 @@
   --theme-primary-light: #33ddff;
   --theme-primary-lighter: #66e6ff;
   --theme-primary-dark: #00a8cc;
+  
+  /* RGB 值 (用于透明度) */
+  --theme-primary-rgb: 0, 212, 255;
+  --theme-success-rgb: 0, 255, 136;
+  --theme-warning-rgb: 255, 170, 0;
+  --theme-error-rgb: 255, 68, 102;
+  --theme-info-rgb: 0, 170, 255;
 
   /* Element Plus 主色调 */
   --el-color-primary: #00d4ff;

@@ -5,9 +5,10 @@
       <!-- 侧边栏 -->
       <el-aside 
         :width="getSidebarWidth(isSidebarOpen)" 
-        :class="LAYOUT_CLASSES.SIDEBAR_ASIDE"
+        :class="[LAYOUT_CLASSES.SIDEBAR_ASIDE, { 'sidebar-hidden': !isSidebarOpen }]"
       >
         <SidebarNav
+          v-show="isSidebarOpen"
           :functions="functions"
           :active-function="activeFunction"
           @select="customFunctionSelectHandler"
@@ -98,8 +99,27 @@ const customFunctionSelectHandler = createCustomFunctionSelectHandler(
 }
 
 .sidebar-aside {
-  transition: width 0.3s ease;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  overflow: hidden;
+  will-change: width;
+}
+
+.sidebar-aside.sidebar-hidden {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* 确保隐藏状态下不会出现滚动条 */
+:deep(.el-aside.sidebar-hidden) {
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.sidebar-aside:not(.sidebar-hidden) {
+  min-height: 100vh;
 }
 
 .right-panel {
@@ -139,9 +159,53 @@ const customFunctionSelectHandler = createCustomFunctionSelectHandler(
 .toggle-sidebar-button {
   position: fixed;
   bottom: 20px;
-  transition: left 0.3s ease;
+  transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
   box-shadow: var(--theme-shadow-lg);
+  backdrop-filter: blur(10px);
+  /* 移除自定义背景色，保持Element Plus的primary样式 */
+}
+
+/* 确保按钮保持primary主题色 */
+.toggle-sidebar-button {
+  background: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+  color: white !important;
+}
+
+/* 悬停效果 */
+.toggle-sidebar-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  background: var(--theme-primary-light) !important;
+  border-color: var(--theme-primary-light) !important;
+}
+
+/* 激活状态 */
+.toggle-sidebar-button:active {
+  background: var(--theme-primary-dark) !important;
+  border-color: var(--theme-primary-dark) !important;
+  transform: scale(0.98);
+}
+
+/* 暗黑模式下的特殊处理 */
+[data-theme="dark"] .toggle-sidebar-button,
+[data-theme="tech-blue"] .toggle-sidebar-button {
+  background: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+  color: white !important;
+  box-shadow: 
+    var(--theme-shadow-lg),
+    0 0 20px rgba(64, 158, 255, 0.3);
+}
+
+[data-theme="dark"] .toggle-sidebar-button:hover,
+[data-theme="tech-blue"] .toggle-sidebar-button:hover {
+  background: var(--theme-primary-light) !important;
+  border-color: var(--theme-primary-light) !important;
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.15),
+    0 0 30px rgba(64, 158, 255, 0.4);
 }
 
 :deep(.el-input__inner) {

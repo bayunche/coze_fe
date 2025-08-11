@@ -2,7 +2,7 @@ import request from '@/utils/request.js'
 
 class MaterialService {
   // ==================== 基础物资管理API ====================
-  
+
   /**
    * 分页搜索基础物资信息
    * @param {Object} params - 搜索参数
@@ -19,7 +19,7 @@ class MaterialService {
       if (params.page !== undefined) queryParams.append('page', params.page)
       if (params.size !== undefined) queryParams.append('size', params.size)
       if (params.sort) queryParams.append('sort', params.sort)
-      
+
       const response = await request.get(`/materials/base-info/search?${queryParams}`)
       return response
     } catch (error) {
@@ -109,7 +109,7 @@ class MaterialService {
     try {
       const queryParams = new URLSearchParams()
       if (keyword) queryParams.append('keyword', keyword)
-      
+
       const response = await request.get(`/materials/base-info/statistics?${queryParams}`)
       return response
     } catch (error) {
@@ -134,7 +134,7 @@ class MaterialService {
       if (params.baseInfoId) queryParams.append('baseInfoId', params.baseInfoId)
       if (params.page !== undefined) queryParams.append('page', params.page)
       if (params.size !== undefined) queryParams.append('size', params.size)
-      
+
       const response = await request.get(`/backend-api/materials/priceinfo/page?${queryParams}`)
       return response
     } catch (error) {
@@ -153,7 +153,7 @@ class MaterialService {
    */
   async createPrice(data) {
     try {
-      const response = await request.post('/backend-api/materials/priceinfo', data)
+      const response = await request.post('/backend-api/materials/priceinfo/add', data)
       return response
     } catch (error) {
       console.error('新增物资价格失败:', error)
@@ -171,7 +171,7 @@ class MaterialService {
    */
   async updatePrice(data) {
     try {
-      const response = await request.put('/backend-api/materials/priceinfo', data)
+      const response = await request.put('/backend-api/materials/priceinfo/edit', data)
       return response
     } catch (error) {
       console.error('修改物资价格失败:', error)
@@ -186,7 +186,9 @@ class MaterialService {
    */
   async deletePrices(ids) {
     try {
-      const response = await request.delete('/backend-api/materials/priceinfo', { data: ids })
+      const response = await request.delete('/backend-api/materials/priceinfo/delete', {
+        data: ids
+      })
       return response
     } catch (error) {
       console.error('批量删除物资价格失败:', error)
@@ -201,7 +203,9 @@ class MaterialService {
    */
   async getPriceStatistics(baseInfoId) {
     try {
-      const response = await request.get(`/backend-api/materials/priceinfo/statistics/${baseInfoId}`)
+      const response = await request.get(
+        `/backend-api/materials/priceinfo/statistics/${baseInfoId}`
+      )
       return response
     } catch (error) {
       console.error('获取物资价格统计信息失败:', error)

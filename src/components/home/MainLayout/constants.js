@@ -7,6 +7,10 @@ export const LAYOUT_CONFIG = {
   TOGGLE_BUTTON_POSITION: {
     OPEN: '290px',
     CLOSED: '20px'
+  },
+  SIDEBAR_TRANSITION: {
+    DURATION: '0.3s',
+    TIMING_FUNCTION: 'cubic-bezier(0.4, 0, 0.2, 1)'
   }
 }
 
