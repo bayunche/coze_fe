@@ -594,21 +594,21 @@ watch(
 
 /* Element Plus Dialog 样式覆盖 */
 :deep(.el-dialog) {
-  background: var(--card-background);
+  background: var(--theme-bg-card);
   border-radius: 16px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 20px 40px rgba(79, 70, 229, 0.1);
+  border: 1px solid var(--theme-border-light);
+  box-shadow: var(--theme-shadow-heavy);
 }
 
 :deep(.el-dialog__header) {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.01));
-  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb), 0.05), rgba(var(--theme-primary-rgb), 0.02));
+  border-bottom: 1px solid var(--theme-border-light);
   padding: 24px 30px;
   border-radius: 16px 16px 0 0;
 }
 
 :deep(.el-dialog__title) {
-  color: var(--accent-color);
+  color: var(--theme-primary);
   font-weight: 700;
   font-size: 20px;
   letter-spacing: 0.5px;
@@ -616,12 +616,12 @@ watch(
 
 :deep(.el-dialog__body) {
   padding: 30px;
-  background: var(--background-light);
+  background: var(--theme-bg-secondary);
 }
 
 :deep(.el-dialog__footer) {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.01), rgba(79, 70, 229, 0.005));
-  border-top: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb), 0.02), rgba(var(--theme-primary-rgb), 0.01));
+  border-top: 1px solid var(--theme-border-light);
   padding: 20px 30px;
   border-radius: 0 0 16px 16px;
 }

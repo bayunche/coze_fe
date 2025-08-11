@@ -7,15 +7,9 @@
         <p class="page-subtitle">管理项目相关的数据信息</p>
       </div>
       <div class="header-right">
-        <el-button @click="handleImport" size="small" type="success">
-          导入数据
-        </el-button>
-        <el-button @click="handleExport" size="small" type="primary">
-          导出数据
-        </el-button>
-        <el-button @click="goBack" size="small">
-          返回
-        </el-button>
+        <el-button @click="handleImport" size="small" type="success"> 导入数据 </el-button>
+        <el-button @click="handleExport" size="small" type="primary"> 导出数据 </el-button>
+        <el-button @click="goBack" size="small"> 返回 </el-button>
       </div>
     </div>
 
@@ -32,7 +26,6 @@
           <el-icon><Search /></el-icon>
         </template>
       </el-input>
-      
     </div>
 
     <!-- 项目列表区域 -->
@@ -43,15 +36,11 @@
           项目数据总览
         </h2>
         <div class="section-actions">
-          <el-button @click="handleImport" size="small" type="success">
-            导入数据
-          </el-button>
-          <el-button @click="handleExport" size="small" type="primary">
-            导出数据
-          </el-button>
+          <el-button @click="handleImport" size="small" type="success"> 导入数据 </el-button>
+          <el-button @click="handleExport" size="small" type="primary"> 导出数据 </el-button>
         </div>
       </div>
-      
+
       <!-- 动态表格组件 -->
       <DynamicTable
         :table-data="paginatedData"
@@ -64,13 +53,11 @@
         :page-size="pagination.pageSize"
         :page-sizes="PAGINATION_CONFIG.pageSizes"
         :total-count="filteredData.length"
-        height="500px"
         @view-detail="onViewDetail"
         @page-change="onPageChange"
         @page-size-change="onPageSizeChange"
       />
     </div>
-
   </div>
 </template>
 
@@ -84,9 +71,7 @@ import { ElMessage } from 'element-plus'
 import DynamicTable from './components/DynamicTable.vue'
 
 // 导入常量和工具函数
-import { 
-  PAGINATION_CONFIG 
-} from './constants.js'
+import { PAGINATION_CONFIG } from './constants.js'
 import {
   generateDynamicColumns,
   getMockData,
@@ -126,8 +111,8 @@ const filteredData = computed(() => {
 
 const paginatedData = computed(() => {
   const result = paginateData(
-    filteredData.value, 
-    pagination.value.currentPage, 
+    filteredData.value,
+    pagination.value.currentPage,
     pagination.value.pageSize
   )
   return result.data
@@ -136,17 +121,16 @@ const paginatedData = computed(() => {
 // 方法定义
 const loadProjectData = async () => {
   tableLoading.value = true
-  
+
   try {
     // 模拟异步数据加载
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
     // 获取Mock数据 - 只加载项目总览数据
     rawData.value.overview = getMockData('overview')
-    
+
     // 重置分页
     pagination.value.currentPage = 1
-    
   } catch (error) {
     ElMessage.error('项目数据加载失败')
     console.error('加载项目数据失败:', error)
@@ -164,18 +148,12 @@ const onSearchChange = () => {
   pagination.value.currentPage = 1
 }
 
-const handleExport = createExportHandler('overview', filteredData.value)
+const handleExport = createExportHandler()
 
-const handleImport = createImportHandler('overview', () => {
-  loadProjectData()
-})
+const handleImport = createImportHandler()
 
-const onViewDetail = (rowData) => {
-  // 跳转到项目详情页面，而不是打开弹窗
-  router.push({
-    name: 'project-detail',
-    params: { projectId: rowData.projectId }
-  })
+const onViewDetail = () => {
+  ElMessage.info('该功能正在开发中，请耐心等候')
 }
 
 const onPageChange = (page) => {
@@ -189,35 +167,22 @@ const onPageSizeChange = (size) => {
 
 // 页面初始化
 onMounted(() => {
+  // 显示原型页面提示
+  ElMessage.warning('该功能尚未开发完成，现为原型页面')
   loadProjectData()
 })
 </script>
 
 <style scoped>
 .project-data-management-page {
-  /* 采用与OwnerMaterialAlignPage相同的设计变量 */
-  --primary-color: #4f46e5; /* 靛蓝色 */
-  --secondary-color: #64748b; /* 石板灰 */
-  --accent-color: #3730a3; /* 深靛蓝主题色 */
-  --success-color: #0d9488; /* 青蓝绿色 */
-  --warning-color: #dc6803; /* 深橙色 */
-  --danger-color: #dc2626; /* 深红色 */
-  --info-color: #0891b2; /* 青色 */
-  --background-light: #f8fafc; /* 极浅灰蓝背景 */
-  --card-background: #ffffff; /* 纯白卡片背景 */
-  --border-color: rgba(79, 70, 229, 0.08); /* 柔和边框 */
-  --text-dark: #1e293b; /* 深色文字 */
-  --text-light: #64748b; /* 浅色文字 */
-  --shadow-color: rgba(79, 70, 229, 0.06); /* 柔和阴影 */
-
   padding: 32px;
-  background-color: var(--background-light);
-  min-height: 100vh;
+  background-color: var(--theme-bg-secondary);
+  height: 100vh;
   display: flex;
   flex-direction: column;
   font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-  color: var(--text-dark);
-  overflow-x: hidden;
+  color: var(--theme-text-primary);
+  overflow: hidden;
 }
 
 .page-header {
@@ -227,16 +192,17 @@ onMounted(() => {
   margin-bottom: 32px;
   padding-bottom: 20px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  flex-shrink: 0;
 }
 
 .page-title {
   margin: 0;
   font-size: 28px;
-  color: var(--accent-color);
+  color: var(--theme-primary);
   font-weight: 700;
   position: relative;
   padding-left: 16px;
-  text-shadow: 0 0 5px var(--shadow-color);
+  text-shadow: 0 0 5px rgba(var(--theme-primary-rgb), 0.3);
 }
 
 .page-title::before {
@@ -247,14 +213,14 @@ onMounted(() => {
   transform: translateY(-50%);
   height: 28px;
   width: 6px;
-  background: var(--accent-color);
+  background: var(--theme-primary);
   border-radius: 3px;
-  box-shadow: 0 0 6px var(--shadow-color);
+  box-shadow: 0 0 6px rgba(var(--theme-primary-rgb), 0.4);
 }
 
 .page-subtitle {
   font-size: 16px;
-  color: var(--text-light);
+  color: var(--theme-text-secondary);
   margin: 8px 0 0 16px;
   font-weight: 500;
   letter-spacing: 0.5px;
@@ -271,24 +237,25 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 24px;
   padding: 20px 30px;
-  background: var(--card-background);
+  background: var(--theme-bg-card);
   border-radius: 12px;
-  box-shadow: 0 8px 20px var(--shadow-color);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--theme-shadow-light);
+  border: 1px solid var(--theme-border-light);
   transition: all 0.3s ease-in-out;
+  flex-shrink: 0;
 }
 
 .filter-section:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 25px rgba(79, 70, 229, 0.08);
+  box-shadow: var(--theme-shadow-medium);
 }
 
 .project-list-section {
-  background: var(--card-background);
+  background: var(--theme-bg-card);
   border-radius: 12px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--theme-border-light);
   overflow: hidden;
-  box-shadow: 0 8px 20px var(--shadow-color);
+  box-shadow: var(--theme-shadow-light);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -301,7 +268,7 @@ onMounted(() => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--theme-border-light);
 }
 
 .section-title {
@@ -310,7 +277,7 @@ onMounted(() => {
   gap: 8px;
   font-size: 20px;
   font-weight: 700;
-  color: var(--text-dark);
+  color: var(--theme-text-primary);
   margin: 0;
 }
 
@@ -324,39 +291,38 @@ onMounted(() => {
   align-items: center;
 }
 
-
 /* 搜索输入框样式 */
 :deep(.el-input) {
-  --el-input-border-color: var(--border-color);
-  --el-input-focus-border-color: var(--accent-color);
+  --el-input-border-color: var(--theme-border-light);
+  --el-input-focus-border-color: var(--theme-primary);
 }
 
 :deep(.el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 3px rgba(79, 70, 229, 0.03) inset;
-  border: 1px solid var(--border-color);
+  background: var(--theme-bg-card);
+  box-shadow: var(--theme-shadow-inset);
+  border: 1px solid var(--theme-border-light);
   border-radius: 8px;
   transition: all 0.3s ease;
 }
 
 :deep(.el-input__wrapper:hover) {
-  border-color: var(--accent-color);
-  box-shadow: 0 0 8px rgba(79, 70, 229, 0.08);
+  border-color: var(--theme-primary-light);
+  box-shadow: 0 0 8px rgba(var(--theme-primary-rgb), 0.15);
 }
 
 :deep(.el-input__inner) {
-  color: var(--text-dark);
+  color: var(--theme-text-primary);
   font-weight: 500;
 }
 
 /* 选择器样式 */
 :deep(.el-select) {
-  --el-select-border-color-hover: var(--accent-color);
+  --el-select-border-color-hover: var(--theme-primary);
 }
 
 :deep(.el-select .el-input__wrapper) {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--border-color);
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border-light);
 }
 
 /* 按钮样式优化 */
@@ -365,45 +331,45 @@ onMounted(() => {
   font-weight: 600;
   transition: all 0.3s ease;
   letter-spacing: 0.5px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--theme-shadow-light);
 }
 
 :deep(.el-button:hover) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--theme-shadow-medium);
 }
 
 :deep(.el-button--primary) {
-  background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+  background: linear-gradient(135deg, var(--theme-primary-dark), var(--theme-primary));
   border: none;
 }
 
 :deep(.el-button--success) {
-  background: linear-gradient(135deg, var(--success-color), #059669);
+  background: linear-gradient(135deg, var(--theme-success-dark), var(--theme-success));
   border: none;
 }
 
 /* Element Plus 下拉菜单样式 */
 :deep(.el-select-dropdown) {
-  background: var(--card-background);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 8px 20px var(--shadow-color);
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border-light);
+  box-shadow: var(--theme-shadow-medium);
   border-radius: 8px;
 }
 
 :deep(.el-select-dropdown .el-select-dropdown__item) {
-  color: var(--text-dark);
+  color: var(--theme-text-primary);
   font-weight: 500;
 }
 
 :deep(.el-select-dropdown .el-select-dropdown__item.hover) {
-  background: rgba(79, 70, 229, 0.05);
-  color: var(--accent-color);
+  background: rgba(var(--theme-primary-rgb), 0.08);
+  color: var(--theme-primary);
 }
 
 :deep(.el-select-dropdown .el-select-dropdown__item.selected) {
-  color: var(--accent-color);
-  background: rgba(79, 70, 229, 0.08);
+  color: var(--theme-primary);
+  background: rgba(var(--theme-primary-rgb), 0.12);
   font-weight: 600;
 }
 
@@ -441,19 +407,6 @@ onMounted(() => {
   .filter-section .el-select {
     width: 100% !important;
   }
-
-  :deep(.el-tabs__nav-wrap) {
-    padding: 0 20px;
-  }
-
-  :deep(.el-tabs__item) {
-    padding: 14px 18px;
-    font-size: 14px;
-  }
-
-  :deep(.el-tab-pane) {
-    padding: 20px 16px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -480,19 +433,6 @@ onMounted(() => {
 
   .filter-section {
     padding: 12px 16px;
-  }
-
-  :deep(.el-tabs__nav-wrap) {
-    padding: 0 12px;
-  }
-
-  :deep(.el-tabs__item) {
-    padding: 12px 14px;
-    font-size: 13px;
-  }
-
-  :deep(.el-tab-pane) {
-    padding: 16px 12px;
   }
 }
 </style>

@@ -272,20 +272,11 @@ const onPageSizeChange = (size) => {
 
 <style scoped>
 .dynamic-table {
-  /* 继承父级的设计变量 */
-  --primary-color: #4f46e5;
-  --accent-color: #3730a3;
-  --card-background: #ffffff;
-  --border-color: rgba(79, 70, 229, 0.08);
-  --text-dark: #1e293b;
-  --text-light: #64748b;
-  --shadow-color: rgba(79, 70, 229, 0.06);
-
-  background: var(--card-background);
+  background: var(--theme-bg-card);
   border-radius: 12px;
   overflow: auto;
-  box-shadow: 0 8px 20px var(--shadow-color);
-  border: 1px solid var(--border-color);
+  box-shadow: var(--theme-shadow-light);
+  border: 1px solid var(--theme-border-light);
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -302,25 +293,26 @@ const onPageSizeChange = (size) => {
   padding: 20px 30px;
   display: flex;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.005), rgba(79, 70, 229, 0.002));
-  border-top: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb), 0.01), rgba(var(--theme-primary-rgb), 0.005));
+  border-top: 1px solid var(--theme-border-light);
   flex-shrink: 0;
 }
 
-/* Element Plus 表格样式覆盖 - 采用与OwnerMaterialAlignPage相同的样式 */
+/* Element Plus 表格样式覆盖 - 适配主题系统 */
 :deep(.el-table) {
-  background: var(--card-background);
-  color: var(--text-dark);
+  background: var(--theme-bg-card);
+  color: var(--theme-text-primary);
   border: none;
-  height: 100%;
+  flex: 1;
+  overflow: auto;
 }
 
 :deep(.el-table__header-wrapper th) {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.03), rgba(79, 70, 229, 0.01));
-  color: var(--accent-color);
+  background: var(--theme-table-header-bg);
+  color: var(--theme-primary);
   font-weight: 600;
   font-size: 15px;
-  border-color: rgba(0, 0, 0, 0.05);
+  border-color: var(--theme-table-border);
   padding: 14px 0;
   text-shadow: none;
 }
@@ -328,26 +320,26 @@ const onPageSizeChange = (size) => {
 :deep(.el-table__row) {
   height: 60px;
   font-size: 14px;
-  color: var(--text-dark);
+  color: var(--theme-text-primary);
   transition:
     background-color 0.3s ease,
     box-shadow 0.3s ease;
 }
 
 :deep(.el-table__row:hover) {
-  background-color: rgba(79, 70, 229, 0.015) !important;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.04);
+  background-color: var(--theme-table-hover-bg) !important;
+  box-shadow: var(--theme-shadow-light);
 }
 
 :deep(.el-table__cell) {
-  border-right: 1px solid rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-right: 1px solid var(--theme-table-border);
+  border-bottom: 1px solid var(--theme-table-border);
   padding: 10px 12px;
   text-align: center;
 }
 
 :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
-  background: rgba(79, 70, 229, 0.008);
+  background: rgba(var(--theme-primary-rgb), 0.02);
 }
 
 /* 操作按钮样式 */
@@ -367,19 +359,21 @@ const onPageSizeChange = (size) => {
 }
 
 :deep(.action-buttons .el-button--primary) {
-  background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+  background: linear-gradient(135deg, var(--theme-primary-dark), var(--theme-primary));
   border: none;
   color: white;
 }
 
 :deep(.action-buttons .el-button--warning) {
-  background: linear-gradient(135deg, #dc6803, #ea580c);
+  background: linear-gradient(135deg, var(--theme-warning-dark), var(--theme-warning));
   border: none;
   color: white;
 }
 :deep(.table-content) {
-  overflow: auto;
-  height: calc(40vh - 100px);
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 /* 合同信息显示样式 */
 .contract-info {
@@ -392,7 +386,7 @@ const onPageSizeChange = (size) => {
 .contract-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-dark);
+  color: var(--theme-text-primary);
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -405,11 +399,11 @@ const onPageSizeChange = (size) => {
 .currency-value {
   font-size: 14px;
   font-weight: 600;
-  color: var(--success-color);
-  background: rgba(13, 148, 136, 0.05);
+  color: var(--theme-success);
+  background: rgba(var(--theme-success-rgb), 0.08);
   padding: 4px 8px;
   border-radius: 4px;
-  border: 1px solid rgba(13, 148, 136, 0.15);
+  border: 1px solid rgba(var(--theme-success-rgb), 0.2);
 }
 
 /* 标签样式 */
@@ -417,44 +411,44 @@ const onPageSizeChange = (size) => {
   font-weight: 600;
   border-radius: 4px;
   padding: 4px 8px;
-  border: 1px solid rgba(79, 70, 229, 0.15);
+  border: 1px solid rgba(var(--theme-primary-rgb), 0.2);
 }
 
 :deep(.el-tag--success) {
-  background-color: rgba(13, 148, 136, 0.08);
-  border-color: rgba(13, 148, 136, 0.2);
-  color: #0d9488;
+  background-color: rgba(var(--theme-success-rgb), 0.1);
+  border-color: rgba(var(--theme-success-rgb), 0.25);
+  color: var(--theme-success);
 }
 
 :deep(.el-tag--warning) {
-  background-color: rgba(220, 104, 3, 0.08);
-  border-color: rgba(220, 104, 3, 0.2);
-  color: #dc6803;
+  background-color: rgba(var(--theme-warning-rgb), 0.1);
+  border-color: rgba(var(--theme-warning-rgb), 0.25);
+  color: var(--theme-warning);
 }
 
 :deep(.el-tag--danger) {
-  background-color: rgba(220, 38, 38, 0.08);
-  border-color: rgba(220, 38, 38, 0.2);
-  color: #dc2626;
+  background-color: rgba(var(--theme-error-rgb), 0.1);
+  border-color: rgba(var(--theme-error-rgb), 0.25);
+  color: var(--theme-error);
 }
 
 :deep(.el-tag--primary) {
-  background-color: rgba(79, 70, 229, 0.08);
-  border-color: rgba(79, 70, 229, 0.15);
-  color: var(--accent-color);
+  background-color: rgba(var(--theme-primary-rgb), 0.1);
+  border-color: rgba(var(--theme-primary-rgb), 0.2);
+  color: var(--theme-primary);
 }
 
 /* 分页组件样式 - 现代化分页样式 */
 :deep(.el-pagination) {
-  color: var(--text-dark);
+  color: var(--theme-text-primary);
   font-weight: 500;
 }
 
 :deep(.el-pagination .btn-next),
 :deep(.el-pagination .btn-prev) {
-  background: var(--card-background);
-  color: var(--text-dark);
-  border: 1px solid var(--border-color);
+  background: var(--theme-bg-card);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-light);
   border-radius: 6px;
   font-weight: 600;
   transition: all 0.3s ease;
@@ -462,16 +456,16 @@ const onPageSizeChange = (size) => {
 
 :deep(.el-pagination .btn-next:hover),
 :deep(.el-pagination .btn-prev:hover) {
-  background: var(--accent-color);
+  background: var(--theme-primary);
   color: white;
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 4px 8px rgba(var(--theme-primary-rgb), 0.3);
 }
 
 :deep(.el-pagination .el-pager li) {
-  background: var(--card-background);
-  color: var(--text-dark);
-  border: 1px solid var(--border-color);
+  background: var(--theme-bg-card);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-light);
   border-radius: 6px;
   margin: 0 2px;
   font-weight: 600;
@@ -479,16 +473,16 @@ const onPageSizeChange = (size) => {
 }
 
 :deep(.el-pagination .el-pager li:hover) {
-  background: rgba(79, 70, 229, 0.05);
-  color: var(--accent-color);
+  background: rgba(var(--theme-primary-rgb), 0.08);
+  color: var(--theme-primary);
   transform: translateY(-1px);
 }
 
 :deep(.el-pagination .el-pager li.is-active) {
-  background: var(--accent-color);
+  background: var(--theme-primary);
   color: white;
-  border-color: var(--accent-color);
-  box-shadow: 0 4px 8px rgba(79, 70, 229, 0.3);
+  border-color: var(--theme-primary);
+  box-shadow: 0 4px 8px rgba(var(--theme-primary-rgb), 0.4);
 }
 
 :deep(.el-pagination .el-pagination__sizes .el-select) {
@@ -496,9 +490,9 @@ const onPageSizeChange = (size) => {
 }
 
 :deep(.el-pagination .el-pagination__sizes .el-input__wrapper) {
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--theme-border-light);
   border-radius: 6px;
-  background: var(--card-background);
+  background: var(--theme-bg-card);
 }
 
 /* 响应式设计 */

@@ -177,17 +177,9 @@ export const createTabChangeHandler = (loadDataCallback) => {
  * @param {Array} data - 要导出的数据
  * @returns {Function} 导出处理函数
  */
-export const createExportHandler = (tabName, data) => {
+export const createExportHandler = () => {
   return () => {
-    const config = IMPORT_EXPORT_CONFIG[tabName]
-    if (!config) {
-      ElMessage.warning('导出配置未找到')
-      return
-    }
-    
-    // TODO: 实现真实的导出逻辑
-    ElMessage.success(`正在导出${config.exportFileName}数据...`)
-    console.log('导出数据:', data)
+    ElMessage.info('该功能正在开发中，请耐心等候')
   }
 }
 
@@ -197,24 +189,9 @@ export const createExportHandler = (tabName, data) => {
  * @param {Function} refreshCallback - 刷新数据回调函数
  * @returns {Function} 导入处理函数
  */
-export const createImportHandler = (tabName, refreshCallback) => {
+export const createImportHandler = () => {
   return () => {
-    const config = IMPORT_EXPORT_CONFIG[tabName]
-    if (!config) {
-      ElMessage.warning('导入配置未找到')
-      return
-    }
-    
-    // TODO: 实现真实的导入逻辑
-    ElMessage.success(`正在导入${config.importTemplate}数据...`)
-    
-    // 模拟导入后刷新数据
-    if (refreshCallback) {
-      setTimeout(() => {
-        refreshCallback()
-        ElMessage.success('数据导入完成')
-      }, 1500)
-    }
+    ElMessage.info('该功能正在开发中，请耐心等候')
   }
 }
 

@@ -137,8 +137,8 @@ export const openEditPriceDialog = (price, dialogState) => {
  * 打开导入对话框
  * @param {Object} dialogState - 对话框状态对象
  */
-export const openImportDialog = (dialogState) => {
-  dialogState.showImportDialog = true
+export const openImportDialog = () => {
+  ElMessage.info('该功能正在开发中，请耐心等候')
 }
 
 /**
@@ -212,20 +212,8 @@ export const onTableSelectionChange = (selection, selectedItems) => {
  * @param {string} filename - 文件名
  * @param {string} currentTab - 当前标签页
  */
-export const exportCurrentData = (data, filename, currentTab) => {
-  if (data.length === 0) {
-    ElMessage.warning('没有数据可以导出')
-    return
-  }
-  
-  try {
-    // 这里应该调用实际的导出API
-    console.log('导出数据:', { data, filename, currentTab })
-    ElMessage.success('导出成功')
-  } catch (error) {
-    ElMessage.error('导出失败')
-    console.error('Export error:', error)
-  }
+export const exportCurrentData = () => {
+  ElMessage.info('该功能正在开发中，请耐心等候')
 }
 
 /**
