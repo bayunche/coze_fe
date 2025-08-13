@@ -2,8 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import { functions } from '@/utils/workflowsDefinedEnum.js'
-import CozeWorkflowService from '@/services/CozeWorkflowService'
-import CozeParsingService from '@/services/CozeParsingService'
 import SmartBrainService from '@/services/SmartBrainService'
 import { formatDuration, generateMockResult } from '@/utils/helpers'
 import { callStreamWorkflow, uploadFile } from '@/utils/backendWorkflow.js'
@@ -82,29 +80,17 @@ import { useChatStore } from '@/stores/chat'
 // #endregion
 
 // #region Constants
-const WORKFLOW_IDS = {
-  GET_TASK_COUNTS: '7517560875563204627',
-  GET_TASK_LIST: '7517283953213866036',
-  CONTRACT_PARSING: '7516796514431172642',
-  SUPPLIER_MATERIAL_PARSING: '7517934954761715721',
-  OWNER_MATERIAL_PARSING: '7517934954761715721' // 复用乙供ID，后端通过参数区分
-}
-
 const BUSINESS_DOMAINS = {
   contractParsing: 'contract',
   supplierMaterialParsing: 'y_material',
   ownerSuppliedMaterialParsing: 'j_material'
 }
-
-const COMMON_APP_ID = '7509762183313129512'
 // #endregion
 
 export const useWorkflowStore = defineStore('workflow', () => {
   // #region Services and Stores
   const chatStore = useChatStore()
   const ownerMaterialStore = useOwnerMaterialStore()
-  const cozeWorkflowService = new CozeWorkflowService()
-  const cozeParsingService = new CozeParsingService()
   // #endregion
 
   // #region State
@@ -281,17 +267,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
   const fetchAllAgentTaskCounts = async () => {
     try {
       const agentTaskDetails = await SmartBrainService.getAgentTaskDetails()
-      
+
       // 创建API名称到前端智能体名称的映射
       const apiNameToFrontendName = {
-        '合同业务': '合同解析',
-        '甲供物资业务': '甲供物资解析', 
-        '乙供物资业务': '乙供物资解析'
+        合同业务: '合同解析',
+        甲供物资业务: '甲供物资解析',
+        乙供物资业务: '乙供物资解析'
       }
-      
+
       // 创建智能体名称到任务数据的映射
       const taskDataMap = new Map()
-      agentTaskDetails.forEach(item => {
+      agentTaskDetails.forEach((item) => {
         const frontendName = apiNameToFrontendName[item.agentName] || item.agentName
         taskDataMap.set(frontendName, {
           total: item.totalTaskCount || 0,
@@ -299,12 +285,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
           inProgress: item.processingTaskCount || 0
         })
       })
-      
+
       console.log('API返回的任务统计数据:', agentTaskDetails)
       console.log('转换后的任务数据映射:', Array.from(taskDataMap.entries()))
-      
+
       // 更新智能体任务统计数据
-      smartAgents.value.forEach(agent => {
+      smartAgents.value.forEach((agent) => {
         const taskData = taskDataMap.get(agent.name)
         console.log(`智能体 ${agent.name} 的任务数据:`, taskData)
         if (taskData) {
@@ -316,18 +302,20 @@ export const useWorkflowStore = defineStore('workflow', () => {
           agent.tasks = { completed: 0, inProgress: 0, total: 0 }
         }
       })
-      
-      console.log('智能体任务统计数据更新成功，当前智能体数据:', smartAgents.value.map(a => ({name: a.name, tasks: a.tasks})))
+
+      console.log(
+        '智能体任务统计数据更新成功，当前智能体数据:',
+        smartAgents.value.map((a) => ({ name: a.name, tasks: a.tasks }))
+      )
     } catch (error) {
       console.error('获取智能体任务统计数据失败:', error)
-      
+
       // API调用失败时，将所有智能体任务数据设置为0
-      smartAgents.value.forEach(agent => {
+      smartAgents.value.forEach((agent) => {
         agent.tasks = { completed: 0, inProgress: 0, total: 0 }
       })
     }
   }
-
 
   /**
    * 获取业务域名映射
@@ -373,16 +361,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
     stepProgress.value = 0
 
     const uploadPromises = workflowConfig.files.map((file) => {
-      if (activeFunction.value === 'ownerSuppliedMaterialParsing') {
-        // 甲供物资文件使用新的上传接口，并保留 excel_type
-        return uploadFile(file.raw).then((res) => ({
-          filePath: res.filePath,
-          excel_type: file.excel_type
-        }))
-      } else {
-        // 其他文件保持原有逻辑
-        return cozeWorkflowService.uploadFile(file.raw, COMMON_APP_ID)
-      }
+      // 统一使用后端上传接口，不再区分工作流类型
+      return uploadFile(file.raw).then((res) => ({
+        filePath: res.filePath,
+        excel_type: file.excel_type // 保留 excel_type 以支持甲供物资解析
+      }))
     })
 
     const fileIdsOrPaths = await Promise.all(uploadPromises)
@@ -437,13 +420,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
   /**
    * 处理合同解析工作流
-   * @param {Array<{file_id: string}>} inputs - 文件输入
+   * @param {Array<{filePath: string}>} inputs - 文件输入
    * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
    */
-  const executeContractParsing = (inputs, context) => {
+  const executeContractParsing = async (inputs, context) => {
     const { workflow, loadingMessage, addMessageCallback } = context
     const finalResult = []
-    let isFirstMessage = true
 
     const streamingAgentMessage = {
       id: Date.now() + Math.random(),
@@ -455,52 +437,53 @@ export const useWorkflowStore = defineStore('workflow', () => {
       isStreaming: true
     }
 
-    cozeParsingService.runContractParsing(WORKFLOW_IDS.CONTRACT_PARSING, inputs, {
-      onMessage(event) {
-        if (isFirstMessage) {
-          loadingMessage.content = '任务解析已开始，正在接收数据...'
-          addMessageCallback(streamingAgentMessage)
-          isFirstMessage = false
-        }
+    try {
+      loadingMessage.content = '合同解析已开始...'
+      addMessageCallback(streamingAgentMessage)
 
-        const { potentialTaskId, messageContent } = parseWorkflowMessage(event)
+      // 使用后端 API，agentManagementId: '1'
+      await callStreamWorkflow(inputs, '1', {
+        onMessage: (event) => {
+          if (event.content) {
+            // 尝试从消息中提取任务ID
+            const taskIdMatch = event.content.match(/任务编号：([a-f0-9-]+)/i)
+            if (taskIdMatch) {
+              taskId.value = taskIdMatch[1]
+              streamingAgentMessage.task = taskIdMatch[1]
+            }
 
-        if (potentialTaskId) {
-          taskId.value = potentialTaskId
-          streamingAgentMessage.task = potentialTaskId
-          return
-        }
-
-        if (messageContent) {
-          chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
-          finalResult.push(messageContent)
-        }
-
-        if (event.event === 'Done') {
+            // 处理流式消息
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
+            finalResult.push(event.content)
+          }
+        },
+        onError: (error) => {
+          onExecutionError(error, loadingMessage, addMessageCallback)
+        },
+        onComplete: () => {
           delete streamingAgentMessage.isStreaming
           if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
             streamingAgentMessage.showViewResultButton = true
           }
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100
-          loadingMessage.content = '任务执行完毕！'
+          loadingMessage.content = '合同解析任务执行完毕！'
           finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
-        } else if (event.event === 'Error') {
-          onExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
         }
-      }
-    })
+      })
+    } catch (error) {
+      onExecutionError(error, loadingMessage, addMessageCallback)
+    }
   }
 
   /**
    * 处理乙供物资解析工作流
-   * @param {Array<{file_id: string}>} inputs - 文件输入
+   * @param {Array<{filePath: string}>} inputs - 文件输入
    * @param {Object} context - 包含 workflow, loadingMessage, addMessageCallback 的上下文
    */
-  const executeSupplierMaterialParsing = (inputs, context) => {
+  const executeSupplierMaterialParsing = async (inputs, context) => {
     const { workflow, loadingMessage, addMessageCallback } = context
     const finalResult = []
-    let isFirstMessage = true
 
     const streamingAgentMessage = {
       id: Date.now() + Math.random(),
@@ -512,50 +495,58 @@ export const useWorkflowStore = defineStore('workflow', () => {
       isStreaming: true
     }
 
-    cozeParsingService.runSupplierMaterialParsing(WORKFLOW_IDS.SUPPLIER_MATERIAL_PARSING, inputs, {
-      onMessage(event) {
-        if (isFirstMessage) {
-          loadingMessage.content = '任务解析已开始，正在接收数据...'
-          addMessageCallback(streamingAgentMessage)
-          isFirstMessage = false
-        }
+    try {
+      loadingMessage.content = '乙供物资解析已开始...'
+      addMessageCallback(streamingAgentMessage)
 
-        const { potentialTaskId, messageContent, parsedMessage } = parseWorkflowMessage(event)
+      // 使用后端 API，agentManagementId: '3'
+      await callStreamWorkflow(inputs, '6', {
+        onMessage: (event) => {
+          if (event.content) {
+            // 尝试从消息中提取任务ID和详情ID
+            const taskIdMatch = event.content.match(/任务编号：([a-f0-9-]+)/i)
+            if (taskIdMatch) {
+              supplierTaskId.value = taskIdMatch[1]
+              streamingAgentMessage.task = taskIdMatch[1]
+            }
 
-        if (parsedMessage) {
-          if (parsedMessage.task_id) {
-            supplierTaskId.value = parsedMessage.task_id
+            // 尝试解析 JSON 格式的消息来获取 task_detail_id
+            try {
+              const parsedContent = JSON.parse(event.content)
+              if (parsedContent.task_id) {
+                supplierTaskId.value = parsedContent.task_id
+                streamingAgentMessage.task = parsedContent.task_id
+              }
+              if (Array.isArray(parsedContent.task_detail_id)) {
+                supplierFileDetailIds.value = parsedContent.task_detail_id
+              }
+            } catch (e) {
+              // 如果不是 JSON 格式，继续处理普通消息
+            }
+
+            // 处理流式消息
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
+            finalResult.push(event.content)
           }
-          if (Array.isArray(parsedMessage.task_detail_id)) {
-            supplierFileDetailIds.value = parsedMessage.task_detail_id
-          }
-        }
-
-        if (potentialTaskId) {
-          streamingAgentMessage.task = potentialTaskId
-          return
-        }
-
-        if (messageContent) {
-          chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
-          finalResult.push(messageContent)
-        }
-
-        if (event.event === 'Done') {
+        },
+        onError: (error) => {
+          onExecutionError(error, loadingMessage, addMessageCallback)
+        },
+        onComplete: () => {
           delete streamingAgentMessage.isStreaming
           if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
             streamingAgentMessage.showViewResultButton = true
           }
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100
-          loadingMessage.content = '任务执行完毕！'
+          loadingMessage.content = '乙供物资解析任务执行完毕！'
           ElMessage.success('乙供物资解析完成')
           finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
-        } else if (event.event === 'Error') {
-          onExecutionError(new Error(event.data), loadingMessage, addMessageCallback)
         }
-      }
-    })
+      })
+    } catch (error) {
+      onExecutionError(error, loadingMessage, addMessageCallback)
+    }
   }
 
   /**
@@ -652,15 +643,15 @@ export const useWorkflowStore = defineStore('workflow', () => {
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
-          
+
           // 在消息最后追加固定文字
           const fixedMessage = '\n存在无法匹配的物资信息，请人工介入\n'
           chatStore.appendStreamContent(streamingAgentMessage.id, fixedMessage)
           finalResult.push(fixedMessage)
-          
+
           // 不显示查看解析结果按钮
           // streamingAgentMessage.showViewResultButton = true
-          
+
           if (taskId.value) {
             ownerMaterialStore.updateTaskStatus(taskId.value, 'needs_manual_alignment')
           }
@@ -831,8 +822,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
           return acc
         }, {})
       } else {
-        // For other workflows, create a list of file_id objects
-        inputs = fileIdsOrPaths.map((idOrPath) => ({ file_id: idOrPath }))
+        // For other workflows (contract and supplier material parsing), create fileList array
+        inputs = {
+          fileList: fileIdsOrPaths.map((file) => file.filePath)
+        }
       }
       const context = { workflow, loadingMessage, addMessageCallback }
 

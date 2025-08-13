@@ -1,6 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 // element-plus
@@ -9,8 +9,12 @@ import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
 // https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [
+export default defineConfig(({ mode }) => {
+  // 加载环境变量
+  const env = loadEnv(mode, process.cwd(), '')
+  
+  return {
+    plugins: [
     vue(),
     AutoImport({
       resolvers: [ElementPlusResolver()]
@@ -39,59 +43,60 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      // 价格相关API专用转发规则 - 转发到1207端口
+      // 价格相关API特殊处理 - 转发到专门的价格API服务器
       '/api/backend-api/materials/priceinfo': {
-        target: 'http://159.75.127.84:1207',
+        target: env.VITE_PRICE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
         rewrite: (path) => {
-          // 完全移除 /api/backend-api 前缀，只保留 /materials/priceinfo 部分
           const newPath = path.replace(/^\/api\/backend-api/, '')
-          console.log(`[/api/backend-api/materials/priceinfo] 路径转换: ${path} -> ${newPath}`)
-          console.log(`[/api/backend-api/materials/priceinfo] 最终请求: http://159.75.127.84:1207${newPath}`)
+          console.log(`[PriceAPI] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[PriceAPI] 最终请求: ${env.VITE_PRICE_API_TARGET}${newPath}`)
           return newPath
         }
       },
-      // 也处理直接 /backend-api/materials/priceinfo 的情况
       '/backend-api/materials/priceinfo': {
-        target: 'http://159.75.127.84:1207',
+        target: env.VITE_PRICE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
         rewrite: (path) => {
-          // 保持完整路径，包括/backend-api前缀
-          console.log(`[/backend-api/materials/priceinfo] 路径转换: ${path} -> ${path}`)
-          console.log(`[/backend-api/materials/priceinfo] 最终请求: http://159.75.127.84:1207${path}`)
+          console.log(`[PriceAPI-Direct] 路径转换: ${path} -> ${path}`)
+          console.log(`[PriceAPI-Direct] 最终请求: ${env.VITE_PRICE_API_TARGET}${path}`)
           return path
         }
       },
+      // 后端API转发 - /api/backend-api 前缀
       '/api/backend-api': {
-        target: 'http://159.75.127.84:1202',
+        target: env.VITE_BACKEND_API_TARGET || 'http://10.1.17.83:1202',
         changeOrigin: true,
         rewrite: (path) => {
           const newPath = path.replace(/^\/api\/backend-api/, '')
-          console.log(`[/api/backend-api] 路径转换: ${path} -> ${newPath}`)
-          console.log(`[/api/backend-api] 最终请求: http://159.75.127.84:1202${newPath}`)
+          console.log(`[BackendAPI] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[BackendAPI] 最终请求: ${env.VITE_BACKEND_API_TARGET}${newPath}`)
           return newPath
         }
       },
-      '/api': {
-        target: 'http://159.75.127.84:1207',
-        changeOrigin: true,
-        rewrite: (path) => {
-          // 不移除/api前缀，保持完整路径
-          console.log(`[/api] 路径转换: ${path} -> ${path}`)
-          console.log(`[/api] 最终请求: http://159.75.127.84:1207${path}`)
-          return path
-        }
-      },
+      // 直接backend-api转发
       '/backend-api': {
-        target: 'http://159.75.127.84:1202',
+        target: env.VITE_BACKEND_API_TARGET || 'http://10.1.17.83:1202',
         changeOrigin: true,
         rewrite: (path) => {
           const newPath = path.replace(/^\/backend-api/, '')
-          console.log(`[/backend-api] 路径转换: ${path} -> ${newPath}`)
-          console.log(`[/backend-api] 最终请求: http://159.75.127.84:1202${newPath}`)
+          console.log(`[BackendAPI-Direct] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[BackendAPI-Direct] 最终请求: ${env.VITE_BACKEND_API_TARGET}${newPath}`)
+          return newPath
+        }
+      },
+      // 通用API转发 - /api 前缀
+      '/api': {
+        target: env.VITE_API_TARGET || 'http://10.1.17.83:1202',
+        changeOrigin: true,
+        rewrite: (path) => {
+          const newPath = path.replace(/^\/api/, '')
+          console.log(`[API] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[API] 最终请求: ${env.VITE_API_TARGET}${newPath}`)
           return newPath
         }
       }
     }
+  }
   }
 })

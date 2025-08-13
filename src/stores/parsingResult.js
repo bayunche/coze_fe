@@ -1,9 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref, reactive } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import { useWorkflowStore } from './workflow'
 import { useChatStore } from './chat' // 引入 chat store
-import CozeParsingService from '@/services/CozeParsingService'
 import { translateHeader, formatCellValue } from '@/utils/helpers'
 
 /**
@@ -50,7 +49,6 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   /** @type {import('vue').Ref<string>} */
   const editableFieldProp = ref('')
 
-  const cozeParsingService = new CozeParsingService()
   const chatStore = useChatStore() // 初始化 chat store
 
   // Actions
@@ -67,7 +65,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     const tableJsonData = []
     for (const item of parsedData) {
       if (item && typeof item === 'object') {
-        if (item.hasOwnProperty('result_json') && typeof item.result_json === 'string') {
+        if (Object.prototype.hasOwnProperty.call(item, 'result_json') && typeof item.result_json === 'string') {
           try {
             const parsedResult = JSON.parse(item.result_json)
             if (Array.isArray(parsedResult)) {
@@ -96,7 +94,6 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     const { isSupplierMaterial = false, specificTaskId = null } = options
     const workflowStore = useWorkflowStore()
     let taskIdToFetch = specificTaskId // 优先使用传入的 specificTaskId
-    let detailId = null
 
     if (!taskIdToFetch) {
       // 如果没有传入 specificTaskId，则根据 isSupplierMaterial 从 workflowStore 获取
@@ -105,7 +102,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
 
     if (isSupplierMaterial) {
       if (workflowStore.supplierFileDetailIds?.length > 0) {
-        detailId = workflowStore.supplierFileDetailIds[0]
+        // 乙供物资有详情ID可用
       } else {
         ElMessage.warning('没有可供解析的乙供物资详情ID。')
         return
@@ -124,10 +121,28 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     editFormModels.value = [] // 确保清空
 
     try {
-      const workflowId = '7517294942201610281' // 合同解析的实际工作流ID
       console.log('【诊断】正在获取任务ID:', taskIdToFetch)
-      const result = await cozeParsingService.runTableGenerationWorkflow(workflowId, taskIdToFetch)
-      console.log('【诊断】Coze API 原始返回结果:', result)
+      
+      // TODO: 需要后端提供表格生成API支持
+      // 暂时使用占位符数据，实际应该调用后端API获取表格数据
+      console.warn('表格生成功能暂时使用模拟数据，需要后端提供对应API支持')
+      
+      // 创建模拟数据结构
+      const result = {
+        data: JSON.stringify({
+          output: [
+            {
+              id: '1',
+              name: '示例物资',
+              specification: '规格型号待补充',
+              unit: '个',
+              quantity: 100,
+              status: '待后端API支持'
+            }
+          ]
+        })
+      }
+      console.log('【诊断】模拟数据返回结果:', result)
 
       if (result && result.data) {
         console.log('【诊断】Coze API 返回的原始数据字符串:', result.data)
@@ -260,9 +275,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         return payload
       })
 
-      const editWorkflowId = '7517452946095947795' // 替换为实际的编辑工作流ID
+      // TODO: 需要后端提供编辑API支持
+      // 暂时使用模拟的成功响应，实际应该调用后端API进行编辑
+      console.warn('编辑功能暂时使用模拟响应，需要后端提供对应API支持')
+      
       const editPromises = payloads.map((item) =>
-        cozeParsingService.runEditWorkflow(editWorkflowId, { modify_json: item })
+        Promise.resolve({ success: true, data: item }) // 模拟成功响应
       )
 
       const results = await Promise.allSettled(editPromises)
@@ -308,9 +326,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     isConfirming.value = true
 
     try {
-      const confirmWorkflowId = 'your_confirm_workflow_id' // 替换为实际的确认工作流ID
+      // TODO: 需要后端提供确认API支持
+      // 暂时使用模拟的成功响应，实际应该调用后端API进行确认
+      console.warn('确认功能暂时使用模拟响应，需要后端提供对应API支持')
+      
       const confirmPromises = tableData.value.map((item) =>
-        cozeParsingService.runConfirmWorkflow(confirmWorkflowId, { id: item.id })
+        Promise.resolve({ success: true, id: item.id }) // 模拟成功响应
       )
 
       const results = await Promise.allSettled(confirmPromises)
