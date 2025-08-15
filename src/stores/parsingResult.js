@@ -4,6 +4,14 @@ import { ElMessage } from 'element-plus'
 import { useWorkflowStore } from './workflow'
 import { useChatStore } from './chat' // 引入 chat store
 import { translateHeader, formatCellValue } from '@/utils/helpers'
+import { 
+  getContractAnalysisResults,
+  editSupplierMaterialParsingResults,
+  confirmSupplierMaterialParsingResults,
+  editContractAnalysisResults,
+  updateContractAnalysisResult,
+  confirmContractAnalysisResults
+} from '@/utils/backendWorkflow.js'
 
 /**
  * @typedef {Object} TableColumn
@@ -24,6 +32,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   const showResultDetail = ref(false)
   /** @type {import('vue').Ref<string | null>} */
   const taskId = ref(null) // 新增 taskId
+  /** @type {import('vue').Ref<string | null>} */
+  const currentTaskDetailId = ref(null) // 当前任务详情ID
   /** @type {import('vue').Ref<TableDataItem[]>} */
   const tableData = ref([]) // 原始数据
   /** @type {import('vue').Ref<TableColumn[]>} */
@@ -36,6 +46,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   const savingAllEdits = ref(false)
   /** @type {import('vue').Ref<boolean>} */
   const isConfirming = ref(false)
+  /** @type {import('vue').Ref<boolean>} */
+  const isSupplierMaterialMode = ref(false) // 标识当前是否为乙供物资模式
 
   // 编辑功能
   /** @type {import('vue').Ref<boolean>} */
@@ -121,60 +133,69 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     editFormModels.value = [] // 确保清空
 
     try {
-      console.log('【诊断】正在获取任务ID:', taskIdToFetch)
+      console.log('【诊断】正在获取任务ID:', taskIdToFetch, '是否为乙供物资:', isSupplierMaterial)
       
-      // TODO: 需要后端提供表格生成API支持
-      // 暂时使用占位符数据，实际应该调用后端API获取表格数据
-      console.warn('表格生成功能暂时使用模拟数据，需要后端提供对应API支持')
+      // 记录当前的工作流类型和任务ID
+      isSupplierMaterialMode.value = isSupplierMaterial
+      taskId.value = taskIdToFetch
       
-      // 创建模拟数据结构
-      const result = {
-        data: JSON.stringify({
-          output: [
-            {
-              id: '1',
-              name: '示例物资',
-              specification: '规格型号待补充',
-              unit: '个',
-              quantity: 100,
-              status: '待后端API支持'
-            }
-          ]
-        })
-      }
-      console.log('【诊断】模拟数据返回结果:', result)
+      let tableJsonData = []
+      
+      if (isSupplierMaterial) {
+        // 乙供物资解析 - 暂时使用模拟数据
+        console.warn('乙供物资解析功能暂时使用模拟数据，需要后端提供对应API支持')
+        
+        tableJsonData = [{
+          id: '1',
+          name: '示例乙供物资',
+          specification: '规格型号待补充',
+          unit: '个',
+          quantity: 100,
+          status: '待后端API支持'
+        }]
+      } else {
+        // 合同解析 - 使用新的后端接口
+        console.log('【诊断】调用合同解析聚合结果接口')
+        
+        const result = await getContractAnalysisResults(taskIdToFetch)
+        console.log('【诊断】合同解析接口返回结果:', result)
 
-      if (result && result.data) {
-        console.log('【诊断】Coze API 返回的原始数据字符串:', result.data)
-        let parsedData = null
-        try {
-          parsedData = JSON.parse(result.data)?.output
-          console.log('【诊断】JSON.parse(result.data)?.output 结果:', parsedData)
-        } catch (e) {
-          console.error('【诊断】JSON.parse 失败:', e)
-          ElMessage.error('解析原始数据失败。')
-          return
+        if (result && result.resultJson && Array.isArray(result.resultJson)) {
+          // 将聚合后的数据转换为表格格式
+          tableJsonData = result.resultJson.map(item => ({
+            id: item.id,
+            taskDetailId: item.id, // 保存 taskDetailId 用于后续接口调用
+            resultStatus: item.resultStatus,
+            ...item.docJson, // 展开解析字段
+            editing: false
+          }))
+          console.log('【诊断】转换后的表格数据:', tableJsonData)
+          
+          // 保存第一个记录的 taskDetailId 作为当前任务详情ID
+          if (tableJsonData.length > 0) {
+            currentTaskDetailId.value = tableJsonData[0].taskDetailId
+          }
+        } else {
+          console.warn('合同解析接口返回数据格式异常:', result)
+          tableJsonData = []
         }
+      }
 
-        const tableJsonData = parseResultJsonData(parsedData)
-        console.log('【诊断】parseResultJsonData 后的表格数据:', tableJsonData)
-
-        if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
-          tableColumns.value = Object.keys(tableJsonData[0]).map((key) => ({
+      if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
+        tableColumns.value = Object.keys(tableJsonData[0])
+          .filter(key => key !== 'editing') // 过滤掉编辑状态字段
+          .map((key) => ({
             prop: key,
             label: translateHeader(key)
           }))
-          console.log('【诊断】生成的 tableColumns:', tableColumns.value)
-          console.log('【诊断】headerMapping:', translateHeader) // translateHeader 内部使用了 headerMapping
-          const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
-          tableData.value = JSON.parse(JSON.stringify(rawData))
-          editFormModels.value = JSON.parse(JSON.stringify(rawData))
-          console.log('【诊断】tableData.value 已更新:', tableData.value)
-        } else {
-          ElMessage.info('结果为空或解析后无数据，暂无数据展示。')
-        }
+        console.log('【诊断】生成的 tableColumns:', tableColumns.value)
+        
+        const rawData = tableJsonData.map((item) => ({ ...item, editing: false }))
+        tableData.value = JSON.parse(JSON.stringify(rawData))
+        editFormModels.value = JSON.parse(JSON.stringify(rawData))
+        console.log('【诊断】tableData.value 已更新:', tableData.value)
       } else {
-        throw new Error('任务未返回有效的表格数据。')
+        ElMessage.info('结果为空或解析后无数据，暂无数据展示。')
       }
     } catch (error) {
       console.error('处理表格数据时出错:', error)
@@ -260,7 +281,73 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       tableData.value[indexInTableData].editing = false // 确保 tableData 中的 editing 状态也更新
     }
     row.editing = false // 设置当前行的 editing 状态为 false
-    ElMessage.info('此行更改已暂存，请点击“提交修改”以提交。')
+    ElMessage.info('此行更改已暂存，请点击"提交修改"以提交。')
+  }
+
+  /**
+   * 保存并确认单行编辑结果。
+   * @param {TableDataItem} row - 已编辑的行数据。
+   */
+  const saveAndConfirmRowEdit = async (row) => {
+    if (!row.taskDetailId) {
+      ElMessage.error('缺少任务详情ID，无法保存')
+      return
+    }
+
+    try {
+      // 构造字段数据
+      const fieldData = []
+      Object.keys(row).forEach(key => {
+        if (key !== 'editing' && key !== 'id' && key !== 'taskDetailId' && key !== 'resultStatus') {
+          fieldData.push({
+            columnCode: key,
+            columnName: translateHeader(key),
+            columnValue: row[key] || ''
+          })
+        }
+      })
+
+      const updateData = {
+        taskDetailId: row.taskDetailId,
+        resultStatus: 1, // 设置为已确认
+        fieldData: fieldData,
+        remark: '单行修改确认'
+      }
+
+      console.log('【诊断】单行保存并确认数据:', updateData)
+
+      let result
+      if (isSupplierMaterialMode.value) {
+        // 乙供物资暂时不支持，显示提示
+        ElMessage.warning('乙供物资单行确认功能待后端实现')
+        return
+      } else {
+        // 合同解析使用新接口
+        result = await updateContractAnalysisResult(updateData)
+      }
+
+      if (result && result.success) {
+        ElMessage.success(`成功确认 ${result.updatedFieldCount || 0} 个字段`)
+        chatStore.addMessage(`已确认单行解析结果`, 'system')
+        
+        // 更新本地数据状态
+        const indexInEditModels = editFormModels.value.findIndex((item) => item.id === row.id)
+        const indexInTableData = tableData.value.findIndex((item) => item.id === row.id)
+        
+        if (indexInEditModels !== -1 && indexInTableData !== -1) {
+          // 更新状态为已确认
+          editFormModels.value[indexInEditModels].resultStatus = 1
+          editFormModels.value[indexInEditModels].editing = false
+          tableData.value[indexInTableData].resultStatus = 1
+          tableData.value[indexInTableData].editing = false
+        }
+      } else {
+        ElMessage.error(result?.message || '确认失败')
+      }
+    } catch (error) {
+      console.error('保存并确认单行编辑失败:', error)
+      ElMessage.error(`确认失败: ${error.message}`)
+    }
   }
 
   /**
@@ -275,26 +362,21 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         return payload
       })
 
-      // TODO: 需要后端提供编辑API支持
-      // 暂时使用模拟的成功响应，实际应该调用后端API进行编辑
-      console.warn('编辑功能暂时使用模拟响应，需要后端提供对应API支持')
-      
-      const editPromises = payloads.map((item) =>
-        Promise.resolve({ success: true, data: item }) // 模拟成功响应
-      )
-
-      const results = await Promise.allSettled(editPromises)
-
-      const successCount = results.filter((r) => r.status === 'fulfilled').length
-      const failureCount = results.length - successCount
-
-      if (failureCount > 0) {
-        ElMessage.error(`${failureCount} 个条目保存失败，请检查控制台日志。`)
+      let results
+      if (isSupplierMaterialMode.value) {
+        // 乙供物资解析结果编辑
+        results = await editSupplierMaterialParsingResults(payloads)
       } else {
+        // 合同解析结果编辑
+        results = await editContractAnalysisResults(payloads)
+      }
+
+      if (results && results.code === 200) {
         ElMessage.success('全部解析结果已成功保存！')
-        const savedCount = successCount
-        const resultType = '合同' // 根据对话框标题确定类型
-        chatStore.addMessage(`已保存${savedCount}个${resultType}解析结果`, 'system')
+        const resultType = isSupplierMaterialMode.value ? '乙供物资' : '合同'
+        chatStore.addMessage(`已保存${payloads.length}个${resultType}解析结果`, 'system')
+        
+        // 更新本地数据
         tableData.value = JSON.parse(
           JSON.stringify(
             editFormModels.value.map((item) => {
@@ -305,6 +387,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
           )
         )
         showResultDetail.value = false
+      } else {
+        ElMessage.error(results?.message || '保存失败')
       }
     } catch (error) {
       console.error('保存全部时发生意外错误:', error)
@@ -323,39 +407,65 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       return
     }
 
+    if (!taskId.value) {
+      ElMessage.error('缺少任务ID，无法批量确认')
+      return
+    }
+
     isConfirming.value = true
 
     try {
-      // TODO: 需要后端提供确认API支持
-      // 暂时使用模拟的成功响应，实际应该调用后端API进行确认
-      console.warn('确认功能暂时使用模拟响应，需要后端提供对应API支持')
-      
-      const confirmPromises = tableData.value.map((item) =>
-        Promise.resolve({ success: true, id: item.id }) // 模拟成功响应
-      )
-
-      const results = await Promise.allSettled(confirmPromises)
-
-      let successCount = 0
-      let failureCount = 0
-
-      results.forEach((result, index) => {
-        const item = tableData.value[index]
-        if (result.status === 'fulfilled') {
-          successCount++
+      let results
+      if (isSupplierMaterialMode.value) {
+        // 乙供物资解析结果确认 - 暂时保持原有逻辑
+        const confirmData = tableData.value.map((item) => {
+          const confirmItem = { ...item }
+          delete confirmItem.editing
+          return confirmItem
+        })
+        results = await confirmSupplierMaterialParsingResults(confirmData)
+        
+        if (results && results.code === 200) {
+          ElMessage.success(`所有 ${confirmData.length} 条乙供物资解析记录均已成功确认！`)
+          chatStore.addMessage(`已确认${confirmData.length}个乙供物资解析结果`, 'system')
+          showResultDetail.value = false
         } else {
-          failureCount++
-          console.error(`确认失败 (ID: ${item.id}):`, result.reason)
+          ElMessage.error(results?.message || '确认失败')
         }
-      })
-
-      if (failureCount > 0) {
-        ElMessage.warning(`${successCount} 条记录确认成功，${failureCount} 条失败。`)
       } else {
-        ElMessage.success(`所有 ${successCount} 条记录均已成功确认！`)
-      }
+        // 合同解析结果确认 - 使用新的批量确认接口
+        const confirmData = {
+          taskId: taskId.value,
+          remark: '批量确认所有合同解析结果'
+        }
+        
+        console.log('【诊断】批量确认数据:', confirmData)
+        results = await confirmContractAnalysisResults(confirmData)
 
-      showResultDetail.value = false
+        if (results && results.success) {
+          const confirmedCount = results.newlyConfirmedCount || 0
+          const totalCount = results.confirmedCount || 0
+          
+          if (confirmedCount > 0) {
+            ElMessage.success(`成功确认 ${confirmedCount} 条合同解析记录！总计 ${totalCount} 条记录已确认`)
+            chatStore.addMessage(`已批量确认${confirmedCount}个合同解析结果`, 'system')
+          } else {
+            ElMessage.info('所有记录已经确认，无需重复操作')
+          }
+          
+          // 更新本地数据状态为已确认
+          tableData.value.forEach(item => {
+            item.resultStatus = 1
+          })
+          editFormModels.value.forEach(item => {
+            item.resultStatus = 1
+          })
+          
+          showResultDetail.value = false
+        } else {
+          ElMessage.error(results?.message || '确认失败')
+        }
+      }
     } catch (error) {
       console.error('执行确认工作流时发生意外错误:', error)
       ElMessage.error(`确认过程中发生错误: ${error.message}`)
@@ -367,12 +477,14 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   return {
     showResultDetail,
     taskId,
+    currentTaskDetailId,
     tableData,
     tableColumns,
     editFormModels,
     isFetchingDetails,
     savingAllEdits,
     isConfirming,
+    isSupplierMaterialMode,
     longTextEditVisible,
     longTextValue,
     editableRow,
@@ -386,6 +498,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     startRowEdit,
     cancelRowEdit,
     saveRowEdit,
+    saveAndConfirmRowEdit,
     saveAll,
     confirm,
     // 导出辅助函数，因为它们在 ResultDetailTableDialog.vue 中被直接使用

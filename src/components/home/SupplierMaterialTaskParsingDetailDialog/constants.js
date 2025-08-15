@@ -42,7 +42,8 @@ export const PAGINATION_CONFIG = {
 
 export const BUTTON_LABELS = {
   VIEW_DETAIL: '查看详情',
-  VIEW_SOURCE_FILE: '查看源文件'
+  VIEW_SOURCE_FILE: '查看源文件',
+  CONFIRM_RESULTS: '确认解析结果'
 }
 
 export const MESSAGE_LABELS = {

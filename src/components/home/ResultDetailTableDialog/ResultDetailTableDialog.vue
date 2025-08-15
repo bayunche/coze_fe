@@ -46,26 +46,44 @@
             </template>
           </el-table-column>
         </template>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="scope">
-            <div v-if="scope.row.editing">
+            <div v-if="scope.row.editing" class="button-group">
               <el-button
                 type="success"
                 size="small"
                 @click="parsingResultStore.saveRowEdit(scope.row)"
-                >保存</el-button
+                >暂存</el-button
+              >
+              <el-button
+                type="primary"
+                size="small"
+                @click="parsingResultStore.saveAndConfirmRowEdit(scope.row)"
+                :loading="savingRowConfirm[scope.row.id]"
+                >确认</el-button
               >
               <el-button size="small" @click="parsingResultStore.cancelRowEdit(scope.row)"
                 >取消</el-button
               >
             </div>
-            <el-button
-              v-else
-              type="primary"
-              size="small"
-              @click="parsingResultStore.startRowEdit(scope.row)"
-              >编辑</el-button
-            >
+            <div v-else class="button-group">
+              <el-button
+                type="primary"
+                size="small"
+                @click="parsingResultStore.startRowEdit(scope.row)"
+                >编辑</el-button
+              >
+              <el-tag 
+                v-if="scope.row.resultStatus === 1" 
+                type="success" 
+                size="small"
+                >已确认</el-tag>
+              <el-tag 
+                v-else 
+                type="warning" 
+                size="small"
+                >待确认</el-tag>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -76,11 +94,16 @@
         <el-button @click="showResultDetail = false">关闭</el-button>
         <el-button
           type="primary"
-          @click="parsingResultStore.handleSaveAll"
+          @click="parsingResultStore.saveAll"
           :loading="savingAllEdits"
-          >提交修改</el-button
+          >批量提交修改</el-button
         >
-        <!-- <el-button type="success" @click="parsingResultStore.handleConfirm()" :loading="isConfirming">确认</el-button> -->
+        <el-button 
+          type="success" 
+          @click="parsingResultStore.confirm"
+          :loading="isConfirming"
+          >批量确认</el-button
+        >
       </span>
     </template>
   </el-dialog>
@@ -88,7 +111,7 @@
 
 <script setup>
 import { useParsingResultStore } from '@/stores/parsingResult'
-import { computed, watch, toRefs } from 'vue'
+import { watch, toRefs, ref } from 'vue'
 
 const parsingResultStore = useParsingResultStore()
 const {
@@ -100,13 +123,16 @@ const {
   savingAllEdits,
   isConfirming
 } = toRefs(parsingResultStore)
-const editData = computed(() => parsingResultStore.editFormModels.value)
+
+// 单行确认加载状态
+const savingRowConfirm = ref({})
+
 // 监听 showResultDetail 的变化，当它变为 true 时调用 handleViewResultDetail
 watch(
   showResultDetail,
   async (newValue) => {
     if (newValue) {
-      await parsingResultStore.handleViewResultDetail()
+      await parsingResultStore.viewResultDetail()
       // 在数据加载完成后添加诊断日志
       console.log('【诊断】ResultDetailTableDialog - tableColumns:', tableColumns.value)
       console.log('【诊断】ResultDetailTableDialog - tableData:', parsingResultStore.tableData)
@@ -222,5 +248,23 @@ export default {
 
 .result-detail-dialog .el-empty__description {
   color: var(--theme-text-secondary);
+}
+
+/* 按钮组样式 */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+}
+
+.button-group .el-button {
+  margin: 0;
+  width: 60px;
+  font-size: 12px;
+}
+
+.button-group .el-tag {
+  margin: 2px 0;
 }
 </style>

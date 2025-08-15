@@ -465,3 +465,279 @@ export async function queryMaterialBaseInfo(params) {
     throw error
   }
 }
+
+/**
+ * 查询物资基础信息包含价格数据（分页）
+ * @param {object} params - 查询参数
+ * @param {string} [params.keyword] - 用于模糊搜索的关键字，搜索范围包括物资名称、规格型号、单位、物资编码和序列号
+ * @param {number} [params.page=0] - 页码，从0开始
+ * @param {number} [params.size=10] - 每页显示的记录数
+ * @returns {Promise<object>} - 后端返回的分页数据，包含物资基础信息和价格数据
+ */
+export async function queryMaterialBaseInfoWithPrices(params) {
+  try {
+    const response = await request({
+      url: '/api/materials/base-info/search-with-prices',
+      method: 'get',
+      params: {
+        keyword: params.keyword || '',
+        page: params.page || 0,
+        size: params.size || 10
+      }
+    })
+    return response
+  } catch (error) {
+    console.error('查询物资基础信息和价格数据失败:', error)
+    ElMessage.error(error.message || '查询物资基础信息和价格数据失败')
+    throw error
+  }
+}
+
+/**
+ * 乙供物资解析数据人工修改确认
+ * @param {object} confirmData - 确认数据
+ * @param {string} confirmData.id - 记录主键ID (wmes_y_materail_task_data表的主键ID)
+ * @param {string} confirmData.confirmBaseDataId - 确认的基础数据ID
+ * @param {string} confirmData.confirmPriceId - 确认的价格数据ID
+ * @returns {Promise<object>} - 确认结果
+ */
+export async function confirmSupplierMaterialData(confirmData) {
+  try {
+    // 参数验证
+    if (!confirmData.id || !confirmData.confirmBaseDataId || !confirmData.confirmPriceId) {
+      throw new Error('参数不完整：id、confirmBaseDataId、confirmPriceId 均为必填')
+    }
+    
+    const response = await request({
+      url: '/materials/partyb/manual-confirm',
+      method: 'post',
+      data: {
+        id: confirmData.id,
+        confirmBaseDataId: confirmData.confirmBaseDataId,
+        confirmPriceId: confirmData.confirmPriceId
+      }
+    })
+    return response
+  } catch (error) {
+    console.error('乙供物资数据确认失败:', error)
+    ElMessage.error(error.message || '确认失败')
+    throw error
+  }
+}
+
+/**
+ * 获取乙供物资解析结果数据（需要后端实现）
+ * @param {string} taskId - 任务ID
+ * @param {object} params - 查询参数
+ * @param {number} [params.page=0] - 页码，从0开始
+ * @param {number} [params.size=10] - 每页显示的记录数
+ * @returns {Promise<object>} - 解析结果数据
+ */
+export async function getSupplierMaterialParsingResults(taskId, params = {}) {
+  try {
+    const response = await request({
+      url: `/materials/partyb/parsing-results/${taskId}`,
+      method: 'get',
+      params: {
+        page: params.page || 0,
+        size: params.size || 10,
+        sort: params.sort || 'created_time,desc'
+      }
+    })
+    return response
+  } catch (error) {
+    console.error('获取乙供物资解析结果失败:', error)
+    ElMessage.error(error.message || '获取乙供物资解析结果失败')
+    throw error
+  }
+}
+
+/**
+ * 乙供物资复杂查询接口
+ * @param {object} queryParams - 查询参数
+ * @param {string} queryParams.taskId - 任务ID，用于查询该任务下的所有物资数据
+ * @param {number} [queryParams.page=0] - 页码（从0开始）
+ * @param {number} [queryParams.size=10] - 每页大小
+ * @param {string} [queryParams.keyword] - 搜索关键词，支持物资名称、规格型号、单位的模糊搜索
+ * @param {number} [queryParams.confirmResult] - 确认结果筛选（0：未确认，1：已确认，不传则查询全部）
+ * @param {number} [queryParams.matchedType] - 匹配类型筛选（0：无匹配，1：精确匹配，2：相似匹配，3：历史匹配，4：人工匹配，不传则查询全部）
+ * @returns {Promise<object>} - 复杂查询结果，包含content、page、statistics
+ */
+export async function querySupplierMaterialsComplex(queryParams) {
+  try {
+    if (!queryParams || !queryParams.taskId) {
+      throw new Error('参数不完整：taskId为必填项')
+    }
+
+    const response = await request({
+      url: '/materials/partyb/query',
+      method: 'post',
+      data: {
+        taskId: queryParams.taskId,
+        page: queryParams.page || 0,
+        size: queryParams.size || 10,
+        keyword: queryParams.keyword || undefined,
+        confirmResult: queryParams.confirmResult !== undefined ? queryParams.confirmResult : undefined,
+        matchedType: queryParams.matchedType !== undefined ? queryParams.matchedType : undefined
+      }
+    })
+    return response
+  } catch (error) {
+    console.error('乙供物资复杂查询失败:', error)
+    ElMessage.error(error.message || '乙供物资复杂查询失败')
+    throw error
+  }
+}
+
+/**
+ * 获取合同解析聚合结果
+ * @param {string} taskId - 任务ID
+ * @returns {Promise<object>} - 聚合的合同解析结果
+ */
+export async function getContractAnalysisResults(taskId) {
+  try {
+    if (!taskId) {
+      throw new Error('任务ID不能为空')
+    }
+    
+    const response = await request({
+      url: `/api/contract/analysis-results/task/${taskId}`,
+      method: 'get'
+    })
+    return response
+  } catch (error) {
+    console.error('获取合同解析聚合结果失败:', error)
+    ElMessage.error(error.message || '获取合同解析聚合结果失败')
+    throw error
+  }
+}
+
+/**
+ * 批量编辑乙供物资解析结果
+ * @param {Array<object>} editData - 要编辑的数据数组
+ * @returns {Promise<object>} - 编辑结果
+ */
+export async function editSupplierMaterialParsingResults(editData) {
+  try {
+    if (!Array.isArray(editData) || editData.length === 0) {
+      throw new Error('编辑数据不能为空')
+    }
+    
+    const response = await request({
+      url: '/materials/partyb/edit-results',
+      method: 'post',
+      data: editData
+    })
+    return response
+  } catch (error) {
+    console.error('编辑乙供物资解析结果失败:', error)
+    ElMessage.error(error.message || '编辑乙供物资解析结果失败')
+    throw error
+  }
+}
+
+/**
+ * 批量确认乙供物资解析结果
+ * @param {Array<object>} confirmData - 要确认的数据数组
+ * @returns {Promise<object>} - 确认结果
+ */
+export async function confirmSupplierMaterialParsingResults(confirmData) {
+  try {
+    if (!Array.isArray(confirmData) || confirmData.length === 0) {
+      throw new Error('确认数据不能为空')
+    }
+    
+    const response = await request({
+      url: '/materials/partyb/confirm-results',
+      method: 'post',
+      data: confirmData
+    })
+    return response
+  } catch (error) {
+    console.error('确认乙供物资解析结果失败:', error)
+    ElMessage.error(error.message || '确认乙供物资解析结果失败')
+    throw error
+  }
+}
+
+/**
+ * 修改确认合同解析结果 (单条记录)
+ * @param {object} updateData - 要修改的数据
+ * @param {string} updateData.taskDetailId - 任务详情ID
+ * @param {number} updateData.resultStatus - 结果状态 (1表示已确认)
+ * @param {Array<object>} updateData.fieldData - 字段数据数组
+ * @param {string} [updateData.remark] - 修改备注
+ * @returns {Promise<object>} - 修改结果
+ */
+export async function updateContractAnalysisResult(updateData) {
+  try {
+    if (!updateData || !updateData.taskDetailId || !updateData.fieldData) {
+      throw new Error('参数不完整：taskDetailId和fieldData为必填项')
+    }
+    
+    const response = await request({
+      url: '/api/contract/analysis-results/update',
+      method: 'post',
+      data: updateData
+    })
+    return response
+  } catch (error) {
+    console.error('修改确认合同解析结果失败:', error)
+    ElMessage.error(error.message || '修改确认合同解析结果失败')
+    throw error
+  }
+}
+
+/**
+ * 编辑合同解析结果 (批量修改，兼容旧接口)
+ * @param {Array<object>} editData - 要编辑的数据数组
+ * @returns {Promise<object>} - 编辑结果
+ * @deprecated 建议使用 updateContractAnalysisResult 进行单条记录修改确认
+ */
+export async function editContractAnalysisResults(editData) {
+  try {
+    if (!Array.isArray(editData) || editData.length === 0) {
+      throw new Error('编辑数据不能为空')
+    }
+    
+    const response = await request({
+      url: '/api/contract/analysis-results/edit',
+      method: 'post',
+      data: editData
+    })
+    return response
+  } catch (error) {
+    console.error('编辑合同解析结果失败:', error)
+    ElMessage.error(error.message || '编辑合同解析结果失败')
+    throw error
+  }
+}
+
+/**
+ * 批量确认合同解析结果
+ * @param {object} confirmData - 确认数据
+ * @param {string} confirmData.taskId - 任务ID  
+ * @param {string} [confirmData.remark] - 确认备注
+ * @returns {Promise<object>} - 确认结果
+ */
+export async function confirmContractAnalysisResults(confirmData) {
+  try {
+    if (!confirmData || !confirmData.taskId) {
+      throw new Error('参数不完整：taskId为必填项')
+    }
+    
+    const response = await request({
+      url: '/api/contract/analysis-results/confirm',
+      method: 'post',
+      data: {
+        taskId: confirmData.taskId,
+        remark: confirmData.remark || '批量确认合同解析结果'
+      }
+    })
+    return response
+  } catch (error) {
+    console.error('确认合同解析结果失败:', error)
+    ElMessage.error(error.message || '确认合同解析结果失败')
+    throw error
+  }
+}

@@ -29,14 +29,17 @@ const headerMapping = {
   contract_name: '合同名称',
   contract_number: '合同编号',
   contract_amount: '合同金额',
-  pay_result: '付款依据',
   signing_time: '签订时间',
-  fixed_rate: '包干率',
   safety_rate: '安全文明施工费是否下浮',
   temporary_rate: '临时设施费是否下浮',
   result_status: '解析状态',
-  salary: '薪水',
-  hire_date: '入职日期',
+  resultStatus: '确认状态',
+  contract_party_a: '甲方',
+  contract_party_b: '乙方',
+  contract_type: '合同类型',
+  signing_date: '签署日期',
+  delivery_date: '交付日期',
+  service_period: '服务周期',
   ID: 'ID',
   物资名称: '物资名称',
   规格型号: '规格型号',
@@ -72,6 +75,15 @@ export const formatCellValue = (value, prop) => {
       return '解析成功'
     } else if (value === -1) {
       return '解析失败'
+    }
+  }
+
+  // 特殊处理 resultStatus 字段（合同解析确认状态）
+  if (prop === 'resultStatus' && typeof value === 'number') {
+    if (value === 0) {
+      return '未确认'
+    } else if (value === 1) {
+      return '已确认'
     }
   }
 

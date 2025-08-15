@@ -15,7 +15,10 @@ export function useEventHandlers() {
    * @param {string} taskIdFromMessage - 消息中的任务ID
    */
   const viewResultDetail = async (taskIdFromMessage) => {
-    await parsingResultStore.viewResultDetail(taskIdFromMessage)
+    await parsingResultStore.viewResultDetail({ 
+      isSupplierMaterial: false, 
+      specificTaskId: taskIdFromMessage 
+    })
   }
 
   /**
@@ -66,11 +69,20 @@ export function useEventHandlers() {
     )
   }
 
+  // 为了兼容性，创建别名方法
+  const onViewResultDetail = viewResultDetail
+  const onViewMaterialResultDetail = viewMaterialResultDetail  
+  const onViewSupplierMaterialResultDetail = viewSupplierMaterialResultDetail
+
   return {
     viewResultDetail,
     viewMaterialResultDetail,
     viewSupplierMaterialResultDetail,
     viewOwnerMaterialDetail,
     viewSupplierMaterialDetail,
+    // 添加兼容性别名
+    onViewResultDetail,
+    onViewMaterialResultDetail,
+    onViewSupplierMaterialResultDetail,
   }
 }

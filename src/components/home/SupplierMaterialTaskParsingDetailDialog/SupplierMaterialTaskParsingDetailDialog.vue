@@ -49,6 +49,14 @@
           >
             {{ BUTTON_LABELS.VIEW_SOURCE_FILE }}
           </el-button>
+          <el-button 
+            type="primary" 
+            size="small"
+            @click="() => onConfirmResults(row)"
+            :disabled="row.taskDetailStatus !== '2'"
+          >
+            {{ BUTTON_LABELS.CONFIRM_RESULTS }}
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -65,10 +73,20 @@
       :style="PAGINATION_CONFIG.STYLE"
     />
   </el-dialog>
+
+  <!-- 乙供物资解析结果确认对话框 -->
+  <SupplierMaterialConfirmDialog
+    :show="showConfirmDialog"
+    :task-id="confirmTaskId"
+    @update:show="showConfirmDialog = $event"
+  />
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
+
+// 导入确认对话框组件
+import SupplierMaterialConfirmDialog from '../SupplierMaterialConfirmDialog/SupplierMaterialConfirmDialog.vue'
 
 // 导入常量和工具函数
 import {
@@ -122,6 +140,10 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
+// 确认对话框相关
+const showConfirmDialog = ref(false)
+const confirmTaskId = ref(null)
+
 // 创建路由实例
 const router = createRouter()
 
@@ -162,6 +184,11 @@ const onCurrentChange = (page) => {
 
 const onSizeChange = (size) => {
   utilOnSizeChange(size, setPageSize, setCurrentPage, fetchDetailList)
+}
+
+const onConfirmResults = (row) => {
+  confirmTaskId.value = row.taskId
+  showConfirmDialog.value = true
 }
 
 // 监听对话框显示和任务ID变化
