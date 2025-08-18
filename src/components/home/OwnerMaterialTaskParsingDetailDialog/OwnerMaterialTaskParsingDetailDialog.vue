@@ -168,17 +168,17 @@ const handleSizeChange = (val) => {
   currentPage.value = 1 // 改变每页大小时重置到第一页
   fetchDetailList()
 }
-const downLoadFile = (row) => {
-  console.log('下载文件:', row)
-  // 实现文件下载逻辑
-  const url =
-    row.fileUrl ||
-    'https://p26-bot-workflow-sign.byteimg.com/tos-cn-i-mdko3gqilj/6aac8a6b025b4bd5812db0fc55de3e83.xlsx~tplv-mdko3gqilj-image.image?rk3s=81d4c505&x-expires=1782007995&x-signature=MShxLvZFXq%2FzGHhtntc73tmzQDs%3D&x-wf-file_name=LGJ2025JI011559-090000WP20220865+%E5%AE%A1%E6%A0%B8%E6%8A%A5%E5%91%8A.xlsx'
-  // if (!url) {
-  //   ElMessage.error('文件URL不存在')
-  //   return
-  // }
-  window.open(url, '_blank')
+const downLoadFile = async (row) => {
+  console.log('下载源文件:', row)
+  
+  try {
+    // 动态导入文件下载工具函数
+    const { downloadSourceFile } = await import('@/utils/fileDownload.js')
+    downloadSourceFile(row)
+  } catch (error) {
+    console.error('导入文件下载工具失败:', error)
+    ElMessage.error('下载功能加载失败')
+  }
 }
 </script>
 

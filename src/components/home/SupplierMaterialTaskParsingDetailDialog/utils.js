@@ -122,13 +122,15 @@ export const viewDetail = (row, router, closeDialog) => {
  * @param {Object} row - 行数据
  */
 export const downloadFile = (row) => {
-  console.log('下载文件:', row)
+  console.log('下载源文件:', row)
   
-  // 使用默认URL或行数据中的URL
-  const url = row.fileUrl || 
-    'https://p26-bot-workflow-sign.byteimg.com/tos-cn-i-mdko3gqilj/6aac8a6b025b4bd5812db0fc55de3e83.xlsx~tplv-mdko3gqilj-image.image?rk3s=81d4c505&x-expires=1782007995&x-signature=MShxLvZFXq%2FzGHhtntc73tmzQDs%3D&x-wf-file_name=LGJ2025JI011559-090000WP20220865+%E5%AE%A1%E6%A0%B8%E6%8A%A5%E5%91%8A.xlsx'
-  
-  window.open(url, '_blank')
+  // 导入文件下载工具函数
+  import('@/utils/fileDownload.js').then(({ downloadSourceFile }) => {
+    downloadSourceFile(row)
+  }).catch(error => {
+    console.error('导入文件下载工具失败:', error)
+    ElMessage.error('下载功能加载失败')
+  })
 }
 
 /**
