@@ -77,6 +77,98 @@ export async function callStreamWorkflow(
     }
   }
 }
+
+/**
+ * 智能处理消息内容，提取 taskId 并清理用户不需要看到的技术信息
+ * @param {object} parsedData - 解析后的消息数据
+ * @returns {object} - 处理后的消息对象
+ */
+function processMessageContent(parsedData) {
+  const result = {
+    content: parsedData.content,
+    taskId: parsedData.taskId || null,
+    taskInfo: parsedData.taskInfo || null
+  }
+
+  // 尝试解析 content 中的 JSON 结构
+  if (typeof parsedData.content === 'string') {
+    try {
+      const contentJson = JSON.parse(parsedData.content)
+      
+      // 从内容中提取 taskId
+      if (contentJson.taskId && !result.taskId) {
+        result.taskId = contentJson.taskId
+        console.log('【消息处理】从内容中提取到 taskId:', contentJson.taskId)
+      }
+
+      // 确定要展示给用户的内容
+      let displayContent = null
+
+      // 优先使用专门的输出字段
+      if (contentJson.output) {
+        displayContent = contentJson.output
+      } else if (contentJson.result) {
+        displayContent = contentJson.result
+      } else if (contentJson.message) {
+        displayContent = contentJson.message
+      } else if (contentJson.text) {
+        displayContent = contentJson.text
+      } else {
+        // 过滤掉技术性字段，只保留用户友好的内容
+        const filteredContent = filterTechnicalFields(contentJson)
+        if (Object.keys(filteredContent).length > 0) {
+          displayContent = JSON.stringify(filteredContent, null, 2)
+        } else {
+          // 如果过滤后没有内容，使用原始内容但隐藏 taskId
+          // eslint-disable-next-line no-unused-vars
+          const { taskId, messageId, finish_reason, ...cleanContent } = contentJson
+          displayContent = Object.keys(cleanContent).length > 0 
+            ? JSON.stringify(cleanContent, null, 2) 
+            : parsedData.content
+        }
+      }
+
+      result.content = displayContent || parsedData.content
+
+      // 保存额外的任务信息
+      if (contentJson.task_detail_id || contentJson.taskDetailId) {
+        result.taskInfo = {
+          ...result.taskInfo,
+          task_detail_id: contentJson.task_detail_id || contentJson.taskDetailId
+        }
+      }
+
+    } catch (e) {
+      // 不是 JSON 格式，使用原始内容
+      console.log('【消息处理】内容不是JSON格式，使用原始内容')
+    }
+  }
+
+  return result
+}
+
+/**
+ * 过滤掉技术性字段，只保留用户关心的内容
+ * @param {object} obj - 要过滤的对象
+ * @returns {object} - 过滤后的对象
+ */
+function filterTechnicalFields(obj) {
+  const technicalFields = [
+    'taskId', 'messageId', 'finish_reason', 'index',
+    'chatSessionId', 'node_execute_uuid', 'debug_url',
+    'created_at', 'updated_at', 'id', 'status_code'
+  ]
+  
+  const filtered = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (!technicalFields.includes(key)) {
+      filtered[key] = value
+    }
+  }
+  
+  return filtered
+}
+
 // 处理单个消息块的辅助函数
 async function processMessageBlock(messageBlock, { onMessage, onError, onComplete }) {
   if (!messageBlock.trim()) return
@@ -108,26 +200,35 @@ async function processMessageBlock(messageBlock, { onMessage, onError, onComplet
         case 'Message':
           if (onMessage && typeof onMessage === 'function') {
             const parsedData = JSON.parse(message.data)
-            if (parsedData && parsedData.length > 0) {
-              const messageData = parsedData[0]
-              // 检查是否包含 output 字段的新格式
-              if (messageData.content && typeof messageData.content === 'string') {
-                try {
-                  const contentData = JSON.parse(messageData.content)
-                  if (contentData.output) {
-                    // 新格式：content 是字符串，包含 output 字段
-                    onMessage({ content: contentData.output })
-                  } else {
-                    // 其他格式的字符串内容
+            console.log('【后端工作流】接收到Message消息:', parsedData)
+            
+            // 新的后端格式：直接是一个对象，不再是数组
+            if (parsedData && typeof parsedData === 'object') {
+              // 检查新格式：直接包含 content, taskId 等字段
+              if (parsedData.content) {
+                const processedMessage = processMessageContent(parsedData)
+                console.log('【后端工作流】处理后的消息:', processedMessage)
+                onMessage(processedMessage)
+              } else if (Array.isArray(parsedData) && parsedData.length > 0) {
+                // 兼容旧格式：数组格式
+                const messageData = parsedData[0]
+                if (messageData.content && typeof messageData.content === 'string') {
+                  try {
+                    const contentData = JSON.parse(messageData.content)
+                    if (contentData.output) {
+                      onMessage({ content: contentData.output })
+                    } else {
+                      onMessage({ content: messageData.content })
+                    }
+                  } catch (e) {
                     onMessage({ content: messageData.content })
                   }
-                } catch (e) {
-                  // content 不是 JSON 格式，直接传递
-                  onMessage({ content: messageData.content })
+                } else {
+                  onMessage(messageData)
                 }
               } else {
-                // 原有格式：直接传递数组的第一个元素
-                onMessage(messageData)
+                // 其他格式，直接传递
+                onMessage(parsedData)
               }
             }
           }

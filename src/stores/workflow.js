@@ -216,6 +216,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
    * @param {Object} event - SSE 事件
    * @returns {{potentialTaskId: string|null, messageContent: string|null, parsedMessage: Object|null}}
    */
+  // eslint-disable-next-line no-unused-vars
   const parseWorkflowMessage = (event) => {
     if (event.event !== 'Message' || event.data.content_type !== 'text') {
       return { potentialTaskId: null, messageContent: null, parsedMessage: null }
@@ -441,18 +442,23 @@ export const useWorkflowStore = defineStore('workflow', () => {
       loadingMessage.content = '合同解析已开始...'
       addMessageCallback(streamingAgentMessage)
 
-      // 使用后端 API，agentManagementId: '1'
-      await callStreamWorkflow(inputs, '1', {
+      // 使用后端 API，agentManagementId: '8' (新的合同解析工作流)
+      await callStreamWorkflow(inputs, '8', {
         onMessage: (event) => {
           if (event.content) {
-            // 尝试从消息中提取任务ID
-            const taskIdMatch = event.content.match(/任务编号：([a-f0-9-]+)/i)
-            if (taskIdMatch) {
-              taskId.value = taskIdMatch[1]
-              streamingAgentMessage.task = taskIdMatch[1]
+            // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
+            if (event.taskId) {
+              taskId.value = event.taskId
+              streamingAgentMessage.task = event.taskId
+              console.log('【合同解析】获取到任务ID:', event.taskId)
             }
 
-            // 处理流式消息
+            // 处理额外的任务信息
+            if (event.taskInfo && event.taskInfo.task_detail_id) {
+              console.log('【合同解析】获取到任务详情ID:', event.taskInfo.task_detail_id)
+            }
+
+            // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
           }
@@ -503,28 +509,26 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow(inputs, '6', {
         onMessage: (event) => {
           if (event.content) {
-            // 尝试从消息中提取任务ID和详情ID
-            const taskIdMatch = event.content.match(/任务编号：([a-f0-9-]+)/i)
-            if (taskIdMatch) {
-              supplierTaskId.value = taskIdMatch[1]
-              streamingAgentMessage.task = taskIdMatch[1]
+            // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
+            if (event.taskId) {
+              supplierTaskId.value = event.taskId
+              streamingAgentMessage.task = event.taskId
+              console.log('【乙供物资解析】获取到任务ID:', event.taskId)
             }
 
-            // 尝试解析 JSON 格式的消息来获取 task_detail_id
-            try {
-              const parsedContent = JSON.parse(event.content)
-              if (parsedContent.task_id) {
-                supplierTaskId.value = parsedContent.task_id
-                streamingAgentMessage.task = parsedContent.task_id
+            // 处理额外的任务信息（如 task_detail_id）
+            if (event.taskInfo) {
+              if (event.taskInfo.task_detail_id) {
+                if (Array.isArray(event.taskInfo.task_detail_id)) {
+                  supplierFileDetailIds.value = event.taskInfo.task_detail_id
+                } else {
+                  supplierFileDetailIds.value = [event.taskInfo.task_detail_id]
+                }
+                console.log('【乙供物资解析】获取到任务详情ID:', event.taskInfo.task_detail_id)
               }
-              if (Array.isArray(parsedContent.task_detail_id)) {
-                supplierFileDetailIds.value = parsedContent.task_detail_id
-              }
-            } catch (e) {
-              // 如果不是 JSON 格式，继续处理普通消息
             }
 
-            // 处理流式消息
+            // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
           }
@@ -575,66 +579,40 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow({ ...inputs, parseOnly: true }, '2', {
         onMessage: (event) => {
           if (event.content) {
-            let parsedContent = null
-
-            try {
-              // 尝试直接解析 event.content 为 JSON 对象
-              parsedContent = JSON.parse(event.content)
-
-              // 你可以在这里根据结构确认是期望的格式
-              if (parsedContent.taskId) {
-                taskId.value = parsedContent.taskId
-                streamingAgentMessage.task = parsedContent.taskId
-                ownerMaterialStore.setTask(parsedContent.taskId)
-              }
-            } catch (e) {
-              console.log('消息 JSON 解析失败，尝试旧格式:', e)
+            console.log('【甲供物资解析】接收到消息:', event)
+            
+            // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
+            if (event.taskId) {
+              taskId.value = event.taskId
+              streamingAgentMessage.task = event.taskId
+              ownerMaterialStore.setTask(event.taskId)
+              console.log('【甲供物资解析】获取到任务ID:', event.taskId)
             }
 
-            // 如果解析成功
-            if (parsedContent) {
-              if (parsedContent.llmReport) {
-                // 处理 llmReport 格式的内容 - 不展示详细内容，替换为人工确认提示
+            // 处理额外的任务信息
+            if (event.taskInfo) {
+              console.log('【甲供物资解析】获取到任务信息:', event.taskInfo)
+            }
+
+            // 检查是否需要特殊处理某些内容格式
+            let shouldDisplayContent = true
+            try {
+              const contentJson = JSON.parse(event.content)
+              if (contentJson.llmReport) {
+                // llmReport 不直接展示，替换为人工确认提示
                 const manualConfirmText = '\n存在无法匹配的物资信息，请人工介入\n'
                 chatStore.appendStreamContent(streamingAgentMessage.id, manualConfirmText)
                 finalResult.push(manualConfirmText)
-              } else if (parsedContent.text) {
-                // 普通文本内容
-                chatStore.appendStreamContent(streamingAgentMessage.id, parsedContent.text)
-                finalResult.push(parsedContent.text + '\n')
+                shouldDisplayContent = false
               }
-            } else {
-              // 回退旧格式解析逻辑
-              const { parsedMessage, messageContent } = parseWorkflowMessage({
-                event: 'Message',
-                data: { content_type: 'text', content: event.content }
-              })
+            } catch (e) {
+              // 不是 JSON 格式，正常处理
+            }
 
-              if (parsedMessage) {
-                if (parsedMessage.task_id) {
-                  taskId.value = parsedMessage.task_id
-                  streamingAgentMessage.task = parsedMessage.task_id
-                  ownerMaterialStore.setTask(parsedMessage.task_id)
-                }
-
-                if (parsedMessage.result) {
-                  const output = {
-                    materials: parsedMessage.result.materials || [],
-                    flattened: parsedMessage.result.flattened || [],
-                    unmatched: parsedMessage.result.unmatched || [],
-                    taskId: parsedMessage.task_id
-                  }
-                  if (output.unmatched.length > 0) {
-                    output.message = '存在无法匹配的物资信息，请人工介入'
-                  }
-                  const text = JSON.stringify(output, null, 2)
-                  chatStore.appendStreamContent(streamingAgentMessage.id, text)
-                  finalResult.push(text)
-                }
-              } else if (messageContent) {
-                chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
-                finalResult.push(messageContent)
-              }
+            // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
+            if (shouldDisplayContent) {
+              chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
+              finalResult.push(event.content)
             }
           }
         },
@@ -700,58 +678,34 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow({ taskId }, '4', {
         onMessage: (event) => {
           if (event.content) {
-            let parsedContent = null
-
-            try {
-              // 尝试直接解析 event.content 为 JSON 对象
-              parsedContent = JSON.parse(event.content)
-
-              // 处理新格式的响应数据
-
-              streamingAgentMessage.task = taskId
-
-              // 处理 llmReport 数据 - 只保存到store，不显示
-              if (parsedContent.llmReport) {
-                ownerMaterialStore.setLlmReport(taskId, parsedContent.llmReport)
-              }
-
-              // 处理其他内容用于显示
-              if (parsedContent.text) {
-                chatStore.appendStreamContent(streamingAgentMessage.id, parsedContent.text)
-                finalResult.push(parsedContent.text)
-              }
-            } catch (e) {
-              console.log('消息 JSON 解析失败，尝试旧格式:', e)
+            console.log('【甲供物资重新解析】接收到消息:', event)
+            
+            // 处理 taskId - 重新解析时通常已有taskId，但可以用于验证
+            if (event.taskId && event.taskId !== taskId) {
+              console.log('【甲供物资重新解析】检测到新的任务ID:', event.taskId, '当前:', taskId)
             }
 
-            // 如果新格式解析失败，回退到旧格式解析逻辑
-            if (!parsedContent) {
-              const { parsedMessage, messageContent } = parseWorkflowMessage({
-                event: 'Message',
-                data: { content_type: 'text', content: event.content }
-              })
+            streamingAgentMessage.task = taskId
 
-              if (parsedMessage) {
-                streamingAgentMessage.task = taskId
-
-                if (parsedMessage.result) {
-                  const output = {
-                    materials: parsedMessage.result.materials || [],
-                    flattened: parsedMessage.result.flattened || [],
-                    unmatched: parsedMessage.result.unmatched || [],
-                    taskId: parsedMessage.task_id
-                  }
-                  if (output.unmatched.length > 0) {
-                    output.message = '存在无法匹配的物资信息，请人工介入'
-                  }
-                  const text = JSON.stringify(output, null, 2)
-                  chatStore.appendStreamContent(streamingAgentMessage.id, text)
-                  finalResult.push(text)
-                }
-              } else if (messageContent) {
-                chatStore.appendStreamContent(streamingAgentMessage.id, messageContent)
-                finalResult.push(messageContent)
+            // 检查是否需要特殊处理某些内容格式
+            let shouldDisplayContent = true
+            try {
+              const contentJson = JSON.parse(event.content)
+              
+              // 处理 llmReport 数据 - 只保存到store，不显示
+              if (contentJson.llmReport) {
+                ownerMaterialStore.setLlmReport(taskId, contentJson.llmReport)
+                console.log('【甲供物资重新解析】保存llmReport数据')
+                shouldDisplayContent = false // 不显示 llmReport 内容
               }
+            } catch (e) {
+              // 不是 JSON 格式，正常处理
+            }
+
+            // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
+            if (shouldDisplayContent) {
+              chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
+              finalResult.push(event.content)
             }
           }
         },
