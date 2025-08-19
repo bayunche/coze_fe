@@ -581,7 +581,7 @@ export function getOwnerMaterialLlmReport(taskId) {
 export async function queryMaterialBaseInfo(params) {
   try {
     const response = await request({
-      url: '/api/materials/base-info/search',
+      url: '/materials/base-info/search',
       method: 'get',
       params: params
     })
@@ -604,7 +604,7 @@ export async function queryMaterialBaseInfo(params) {
 export async function queryMaterialBaseInfoWithPrices(params) {
   try {
     const response = await request({
-      url: '/api/materials/base-info/search-with-prices',
+      url: '/materials/base-info/search-with-prices',
       method: 'get',
       params: {
         keyword: params.keyword || '',
@@ -728,7 +728,7 @@ export async function getContractAnalysisResults(taskId) {
     }
     
     const response = await request({
-      url: `/api/contract/analysis-results/task/${taskId}`,
+      url: `/contract/analysis-results/task/${taskId}`,
       method: 'get'
     })
     return response
@@ -803,7 +803,7 @@ export async function updateContractAnalysisResult(updateData) {
     }
     
     const response = await request({
-      url: '/api/contract/analysis-results/update',
+      url: '/contract/analysis-results/update',
       method: 'post',
       data: updateData
     })
@@ -828,7 +828,7 @@ export async function editContractAnalysisResults(editData) {
     }
     
     const response = await request({
-      url: '/api/contract/analysis-results/edit',
+      url: '/contract/analysis-results/edit',
       method: 'post',
       data: editData
     })
@@ -854,7 +854,7 @@ export async function confirmContractAnalysisResults(confirmData) {
     }
     
     const response = await request({
-      url: '/api/contract/analysis-results/confirm',
+      url: '/contract/analysis-results/confirm',
       method: 'post',
       data: {
         taskId: confirmData.taskId,
