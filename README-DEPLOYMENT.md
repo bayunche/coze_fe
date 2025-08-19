@@ -32,6 +32,8 @@
 ## 快速部署
 
 ### 方式1：使用部署脚本（推荐）
+
+**中文版本**:
 ```bash
 # 给脚本执行权限
 chmod +x deploy.sh
@@ -40,10 +42,20 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
+**英文版本**（如果中文版本出现乱码）:
+```bash
+# 给脚本执行权限
+chmod +x deploy-en.sh
+
+# 执行部署
+./deploy-en.sh
+```
+
 **注意事项**:
 - 脚本已配置UTF-8编码，自动适配Mac/Linux/Windows环境
 - Windows环境下建议使用Git Bash或WSL执行脚本
-- 如仍有乱码问题:
+- 如仍有乱码问题，可使用英文版本脚本 `deploy-en.sh`
+- 手动设置编码:
   - Windows: `chcp 65001`
   - Mac: `export LANG=zh_CN.UTF-8`
   - Linux: `export LANG=zh_CN.UTF-8`
