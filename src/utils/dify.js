@@ -2,7 +2,11 @@
 import { ElMessage } from 'element-plus'
 import { processAgentResponse } from '@/constants/agentMapping.js'
 
-const BASE_URL = 'http://localhost:1202' // 根据实际情况调整Dify服务的BASE_URL
+// 根据环境配置BASE_URL
+const BASE_URL =
+  import.meta.env.MODE === 'production'
+    ? import.meta.env.VITE_APP_BACKEND_WORKFLOW_API
+    : 'http://localhost:1202'
 
 /**
  * 调用聊天生成接口，支持流式响应（兼容 backendWorkflow 的调用模式）
