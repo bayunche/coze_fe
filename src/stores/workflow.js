@@ -505,7 +505,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       loadingMessage.content = '乙供物资解析已开始...'
       addMessageCallback(streamingAgentMessage)
 
-      // 使用后端 API，agentManagementId: '3'
+      // 使用后端 API，agentManagementId: '6'
       await callStreamWorkflow(inputs, '6', {
         onMessage: (event) => {
           if (event.content) {
