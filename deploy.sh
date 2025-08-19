@@ -102,9 +102,19 @@ echo "  停止服务: docker-compose down"
 echo "  重新部署: ./deploy.sh"
 echo ""
 
-# 10. 显示Java服务提醒
-echo "⚠️ 重要提醒:"
-echo "请确保以下Java服务正在运行:"
-echo "  - 端口 1207: 主要业务API服务"
-echo "  - 端口 1202: 对话流/工作流API服务"
-echo "否则前端API请求将失败"
+# 10. 检查Java服务状态
+echo "⚠️ 检查Java服务状态:"
+if curl -s http://localhost:1207/ &> /dev/null; then
+    echo "✅ 端口 1207 (主要业务API) 服务正常"
+else
+    echo "❌ 端口 1207 (主要业务API) 无响应"
+fi
+
+if curl -s http://localhost:1202/ &> /dev/null; then
+    echo "✅ 端口 1202 (对话流API) 服务正常"  
+else
+    echo "❌ 端口 1202 (对话流API) 无响应"
+fi
+
+echo ""
+echo "💡 提示: 如果Java服务无响应，请先启动相应的后端服务"
