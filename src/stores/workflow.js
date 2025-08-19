@@ -580,7 +580,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         onMessage: (event) => {
           if (event.content) {
             console.log('【甲供物资解析】接收到消息:', event)
-            
+
             // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
             if (event.taskId) {
               taskId.value = event.taskId
@@ -679,7 +679,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
         onMessage: (event) => {
           if (event.content) {
             console.log('【甲供物资重新解析】接收到消息:', event)
-            
+
             // 处理 taskId - 重新解析时通常已有taskId，但可以用于验证
             if (event.taskId && event.taskId !== taskId) {
               console.log('【甲供物资重新解析】检测到新的任务ID:', event.taskId, '当前:', taskId)
@@ -691,7 +691,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             let shouldDisplayContent = true
             try {
               const contentJson = JSON.parse(event.content)
-              
+
               // 处理 llmReport 数据 - 只保存到store，不显示
               if (contentJson.llmReport) {
                 ownerMaterialStore.setLlmReport(taskId, contentJson.llmReport)
