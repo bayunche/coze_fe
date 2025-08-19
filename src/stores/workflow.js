@@ -516,27 +516,55 @@ export const useWorkflowStore = defineStore('workflow', () => {
               console.log('【乙供物资解析】获取到任务ID:', event.taskId)
             }
 
-            // 处理额外的任务信息（如 task_detail_id）
+            // 处理任务信息，优先使用新格式的fileDetailIds
             if (event.taskInfo) {
-              if (event.taskInfo.task_detail_id) {
+              // 新格式：从processDetails中提取文件详情ID
+              if (event.taskInfo.fileDetailIds && event.taskInfo.fileDetailIds.length > 0) {
+                supplierFileDetailIds.value = event.taskInfo.fileDetailIds
+                console.log('【乙供物资解析】从新格式获取到文件详情ID:', event.taskInfo.fileDetailIds)
+              }
+              // 兼容旧格式：task_detail_id
+              else if (event.taskInfo.task_detail_id) {
                 if (Array.isArray(event.taskInfo.task_detail_id)) {
                   supplierFileDetailIds.value = event.taskInfo.task_detail_id
                 } else {
                   supplierFileDetailIds.value = [event.taskInfo.task_detail_id]
                 }
-                console.log('【乙供物资解析】获取到任务详情ID:', event.taskInfo.task_detail_id)
+                console.log('【乙供物资解析】从兼容格式获取到任务详情ID:', event.taskInfo.task_detail_id)
               }
             }
 
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
+            
+            // 检查是否为完整结果消息（新的乙供物资格式）
+            if (event.isComplete && event.taskInfo && event.taskInfo.isCompleteResult) {
+              console.log('【乙供物资解析】检测到完整结果消息，立即完成流式处理')
+              
+              // 立即完成流式处理，不等待Done事件
+              delete streamingAgentMessage.isStreaming
+              streamingAgentMessage.showViewResultButton = true
+              
+              if (progressManager) progressManager.stop()
+              loadingMessage.progress = 100
+              loadingMessage.content = '乙供物资解析任务执行完毕！'
+              ElMessage.success('乙供物资解析完成')
+              finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
+            }
           }
         },
         onError: (error) => {
           onExecutionError(error, loadingMessage, addMessageCallback)
         },
         onComplete: () => {
+          // 如果消息已经在onMessage中完成处理（新格式），则跳过
+          if (!streamingAgentMessage.isStreaming) {
+            console.log('【乙供物资解析】消息已在onMessage中处理完成，跳过onComplete处理')
+            return
+          }
+          
+          // 处理旧格式或其他未完成的消息
           delete streamingAgentMessage.isStreaming
           if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
             streamingAgentMessage.showViewResultButton = true

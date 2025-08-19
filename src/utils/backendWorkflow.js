@@ -97,10 +97,10 @@ function processMessageContent(parsedData) {
       
       // 检查是否为新的乙供物资返回格式：包含 modelAnswer 和 taskInfo
       if (contentJson.modelAnswer && contentJson.taskInfo) {
-        console.log('【消息处理】检测到乙供物资新格式返回消息')
+        console.log('【消息处理】检测到乙供物资新格式返回消息', contentJson)
         
         // 从 taskInfo 中提取 taskId
-        if (contentJson.taskInfo.taskId && !result.taskId) {
+        if (contentJson.taskInfo.taskId) {
           result.taskId = contentJson.taskInfo.taskId
           console.log('【消息处理】从 taskInfo 中提取到 taskId:', contentJson.taskInfo.taskId)
         }
@@ -108,14 +108,21 @@ function processMessageContent(parsedData) {
         // 从 modelAnswer 中提取输出内容
         if (contentJson.modelAnswer && contentJson.modelAnswer.length > 0 && contentJson.modelAnswer[0].output) {
           result.content = contentJson.modelAnswer[0].output
-          console.log('【消息处理】从 modelAnswer 中提取到输出内容')
+          console.log('【消息处理】从 modelAnswer 中提取到输出内容，长度:', contentJson.modelAnswer[0].output.length)
         }
         
-        // 保存完整的任务信息
+        // 保存完整的任务信息，包含处理详情
         result.taskInfo = {
           ...result.taskInfo,
-          ...contentJson.taskInfo
+          ...contentJson.taskInfo,
+          // 标记这是乙供物资解析的完整结果
+          isCompleteResult: true,
+          // 保存文件详情ID用于后续查看结果
+          fileDetailIds: contentJson.taskInfo.processDetails?.map(detail => detail.id) || []
         }
+        
+        // 标记消息已完成，用于按钮显示逻辑
+        result.isComplete = true
         
         return result
       }
