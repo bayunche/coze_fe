@@ -15,7 +15,8 @@ services:
       # 挂载日志目录（可选）
       - ./nginx/logs:/var/log/nginx
     restart: unless-stopped
-    # 使用宿主机网络，直接访问宿主机的1202和1207端口
-    network_mode: host
+    # 添加宿主机访问，用于连接1202和1207端口
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 # 注意：1202和1207端口已被现有Java服务占用，无需重复部署
