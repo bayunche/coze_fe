@@ -1,23 +1,19 @@
 // src/utils/dify.js
-import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
+import { processAgentResponse } from '@/constants/agentMapping.js'
 
 const BASE_URL = 'http://localhost:1202' // 根据实际情况调整Dify服务的BASE_URL
 
 /**
- * 调用 Dify 的聊天生成接口，支持流式响应。
- * @param {object} data - 请求体数据。
- * @param {string} data.agentManagementId - 代理管理ID。
- * @param {object} data.inputs - 输入参数。
- * @param {string} data.prompt - 用户提示。
- * @param {string} data.user - 用户ID。
- * @param {function(object): void} onMessage - 接收到消息时的回调函数，参数为解析后的消息对象。
- *   消息对象结构示例: { "content":"文档", "finish_reason":null, "index":0, "taskId":"...", "messageId":"...", "event": "message" }
- * @param {function(): void} onEnd - 接收到完成消息时的回调函数。
- * @param {function(Error): void} onError - 发生错误时的回调函数。
+ * 调用聊天生成接口，支持流式响应（兼容 backendWorkflow 的调用模式）
+ * @param {object} inputs - 输入对象，例如：{"input":"你好"}
+ * @param {string} agentManagementId - 代理管理ID
+ * @param {object} callbacks - 回调函数对象 { onMessage, onError, onComplete }
  * @returns {Promise<void>} - 无返回值，通过回调函数处理结果。
  */
-export async function chatGenerate(data, onMessage, onEnd, onError) {
+export async function chatGenerate(inputs, agentManagementId, callbacks) {
+  const { onMessage, onError, onComplete } = callbacks || {}
+
   try {
     const response = await fetch(`${BASE_URL}/v1/chat/generate`, {
       method: 'POST',
@@ -26,10 +22,8 @@ export async function chatGenerate(data, onMessage, onEnd, onError) {
       },
       body: JSON.stringify({
         stream: true,
-        agentManagementId: data.agentManagementId,
-        inputs: data.inputs,
-        prompt: data.prompt,
-        user: data.user
+        agentManagementId: agentManagementId,
+        inputs: inputs
       })
     })
 
@@ -41,6 +35,7 @@ export async function chatGenerate(data, onMessage, onEnd, onError) {
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
     let buffer = ''
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { value, done } = await reader.read()
       if (done) {
@@ -49,122 +44,119 @@ export async function chatGenerate(data, onMessage, onEnd, onError) {
 
       buffer += value
 
-      const lines = buffer.split('\n')
-      buffer = lines.pop() // Keep the last incomplete line in the buffer
+      // 处理所有完整的消息块（兼容 backendWorkflow 的处理方式）
+      while (buffer.includes('\n\n')) {
+        const messageEndIndex = buffer.indexOf('\n\n')
+        const messageBlock = buffer.substring(0, messageEndIndex)
+        buffer = buffer.substring(messageEndIndex + 2) // 移除已处理的消息块
 
-      let currentMessage = {} // To store id, event, data for a single message
-
-      for (const line of lines) {
-        if (line.trim() === '') {
-          // An empty line indicates the end of a message
-          if (currentMessage.data) {
-            try {
-              const parsedData = JSON.parse(currentMessage.data)
-              if (onMessage && typeof onMessage === 'function') {
-                if (parsedData && parsedData.length > 0) {
-                  onMessage(parsedData[0]) // Pass the first element of the array
-                }
-              }
-            } catch (e) {
-              console.error('解析流式数据失败:', e, currentMessage.data)
-              if (onError && typeof onError === 'function') {
-                onError(e)
-              }
-            }
-          }
-          currentMessage = {} // Reset for the next message
-          continue
-        }
-
-        if (line.startsWith('id:')) {
-          currentMessage.id = line.substring(3).trim()
-        } else if (line.startsWith('event:')) {
-          currentMessage.event = line.substring(6).trim()
-        } else if (line.startsWith('data:')) {
-          const dataContent = line.substring(5).trim()
-          if (dataContent === '[DONE]') {
-            if (onEnd && typeof onEnd === 'function') {
-              onEnd()
-            }
-            break // End the stream processing
-          }
-          currentMessage.data = dataContent
-        } else {
-          console.warn('收到非标准流式数据行:', line)
-        }
-      }
-
-      // Process any remaining data in the buffer if it forms a complete message
-      if (buffer.trim() !== '') {
-        const remainingLines = buffer.split('\n')
-        buffer = remainingLines.pop() // Update buffer with any truly incomplete part
-
-        for (const line of remainingLines) {
-          if (line.trim() === '') {
-            if (currentMessage.data) {
-              try {
-                const parsedData = JSON.parse(currentMessage.data)
-                if (onMessage && typeof onMessage === 'function') {
-                  if (parsedData && parsedData.length > 0) {
-                    onMessage(parsedData[0])
-                  }
-                }
-              } catch (e) {
-                console.error('解析剩余流式数据失败:', e, currentMessage.data)
-                if (onError && typeof onError === 'function') {
-                  onError(e)
-                }
-              }
-            }
-            currentMessage = {}
-            continue
-          }
-
-          if (line.startsWith('id:')) {
-            currentMessage.id = line.substring(3).trim()
-          } else if (line.startsWith('event:')) {
-            currentMessage.event = line.substring(6).trim()
-          } else if (line.startsWith('data:')) {
-            const dataContent = line.substring(5).trim()
-            if (dataContent === '[DONE]') {
-              if (onEnd && typeof onEnd === 'function') {
-                onEnd()
-              }
-              break
-            }
-            currentMessage.data = dataContent
-          } else {
-            console.warn('处理剩余非标准流式数据行:', line)
-          }
-        }
-      }
-
-      // If there's a pending message at the very end of the stream (after done or error)
-      if (currentMessage.data) {
-        try {
-          const parsedData = JSON.parse(currentMessage.data)
-          if (onMessage && typeof onMessage === 'function') {
-            if (parsedData && parsedData.length > 0) {
-              onMessage(parsedData[0])
-            }
-          }
-        } catch (e) {
-          console.error('解析流式数据失败 (流结束前):', e, currentMessage.data)
-          if (onError && typeof onError === 'function') {
-            onError(e)
-          }
-        }
-      }
-
-      if (onEnd && typeof onEnd === 'function') {
-        onEnd()
+        // 处理单个消息块
+        await processMessageBlock(messageBlock, { onMessage, onError, onComplete })
       }
     }
+
+    // 处理最后剩余的消息块（如果有的话）
+    if (buffer.trim()) {
+      await processMessageBlock(buffer.trim(), { onMessage, onError, onComplete })
+    }
   } catch (error) {
-    console.error('调用Dify流式工作流失败:', error)
-    ElMessage.error(error.message || '调用Dify流式工作流失败')
+    console.error('调用聊天流式工作流失败:', error)
+    ElMessage.error(error.message || '调用聊天流式工作流失败')
     if (onError && typeof onError === 'function') {
       onError(error)
+    }
+  }
+}
+
+// 处理单个消息块的辅助函数（参考 backendWorkflow.js 的实现）
+async function processMessageBlock(messageBlock, { onMessage, onError, onComplete }) {
+  if (!messageBlock.trim()) return
+
+  const lines = messageBlock.split('\n')
+  const message = {}
+
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+    if (!trimmedLine) continue
+
+    if (trimmedLine.startsWith('id:')) {
+      message.id = trimmedLine.substring(3).trim()
+    } else if (trimmedLine.startsWith('event:')) {
+      message.event = trimmedLine.substring(6).trim()
+    } else if (trimmedLine.startsWith('data:')) {
+      const dataContent = trimmedLine.substring(5).trim()
+      message.data = dataContent
+    } else {
+      console.warn('收到非标准流式数据行:', trimmedLine)
+    }
+  }
+
+  // 处理消息
+  if (message.event && message.data) {
+    try {
+      // 根据事件类型调用相应的回调函数
+      switch (message.event) {
+        case 'Message':
+          if (onMessage && typeof onMessage === 'function') {
+            const parsedData = JSON.parse(message.data)
+            console.log('【聊天对话】接收到Message消息:', parsedData)
+            
+            // 处理新的后端格式：直接是一个对象，不再是数组
+            if (parsedData && typeof parsedData === 'object') {
+              // 检查新格式：直接包含 content 等字段
+              if (parsedData.content) {
+                // 尝试解析智能体响应
+                const agentResult = processAgentResponse(parsedData.content)
+                
+                const processedMessage = {
+                  content: parsedData.content,
+                  taskId: parsedData.taskId || null,
+                  taskInfo: parsedData.taskInfo || null,
+                  // 添加智能体解析结果
+                  agentResult: agentResult
+                }
+                console.log('【聊天对话】处理后的消息:', processedMessage)
+                console.log('【智能体解析】结果:', agentResult)
+                onMessage(processedMessage)
+              } else if (Array.isArray(parsedData) && parsedData.length > 0) {
+                // 兼容旧格式：数组格式
+                const messageData = parsedData[0]
+                if (messageData.content) {
+                  onMessage({ content: messageData.content })
+                } else {
+                  onMessage(messageData)
+                }
+              } else {
+                // 其他格式，直接传递
+                onMessage(parsedData)
+              }
+            }
+          }
+          break
+
+        case 'Error':
+          if (onError && typeof onError === 'function') {
+            const parsedData = JSON.parse(message.data)
+            console.error('聊天对话执行错误:', parsedData)
+            onError(parsedData)
+          }
+          break
+
+        case 'Done':
+          if (onComplete && typeof onComplete === 'function') {
+            // Done 事件通常 data 为 "Done"，不需要解析
+            onComplete()
+          }
+          break
+
+        default:
+          console.warn('收到未知事件类型:', message.event)
+      }
+    } catch (e) {
+      console.error('解析聊天流式数据失败:', e, message.data)
+      if (onError && typeof onError === 'function') {
+        onError(e)
+      }
     }
   }
 }

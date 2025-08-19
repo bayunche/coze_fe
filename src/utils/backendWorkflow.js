@@ -313,7 +313,7 @@ export async function uploadFile(file) {
   try {
     // request 工具的响应拦截器会处理掉外层的 data，直接返回业务数据
     const response = await request({
-      url: `/api/files/upload`, // 基础路径 /api 已在 request 中配置
+      url: `/api/files/upload`, // 保持完整路径，开发环境代理会正确转发到 1207/api/files/upload
       method: 'post',
       data: formData,
       headers: {

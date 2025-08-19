@@ -87,13 +87,13 @@ export default defineConfig(({ mode }) => {
       },
       // 通用API转发 - /api 前缀
       '/api': {
-        target: env.VITE_API_TARGET || 'http://10.1.17.83:1202',
+        target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
         rewrite: (path) => {
-          const newPath = path.replace(/^\/api/, '')
-          console.log(`[API] 路径转换: ${path} -> ${newPath}`)
-          console.log(`[API] 最终请求: ${env.VITE_API_TARGET}${newPath}`)
-          return newPath
+          // 保持 /api 前缀，不移除
+          console.log(`[API] 路径保持: ${path}`)
+          console.log(`[API] 最终请求: ${env.VITE_API_TARGET}${path}`)
+          return path
         }
       }
     }

@@ -27,16 +27,14 @@ const workflowStore = useWorkflowStore()
 
 /* 使用 storeToRefs 解构 state 中的响应式数据以保持响应性 */
 const { userInput } = storeToRefs(chatStore)
-const { activeFunction } = storeToRefs(workflowStore)
 
 /* 直接从 store 实例中获取 actions */
-const { sendMessage, addMessage } = chatStore
+const { sendMessage } = chatStore
 
 const sendMessageWrapper = () => {
-  // 这里的 '7514898709852733475' 和 selectFunction 是 HomeView.vue 中硬编码的，
-  // 应该从 workflowStore 或通过 props 传递
-  // 暂时保持与 HomeView.vue 现有逻辑一致，后续考虑优化
-  sendMessage(userInput.value, '7514898709852733475', workflowStore.selectFunction)
+  // 对话流已迁移到本地API，不再需要工作流ID
+  // agentManagementId 已在 chat store 中固定为 "100"
+  sendMessage(userInput.value, null, workflowStore.selectFunction)
 }
 </script>
 

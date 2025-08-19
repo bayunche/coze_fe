@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
-import CozeChatService from '@/services/CozeChatService'
+import { chatGenerate } from '@/utils/dify.js'
 
 export const useChatStore = defineStore(
   'chat',
@@ -9,8 +9,6 @@ export const useChatStore = defineStore(
 
     /** @type {import('vue').Ref<ChatMessage[]>} */
     const displayedMessages = ref([])
-
-    const cozeChatService = new CozeChatService()
 
     function addMessage(content, from, workflowInfo = null, details = null, options = {}) {
       let msg = null
@@ -63,36 +61,70 @@ export const useChatStore = defineStore(
       addMessage(agentMessage)
 
       try {
-        await cozeChatService.runChat({ query: userMsg }, workflowId, {
-          onMessage(msg) {
-            const { event, data } = msg
-            if (event === 'conversation.message.delta' && data.type === 'answer') {
-              agentMessage.content += data.content
-              addMessage(agentMessage)
-              if (!agentMessage.actionTriggered) {
-                if (agentMessage.content.includes('解析合同')) {
-                  onFunctionSelect('contractParsing')
-                  agentMessage.actionTriggered = true
-                } else if (agentMessage.content.includes('解析乙供物资功能')) {
-                  onFunctionSelect('supplierMaterialParsing')
-                  agentMessage.actionTriggered = true
-                } else if (agentMessage.content.includes('解析甲供物资功能')) {
-                  onFunctionSelect('ownerSuppliedMaterialParsing')
-                  agentMessage.actionTriggered = true
+        await chatGenerate(
+          { input: userMsg }, // 使用 input 作为参数名，与 backendWorkflow 保持一致
+          "100", // agentManagementId 固定为 100
+          {
+            // onMessage 回调 - 处理流式消息
+            onMessage: (messageData) => {
+              if (messageData.content) {
+                agentMessage.content += messageData.content
+                addMessage(agentMessage)
+                
+                // 检查智能体触发（优先于关键词匹配）
+                if (!agentMessage.actionTriggered && messageData.agentResult) {
+                  const { functionType, error } = messageData.agentResult
+                  
+                  if (functionType) {
+                    // 找到匹配的智能体，触发对应功能
+                    console.log('【智能体触发】功能类型:', functionType)
+                    onFunctionSelect(functionType)
+                    agentMessage.actionTriggered = true
+                  } else if (error) {
+                    // 处理智能体匹配失败的情况
+                    console.log('【智能体匹配失败】', error)
+                    agentMessage.content += `\n\n💡 ${error.message}`
+                    if (error.suggestion) {
+                      agentMessage.content += `\n${error.suggestion}`
+                    }
+                    if (error.availableTypes) {
+                      agentMessage.content += `\n\n可用的功能类型：${error.availableTypes.join('、')}`
+                    }
+                    agentMessage.actionTriggered = true // 防止重复处理
+                  }
+                }
+                
+                // 保留原有的关键词匹配作为备用方案（当智能体解析失败时）
+                if (!agentMessage.actionTriggered) {
+                  if (agentMessage.content.includes('解析合同')) {
+                    onFunctionSelect('contractParsing')
+                    agentMessage.actionTriggered = true
+                  } else if (agentMessage.content.includes('解析乙供物资功能')) {
+                    onFunctionSelect('supplierMaterialParsing')
+                    agentMessage.actionTriggered = true
+                  } else if (agentMessage.content.includes('解析甲供物资功能')) {
+                    onFunctionSelect('ownerSuppliedMaterialParsing')
+                    agentMessage.actionTriggered = true
+                  }
                 }
               }
-            } else if (event === 'done') {
+            },
+            // onComplete 回调 - 处理对话结束
+            onComplete: () => {
+              agentMessage.isStreaming = false
+              addMessage(agentMessage)
+            },
+            // onError 回调 - 处理错误
+            onError: (error) => {
+              console.error('聊天对话出错:', error)
+              agentMessage.content = `对话出错: ${error.message || error}`
               agentMessage.isStreaming = false
               addMessage(agentMessage)
             }
-          },
-          onError(error) {
-            agentMessage.content = `对话出错: ${error.message}`
-            agentMessage.isStreaming = false
-            addMessage(agentMessage)
           }
-        })
+        )
       } catch (err) {
+        console.error('发送消息失败:', err)
         agentMessage.content = `发送消息失败: ${err.message}`
         agentMessage.isStreaming = false
         addMessage(agentMessage)
@@ -146,13 +178,13 @@ export const useChatStore = defineStore(
       key: 'chat-messages',
       storage: sessionStorage,
       paths: ['displayedMessages'],
-      beforeHydrate(ctx) {
+      beforeHydrate() {
         const raw = sessionStorage.getItem('chat-messages')
         if (raw === '[]') sessionStorage.removeItem('chat-messages')
       },
-      afterHydrate(ctx) {
-        if (ctx.store.displayedMessages.length === 0) {
-          ctx.store.initDefaultMessage()
+      afterHydrate(context) {
+        if (context.store.displayedMessages.length === 0) {
+          context.store.initDefaultMessage()
         }
       }
     }
