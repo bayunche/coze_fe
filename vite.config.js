@@ -42,11 +42,16 @@ export default defineConfig(({ mode }) => {
     }
   },
   server: {
+    // 增加请求体大小限制，支持大文件上传（1000MB）
+    maxRequestSize: '1000mb',
     proxy: {
       // 价格相关API特殊处理 - 转发到专门的价格API服务器
       '/api/backend-api/materials/priceinfo': {
         target: env.VITE_PRICE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
+        // 支持大文件上传的配置
+        timeout: 300000, // 5分钟超时
+        proxyTimeout: 300000,
         rewrite: (path) => {
           const newPath = path.replace(/^\/api\/backend-api/, '')
           console.log(`[PriceAPI] 路径转换: ${path} -> ${newPath}`)
@@ -57,6 +62,8 @@ export default defineConfig(({ mode }) => {
       '/backend-api/materials/priceinfo': {
         target: env.VITE_PRICE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
+        timeout: 300000,
+        proxyTimeout: 300000,
         rewrite: (path) => {
           console.log(`[PriceAPI-Direct] 路径转换: ${path} -> ${path}`)
           console.log(`[PriceAPI-Direct] 最终请求: ${env.VITE_PRICE_API_TARGET}${path}`)
@@ -67,6 +74,8 @@ export default defineConfig(({ mode }) => {
       '/api/backend-api': {
         target: env.VITE_BACKEND_API_TARGET || 'http://10.1.17.83:1202',
         changeOrigin: true,
+        timeout: 300000,
+        proxyTimeout: 300000,
         rewrite: (path) => {
           const newPath = path.replace(/^\/api\/backend-api/, '')
           console.log(`[BackendAPI] 路径转换: ${path} -> ${newPath}`)
@@ -78,6 +87,8 @@ export default defineConfig(({ mode }) => {
       '/backend-api': {
         target: env.VITE_BACKEND_API_TARGET || 'http://10.1.17.83:1202',
         changeOrigin: true,
+        timeout: 300000,
+        proxyTimeout: 300000,
         rewrite: (path) => {
           const newPath = path.replace(/^\/backend-api/, '')
           console.log(`[BackendAPI-Direct] 路径转换: ${path} -> ${newPath}`)
@@ -85,10 +96,13 @@ export default defineConfig(({ mode }) => {
           return newPath
         }
       },
-      // 通用API转发 - /api 前缀
+      // 通用API转发 - /api 前缀（文件上传主要使用此路径）
       '/api': {
         target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
+        // 专门为文件上传配置大文件支持
+        timeout: 600000, // 10分钟超时，支持大文件上传
+        proxyTimeout: 600000,
         rewrite: (path) => {
           // 保持 /api 前缀，不移除
           console.log(`[API] 路径保持: ${path}`)

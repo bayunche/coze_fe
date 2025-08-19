@@ -95,6 +95,32 @@ function processMessageContent(parsedData) {
     try {
       const contentJson = JSON.parse(parsedData.content)
       
+      // 检查是否为新的乙供物资返回格式：包含 modelAnswer 和 taskInfo
+      if (contentJson.modelAnswer && contentJson.taskInfo) {
+        console.log('【消息处理】检测到乙供物资新格式返回消息')
+        
+        // 从 taskInfo 中提取 taskId
+        if (contentJson.taskInfo.taskId && !result.taskId) {
+          result.taskId = contentJson.taskInfo.taskId
+          console.log('【消息处理】从 taskInfo 中提取到 taskId:', contentJson.taskInfo.taskId)
+        }
+        
+        // 从 modelAnswer 中提取输出内容
+        if (contentJson.modelAnswer && contentJson.modelAnswer.length > 0 && contentJson.modelAnswer[0].output) {
+          result.content = contentJson.modelAnswer[0].output
+          console.log('【消息处理】从 modelAnswer 中提取到输出内容')
+        }
+        
+        // 保存完整的任务信息
+        result.taskInfo = {
+          ...result.taskInfo,
+          ...contentJson.taskInfo
+        }
+        
+        return result
+      }
+      
+      // 原有格式处理逻辑保持不变
       // 从内容中提取 taskId
       if (contentJson.taskId && !result.taskId) {
         result.taskId = contentJson.taskId
