@@ -62,19 +62,19 @@ export const useChatStore = defineStore(
 
       try {
         await chatGenerate(
-          { input: userMsg }, // 使用 input 作为参数名，与 backendWorkflow 保持一致
-          "100", // agentManagementId 固定为 100
+          { userQuery: userMsg }, // 使用 userQuery 作为参数名
+          '100', // agentManagementId 固定为 100
           {
             // onMessage 回调 - 处理流式消息
             onMessage: (messageData) => {
               if (messageData.content) {
                 agentMessage.content += messageData.content
                 addMessage(agentMessage)
-                
+
                 // 检查智能体触发（优先于关键词匹配）
                 if (!agentMessage.actionTriggered && messageData.agentResult) {
                   const { functionType, error } = messageData.agentResult
-                  
+
                   if (functionType) {
                     // 找到匹配的智能体，触发对应功能
                     console.log('【智能体触发】功能类型:', functionType)
@@ -88,12 +88,14 @@ export const useChatStore = defineStore(
                       agentMessage.content += `\n${error.suggestion}`
                     }
                     if (error.availableTypes) {
-                      agentMessage.content += `\n\n可用的功能类型：${error.availableTypes.join('、')}`
+                      agentMessage.content += `\n\n可用的功能类型：${error.availableTypes.join(
+                        '、'
+                      )}`
                     }
                     agentMessage.actionTriggered = true // 防止重复处理
                   }
                 }
-                
+
                 // 保留原有的关键词匹配作为备用方案（当智能体解析失败时）
                 if (!agentMessage.actionTriggered) {
                   if (agentMessage.content.includes('解析合同')) {
