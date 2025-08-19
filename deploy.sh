@@ -2,8 +2,24 @@
 
 # 生产环境部署脚本
 # 用于构建前端应用并启动Nginx反向代理服务
+# 文件编码: UTF-8
 
 set -e  # 遇到错误时退出
+
+# 设置控制台输出编码为UTF-8，兼容Mac和Linux
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Mac环境
+    export LANG=zh_CN.UTF-8
+    export LC_ALL=zh_CN.UTF-8
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux环境
+    export LANG=zh_CN.UTF-8
+    export LC_ALL=zh_CN.UTF-8
+else
+    # 其他环境(包括Windows WSL)
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+fi
 
 echo "=== 五模二算前端应用部署脚本 ==="
 

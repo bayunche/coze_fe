@@ -43,6 +43,14 @@ chmod +x deploy.sh
 ./deploy.sh
 ```
 
+**注意事项**:
+- 脚本已配置UTF-8编码，自动适配Mac/Linux/Windows环境
+- Windows环境下建议使用Git Bash或WSL执行脚本
+- 如仍有乱码问题:
+  - Windows: `chcp 65001`
+  - Mac: `export LANG=zh_CN.UTF-8`
+  - Linux: `export LANG=zh_CN.UTF-8`
+
 ### 方式2：手动部署
 ```bash
 # 1. 安装依赖
