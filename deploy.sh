@@ -84,18 +84,25 @@ else
     echo "⚠️ 服务可能未完全启动，请检查日志"
 fi
 
-# 9. 显示服务信息
+# 9. 获取服务器IP地址
 echo ""
 echo "=== 部署完成 ==="
-echo "🌐 前端应用: http://localhost"
-echo "📊 健康检查: http://localhost/health"
+
+# 获取服务器IP（优先显示非环回地址）
+SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || ip route get 1 2>/dev/null | awk '{print $7}' || echo "未获取到")
+
+echo "📍 服务器访问地址:"
+echo "  本地访问: http://localhost"
+echo "  外部访问: http://$SERVER_IP"
+echo "  健康检查: http://$SERVER_IP/health"
+echo ""
 echo "📝 Nginx日志: ./nginx/logs/"
 echo ""
-echo "API转发配置:"
+echo "🔗 API转发配置:"
 echo "  /api/* -> localhost:1207/*"
 echo "  /backend-api/* -> localhost:1202/*"
 echo ""
-echo "常用命令:"
+echo "⚙️ 常用命令:"
 echo "  查看服务状态: docker-compose ps"
 echo "  查看日志: docker-compose logs -f frontend"
 echo "  停止服务: docker-compose down"

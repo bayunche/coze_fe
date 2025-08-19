@@ -106,9 +106,40 @@ docker-compose down
 
 ## 访问地址
 
+### 本地访问（服务器本机）
+- **前端应用**: `http://localhost/`
+- **健康检查**: `http://localhost/health`
+- **API测试**: `http://localhost/api/`
+
+### 外部访问（其他机器/用户）
+将 `your-server-ip` 替换为你的服务器公网IP或内网IP：
+
 - **前端应用**: `http://your-server-ip/`
-- **健康检查**: `http://your-server-ip/health`
+- **健康检查**: `http://your-server-ip/health`  
 - **API测试**: `http://your-server-ip/api/`
+
+**示例**:
+```bash
+# 假设服务器IP是 192.168.1.100
+http://192.168.1.100/
+
+# 假设服务器IP是 10.1.17.83  
+http://10.1.17.83/
+
+# 假设有域名
+http://your-domain.com/
+```
+
+### 获取服务器IP地址
+```bash
+# 查看公网IP
+curl ifconfig.me
+
+# 查看内网IP
+hostname -I
+# 或
+ip addr show
+```
 
 ## 故障排查
 
@@ -137,6 +168,20 @@ curl http://localhost/backend-api/health
 - 检查 `dist/` 目录是否存在且不为空
 - 检查浏览器控制台是否有JS错误
 - 检查Nginx配置中的root路径
+
+### 4. 外部无法访问
+```bash
+# 检查防火墙设置
+sudo ufw status
+sudo firewall-cmd --list-all
+
+# 开放80端口
+sudo ufw allow 80
+sudo firewall-cmd --permanent --add-port=80/tcp && sudo firewall-cmd --reload
+
+# 检查服务绑定地址
+netstat -tlnp | grep :80
+```
 
 ## 性能优化
 
