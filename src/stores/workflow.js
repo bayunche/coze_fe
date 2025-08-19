@@ -544,7 +544,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
               
               // 立即完成流式处理，不等待Done事件
               delete streamingAgentMessage.isStreaming
-              streamingAgentMessage.showViewResultButton = true
+              
+              // 检查消息内容，只有在非数据库已存在的情况下才显示按钮
+              if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+                streamingAgentMessage.showViewResultButton = true
+              }
               
               if (progressManager) progressManager.stop()
               loadingMessage.progress = 100
