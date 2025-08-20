@@ -105,10 +105,21 @@ function processMessageContent(parsedData) {
           console.log('【消息处理】从 taskInfo 中提取到 taskId:', contentJson.taskInfo.taskId)
         }
         
-        // 从 modelAnswer 中提取输出内容
-        if (contentJson.modelAnswer && contentJson.modelAnswer.length > 0 && contentJson.modelAnswer[0].output) {
-          result.content = contentJson.modelAnswer[0].output
-          console.log('【消息处理】从 modelAnswer 中提取到输出内容，长度:', contentJson.modelAnswer[0].output.length)
+        // 从 modelAnswer 中提取输出内容（处理所有的 output）
+        if (contentJson.modelAnswer && contentJson.modelAnswer.length > 0) {
+          // 合并所有 output 内容
+          const allOutputs = contentJson.modelAnswer
+            .filter(item => item.output) // 过滤掉没有 output 的项
+            .map(item => item.output)   // 提取所有 output 内容
+          
+          if (allOutputs.length > 0) {
+            result.content = allOutputs.join('\n\n') // 用双换行符连接多个输出
+            console.log('【消息处理】从 modelAnswer 中提取到输出内容', {
+              总数量: contentJson.modelAnswer.length,
+              有效输出数量: allOutputs.length,
+              合并后长度: result.content.length
+            })
+          }
         }
         
         // 保存完整的任务信息，包含处理详情
