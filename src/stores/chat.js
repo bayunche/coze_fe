@@ -76,45 +76,64 @@ export const useChatStore = defineStore(
                   const { functionType, error } = messageData.agentResult
 
                   if (functionType) {
-                    // 找到匹配的智能体，触发对应功能
+                    // 找到匹配的智能体，直接显示调用信息并触发功能
                     console.log('【智能体触发】功能类型:', functionType)
+                    
+                    // 获取工作流名称
+                    const workflowNames = {
+                      contractParsing: '合同解析工作流',
+                      supplierMaterialParsing: '乙供物资解析工作流', 
+                      ownerSuppliedMaterialParsing: '甲供物资解析工作流'
+                    }
+                    
+                    // 直接替换消息内容为简洁的调用信息
+                    agentMessage.content = `正在调用${workflowNames[functionType] || functionType}...`
+                    agentMessage.isStreaming = false
+                    addMessage(agentMessage)
+                    
                     onFunctionSelect(functionType)
                     agentMessage.actionTriggered = true
                   } else if (error) {
-                    // 处理智能体匹配失败的情况
+                    // 处理智能体匹配失败的情况 - 直接显示未匹配信息
                     console.log('【智能体匹配失败】', error)
-                    agentMessage.content += `\n\n💡 ${error.message}`
-                    if (error.suggestion) {
-                      agentMessage.content += `\n${error.suggestion}`
-                    }
-                    if (error.availableTypes) {
-                      agentMessage.content += `\n\n可用的功能类型：${error.availableTypes.join(
-                        '、'
-                      )}`
-                    }
-                    agentMessage.actionTriggered = true // 防止重复处理
+                    agentMessage.content = '未匹配到工作流，请联系管理员。'
+                    agentMessage.isStreaming = false
+                    addMessage(agentMessage)
+                    agentMessage.actionTriggered = true
                   }
                 }
 
                 // 保留原有的关键词匹配作为备用方案（当智能体解析失败时）
                 if (!agentMessage.actionTriggered) {
-                  if (agentMessage.content.includes('解析合同')) {
-                    onFunctionSelect('contractParsing')
-                    agentMessage.actionTriggered = true
-                  } else if (agentMessage.content.includes('解析乙供物资功能')) {
-                    onFunctionSelect('supplierMaterialParsing')
-                    agentMessage.actionTriggered = true
-                  } else if (agentMessage.content.includes('解析甲供物资功能')) {
-                    onFunctionSelect('ownerSuppliedMaterialParsing')
-                    agentMessage.actionTriggered = true
+                  const workflowKeywords = [
+                    { keyword: '解析合同', type: 'contractParsing', name: '合同解析工作流' },
+                    { keyword: '解析乙供物资功能', type: 'supplierMaterialParsing', name: '乙供物资解析工作流' },
+                    { keyword: '解析甲供物资功能', type: 'ownerSuppliedMaterialParsing', name: '甲供物资解析工作流' }
+                  ]
+                  
+                  for (const workflow of workflowKeywords) {
+                    if (agentMessage.content.includes(workflow.keyword)) {
+                      // 直接替换消息内容为简洁的调用信息
+                      agentMessage.content = `正在调用${workflow.name}...`
+                      agentMessage.isStreaming = false
+                      addMessage(agentMessage)
+                      
+                      onFunctionSelect(workflow.type)
+                      agentMessage.actionTriggered = true
+                      break
+                    }
                   }
                 }
               }
             },
             // onComplete 回调 - 处理对话结束
             onComplete: () => {
-              agentMessage.isStreaming = false
-              addMessage(agentMessage)
+              // 如果没有触发工作流，正常结束对话流
+              if (!agentMessage.actionTriggered) {
+                agentMessage.isStreaming = false
+                addMessage(agentMessage)
+              }
+              // 如果已经触发了工作流，消息已经在onMessage中处理完毕，无需再次处理
             },
             // onError 回调 - 处理错误
             onError: (error) => {
