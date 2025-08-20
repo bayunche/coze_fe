@@ -292,7 +292,6 @@ import {
   handleMaterialSelect as utilHandleMaterialSelect,
   formatSimilarMatchLabel,
   getMatchTypeTag,
-  exportTableData,
   useNavigation
 } from './utils.js'
 
@@ -441,10 +440,19 @@ const handleExport = async () => {
   exportLoading.value = true
   
   try {
-    const filename = `乙供物资解析详情_${taskId.value}_${detailId.value}`
-    exportTableData(tableData.value, filename)
+    // 模拟加载时间，提供更好的用户体验
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    ElMessage.info({
+      message: '此功能正在开发中，请等待功能上线！',
+      duration: 3000,
+      showClose: true
+    })
+    
+    console.log('【提示】导出功能正在开发中')
   } catch (error) {
-    console.error('【错误】导出失败:', error)
+    console.error('【错误】处理导出失败:', error)
+    ElMessage.error('处理失败，请稍后再试')
   } finally {
     exportLoading.value = false
   }

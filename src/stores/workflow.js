@@ -7,6 +7,7 @@ import { formatDuration, generateMockResult } from '@/utils/helpers'
 import { callStreamWorkflow, uploadFile } from '@/utils/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 import { useChatStore } from '@/stores/chat'
+import OwnerMaterialService from '@/services/OwnerMaterialService'
 
 // #region Type Definitions
 /**
@@ -637,7 +638,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       loadingMessage.content = '甲供物资解析已开始...'
       addMessageCallback(streamingAgentMessage)
 
-      await callStreamWorkflow({ ...inputs }, '2', {
+      await callStreamWorkflow({ ...inputs }, '7', {
         onMessage: (event) => {
           if (event.content) {
             console.log('【甲供物资解析】接收到消息:', event)
@@ -744,13 +745,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   /**
-   * 处理甲供物资重新解析工作流（第二个工作流）
+   * 处理甲供物资重新解析工作流（使用新接口）
    * @param {string} taskId - 任务ID
    * @param {function} addMessageCallback - 添加消息的回调
    */
   const executeOwnerMaterialReparse = async (taskId, addMessageCallback) => {
-    const finalResult = []
-
     const loadingMessage = {
       id: Date.now(),
       from: 'system',
@@ -760,69 +759,61 @@ export const useWorkflowStore = defineStore('workflow', () => {
       progress: 0
     }
 
-    const streamingAgentMessage = {
+    const agentMessage = {
       id: Date.now() + Math.random(),
       from: 'agent',
-      content: '',
+      content: '开始甲供物资重新解析...',
       timestamp: new Date().toLocaleTimeString(),
       sender: '甲供物资重新解析',
       workflow: { id: '4', name: '甲供物资重新解析' },
-      isStreaming: true
+      task: taskId,
+      isStreaming: false
     }
 
     try {
       addMessageCallback(loadingMessage)
-      addMessageCallback(streamingAgentMessage)
+      addMessageCallback(agentMessage)
 
-      await callStreamWorkflow({ taskId }, '4', {
-        onMessage: (event) => {
-          if (event.content) {
-            console.log('【甲供物资重新解析】接收到消息:', event)
-
-            // 处理 taskId - 重新解析时通常已有taskId，但可以用于验证
-            if (event.taskId && event.taskId !== taskId) {
-              console.log('【甲供物资重新解析】检测到新的任务ID:', event.taskId, '当前:', taskId)
-            }
-
-            streamingAgentMessage.task = taskId
-
-            // 检查是否需要特殊处理某些内容格式
-            let shouldDisplayContent = true
-            try {
-              const contentJson = JSON.parse(event.content)
-
-              // 处理 llmReport 数据 - 只保存到store，不显示
-              if (contentJson.llmReport) {
-                ownerMaterialStore.setLlmReport(taskId, contentJson.llmReport)
-                console.log('【甲供物资重新解析】保存llmReport数据')
-                shouldDisplayContent = false // 不显示 llmReport 内容
-              }
-            } catch (e) {
-              // 不是 JSON 格式，正常处理
-            }
-
-            // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
-            if (shouldDisplayContent) {
-              chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
-              finalResult.push(event.content)
-            }
+      // 使用新的 performBalancing 接口
+      const result = await OwnerMaterialService.performBalancing({ taskId })
+      
+      if (result.success) {
+        // 更新消息内容
+        agentMessage.content = '甲供物资重新解析完成！\n\n' + (result.message || '解析成功')
+        
+        // 处理返回的数据
+        if (result.data) {
+          console.log('【甲供物资重新解析】返回数据:', result.data)
+          
+          // 如果有 llmReport 数据，保存到 store 中
+          if (result.data.llmReport) {
+            console.log('【甲供物资重新解析】保存llmReport数据')
+            const ownerMaterialStore = useOwnerMaterialStore()
+            ownerMaterialStore.setLlmReport(taskId, result.data.llmReport)
           }
-        },
-        onError: (error) => {
-          onExecutionError(error, loadingMessage, addMessageCallback)
-        },
-        onComplete: () => {
-          delete streamingAgentMessage.isStreaming
-          // 重新解析完成后显示查看详情按钮
-          streamingAgentMessage.showViewResultButton = true
-          loadingMessage.progress = 100
-          loadingMessage.content = '甲供物资重新解析任务执行完毕！'
-          ElMessage.success('甲供物资重新解析完成')
-          finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
+          
+          // 如果有其他需要显示的数据，也可以在这里处理
+          if (result.data.summary) {
+            agentMessage.content += '\n\n解析结果总结：' + result.data.summary
+          }
         }
-      })
+        
+        loadingMessage.content = '甲供物资重新解析任务执行完成！'
+        ElMessage.success('甲供物资重新解析完成')
+        
+      } else {
+        // 处理失败情况
+        const errorMsg = result.message || '重新解析失败'
+        agentMessage.content = '甲供物资重新解析失败：' + errorMsg
+        loadingMessage.content = '甲供物资重新解析失败！'
+        ElMessage.error(errorMsg)
+      }
+
     } catch (error) {
-      onExecutionError(error, loadingMessage, addMessageCallback)
+      console.error('【错误】甲供物资重新解析失败:', error)
+      agentMessage.content = '甲供物资重新解析失败：' + (error.message || '未知错误')
+      loadingMessage.content = '甲供物资重新解析失败！'
+      ElMessage.error('甲供物资重新解析失败')
     }
   }
 

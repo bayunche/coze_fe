@@ -23,7 +23,7 @@
       </el-table-column>
       <el-table-column prop="taskDetailStatus" label="任务解析状态">
         <template #default="{ row }">
-          {{ formatTaskDetailStatus(row.taskDetailStatus) }}
+          {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
         </template>
       </el-table-column>
       <el-table-column prop="errorReason" label="失败原因">
@@ -73,7 +73,12 @@ const props = defineProps({
 
 console.log('OwnerMaterialTaskParsingDetailDialog setup - initial modelValue:', props.modelValue)
 
-const formatTaskDetailStatus = (status) => {
+const formatTaskDetailStatus = (status, errorReason) => {
+  // 当 errorReason 不为空且 taskDetailStatus 为 -1 时，标记为解析失败
+  if (errorReason && Number(status) === -1) {
+    return '解析失败'
+  }
+  
   switch (Number(status)) {
     case 0:
       return '排队中'

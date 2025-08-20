@@ -509,19 +509,4 @@ export const useNavigation = () => {
   }
 }
 
-/**
- * 导出数据
- * @param {Array} tableData - 表格数据
- * @param {string} filename - 文件名
- */
-export const exportTableData = (tableData, filename = '乙供物资解析详情') => {
-  try {
-    // 这里可以集成实际的导出功能
-    // 目前先显示提示信息
-    ElMessage.success(`${MESSAGE_CONFIG.EXPORT_SUCCESS}: ${filename}`)
-    console.log('【诊断】导出数据:', tableData)
-  } catch (error) {
-    console.error('【错误】导出数据失败:', error)
-    ElMessage.error(`${MESSAGE_CONFIG.EXPORT_ERROR}: ${error.message || '未知错误'}`)
-  }
-}
+// 导出功能已移除，直接在组件中处理开发中提示

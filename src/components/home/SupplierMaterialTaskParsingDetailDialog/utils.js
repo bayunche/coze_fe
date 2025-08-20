@@ -11,10 +11,16 @@ import {
 
 /**
  * 格式化任务详情状态
- * @param {string} status - 状态值
+ * @param {string|number} status - 状态值
+ * @param {string} errorReason - 错误原因（可选）
  * @returns {string} 格式化后的状态文本
  */
-export const formatTaskDetailStatus = (status) => {
+export const formatTaskDetailStatus = (status, errorReason) => {
+  // 当 errorReason 不为空且 taskDetailStatus 为 -1 时，标记为解析失败
+  if (errorReason && status == -1) {
+    return '解析失败'
+  }
+  
   return TASK_DETAIL_STATUS_MAP[status] || DEFAULT_VALUES.UNKNOWN_STATUS_TEXT
 }
 

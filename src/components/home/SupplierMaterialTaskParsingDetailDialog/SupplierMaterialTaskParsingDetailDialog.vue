@@ -16,23 +16,23 @@
         v-bind="column"
       >
         <!-- 开始时间列 -->
-        <template v-if="column.prop === 'start_time'" #default="{ row }">
-          <span>{{ formatStartTime(row.start_time) }}</span>
+        <template v-if="column.prop === 'startTime'" #default="{ row }">
+          <span>{{ formatStartTime(row.startTime) }}</span>
         </template>
         
         <!-- 结束时间列 -->
-        <template v-else-if="column.prop === 'end_time'" #default="{ row }">
-          <span>{{ formatEndTime(row.end_time) }}</span>
+        <template v-else-if="column.prop === 'endTime'" #default="{ row }">
+          <span>{{ formatEndTime(row.endTime) }}</span>
         </template>
         
         <!-- 任务解析状态列 -->
-        <template v-else-if="column.prop === 'TASK_DETAIL_STATUS'" #default="{ row }">
-          <span>{{ formatTaskDetailStatus(row.TASK_DETAIL_STATUS) }}</span>
+        <template v-else-if="column.prop === 'taskDetailStatus'" #default="{ row }">
+          <span>{{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}</span>
         </template>
         
         <!-- 失败原因列 -->
-        <template v-else-if="column.prop === 'ERROR_REASON'" #default="{ row }">
-          <span>{{ formatErrorReason(row.ERROR_REASON) }}</span>
+        <template v-else-if="column.prop === 'errorReason'" #default="{ row }">
+          <span>{{ formatErrorReason(row.errorReason) }}</span>
         </template>
         
         <!-- 操作列 -->
