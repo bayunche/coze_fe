@@ -95,9 +95,9 @@ function processMessageContent(parsedData) {
     try {
       const contentJson = JSON.parse(parsedData.content)
       
-      // 检查是否为新的乙供物资返回格式：包含 modelAnswer 和 taskInfo
-      if (contentJson.modelAnswer && contentJson.taskInfo) {
-        console.log('【消息处理】检测到乙供物资新格式返回消息', contentJson)
+      // 检查是否为新的物资解析返回格式：包含 taskInfo（modelAnswer 可以为 null）
+      if (Object.prototype.hasOwnProperty.call(contentJson, 'modelAnswer') && contentJson.taskInfo) {
+        console.log('【消息处理】检测到物资解析新格式返回消息', contentJson)
         
         // 从 taskInfo 中提取 taskId
         if (contentJson.taskInfo.taskId) {
@@ -120,20 +120,30 @@ function processMessageContent(parsedData) {
               合并后长度: result.content.length
             })
           }
+        } else if (contentJson.modelAnswer === null) {
+          // modelAnswer 为 null 的情况（如甲供物资），设置空内容
+          result.content = ''
+          console.log('【消息处理】modelAnswer 为 null，设置空内容')
         }
         
         // 保存完整的任务信息，包含处理详情
         result.taskInfo = {
           ...result.taskInfo,
           ...contentJson.taskInfo,
-          // 标记这是乙供物资解析的完整结果
+          // 标记这是物资解析的完整结果
           isCompleteResult: true,
-          // 保存文件详情ID用于后续查看结果
+          // 保存文件详情ID用于后续查看结果（如果存在）
           fileDetailIds: contentJson.taskInfo.processDetails?.map(detail => detail.id) || []
         }
         
         // 标记消息已完成，用于按钮显示逻辑
         result.isComplete = true
+        
+        // 如果 modelAnswer 为 null（如甲供物资），标记为需要显示查看结果按钮
+        if (contentJson.modelAnswer === null) {
+          result.showViewResultButton = true
+          console.log('【消息处理】modelAnswer 为 null，设置 showViewResultButton = true')
+        }
         
         return result
       }

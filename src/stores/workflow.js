@@ -462,29 +462,27 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
-            // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
-            const fullContent = finalResult.join('')
-            if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
-              // 使用chatStore方法更新消息属性，确保响应式更新
-              chatStore.updateMessageProperties(streamingAgentMessage.id, {
-                showViewResultButton: true
-              })
-            }
-          }
-        },
-        onError: (error) => {
-          onExecutionError(error, loadingMessage, addMessageCallback)
-        },
-        onComplete: () => {
-          delete streamingAgentMessage.isStreaming
-          // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
-          const fullContent = finalResult.join('')
-          if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
+            // 物资确认按钮默认显示（除非是失败状态）
             // 使用chatStore方法更新消息属性，确保响应式更新
             chatStore.updateMessageProperties(streamingAgentMessage.id, {
               showViewResultButton: true
             })
           }
+        },
+        onError: (error) => {
+          // 失败时不显示物资确认按钮
+          chatStore.updateMessageProperties(streamingAgentMessage.id, {
+            showViewResultButton: false
+          })
+          onExecutionError(error, loadingMessage, addMessageCallback)
+        },
+        onComplete: () => {
+          delete streamingAgentMessage.isStreaming
+          // 物资确认按钮默认显示（除非是失败状态）
+          // 使用chatStore方法更新消息属性，确保响应式更新
+          chatStore.updateMessageProperties(streamingAgentMessage.id, {
+            showViewResultButton: true
+          })
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100
           loadingMessage.content = '合同解析任务执行完毕！'
@@ -492,6 +490,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
       })
     } catch (error) {
+      // 失败时不显示物资确认按钮
+      chatStore.updateMessageProperties(streamingAgentMessage.id, {
+        showViewResultButton: false
+      })
       onExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
@@ -565,15 +567,12 @@ export const useWorkflowStore = defineStore('workflow', () => {
               // 立即完成流式处理，不等待Done事件
               delete streamingAgentMessage.isStreaming
 
-              // 检查最终完整内容，只有在非数据库已存在的情况下才显示按钮
-              const fullContent = finalResult.join('')
-              if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
-                // 使用chatStore方法更新消息属性，确保响应式更新
-                chatStore.updateMessageProperties(streamingAgentMessage.id, {
-                  showViewResultButton: true
-                })
-                console.log('【乙供物资解析】显示查看解析结果按钮')
-              }
+              // 物资确认按钮默认显示（除非是失败状态）
+              // 使用chatStore方法更新消息属性，确保响应式更新
+              chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                showViewResultButton: true
+              })
+              console.log('【乙供物资解析】显示查看解析结果按钮')
 
               if (progressManager) progressManager.stop()
               loadingMessage.progress = 100
@@ -584,6 +583,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
           }
         },
         onError: (error) => {
+          // 失败时不显示物资确认按钮
+          chatStore.updateMessageProperties(streamingAgentMessage.id, {
+            showViewResultButton: false
+          })
           onExecutionError(error, loadingMessage, addMessageCallback)
         },
         onComplete: () => {
@@ -595,14 +598,11 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
           // 处理旧格式或其他未完成的消息
           delete streamingAgentMessage.isStreaming
-          // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
-          const fullContent = finalResult.join('')
-          if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
-            // 使用chatStore方法更新消息属性，确保响应式更新
-            chatStore.updateMessageProperties(streamingAgentMessage.id, {
-              showViewResultButton: true
-            })
-          }
+          // 物资确认按钮默认显示（除非是失败状态）
+          // 使用chatStore方法更新消息属性，确保响应式更新
+          chatStore.updateMessageProperties(streamingAgentMessage.id, {
+            showViewResultButton: true
+          })
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100
           loadingMessage.content = '乙供物资解析任务执行完毕！'
@@ -611,6 +611,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
       })
     } catch (error) {
+      // 失败时不显示物资确认按钮
+      chatStore.updateMessageProperties(streamingAgentMessage.id, {
+        showViewResultButton: false
+      })
       onExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
@@ -710,6 +714,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
           }
         },
         onError: (error) => {
+          // 失败时不显示物资确认按钮
+          chatStore.updateMessageProperties(streamingAgentMessage.id, {
+            showViewResultButton: false
+          })
           onExecutionError(error, loadingMessage, addMessageCallback)
         },
         onComplete: () => {
@@ -740,6 +748,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
         }
       })
     } catch (error) {
+      // 失败时不显示物资确认按钮
+      chatStore.updateMessageProperties(streamingAgentMessage.id, {
+        showViewResultButton: false
+      })
       onExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
