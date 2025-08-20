@@ -56,7 +56,7 @@ class SupplierMaterialService {
     try {
       console.log('【调用】乙供物资复杂查询接口，参数:', params)
       
-      const response = await this.http.post('/materials/partyb/query', {
+      const response = await this.http.post('/api/materials/partyb/query', {
         taskId: params.taskId,
         taskDetailId: params.taskDetailId,
         page: params.page || 0,
@@ -91,7 +91,7 @@ class SupplierMaterialService {
         throw new Error('缺少必要参数：id、confirmBaseDataId 和 confirmPriceId 均为必填')
       }
 
-      const response = await this.http.post('/materials/partyb/manual-confirm', {
+      const response = await this.http.post('/api/materials/partyb/manual-confirm', {
         id: params.id,
         confirmBaseDataId: params.confirmBaseDataId,
         confirmPriceId: params.confirmPriceId

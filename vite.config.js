@@ -96,7 +96,31 @@ export default defineConfig(({ mode }) => {
           return newPath
         }
       },
-      // 通用API转发 - /api 前缀（文件上传主要使用此路径）
+      // 乙供物资解析相关API转发到1207端口
+      '/api/materials/partyb': {
+        target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+        changeOrigin: true,
+        timeout: 300000, // 5分钟超时
+        proxyTimeout: 300000,
+        rewrite: (path) => {
+          console.log(`[SupplierMaterial] 路径保持: ${path}`)
+          console.log(`[SupplierMaterial] 最终请求: ${env.VITE_API_TARGET}${path}`)
+          return path
+        }
+      },
+      // 物资基础信息查询API转发到1207端口
+      '/api/materials/base-info': {
+        target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+        changeOrigin: true,
+        timeout: 300000,
+        proxyTimeout: 300000,
+        rewrite: (path) => {
+          console.log(`[MaterialBaseInfo] 路径保持: ${path}`)
+          console.log(`[MaterialBaseInfo] 最终请求: ${env.VITE_API_TARGET}${path}`)
+          return path
+        }
+      },
+      // 通用API转发 - /api 前缀（文件上传主要使用此路径） - 优先级最低
       '/api': {
         target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
