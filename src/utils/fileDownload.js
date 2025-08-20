@@ -16,7 +16,8 @@ export const getApiBaseUrl = () => {
  * @param {string} [fileName] - 可选的文件名，如果不提供则从filePath中提取 (暂未使用)
  * @returns {void}
  */
-export const downloadFileByPath = (filePath, fileName) => { // eslint-disable-line no-unused-vars
+export const downloadFileByPath = (filePath, fileName) => {
+  // eslint-disable-line no-unused-vars
   try {
     // 参数验证
     if (!filePath || typeof filePath !== 'string') {
@@ -27,12 +28,11 @@ export const downloadFileByPath = (filePath, fileName) => { // eslint-disable-li
     // 构建下载URL
     const baseUrl = getApiBaseUrl()
     const downloadUrl = `${baseUrl}/files/download?filePath=${encodeURIComponent(filePath)}`
-    
+
     console.log('文件下载URL:', downloadUrl)
-    
+
     // 在新窗口中打开下载链接
     window.open(downloadUrl, '_blank')
-    
   } catch (error) {
     console.error('文件下载失败:', error)
     ElMessage.error('文件下载失败: ' + (error.message || '未知错误'))
@@ -54,8 +54,8 @@ export const downloadSourceFile = (row, filePathField = 'filePath', fileNameFiel
     }
 
     // 获取文件路径
-    const filePath = row[filePathField] || row.path || row.sourceFilePath
-    const fileName = row[fileNameField] || row.name || row.sourceFileName
+    const filePath = row[filePathField] || row.path || row.sourceFilePath || fileUrl
+    const fileName = row[fileNameField] || row.name || row.sourceFileName || fileName
 
     if (!filePath) {
       ElMessage.error('源文件路径不存在，无法下载')
@@ -65,7 +65,6 @@ export const downloadSourceFile = (row, filePathField = 'filePath', fileNameFiel
 
     // 调用通用下载函数
     downloadFileByPath(filePath, fileName)
-    
   } catch (error) {
     console.error('下载源文件失败:', error)
     ElMessage.error('下载源文件失败: ' + (error.message || '未知错误'))
@@ -79,15 +78,15 @@ export const downloadSourceFile = (row, filePathField = 'filePath', fileNameFiel
  */
 export const handleDownloadError = (error, context = '文件下载') => {
   console.error(`${context}失败:`, error)
-  
+
   let errorMessage = '未知错误'
-  
+
   if (error.message) {
     errorMessage = error.message
   } else if (typeof error === 'string') {
     errorMessage = error
   }
-  
+
   ElMessage.error(`${context}失败: ${errorMessage}`)
 }
 
@@ -98,16 +97,17 @@ export const handleDownloadError = (error, context = '文件下载') => {
  * @param {string} [params.fileName] - 文件名 (暂未使用)
  * @returns {boolean} 参数是否有效
  */
-export const validateDownloadParams = ({ filePath, fileName }) => { // eslint-disable-line no-unused-vars
+export const validateDownloadParams = ({ filePath, fileName }) => {
+  // eslint-disable-line no-unused-vars
   if (!filePath || typeof filePath !== 'string' || filePath.trim() === '') {
     return false
   }
-  
+
   // 检查是否包含可能的安全风险路径
   if (filePath.includes('..') || filePath.includes('~')) {
     console.warn('检测到可能不安全的文件路径:', filePath)
     return false
   }
-  
+
   return true
 }

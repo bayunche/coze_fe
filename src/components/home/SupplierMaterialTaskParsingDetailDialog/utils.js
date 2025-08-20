@@ -108,8 +108,8 @@ export const createRouter = () => {
  */
 export const viewDetail = (row, router, closeDialog) => {
   router.push({
-    name: 'owner-material-detail',
-    query: {
+    name: 'supplier-material-detail',
+    params: {
       taskId: row.taskId,
       detailId: row.id
     }
