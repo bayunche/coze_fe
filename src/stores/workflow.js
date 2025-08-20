@@ -608,7 +608,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
       loadingMessage.content = '甲供物资解析已开始...'
       addMessageCallback(streamingAgentMessage)
 
-      await callStreamWorkflow({ ...inputs, parseOnly: true }, '2', {
+      await callStreamWorkflow({ ...inputs }, '2', {
         onMessage: (event) => {
           if (event.content) {
             console.log('【甲供物资解析】接收到消息:', event)
