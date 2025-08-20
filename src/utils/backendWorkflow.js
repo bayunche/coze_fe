@@ -105,23 +105,39 @@ function processMessageContent(parsedData) {
           console.log('【消息处理】从 taskInfo 中提取到 taskId:', contentJson.taskInfo.taskId)
         }
         
-        // 从 modelAnswer 中提取输出内容（处理所有的 output）
-        if (contentJson.modelAnswer && contentJson.modelAnswer.length > 0) {
-          // 合并所有 output 内容
-          const allOutputs = contentJson.modelAnswer
-            .filter(item => item.output) // 过滤掉没有 output 的项
-            .map(item => item.output)   // 提取所有 output 内容
-          
-          if (allOutputs.length > 0) {
-            result.content = allOutputs.join('\n\n') // 用双换行符连接多个输出
-            console.log('【消息处理】从 modelAnswer 中提取到输出内容', {
-              总数量: contentJson.modelAnswer.length,
-              有效输出数量: allOutputs.length,
-              合并后长度: result.content.length
-            })
+        // 从 modelAnswer 中提取输出内容（处理不同格式）
+        if (contentJson.modelAnswer) {
+          if (Array.isArray(contentJson.modelAnswer)) {
+            // 数组格式：乙供物资解析格式
+            const allOutputs = contentJson.modelAnswer
+              .filter(item => item.output) // 过滤掉没有 output 的项
+              .map(item => item.output)   // 提取所有 output 内容
+            
+            if (allOutputs.length > 0) {
+              result.content = allOutputs.join('\n\n') // 用双换行符连接多个输出
+              console.log('【消息处理】从 modelAnswer 数组中提取到输出内容', {
+                总数量: contentJson.modelAnswer.length,
+                有效输出数量: allOutputs.length,
+                合并后长度: result.content.length
+              })
+            }
+          } else if (contentJson.modelAnswer.output) {
+            // 对象格式：甲供物资二次解析格式
+            const output = contentJson.modelAnswer.output
+            if (typeof output === 'object') {
+              // 将分析结果对象格式化为可读文本
+              result.content = formatAnalysisOutput(output)
+              console.log('【消息处理】从 modelAnswer 对象中提取到分析结果', {
+                类型: typeof output,
+                内容长度: result.content.length
+              })
+            } else if (typeof output === 'string') {
+              result.content = output
+              console.log('【消息处理】从 modelAnswer 对象中提取到字符串输出')
+            }
           }
         } else if (contentJson.modelAnswer === null) {
-          // modelAnswer 为 null 的情况（如甲供物资），设置空内容
+          // modelAnswer 为 null 的情况，设置空内容
           result.content = ''
           console.log('【消息处理】modelAnswer 为 null，设置空内容')
         }
@@ -895,4 +911,36 @@ export async function confirmContractAnalysisResults(confirmData) {
     ElMessage.error(error.message || '确认合同解析结果失败')
     throw error
   }
+}
+
+/**
+ * 格式化甲供物资分析结果对象为可读文本
+ * @param {object} analysisOutput - 分析结果对象
+ * @returns {string} 格式化后的文本
+ */
+function formatAnalysisOutput(analysisOutput) {
+  if (!analysisOutput || typeof analysisOutput !== 'object') {
+    return '无有效分析结果'
+  }
+
+  const sections = []
+  
+  // 遍历分析结果的各个部分
+  for (const [sectionTitle, sectionContent] of Object.entries(analysisOutput)) {
+    sections.push(`## ${sectionTitle}`)
+    
+    if (typeof sectionContent === 'object' && sectionContent !== null) {
+      // 如果是对象，遍历其属性
+      for (const [key, value] of Object.entries(sectionContent)) {
+        sections.push(`**${key}：**${value}`)
+      }
+    } else {
+      // 如果是字符串或其他类型，直接添加
+      sections.push(String(sectionContent))
+    }
+    
+    sections.push('') // 添加空行分隔
+  }
+  
+  return sections.join('\n')
 }

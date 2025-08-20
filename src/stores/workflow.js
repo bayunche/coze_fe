@@ -7,7 +7,6 @@ import { formatDuration, generateMockResult } from '@/utils/helpers'
 import { callStreamWorkflow, uploadFile } from '@/utils/backendWorkflow.js'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
 import { useChatStore } from '@/stores/chat'
-import OwnerMaterialService from '@/services/OwnerMaterialService'
 
 // #region Type Definitions
 /**
@@ -771,61 +770,75 @@ export const useWorkflowStore = defineStore('workflow', () => {
       progress: 0
     }
 
-    const agentMessage = {
+    const streamingAgentMessage = {
       id: Date.now() + Math.random(),
       from: 'agent',
-      content: '开始甲供物资重新解析...',
+      content: '',
       timestamp: new Date().toLocaleTimeString(),
       sender: '甲供物资重新解析',
-      workflow: { id: '4', name: '甲供物资重新解析' },
+      workflow: { id: '9', name: '甲供物资重新解析' },
       task: taskId,
-      isStreaming: false
+      isStreaming: true
     }
+
+    const finalResult = []
 
     try {
       addMessageCallback(loadingMessage)
-      addMessageCallback(agentMessage)
+      addMessageCallback(streamingAgentMessage)
 
-      // 使用新的 performBalancing 接口
-      const result = await OwnerMaterialService.performBalancing({ taskId })
-      
-      if (result.success) {
-        // 更新消息内容
-        agentMessage.content = '甲供物资重新解析完成！\n\n' + (result.message || '解析成功')
-        
-        // 处理返回的数据
-        if (result.data) {
-          console.log('【甲供物资重新解析】返回数据:', result.data)
-          
-          // 如果有 llmReport 数据，保存到 store 中
-          if (result.data.llmReport) {
-            console.log('【甲供物资重新解析】保存llmReport数据')
-            const ownerMaterialStore = useOwnerMaterialStore()
-            ownerMaterialStore.setLlmReport(taskId, result.data.llmReport)
+      loadingMessage.content = '甲供物资重新解析已开始...'
+
+      // 使用后端工作流 API，agentManagementId: '9' (甲供物资重新解析工作流)
+      await callStreamWorkflow({ taskId }, '9', {
+        onMessage: (event) => {
+          if (event.content) {
+            // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
+            if (event.taskId) {
+              streamingAgentMessage.task = event.taskId
+              console.log('【甲供物资重新解析】获取到任务ID:', event.taskId)
+            }
+
+            // 处理额外的任务信息
+            if (event.taskInfo) {
+              console.log('【甲供物资重新解析】获取到任务信息:', event.taskInfo)
+            }
+
+            // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
+            finalResult.push(event.content)
+            
+            // 物资确认按钮默认显示（除非是失败状态）
+            chatStore.updateMessageProperties(streamingAgentMessage.id, {
+              showViewResultButton: true
+            })
           }
-          
-          // 如果有其他需要显示的数据，也可以在这里处理
-          if (result.data.summary) {
-            agentMessage.content += '\n\n解析结果总结：' + result.data.summary
-          }
+        },
+        onError: (error) => {
+          // 失败时不显示物资确认按钮
+          chatStore.updateMessageProperties(streamingAgentMessage.id, {
+            showViewResultButton: false
+          })
+          onExecutionError(error, loadingMessage, addMessageCallback)
+        },
+        onComplete: () => {
+          delete streamingAgentMessage.isStreaming
+          // 物资确认按钮默认显示（除非是失败状态）
+          chatStore.updateMessageProperties(streamingAgentMessage.id, {
+            showViewResultButton: true
+          })
+          loadingMessage.progress = 100
+          loadingMessage.content = '甲供物资重新解析任务执行完毕！'
+          ElMessage.success('甲供物资重新解析完成')
+          finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
         }
-        
-        loadingMessage.content = '甲供物资重新解析任务执行完成！'
-        ElMessage.success('甲供物资重新解析完成')
-        
-      } else {
-        // 处理失败情况
-        const errorMsg = result.message || '重新解析失败'
-        agentMessage.content = '甲供物资重新解析失败：' + errorMsg
-        loadingMessage.content = '甲供物资重新解析失败！'
-        ElMessage.error(errorMsg)
-      }
-
+      })
     } catch (error) {
-      console.error('【错误】甲供物资重新解析失败:', error)
-      agentMessage.content = '甲供物资重新解析失败：' + (error.message || '未知错误')
-      loadingMessage.content = '甲供物资重新解析失败！'
-      ElMessage.error('甲供物资重新解析失败')
+      // 失败时不显示物资确认按钮
+      chatStore.updateMessageProperties(streamingAgentMessage.id, {
+        showViewResultButton: false
+      })
+      onExecutionError(error, loadingMessage, addMessageCallback)
     }
   }
 
