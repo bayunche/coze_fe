@@ -461,6 +461,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
+            if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+              streamingAgentMessage.showViewResultButton = true
+            }
           }
         },
         onError: (error) => {
@@ -521,7 +524,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
               // 新格式：从processDetails中提取文件详情ID
               if (event.taskInfo.fileDetailIds && event.taskInfo.fileDetailIds.length > 0) {
                 supplierFileDetailIds.value = event.taskInfo.fileDetailIds
-                console.log('【乙供物资解析】从新格式获取到文件详情ID:', event.taskInfo.fileDetailIds)
+                console.log(
+                  '【乙供物资解析】从新格式获取到文件详情ID:',
+                  event.taskInfo.fileDetailIds
+                )
               }
               // 兼容旧格式：task_detail_id
               else if (event.taskInfo.task_detail_id) {
@@ -530,26 +536,29 @@ export const useWorkflowStore = defineStore('workflow', () => {
                 } else {
                   supplierFileDetailIds.value = [event.taskInfo.task_detail_id]
                 }
-                console.log('【乙供物资解析】从兼容格式获取到任务详情ID:', event.taskInfo.task_detail_id)
+                console.log(
+                  '【乙供物资解析】从兼容格式获取到任务详情ID:',
+                  event.taskInfo.task_detail_id
+                )
               }
             }
 
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
-            
+
             // 检查是否为完整结果消息（新的乙供物资格式）
             if (event.isComplete && event.taskInfo && event.taskInfo.isCompleteResult) {
               console.log('【乙供物资解析】检测到完整结果消息，立即完成流式处理')
-              
+
               // 立即完成流式处理，不等待Done事件
               delete streamingAgentMessage.isStreaming
-              
+
               // 检查消息内容，只有在非数据库已存在的情况下才显示按钮
               if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
                 streamingAgentMessage.showViewResultButton = true
               }
-              
+
               if (progressManager) progressManager.stop()
               loadingMessage.progress = 100
               loadingMessage.content = '乙供物资解析任务执行完毕！'
@@ -567,7 +576,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             console.log('【乙供物资解析】消息已在onMessage中处理完成，跳过onComplete处理')
             return
           }
-          
+
           // 处理旧格式或其他未完成的消息
           delete streamingAgentMessage.isStreaming
           if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
@@ -624,10 +633,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 处理任务信息，兼容新格式
             if (event.taskInfo) {
               console.log('【甲供物资解析】获取到任务信息:', event.taskInfo)
-              
+
               // 如果有fileDetailIds，保存用于查看结果
               if (event.taskInfo.fileDetailIds && event.taskInfo.fileDetailIds.length > 0) {
-                console.log('【甲供物资解析】从新格式获取到文件详情ID:', event.taskInfo.fileDetailIds)
+                console.log(
+                  '【甲供物资解析】从新格式获取到文件详情ID:',
+                  event.taskInfo.fileDetailIds
+                )
               }
             }
 
@@ -651,27 +663,27 @@ export const useWorkflowStore = defineStore('workflow', () => {
               chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
               finalResult.push(event.content)
             }
-            
+
             // 检查是否为完整结果消息（新的甲供物资格式）
             if (event.isComplete && event.taskInfo && event.taskInfo.isCompleteResult) {
               console.log('【甲供物资解析】检测到完整结果消息，立即完成流式处理')
-              
+
               // 立即完成流式处理，不等待Done事件
               delete streamingAgentMessage.isStreaming
-              
+
               // 在消息最后追加固定文字
               const fixedMessage = '\n存在无法匹配的物资信息，请人工介入\n'
               chatStore.appendStreamContent(streamingAgentMessage.id, fixedMessage)
               finalResult.push(fixedMessage)
-              
+
               if (taskId.value) {
                 ownerMaterialStore.updateTaskStatus(taskId.value, 'needs_manual_alignment')
               }
-              
+
               if (progressManager) progressManager.stop()
               loadingMessage.progress = 100
               // loadingMessage.content = '甲供物资解析任务执行完毕！'
-              
+
               finalizeWorkflowExecution({ output: finalResult.join('\n') }, addMessageCallback)
             }
           }
@@ -685,7 +697,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             console.log('【甲供物资解析】消息已在onMessage中处理完成，跳过onComplete处理')
             return
           }
-          
+
           // 处理旧格式或其他未完成的消息
           delete streamingAgentMessage.isStreaming
 
