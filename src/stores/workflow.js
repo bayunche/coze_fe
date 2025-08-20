@@ -562,6 +562,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
               const fullContent = finalResult.join('')
               if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
                 streamingAgentMessage.showViewResultButton = true
+                console.log('【乙供物资解析】显示查看解析结果按钮')
               }
 
               if (progressManager) progressManager.stop()
