@@ -34,19 +34,13 @@
           {{ BUTTON_CONFIG.EXPORT.text }}
         </el-button>
         <el-button 
-          @click="handleSave" 
+          @click="handleBatchConfirm" 
           :icon="Check" 
           type="primary"
-          :loading="saveLoading"
+          :loading="confirmLoading"
+          :disabled="!hasUnconfirmedItems"
         >
-          {{ BUTTON_CONFIG.SAVE.text }}
-        </el-button>
-        <el-button 
-          @click="handleGoToConfirm" 
-          :icon="Right" 
-          type="success"
-        >
-          {{ BUTTON_CONFIG.TO_CONFIRM.text }}
+          {{ BUTTON_CONFIG.BATCH_CONFIRM.text }} ({{ unconfirmedCount }})
         </el-button>
       </div>
     </div>
@@ -114,6 +108,7 @@
           style="width: 100%" 
           border
           height="600"
+          :row-class-name="getRowClassName"
         >
           <!-- 表格列配置 -->
           <el-table-column 
@@ -166,18 +161,27 @@
             <!-- 操作列 -->
             <template v-else-if="column.label === '操作'" #default="{ row }">
               <div class="action-buttons">
-                <!-- 精确匹配状态 -->
-                <div v-if="row.match_type === '精确匹配'">
+                <!-- 已确认状态 -->
+                <div v-if="row.confirm_result === 1">
+                  <el-tag type="success" size="small">
+                    <el-icon style="margin-right: 4px;"><Check /></el-icon>
+                    已确认
+                  </el-tag>
+                </div>
+                
+                <!-- 精确匹配状态（未确认） -->
+                <div v-else-if="row.match_type === '精确匹配'">
                   <el-button 
-                    :type="ACTION_BUTTONS.EXACT_MATCH.type" 
-                    :disabled="ACTION_BUTTONS.EXACT_MATCH.disabled"
+                    type="success"
                     size="small"
+                    @click="handleQuickConfirm(row)"
+                    :loading="row.confirming"
                   >
-                    {{ ACTION_BUTTONS.EXACT_MATCH.text }}
+                    快速确认
                   </el-button>
                 </div>
                 
-                <!-- 相似匹配状态 -->
+                <!-- 相似匹配状态（未确认） -->
                 <div v-else-if="row.match_type === '相似匹配'">
                   <el-select
                     v-model="row.selected_match"
@@ -186,6 +190,7 @@
                     @change="handleSimilarMatchChange(row, $event)"
                     size="small"
                     style="width: 180px;"
+                    :disabled="row.confirming"
                   >
                     <el-option
                       v-for="item in row.similar_matches"
@@ -196,12 +201,13 @@
                   </el-select>
                 </div>
                 
-                <!-- 无匹配或其他状态 -->
+                <!-- 无匹配或其他状态（未确认） -->
                 <div v-else>
                   <el-button 
                     :type="ACTION_BUTTONS.EDIT.type" 
                     :size="ACTION_BUTTONS.EDIT.size"
                     @click="handleEdit(row)"
+                    :disabled="row.confirming"
                   >
                     {{ ACTION_BUTTONS.EDIT.text }}
                   </el-button>
@@ -261,11 +267,11 @@ import {
   Refresh, 
   Download, 
   Check, 
-  Right, 
   Search 
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog'
+import supplierMaterialService from '@/services/SupplierMaterialService.js'
 
 // 导入常量和工具函数
 import {
@@ -301,13 +307,13 @@ const detailId = computed(() => {
 })
 
 // 导航函数
-const { goBack, goToConfirm } = useNavigation()
+const { goBack } = useNavigation()
 
 // 响应式数据
 const pageLoading = ref(false)
 const tableLoading = ref(false)
 const refreshLoading = ref(false)
-const saveLoading = ref(false)
+const confirmLoading = ref(false)
 const exportLoading = ref(false)
 const selectionLoading = ref(false)
 
@@ -445,10 +451,10 @@ const handleExport = async () => {
 }
 
 /**
- * 处理保存
+ * 处理批量确认
  */
-const handleSave = async () => {
-  saveLoading.value = true
+const handleBatchConfirm = async () => {
+  confirmLoading.value = true
   
   try {
     const success = await saveParsingResults(tableData.value)
@@ -457,17 +463,69 @@ const handleSave = async () => {
       await loadMaterialDetail()
     }
   } catch (error) {
-    console.error('【错误】保存失败:', error)
+    console.error('【错误】批量确认失败:', error)
   } finally {
-    saveLoading.value = false
+    confirmLoading.value = false
+  }
+}
+
+// 计算未确认的数据项数量
+const unconfirmedCount = computed(() => {
+  return tableData.value.filter(item => item.confirm_result !== 1).length
+})
+
+// 检查是否有未确认的数据项
+const hasUnconfirmedItems = computed(() => {
+  return unconfirmedCount.value > 0
+})
+
+/**
+ * 处理单项快速确认（针对精确匹配的项目）
+ */
+const handleQuickConfirm = async (row) => {
+  if (!row.confirmBaseDataId || !row.confirmPriceId) {
+    ElMessage.warning('该项目缺少必要的确认信息')
+    return
+  }
+  
+  // 设置单项加载状态
+  row.confirming = true
+  
+  try {
+    const confirmParams = {
+      id: row.taskDataId,
+      confirmBaseDataId: row.confirmBaseDataId,
+      confirmPriceId: row.confirmPriceId
+    }
+    
+    console.log('【调用】单项快速确认接口参数:', confirmParams)
+    
+    const confirmResult = await supplierMaterialService.manualConfirm(confirmParams)
+    
+    if (confirmResult) {
+      // 更新当前行的状态
+      row.confirm_result = 1
+      row.match_type = '已确认'
+      
+      console.log('【成功】单项快速确认完成:', confirmResult)
+      ElMessage.success(`已确认物资：${row.material_name}`)
+    }
+  } catch (error) {
+    console.error('【错误】单项快速确认失败:', error)
+    ElMessage.error(`确认失败：${error.message}`)
+  } finally {
+    row.confirming = false
   }
 }
 
 /**
- * 处理跳转到确认页面
+ * 获取表格行样式类名
  */
-const handleGoToConfirm = () => {
-  goToConfirm(taskId.value)
+const getRowClassName = ({ row }) => {
+  if (row.confirm_result === 1) {
+    return 'confirmed-row'
+  }
+  return ''
 }
 
 /**
@@ -752,6 +810,15 @@ watch(
 
 :deep(.el-card__body) {
   padding: 20px;
+}
+
+/* 已确认行样式 */
+:deep(.confirmed-row) {
+  background-color: var(--el-color-success-light-9) !important;
+}
+
+:deep(.confirmed-row:hover > td) {
+  background-color: var(--el-color-success-light-8) !important;
 }
 
 /* 响应式设计 */

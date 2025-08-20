@@ -141,13 +141,9 @@ export const BUTTON_CONFIG = {
     text: '导出数据',
     icon: 'Download'
   },
-  SAVE: {
-    text: '保存解析结果',
+  BATCH_CONFIRM: {
+    text: '批量确认',
     icon: 'Check'
-  },
-  TO_CONFIRM: {
-    text: '前往确认',
-    icon: 'Right'
   }
 }
 

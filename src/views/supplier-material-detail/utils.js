@@ -52,6 +52,7 @@ export const formatMaterialDetail = (item) => {
     confirmPriceId: item.confirmPriceId || item.matchedPriceId,
     editing: false,
     selected_match: null,
+    confirming: false, // 单项确认加载状态
     original_item: item,
     // 保存初始匹配数据ID快照，用于检测是否有变更
     initialConfirmBaseDataId: item.confirmBaseDataId || item.matchedDataId || null,
@@ -496,17 +497,6 @@ export const useNavigation = () => {
   }
   
   /**
-   * 跳转到确认页面
-   * @param {string|number} taskId - 任务ID
-   */
-  const goToConfirm = (taskId) => {
-    router.push({
-      name: 'supplier-material-confirm',
-      params: { taskId }
-    })
-  }
-  
-  /**
    * 跳转到智能大脑页面
    */
   const goToSmartBrain = () => {
@@ -515,7 +505,6 @@ export const useNavigation = () => {
   
   return {
     goBack,
-    goToConfirm,
     goToSmartBrain
   }
 }
