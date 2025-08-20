@@ -54,8 +54,8 @@ export const downloadSourceFile = (row, filePathField = 'filePath', fileNameFiel
     }
 
     // 获取文件路径
-    const filePath = row[filePathField] || row.path || row.sourceFilePath || fileUrl
-    const fileName = row[fileNameField] || row.name || row.sourceFileName || fileName
+    const filePath = row[filePathField] || row.path || row.sourceFilePath || row.fileUrl
+    const fileName = row[fileNameField] || row.name || row.sourceFileName || row.fileName
 
     if (!filePath) {
       ElMessage.error('源文件路径不存在，无法下载')
