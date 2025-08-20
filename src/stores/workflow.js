@@ -464,7 +464,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
             const fullContent = finalResult.join('')
             if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
-              streamingAgentMessage.showViewResultButton = true
+              // 使用chatStore方法更新消息属性，确保响应式更新
+              chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                showViewResultButton: true
+              })
             }
           }
         },
@@ -476,7 +479,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
           // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
           const fullContent = finalResult.join('')
           if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
-            streamingAgentMessage.showViewResultButton = true
+            // 使用chatStore方法更新消息属性，确保响应式更新
+            chatStore.updateMessageProperties(streamingAgentMessage.id, {
+              showViewResultButton: true
+            })
           }
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100
@@ -561,7 +567,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
               // 检查最终完整内容，只有在非数据库已存在的情况下才显示按钮
               const fullContent = finalResult.join('')
               if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
-                streamingAgentMessage.showViewResultButton = true
+                // 使用chatStore方法更新消息属性，确保响应式更新
+                chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                  showViewResultButton: true
+                })
                 console.log('【乙供物资解析】显示查看解析结果按钮')
               }
 
@@ -588,7 +597,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
           // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
           const fullContent = finalResult.join('')
           if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
-            streamingAgentMessage.showViewResultButton = true
+            // 使用chatStore方法更新消息属性，确保响应式更新
+            chatStore.updateMessageProperties(streamingAgentMessage.id, {
+              showViewResultButton: true
+            })
           }
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100

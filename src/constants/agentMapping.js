@@ -8,28 +8,28 @@
 export const AGENT_MAPPING = {
   // 通过智能体ID进行映射（最精确）
   byAgentId: {
-    "6": "supplierMaterialParsing",  // 乙供物资解析智能体
-    "7": "contractParsing",          // 合同解析智能体  
-    "8": "ownerSuppliedMaterialParsing" // 甲供物资解析智能体
+    6: 'supplierMaterialParsing', // 乙供物资解析智能体
+    7: 'ownerSuppliedMaterialParsing', // 甲供物资解析智能体
+    8: 'contractParsing' // 合同解析智能体
   },
 
   // 通过标签进行映射（推荐方式）
   byLabels: {
-    "y_material": "supplierMaterialParsing",      // 乙供物资标签
-    "contract": "contractParsing",                // 合同标签
-    "owner_material": "ownerSuppliedMaterialParsing", // 甲供物资标签
-    "supplier_material": "supplierMaterialParsing"    // 乙供物资别名
+    y_material: 'supplierMaterialParsing', // 乙供物资标签
+    contract: 'contractParsing', // 合同标签
+    owner_material: 'ownerSuppliedMaterialParsing', // 甲供物资标签
+    supplier_material: 'supplierMaterialParsing' // 乙供物资别名
   },
 
   // 通过智能体名称关键词进行映射（备用方案）
   byNameKeywords: {
-    "乙供物资": "supplierMaterialParsing",
-    "乙供": "supplierMaterialParsing", 
-    "合同": "contractParsing",
-    "甲供物资": "ownerSuppliedMaterialParsing",
-    "甲供": "ownerSuppliedMaterialParsing",
-    "物资核对": "supplierMaterialParsing",
-    "物资解析": "supplierMaterialParsing"
+    乙供物资: 'supplierMaterialParsing',
+    乙供: 'supplierMaterialParsing',
+    合同: 'contractParsing',
+    甲供物资: 'ownerSuppliedMaterialParsing',
+    甲供: 'ownerSuppliedMaterialParsing',
+    物资核对: 'supplierMaterialParsing',
+    物资解析: 'supplierMaterialParsing'
   }
 }
 
@@ -37,18 +37,18 @@ export const AGENT_MAPPING = {
  * 功能类型常量定义
  */
 export const FUNCTION_TYPES = {
-  CONTRACT_PARSING: "contractParsing",
-  SUPPLIER_MATERIAL_PARSING: "supplierMaterialParsing", 
-  OWNER_SUPPLIED_MATERIAL_PARSING: "ownerSuppliedMaterialParsing"
+  CONTRACT_PARSING: 'contractParsing',
+  SUPPLIER_MATERIAL_PARSING: 'supplierMaterialParsing',
+  OWNER_SUPPLIED_MATERIAL_PARSING: 'ownerSuppliedMaterialParsing'
 }
 
 /**
  * 功能类型到显示名称的映射
  */
 export const FUNCTION_DISPLAY_NAMES = {
-  [FUNCTION_TYPES.CONTRACT_PARSING]: "合同解析",
-  [FUNCTION_TYPES.SUPPLIER_MATERIAL_PARSING]: "乙供物资解析",
-  [FUNCTION_TYPES.OWNER_SUPPLIED_MATERIAL_PARSING]: "甲供物资解析"
+  [FUNCTION_TYPES.CONTRACT_PARSING]: '合同解析',
+  [FUNCTION_TYPES.SUPPLIER_MATERIAL_PARSING]: '乙供物资解析',
+  [FUNCTION_TYPES.OWNER_SUPPLIED_MATERIAL_PARSING]: '甲供物资解析'
 }
 
 /**
@@ -59,12 +59,12 @@ export const FUNCTION_DISPLAY_NAMES = {
 export function parseAgentResponse(content) {
   try {
     const parsed = JSON.parse(content)
-    
+
     // 检查是否包含modelAnswer
     if (parsed && parsed.modelAnswer) {
       return parsed.modelAnswer
     }
-    
+
     return null
   } catch (error) {
     console.error('解析智能体响应失败:', error)
@@ -122,8 +122,8 @@ export function mapAgentToFunction(agentInfo) {
  * @returns {Object} 格式化的错误信息
  */
 export function handleNoMatchAgent(agentInfo) {
-  const defaultMessage = "暂未找到处理此类问题的智能体专家，建议联系管理员或重新描述需求"
-  const defaultTypes = ["合同解析", "乙供物资解析", "甲供物资解析"]
+  const defaultMessage = '暂未找到处理此类问题的智能体专家，建议联系管理员或重新描述需求'
+  const defaultTypes = ['合同解析', '乙供物资解析', '甲供物资解析']
 
   return {
     error: true,
@@ -135,20 +135,20 @@ export function handleNoMatchAgent(agentInfo) {
 
 /**
  * 智能体响应处理主函数
- * @param {string} content - 后端返回的content字符串  
+ * @param {string} content - 后端返回的content字符串
  * @returns {Object} 处理结果 { functionType: string|null, agentInfo: Object, error: Object|null }
  */
 export function processAgentResponse(content) {
   const agentInfo = parseAgentResponse(content)
-  
+
   if (!agentInfo) {
     return {
       functionType: null,
       agentInfo: null,
       error: {
         error: true,
-        message: "无法解析智能体响应",
-        suggestion: "请稍后重试或联系管理员"
+        message: '无法解析智能体响应',
+        suggestion: '请稍后重试或联系管理员'
       }
     }
   }
@@ -164,14 +164,16 @@ export function processAgentResponse(content) {
 
   // 尝试映射到功能类型
   const functionType = mapAgentToFunction(agentInfo)
-  
+
   return {
     functionType: functionType,
     agentInfo: agentInfo,
-    error: functionType ? null : {
-      error: true,
-      message: `找到智能体"${agentInfo.agentName || '未知'}"，但暂不支持此类型的解析功能`,
-      suggestion: "请联系管理员添加相应的解析功能支持"
-    }
+    error: functionType
+      ? null
+      : {
+          error: true,
+          message: `找到智能体"${agentInfo.agentName || '未知'}"，但暂不支持此类型的解析功能`,
+          suggestion: '请联系管理员添加相应的解析功能支持'
+        }
   }
 }

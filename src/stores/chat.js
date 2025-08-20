@@ -165,6 +165,18 @@ export const useChatStore = defineStore(
       }
     }
 
+    /**
+     * 更新消息的属性，确保响应式更新
+     * @param {string|number} messageId - 消息ID
+     * @param {object} updates - 要更新的属性对象
+     */
+    function updateMessageProperties(messageId, updates) {
+      const msg = displayedMessages.value.find((m) => m.id === messageId)
+      if (msg) {
+        Object.assign(msg, updates)
+      }
+    }
+
     return {
       userInput,
       displayedMessages,
@@ -172,7 +184,8 @@ export const useChatStore = defineStore(
       sendMessage,
       initDefaultMessage,
       resetAndInitMessages,
-      appendStreamContent // 暴露新方法
+      appendStreamContent, // 暴露流式内容追加方法
+      updateMessageProperties // 暴露消息属性更新方法
     }
   },
   {
