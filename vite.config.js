@@ -96,8 +96,8 @@ export default defineConfig(({ mode }) => {
           return newPath
         }
       },
-      // 乙供物资解析相关API转发到1207端口
-      '/api/materials/partyb': {
+      // 乙供物资解析相关API转发到1207端口（不带/api前缀）
+      '/materials/partyb': {
         target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
         timeout: 300000, // 5分钟超时
@@ -108,7 +108,7 @@ export default defineConfig(({ mode }) => {
           return path
         }
       },
-      // 物资基础信息查询API转发到1207端口
+      // 物资基础信息查询API转发到1207端口（带/api前缀）
       '/api/materials/base-info': {
         target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
         changeOrigin: true,
