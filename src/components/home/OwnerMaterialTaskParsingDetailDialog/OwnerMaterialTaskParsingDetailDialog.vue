@@ -58,7 +58,6 @@
 import { ref, watch, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import smartBrainService from '@/services/SmartBrainService.js'
-import { useRouter } from 'vue-router' // 导入 useRouter
 
 const props = defineProps({
   taskId: {
@@ -131,15 +130,19 @@ const fetchDetailList = async () => {
   }
 }
 
-const router = useRouter() // 将 useRouter 移动到顶层
-
 const handleViewDetail = (row) => {
-  router.push({
-    name: 'MaterialDetailPage', // 使用路由名称
-    params: { taskId: row.taskId }, // taskId 作为路由参数
-    query: { detailId: row.id } // detailId 作为查询参数
+  console.log('【调试】甲供物资详情查看 - row对象:', row)
+  
+  // 甲供物资应该使用对话框显示详情，而不是路由跳转
+  // 发出事件让父组件处理详情显示
+  emit('view-detail', {
+    taskId: props.taskId,
+    detailId: row.id || row.taskDetailId || row.detailId,
+    row: row
   })
-  dialogVisible.value = false // 关闭当前弹窗
+  
+  // 暂时不关闭当前弹窗，让用户可以继续查看列表
+  // dialogVisible.value = false
 }
 
 watch(

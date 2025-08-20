@@ -49,6 +49,7 @@
 <script setup>
 import { defineAsyncComponent } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useMaterialDialogStore } from '@/stores/materialDialog'
 import { useChatStore } from '@/stores/chat'
@@ -91,7 +92,6 @@ const {
 
 const {
   getCurrentFunctionName,
-  getCurrentFunction,
   getCurrentFunctionParams,
   needsFileUpload,
   getAllowedFileTypes,
@@ -109,12 +109,41 @@ const {
 
 const { addMessage } = chatStore
 
+// 初始化路由
+const router = useRouter()
+
 // 事件处理函数
-const viewOwnerMaterialDetail = (row) => {
+const viewOwnerMaterialDetail = (data) => {
   console.log(
     '【诊断】DialogManager - 接收到 OwnerMaterialTaskParsingDetailDialog 的 view-detail 事件:',
-    row
+    data
   )
+  
+  // 提取 taskId 和 detailId 参数
+  const taskId = data.taskId
+  const detailId = data.detailId || data.row?.id || data.row?.taskDetailId || data.row?.detailId
+  
+  console.log('【诊断】跳转参数 - taskId:', taskId, 'detailId:', detailId)
+  
+  // 检查参数有效性
+  if (!taskId || !detailId) {
+    console.error('跳转失败：缺少必要参数', { taskId, detailId })
+    return
+  }
+  
+  // 关闭当前弹窗
+  materialDialogStore.showOwnerMaterialTaskParsingDetailDialog = false
+  
+  // 跳转到乙供物资详情页面
+  router.push({
+    name: 'supplier-material-detail',
+    params: {
+      taskId: String(taskId),
+      detailId: String(detailId)
+    }
+  }).catch(error => {
+    console.error('路由跳转失败:', error)
+  })
 }
 
 const viewSupplierMaterialDetail = (row) => {
