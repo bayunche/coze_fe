@@ -706,8 +706,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
           chatStore.appendStreamContent(streamingAgentMessage.id, fixedMessage)
           finalResult.push(fixedMessage)
 
-          // 不显示查看解析结果按钮
-          // streamingAgentMessage.showViewResultButton = true
+          // 显示查看解析结果按钮，允许用户查看详细的解析结果
+          streamingAgentMessage.showViewResultButton = true
 
           if (taskId.value) {
             ownerMaterialStore.updateTaskStatus(taskId.value, 'needs_manual_alignment')
