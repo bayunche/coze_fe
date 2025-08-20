@@ -81,6 +81,9 @@ export const fetchDetailList = async (taskId, params) => {
     
     const result = await smartBrainService.getTaskDetailsList(taskId, apiParams)
     
+    console.log('【调试】乙供物资任务详情列表数据:', result)
+    console.log('【调试】任务详情列表第一项:', result.content?.[0])
+    
     return {
       tableData: result.content || [],
       total: result.totalElements || 0
@@ -107,11 +110,38 @@ export const createRouter = () => {
  * @param {Function} closeDialog - 关闭对话框函数
  */
 export const viewDetail = (row, router, closeDialog) => {
+  console.log('【调试】乙供物资详情页面跳转 - row对象:', row)
+  
+  // 尝试多种可能的ID字段名
+  const detailId = row.id || row.taskDetailId || row.detailId || row.uuid || row.Id
+  console.log('【调试】taskId:', row.taskId, 'detailId:', detailId)
+  console.log('【调试】可能的ID字段:', {
+    id: row.id,
+    taskDetailId: row.taskDetailId,
+    detailId: row.detailId,
+    uuid: row.uuid,
+    Id: row.Id
+  })
+  
+  // 检查必要的参数是否存在
+  if (!row.taskId) {
+    ElMessage.error('缺少任务ID，无法跳转到详情页面')
+    return
+  }
+  
+  if (!detailId) {
+    ElMessage.error('缺少详情ID，无法跳转到详情页面。请检查数据结构。')
+    console.error('【错误】未找到有效的详情ID字段，row对象完整内容:', row)
+    return
+  }
+  
+  console.log('【调试】准备跳转到详情页面，参数:', { taskId: row.taskId, detailId })
+  
   router.push({
     name: 'supplier-material-detail',
     params: {
       taskId: row.taskId,
-      detailId: row.id
+      detailId: detailId
     }
   })
   closeDialog()

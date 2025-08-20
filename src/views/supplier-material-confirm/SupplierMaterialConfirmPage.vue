@@ -277,7 +277,14 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, reactive } from 'vue'
-import { useRoute } from 'vue-router'
+
+// 定义 props 接收路由参数
+const props = defineProps({
+  taskId: {
+    type: [String, Number],
+    required: true
+  }
+})
 import { 
   ArrowLeft, 
   Refresh, 
@@ -316,9 +323,8 @@ import {
   useNavigation
 } from './utils.js'
 
-// 路由参数
-const route = useRoute()
-const taskId = computed(() => route.params.taskId)
+// 路由参数 - 使用 props 传递的参数
+const taskId = computed(() => props.taskId)
 
 // 导航函数
 const { goBack, goToDetail } = useNavigation()

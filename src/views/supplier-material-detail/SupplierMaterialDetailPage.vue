@@ -243,7 +243,18 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+
+// 定义 props 接收路由参数
+const props = defineProps({
+  taskId: {
+    type: [String, Number],
+    required: true
+  },
+  detailId: {
+    type: [String, Number],
+    required: true
+  }
+})
 import { 
   ArrowLeft, 
   Refresh, 
@@ -278,10 +289,15 @@ import {
   useNavigation
 } from './utils.js'
 
-// 路由参数
-const route = useRoute()
-const taskId = computed(() => route.params.taskId)
-const detailId = computed(() => route.params.detailId)
+// 路由参数 - 使用 props 传递的参数
+const taskId = computed(() => {
+  console.log('【调试】详情页面 - taskId props:', props.taskId)
+  return props.taskId
+})
+const detailId = computed(() => {
+  console.log('【调试】详情页面 - detailId props:', props.detailId)
+  return props.detailId
+})
 
 // 导航函数
 const { goBack, goToConfirm } = useNavigation()

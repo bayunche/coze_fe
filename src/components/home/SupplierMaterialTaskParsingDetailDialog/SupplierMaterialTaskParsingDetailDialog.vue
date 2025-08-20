@@ -171,7 +171,8 @@ const closeDialog = () => {
 
 // 事件处理函数
 const onViewDetail = (row) => {
-  viewDetail(row, router, closeDialog)
+  // 传递 props 中的 taskId 和 row 中的 id
+  viewDetail({ ...row, taskId: props.taskId }, router, closeDialog)
 }
 
 const onDownloadFile = (row) => {
