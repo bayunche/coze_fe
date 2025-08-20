@@ -461,7 +461,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
-            if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+            // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
+            const fullContent = finalResult.join('')
+            if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
               streamingAgentMessage.showViewResultButton = true
             }
           }
@@ -471,7 +473,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
-          if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+          // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
+          const fullContent = finalResult.join('')
+          if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
             streamingAgentMessage.showViewResultButton = true
           }
           if (progressManager) progressManager.stop()
@@ -554,8 +558,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
               // 立即完成流式处理，不等待Done事件
               delete streamingAgentMessage.isStreaming
 
-              // 检查消息内容，只有在非数据库已存在的情况下才显示按钮
-              if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+              // 检查最终完整内容，只有在非数据库已存在的情况下才显示按钮
+              const fullContent = finalResult.join('')
+              if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
                 streamingAgentMessage.showViewResultButton = true
               }
 
@@ -579,7 +584,9 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
           // 处理旧格式或其他未完成的消息
           delete streamingAgentMessage.isStreaming
-          if (!/在数据库中已存在，无需再次解析/.test(streamingAgentMessage.content)) {
+          // 检查完整内容，只有在非数据库已存在的情况下才显示按钮
+          const fullContent = finalResult.join('')
+          if (!/在数据库中已存在，无需再次解析/.test(fullContent)) {
             streamingAgentMessage.showViewResultButton = true
           }
           if (progressManager) progressManager.stop()
@@ -706,8 +713,8 @@ export const useWorkflowStore = defineStore('workflow', () => {
           chatStore.appendStreamContent(streamingAgentMessage.id, fixedMessage)
           finalResult.push(fixedMessage)
 
-          // 显示查看解析结果按钮，允许用户查看详细的解析结果
-          streamingAgentMessage.showViewResultButton = true
+          // 甲供物资解析不显示详情按钮，只显示物资信息的按钮
+          // streamingAgentMessage.showViewResultButton = true
 
           if (taskId.value) {
             ownerMaterialStore.updateTaskStatus(taskId.value, 'needs_manual_alignment')
