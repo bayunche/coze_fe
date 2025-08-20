@@ -237,6 +237,7 @@
       @select="handleMaterialSelect"
       @page-change="handleSelectionPageChange"
       @size-change="handleSelectionSizeChange"
+      @search="handleSelectionSearch"
     />
   </div>
 </template>
@@ -338,6 +339,7 @@ const selectionList = ref([])
 const selectionTotal = ref(0)
 const selectionPageNum = ref(1)
 const selectionPageSize = ref(10)
+const selectionKeyword = ref('')
 
 /**
  * 加载物资详情数据
@@ -471,8 +473,10 @@ const handleGoToConfirm = () => {
 /**
  * 处理相似匹配选择变化
  */
-const handleSimilarMatchChange = (row, selectedMatch) => {
-  utilHandleSimilarMatchChange(row, selectedMatch)
+const handleSimilarMatchChange = async (row, selectedMatch) => {
+  await utilHandleSimilarMatchChange(row, selectedMatch)
+  // 成功确认后重新加载数据以获取最新状态
+  await loadMaterialDetail()
 }
 
 /**
@@ -486,7 +490,8 @@ const handleEdit = async (row) => {
     selectionPageNum.value = 1
     selectionPageSize.value = 10
     
-    // 获取匹配列表数据
+    // 重置搜索关键词并获取匹配列表数据
+    selectionKeyword.value = ''
     await loadSelectionList(selectionPageNum.value, selectionPageSize.value)
     showSelectionDialog.value = true
   } else {
@@ -497,11 +502,11 @@ const handleEdit = async (row) => {
 /**
  * 加载物资选择列表
  */
-const loadSelectionList = async (pageNum, pageSize) => {
+const loadSelectionList = async (pageNum, pageSize, keyword = '') => {
   selectionLoading.value = true
   
   try {
-    const { selectionList: list, total: totalCount } = await fetchSelectionList(pageNum, pageSize)
+    const { selectionList: list, total: totalCount } = await fetchSelectionList(pageNum, pageSize, keyword)
     selectionList.value = list
     selectionTotal.value = totalCount
   } catch (error) {
@@ -516,7 +521,7 @@ const loadSelectionList = async (pageNum, pageSize) => {
  */
 const handleSelectionPageChange = async (newPage) => {
   selectionPageNum.value = newPage
-  await loadSelectionList(newPage, selectionPageSize.value)
+  await loadSelectionList(newPage, selectionPageSize.value, selectionKeyword.value)
 }
 
 /**
@@ -525,17 +530,28 @@ const handleSelectionPageChange = async (newPage) => {
 const handleSelectionSizeChange = async (newSize) => {
   selectionPageSize.value = newSize
   selectionPageNum.value = 1
-  await loadSelectionList(1, newSize)
+  await loadSelectionList(1, newSize, selectionKeyword.value)
 }
 
 /**
  * 处理物资选择
  */
-const handleMaterialSelect = (selectedMaterial) => {
+const handleMaterialSelect = async (selectedMaterial) => {
   if (currentRow.value && selectedMaterial) {
-    utilHandleMaterialSelect(currentRow.value, selectedMaterial)
+    await utilHandleMaterialSelect(currentRow.value, selectedMaterial)
+    // 成功确认后重新加载数据以获取最新状态
+    await loadMaterialDetail()
   }
   showSelectionDialog.value = false
+}
+
+/**
+ * 处理选择对话框搜索
+ */
+const handleSelectionSearch = async (keyword) => {
+  selectionKeyword.value = keyword
+  selectionPageNum.value = 1
+  await loadSelectionList(1, selectionPageSize.value, keyword)
 }
 
 // 页面初始化时加载数据

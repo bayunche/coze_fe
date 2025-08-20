@@ -1,8 +1,9 @@
 // 乙供物资解析详情页面工具函数
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
+import supplierMaterialService from '@/services/SupplierMaterialService.js'
 import CozeService from '@/utils/coze.js'
-import { useChatStore } from '@/stores/chat.js'
+// import { useChatStore } from '@/stores/chat.js' // 暂时不需要聊天存储
 import { 
   MATCH_TYPE_MAP, 
   WORKFLOW_IDS, 
@@ -27,26 +28,67 @@ export const createCozeService = () => {
  * @returns {Object} 格式化后的数据项
  */
 export const formatMaterialDetail = (item) => {
+  // 兼容新旧数据格式
   const formattedItem = {
-    id: item.id,
-    material_name: item.excelDataMaterialName || DEFAULT_VALUES.EMPTY_TEXT,
-    material_specification: item.excelDataSpecificationModel || DEFAULT_VALUES.EMPTY_TEXT,
-    material_price: item.excelDataPrice || DEFAULT_VALUES.EMPTY_TEXT,
-    matched_name: item.matchedDataMaterialName || DEFAULT_VALUES.EMPTY_TEXT,
-    matched_specification: item.matchedDataSpecificationModel || DEFAULT_VALUES.EMPTY_TEXT,
-    matched_price: formatPrice(item.matchedPrice),
-    similarity: formatSimilarity(item.matchedScore),
+    id: item.taskDataId || item.id,
+    taskDataId: item.taskDataId || item.id,
+    taskId: item.taskId,
+    taskDetailId: item.taskDetailId,
+    material_name: item.materialName || item.excelDataMaterialName || DEFAULT_VALUES.EMPTY_TEXT,
+    material_specification: item.specifications || item.excelDataSpecificationModel || DEFAULT_VALUES.EMPTY_TEXT,
+    material_unit: item.unit || DEFAULT_VALUES.EMPTY_TEXT,
+    material_quantity: item.quantity || DEFAULT_VALUES.EMPTY_TEXT,
+    material_price: item.unitPrice || item.excelDataPrice || DEFAULT_VALUES.EMPTY_TEXT,
+    material_total_price: item.totalPrice || DEFAULT_VALUES.EMPTY_TEXT,
+    matched_name: item.baseInfo?.materialName || item.matchedDataMaterialName || DEFAULT_VALUES.EMPTY_TEXT,
+    matched_specification: item.baseInfo?.specifications || item.matchedDataSpecificationModel || DEFAULT_VALUES.EMPTY_TEXT,
+    matched_unit: item.baseInfo?.unit || DEFAULT_VALUES.EMPTY_TEXT,
+    matched_price: formatPrice(item.priceInfo?.taxPrice || item.matchedPrice),
+    matched_quarter: item.priceInfo?.quarter || DEFAULT_VALUES.EMPTY_TEXT,
+    similarity: item.matchOptions?.[0]?.matchScore ? `${item.matchOptions[0].matchScore}%` : formatSimilarity(item.matchedScore),
     match_type: getMatchType(item),
+    confirm_result: item.confirmResult,
+    confirmBaseDataId: item.confirmBaseDataId || item.matchedDataId,
+    confirmPriceId: item.confirmPriceId || item.matchedPriceId,
     editing: false,
     selected_match: null,
     original_item: item,
     // 保存初始匹配数据ID快照，用于检测是否有变更
-    initialMatchedDataId: item.matchedDataId || null,
-    initialMatchedPriceId: item.matchedPriceId || null
+    initialConfirmBaseDataId: item.confirmBaseDataId || item.matchedDataId || null,
+    initialConfirmPriceId: item.confirmPriceId || item.matchedPriceId || null
   }
 
-  // 处理相似匹配的子数据
-  if (item.comparison_result === 2 && Array.isArray(item.subData)) {
+  // 处理匹配选项数据（兼容新旧格式）
+  if (Array.isArray(item.matchOptions) && item.matchOptions.length > 0) {
+    // 新格式：来自复杂查询接口
+    formattedItem.similar_matches = item.matchOptions.map((option) => {
+      const similarMatchItem = {
+        id: option.matchResultId,
+        matched_id: option.matchedId,
+        baseDataId: option.matchedId,
+        name: option.baseInfo?.materialName || '未知名称',
+        specification: option.baseInfo?.specifications || '未知型号',
+        unit: option.baseInfo?.unit || '未知单位',
+        similarity: option.matchScore || 0,
+        priceOptions: option.priceOptions || [],
+        // 默认选择第一个价格选项
+        selectedPriceId: option.priceOptions?.[0]?.priceId || null,
+        selectedPrice: option.priceOptions?.[0]?.taxPrice || 0,
+        selectedQuarter: option.priceOptions?.[0]?.quarter || '未知季度'
+      }
+      
+      // 检查是否与当前确认项一致，用于回显
+      if (
+        item.confirmBaseDataId === similarMatchItem.matched_id &&
+        item.confirmPriceId === similarMatchItem.selectedPriceId
+      ) {
+        formattedItem.selected_match = similarMatchItem
+      }
+      
+      return similarMatchItem
+    })
+  } else if (item.comparison_result === 2 && Array.isArray(item.subData)) {
+    // 旧格式：兼容原有数据结构
     formattedItem.similar_matches = item.subData.map((sub) => {
       const similarMatchItem = {
         id: sub.id,
@@ -84,6 +126,20 @@ export const formatMaterialDetail = (item) => {
  * @returns {string} 匹配类型文本
  */
 export const getMatchType = (item) => {
+  // 优先使用新格式的matchedType字段
+  if (item.matchedType !== undefined) {
+    // matchedType: 0：无匹配，1：精确匹配，2：相似匹配，3：历史匹配，4：人工匹配
+    const typeMap = {
+      0: '无匹配',
+      1: '精确匹配',
+      2: '相似匹配',
+      3: '历史匹配',
+      4: '人工匹配'
+    }
+    return typeMap[item.matchedType] || DEFAULT_VALUES.UNKNOWN_STATUS
+  }
+  
+  // 兼容旧格式
   if (item.confirm_type === 2) {
     return '精确匹配'
   }
@@ -127,15 +183,16 @@ export const formatSimilarity = (similarity) => {
 }
 
 /**
- * 格式化相似匹配选项标签
+ * 格式化相似匹配选项标签 - 适配新接口格式
  * @param {Object} item - 相似匹配项
  * @returns {string} 格式化后的标签
  */
 export const formatSimilarMatchLabel = (item) => {
   const name = item.name || ''
   const specification = item.specification || ''
-  const price = item.price !== null ? formatPrice(item.price) : ''
-  const quarter = item.matchedPriceQuarter || item.quarter || ''
+  // 新接口格式：使用selectedPrice和selectedQuarter
+  const price = item.selectedPrice !== null ? formatPrice(item.selectedPrice) : (item.price !== null ? formatPrice(item.price) : '')
+  const quarter = item.selectedQuarter || item.matchedPriceQuarter || item.quarter || ''
 
   const parts = []
   if (price) parts.push(price)
@@ -169,45 +226,67 @@ export const getMatchTypeTag = (type) => {
  * @returns {Promise<Object>} 包含表格数据和总数的对象
  */
 export const fetchMaterialDetail = async (taskId, detailId, page = 1, size = 10) => {
-  const cozeService = createCozeService()
-  
   try {
-    const workflowParams = {
+    // 优先使用新的API接口
+    const params = {
       taskId: taskId,
-      task_detail_id: detailId,
-      index: page,
-      pageSize: size
+      taskDetailId: detailId, // 可选参数
+      page: page - 1, // API的页码从0开始，前端从1开始
+      size: size
     }
     
-    console.log('【诊断】调用乙供物资详情工作流参数:', workflowParams)
+    console.log('【诊断】调用乙供物资复杂查询接口参数:', params)
     
-    const detailResult = await cozeService.runWorkflow(WORKFLOW_IDS.DETAIL, workflowParams)
+    const response = await supplierMaterialService.queryMaterials(params)
     
-    if (detailResult && detailResult.data) {
-      console.log('【诊断】乙供物资详情工作流返回数据:', detailResult.data)
+    if (response) {
+      console.log('【诊断】获取到的乙供物资详情原始数据:', response)
       
-      const parsed = JSON.parse(detailResult.data)
-      const parsedData = parsed?.result
-      const totalCount = parsed?.totalCount || (Array.isArray(parsedData) ? parsedData.length : 0)
+      // 提取数据列表和分页信息
+      const dataList = response.content || []
+      const pageInfo = response.page || {}
+      const totalCount = pageInfo.totalElements || response.statistics?.totalCount || dataList.length
       
-      if (Array.isArray(parsedData) && parsedData.length > 0) {
-        const tableData = parsedData.map(item => formatMaterialDetail(item))
-        
-        console.log('【诊断】乙供物资详情处理后数据:', {
-          count: tableData.length,
-          total: totalCount
-        })
-        
-        return {
-          tableData,
-          total: totalCount
-        }
-      } else {
-        console.warn('【诊断】乙供物资详情无有效数据')
-        return { tableData: [], total: 0 }
+      // 格式化数据
+      const formattedData = dataList.map(formatMaterialDetail)
+      
+      console.log('【诊断】格式化后的乙供物资详情数据:', formattedData)
+      
+      return {
+        tableData: formattedData,
+        total: totalCount,
+        statistics: response.statistics
       }
     } else {
-      throw new Error('获取详情数据失败')
+      // 如果新接口失败，尝试使用旧的工作流方式
+      console.log('【诊断】新接口无响应，尝试使用工作流方式')
+      const cozeService = createCozeService()
+      
+      const workflowParams = {
+        taskId: taskId,
+        task_detail_id: detailId,
+        index: page,
+        pageSize: size
+      }
+      
+      const detailResult = await cozeService.runWorkflow(WORKFLOW_IDS.DETAIL, workflowParams)
+      
+      if (detailResult && detailResult.data) {
+        const parsed = JSON.parse(detailResult.data)
+        const parsedData = parsed?.result
+        const totalCount = parsed?.totalCount || (Array.isArray(parsedData) ? parsedData.length : 0)
+        
+        if (Array.isArray(parsedData) && parsedData.length > 0) {
+          const tableData = parsedData.map(item => formatMaterialDetail(item))
+          return {
+            tableData,
+            total: totalCount
+          }
+        }
+      }
+      
+      ElMessage.warning('未获取到数据')
+      return { tableData: [], total: 0 }
     }
   } catch (error) {
     console.error('【错误】获取乙供物资详情失败:', error)
@@ -217,33 +296,32 @@ export const fetchMaterialDetail = async (taskId, detailId, page = 1, size = 10)
 }
 
 /**
- * 获取物资选择列表数据
+ * 获取物资选择列表数据 - 使用新的基础信息接口
  * @param {number} pageNum - 页码
  * @param {number} pageSize - 页大小
+ * @param {string} keyword - 搜索关键字
  * @returns {Promise<Object>} 包含选择列表数据和总数的对象
  */
-export const fetchSelectionList = async (pageNum = 1, pageSize = 10) => {
-  const cozeService = createCozeService()
-  
+export const fetchSelectionList = async (pageNum = 1, pageSize = 10, keyword = '') => {
   try {
-    const params = { pageNum, pageSize }
+    const params = {
+      keyword: keyword,
+      page: pageNum - 1, // API页码从0开始
+      size: pageSize
+    }
     
-    console.log('【诊断】调用物资选择工作流参数:', params)
+    console.log('【诊断】调用物资基础信息查询接口参数:', params)
     
-    const result = await cozeService.runWorkflow(WORKFLOW_IDS.SELECTION, params)
+    const response = await supplierMaterialService.searchMaterialsWithPrices(params)
     
-    if (result && result.data) {
-      const parsed = JSON.parse(result.data)
-      const selectionList = parsed.output || parsed
-      const total = parsed.count || 0
+    if (response) {
+      console.log('【诊断】物资基础信息查询返回数据:', response)
       
-      console.log('【诊断】物资选择工作流返回数据:', {
-        count: Array.isArray(selectionList) ? selectionList.length : 0,
-        total
-      })
+      const selectionList = response.content || []
+      const total = response.totalElements || 0
       
       return {
-        selectionList: Array.isArray(selectionList) ? selectionList : [],
+        selectionList,
         total
       }
     } else {
@@ -257,52 +335,39 @@ export const fetchSelectionList = async (pageNum = 1, pageSize = 10) => {
 }
 
 /**
- * 保存解析结果
+ * 保存解析结果 - 使用批量确认接口
  * @param {Array} tableData - 表格数据
  * @returns {Promise<boolean>} 保存是否成功
  */
 export const saveParsingResults = async (tableData) => {
-  const cozeService = createCozeService()
-  const chatStore = useChatStore()
-  
   try {
-    // 只保存用户编辑过变动的数据
-    const updateObjList = tableData
-      .filter((item) => {
-        // 对比行数据层id和快照，识别有变化的数据
-        const isModified =
-          item.original_item.matchedDataId !== item.initialMatchedDataId ||
-          item.original_item.matchedPriceId !== item.initialMatchedPriceId
-        
-        console.log(`【诊断】保存检查: ID=${item.id}, 是否修改=${isModified}`)
-        return isModified
-      })
-      .map((item) => ({
-        id: item.id,
-        confirm_base_data_id: item.original_item.matchedDataId || null,
-        confirm_price_id: item.original_item.matchedPriceId || null,
-        confirm_type: 2
-      }))
+    // 筛选出需要确认的数据项（未确认状态的）
+    const itemsToConfirm = tableData.filter(item => {
+      return item.confirm_result !== 1 && item.confirmBaseDataId && item.confirmPriceId
+    })
 
-    if (updateObjList.length === 0) {
-      ElMessage.info(MESSAGE_CONFIG.NO_CHANGES)
+    if (itemsToConfirm.length === 0) {
+      ElMessage.info('没有需要确认的数据项')
       return false
     }
 
-    console.log('【诊断】保存乙供物资解析结果:', updateObjList)
+    console.log('【诊断】批量确认乙供物资，数量:', itemsToConfirm.length)
     
-    const saveResult = await cozeService.runWorkflow(WORKFLOW_IDS.SAVE, { updateObjList })
+    // 调用批量确认功能
+    const batchResult = await supplierMaterialService.batchConfirm(itemsToConfirm)
 
-    if (saveResult && saveResult.data) {
-      ElMessage.success(MESSAGE_CONFIG.SAVE_SUCCESS)
+    if (batchResult) {
+      const successCount = batchResult.success?.length || 0
+      const failedCount = batchResult.failed?.length || 0
       
-      const savedCount = updateObjList.length
-      chatStore.addMessage(`已保存${savedCount}个乙供物资解析结果`, 'system')
+      if (failedCount > 0) {
+        console.warn('【警告】部分确认失败:', batchResult.failed)
+      }
       
-      return true
-    } else {
-      throw new Error('保存操作未返回有效结果')
+      return successCount > 0
     }
+    
+    return false
   } catch (error) {
     console.error('【错误】保存乙供物资解析结果失败:', error)
     ElMessage.error(`${MESSAGE_CONFIG.SAVE_ERROR}: ${error.message || '未知错误'}`)
@@ -311,29 +376,46 @@ export const saveParsingResults = async (tableData) => {
 }
 
 /**
- * 处理相似匹配选择变化
+ * 处理相似匹配选择变化 - 适配新接口格式并实现人工确认
  * @param {Object} row - 当前行数据
  * @param {Object} selectedMatch - 选中的匹配项
  */
-export const handleSimilarMatchChange = (row, selectedMatch) => {
+export const handleSimilarMatchChange = async (row, selectedMatch) => {
   if (row && selectedMatch) {
     row.matched_name = selectedMatch.name
     row.matched_specification = selectedMatch.specification
-    row.matched_price = formatPrice(selectedMatch.price)
+    row.matched_price = formatPrice(selectedMatch.selectedPrice || selectedMatch.price)
+    row.matched_quarter = selectedMatch.selectedQuarter || selectedMatch.quarter
     
     console.log('【诊断】相似匹配选择:', selectedMatch, row)
     
-    // 更新原始数据中的匹配相关字段，以便保存时使用
-    const originalItem = row.original_item
-    if (originalItem) {
-      originalItem.matchedDataId = selectedMatch.matched_id || null
-      originalItem.matchedPriceId = selectedMatch.matchedPriceId || null
-      originalItem.matchedDataMaterialName = selectedMatch.name
-      originalItem.matchedDataSpecificationModel = selectedMatch.specification
-      originalItem.matchedPrice = selectedMatch.price
-      originalItem.matchedScore = selectedMatch.similarity
-      originalItem.matchedPriceQuarter = selectedMatch.matchedPriceQuarter || selectedMatch.quarter || null
-      originalItem.comparison_result = 1 // 相似匹配选择后，视为精确匹配
+    // 调用人工确认接口
+    try {
+      const confirmParams = {
+        id: row.taskDataId,
+        confirmBaseDataId: selectedMatch.matched_id || selectedMatch.baseDataId,
+        confirmPriceId: selectedMatch.selectedPriceId
+      }
+      
+      console.log('【调用】人工确认接口参数:', confirmParams)
+      
+      const confirmResult = await supplierMaterialService.manualConfirm(confirmParams)
+      
+      if (confirmResult) {
+        // 更新行数据状态
+        row.confirm_result = 1
+        row.confirmBaseDataId = confirmParams.confirmBaseDataId
+        row.confirmPriceId = confirmParams.confirmPriceId
+        row.match_type = '已确认'
+        
+        console.log('【成功】人工确认完成:', confirmResult)
+        ElMessage.success(`已确认物资匹配：${selectedMatch.name}`)
+      }
+    } catch (error) {
+      console.error('【错误】人工确认失败:', error)
+      ElMessage.error(`确认失败：${error.message}`)
+      // 恢复原始数据
+      return
     }
     
     console.log('【诊断】更新后的行数据:', row)
@@ -341,61 +423,62 @@ export const handleSimilarMatchChange = (row, selectedMatch) => {
 }
 
 /**
- * 处理物资选择
+ * 处理物资选择 - 适配新接口格式并实现人工确认
  * @param {Object} currentRow - 当前编辑的行
  * @param {Object} selectedMaterial - 选中的物资
  */
-export const handleMaterialSelect = (currentRow, selectedMaterial) => {
+export const handleMaterialSelect = async (currentRow, selectedMaterial) => {
   if (currentRow && selectedMaterial) {
-    console.log('【诊断】物资选择更新前:', {
-      initialId: currentRow.initialMatchedDataId,
-      originalId: currentRow.original_item.matchedDataId
-    })
+    console.log('【诊断】物资选择:', selectedMaterial)
 
-    currentRow.matched_name = 
-      selectedMaterial.material_name || 
-      selectedMaterial.ymtd_material_name || 
-      selectedMaterial.name || 
-      DEFAULT_VALUES.EMPTY_TEXT
+    // 适配新接口的数据结构
+    const materialBaseInfo = selectedMaterial.materialBaseInfo || selectedMaterial
+    const priceList = selectedMaterial.priceList || []
     
-    currentRow.matched_price = formatPrice(
-      selectedMaterial.tax_price || 
-      selectedMaterial.ymtd_tax_price || 
-      selectedMaterial.price
-    )
+    // 选择最新的价格（第一个价格选项）
+    const selectedPrice = priceList.length > 0 ? priceList[0] : null
     
-    currentRow.matched_specification = 
-      selectedMaterial.specification_model ||
-      selectedMaterial.ymtd_specification_model ||
-      selectedMaterial.specification ||
-      DEFAULT_VALUES.EMPTY_TEXT
+    currentRow.matched_name = materialBaseInfo.materialName || materialBaseInfo.material_name || DEFAULT_VALUES.EMPTY_TEXT
+    currentRow.matched_specification = materialBaseInfo.specificationModel || materialBaseInfo.specification_model || DEFAULT_VALUES.EMPTY_TEXT
+    currentRow.matched_unit = materialBaseInfo.unit || DEFAULT_VALUES.EMPTY_TEXT
+    currentRow.matched_price = selectedPrice ? formatPrice(selectedPrice.taxPrice) : DEFAULT_VALUES.EMPTY_TEXT
+    currentRow.matched_quarter = selectedPrice ? selectedPrice.quarter : DEFAULT_VALUES.EMPTY_TEXT
     
-    if (currentRow.original_item) {
-      currentRow.original_item.comparison_result = 3 // 手动选择后，设置为人工匹配
-      currentRow.original_item.matchedDataId = 
-        selectedMaterial.m_id || 
-        selectedMaterial.ymmr_id || 
-        selectedMaterial.id || 
-        null
-      currentRow.original_item.matchedPriceId = 
-        selectedMaterial.p_id ||
-        selectedMaterial.ymmr_tax_price_id ||
-        selectedMaterial.priceId ||
-        null
-      currentRow.original_item.matchedDataMaterialName = currentRow.matched_name
-      currentRow.original_item.matchedDataSpecificationModel = currentRow.matched_specification
-      currentRow.original_item.matchedPrice = 
-        selectedMaterial.tax_price || 
-        selectedMaterial.ymmr_price || 
-        selectedMaterial.price
-      currentRow.original_item.matchedScore = selectedMaterial.ymmr_score || null
-      currentRow.original_item.matchedPriceQuarter = selectedMaterial.quarter || null
-
-      console.log('【诊断】物资选择更新后:', {
-        initialId: currentRow.initialMatchedDataId, // 应保持不变
-        originalId: currentRow.original_item.matchedDataId // 已更新
-      })
+    // 调用人工确认接口
+    try {
+      const confirmParams = {
+        id: currentRow.taskDataId,
+        confirmBaseDataId: materialBaseInfo.id,
+        confirmPriceId: selectedPrice ? selectedPrice.id : null
+      }
+      
+      console.log('【调用】人工确认接口参数:', confirmParams)
+      
+      if (!confirmParams.confirmPriceId) {
+        ElMessage.warning('该物资暂无价格信息，无法确认')
+        return
+      }
+      
+      const confirmResult = await supplierMaterialService.manualConfirm(confirmParams)
+      
+      if (confirmResult) {
+        // 更新行数据状态
+        currentRow.confirm_result = 1
+        currentRow.confirmBaseDataId = confirmParams.confirmBaseDataId
+        currentRow.confirmPriceId = confirmParams.confirmPriceId
+        currentRow.match_type = '已确认'
+        
+        console.log('【成功】人工确认完成:', confirmResult)
+        ElMessage.success(`已确认物资匹配：${currentRow.matched_name}`)
+      }
+    } catch (error) {
+      console.error('【错误】人工确认失败:', error)
+      ElMessage.error(`确认失败：${error.message}`)
+      // 恢复原始数据
+      return
     }
+    
+    console.log('【诊断】物资选择更新后:', currentRow)
   }
 }
 
