@@ -4,6 +4,23 @@
       <h2>物资信息确认</h2>
     </div>
 
+    <!-- 对平状态统计区域 -->
+    <div class="status-summary" v-if="total > 0">
+      <el-card class="status-card">
+        <div class="status-info">
+          <el-tag v-if="hasUnalignedMaterials" type="warning" size="large">
+            <el-icon><Warning /></el-icon>
+            <span>待处理：{{ unmatchedCount }} 条物资需要对平</span>
+          </el-tag>
+          <el-tag v-else type="success" size="large">
+            <el-icon><CircleCheck /></el-icon>
+            <span>全部完成：所有物资已对平</span>
+          </el-tag>
+          <span class="total-info">总计：{{ total }} 条物资</span>
+        </div>
+      </el-card>
+    </div>
+
     <!-- 新增筛选区域 -->
     <div class="filter-container">
       <el-select
@@ -22,13 +39,7 @@
     </div>
 
     <div class="main-table-container">
-      <el-table
-        :data="paginatedMaterials"
-        border
-        stripe
-        class="material-table"
-        height="100%"
-      >
+      <el-table :data="paginatedMaterials" border stripe class="material-table" height="100%">
         <!-- 领料单物资信息列 -->
         <el-table-column prop="requestCode" label="领料单物资编码" min-width="140" />
         <el-table-column prop="requestName" label="领料单物资名称" min-width="160" />
@@ -40,12 +51,10 @@
         <el-table-column label="数据来源" min-width="100">
           <template #default="{ row }">
             <el-tag
-              :type="
-                row.originalData.sourceType === 'requisition' ? 'primary' : 'warning'
-              "
+              :type="row.originalData.sourceType === 'requisition' ? 'primary' : 'warning'"
               size="small"
             >
-              {{ row.originalData.sourceType === "requisition" ? "申领" : "用料" }}
+              {{ row.originalData.sourceType === 'requisition' ? '申领' : '用料' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -57,10 +66,7 @@
               <el-tag :type="getMatchingTagType(row.matchedType)" size="small">
                 {{ getMatchingStatusText(row.matchedType) }}
               </el-tag>
-              <div
-                v-if="row.matchScore > 0"
-                style="font-size: 12px; color: #666; margin-top: 2px"
-              >
+              <div v-if="row.matchScore > 0" style="font-size: 12px; color: #666; margin-top: 2px">
                 匹配度: {{ row.matchScore }}%
               </div>
             </div>
@@ -70,7 +76,7 @@
         <el-table-column label="确认状态" min-width="100">
           <template #default="{ row }">
             <el-tag :type="row.aligned ? 'success' : 'danger'" size="small">
-              {{ row.aligned ? "已确认" : "未确认" }}
+              {{ row.aligned ? '已确认' : '未确认' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -85,9 +91,7 @@
           <template #default="{ row }">
             <div v-if="row.selectedMaterial">
               <div><span class="label">编码:</span> {{ row.selectedMaterial.code }}</div>
-              <div>
-                <span class="label">名称:</span> {{ row.selectedMaterial.material_name }}
-              </div>
+              <div><span class="label">名称:</span> {{ row.selectedMaterial.material_name }}</div>
               <div>
                 <span class="label">规格:</span>
                 {{ row.selectedMaterial.specification_model }}
@@ -111,11 +115,7 @@
           <template #default="{ row, $index }">
             <!-- 相似匹配的操作按钮 -->
             <div v-if="row.matchedType === 2 && !row.aligned">
-              <el-button
-                type="success"
-                size="small"
-                @click="handleConfirmSimilarMaterial(row)"
-              >
+              <el-button type="success" size="small" @click="handleConfirmSimilarMaterial(row)">
                 确认匹配
               </el-button>
               <el-button
@@ -135,7 +135,7 @@
                 size="small"
                 @click="handleSelectDbMaterial(row, $index)"
               >
-                {{ row.selectedMaterial ? "重新选择" : "选择数据库物资" }}
+                {{ row.selectedMaterial ? '重新选择' : '选择数据库物资' }}
               </el-button>
               <el-button
                 v-if="row.selectedMaterial"
@@ -190,104 +190,118 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
-import { useRouter, useRoute } from "vue-router";
-import { useOwnerMaterialStore, TaskStatus } from "@/stores/ownerMaterial";
+import { computed, ref, watch, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter, useRoute } from 'vue-router'
+import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
 import {
   queryMaterialMatchStatus,
   queryUnmatchedBalanceResult,
   manualMatch,
-  queryMaterialBaseInfo,
-} from "@/utils/backendWorkflow"; // 导入接口
-import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from "element-plus";
-import { ElDialog } from "element-plus";
-import MaterialSelectionDialog from "@/components/home/MaterialSelectionDialog";
-import CozeWorkflowService from "@/services/CozeWorkflowService";
+  queryMaterialBaseInfo
+} from '@/utils/backendWorkflow' // 导入接口
+import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
+import { Warning, CircleCheck } from '@element-plus/icons-vue'
+import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog'
 
-const router = useRouter();
-const route = useRoute();
-const ownerMaterialStore = useOwnerMaterialStore();
-
-// 初始化 Coze 工作流服务
-const cozeWorkflowService = new CozeWorkflowService();
+const router = useRouter()
+const route = useRoute()
+const ownerMaterialStore = useOwnerMaterialStore()
 
 // --- 状态和数据管理 ---
-const allMaterials = ref([]); // 存储从后端获取的所有数据
-const isLoading = ref(false);
-const isSaving = ref(false);
+const allMaterials = ref([]) // 存储从后端获取的所有数据
+const isLoading = ref(false)
+const isSaving = ref(false)
 
-const total = ref(0);
-const pageSize = ref(20);
-const currentPage = ref(1);
-const selectedMatchStatus = ref(null); // 新增筛选状态
+const total = ref(0)
+const pageSize = ref(20)
+const currentPage = ref(1)
+const selectedMatchStatus = ref(null) // 新增筛选状态
 
 // 主表格的分页数据
 const paginatedMaterials = computed(() => {
-  const start = (currentPage.value - 1) * pageSize.value;
-  const end = start + pageSize.value;
-  return allMaterials.value.slice(start, end);
-});
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return allMaterials.value.slice(start, end)
+})
 
 // 计算是否有未对平的物资
 const hasUnalignedMaterials = computed(() => {
-  return allMaterials.value.some((material) => !material.aligned);
-});
+  return allMaterials.value.some((material) => !material.aligned)
+})
+
+// 计算未匹配物资的数量
+const unmatchedCount = computed(() => {
+  return allMaterials.value.filter((material) => !material.aligned).length
+})
 
 // --- 数据库物资选择弹窗相关 ---
-const showDbMaterialDialog = ref(false);
-const dbMaterialList = ref([]);
-const dbMaterialTotal = ref(0);
-const dbMaterialPageNum = ref(1);
-const dbMaterialPageSize = ref(10);
-const dbMaterialLoading = ref(false);
-const dbMaterialSearch = ref("");
-const currentEditingRow = ref(null);
+const showDbMaterialDialog = ref(false)
+const dbMaterialList = ref([])
+const dbMaterialTotal = ref(0)
+const dbMaterialPageNum = ref(1)
+const dbMaterialPageSize = ref(10)
+const dbMaterialLoading = ref(false)
+const dbMaterialSearch = ref('')
+const currentEditingRow = ref(null)
 
 // --- 枚举值 ---
-const BalanceStatusEnum = {
-  BALANCED: "BALANCED",
-  UNRETURNED: "UNRETURNED",
-  DATA_MISSING: "DATA_MISSING",
-  UNMATCHED: "UNMATCHED",
-};
+// const BalanceStatusEnum = {
+//   BALANCED: 'BALANCED',
+//   UNRETURNED: 'UNRETURNED',
+//   DATA_MISSING: 'DATA_MISSING',
+//   UNMATCHED: 'UNMATCHED'
+// }
 
 // --- 数据获取和处理 ---
 const fetchData = async () => {
-  isLoading.value = true;
+  isLoading.value = true
   try {
     // 优先从路由获取taskId，然后检查store中是否存在
-    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId;
+    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
     if (!taskId) {
-      ElMessage.error("缺少任务ID，无法加载数据。");
-      return;
+      ElMessage.error('缺少任务ID，无法加载数据。')
+      return
     }
-    // 使用新的物资匹配状态查询API
-    const params = { taskId, page: 0, size: 1000 };
+    
+    // 使用 queryUnmatchedBalanceResult 查询未对平的物资
+    const params = { taskId, page: 0, size: 1000 }
     if (selectedMatchStatus.value !== null) {
-      params.matchedType = selectedMatchStatus.value;
+      params.matchedType = selectedMatchStatus.value
     }
-    const response = await queryMaterialMatchStatus(params); // 获取足够多的数据
+    
+    const response = await queryUnmatchedBalanceResult(params)
+    console.log('未对平物资查询结果:', response)
+    
     if (response && response.data && response.data.content) {
-      transformAndSetData(response.data.content);
-      total.value = allMaterials.value.length;
+      transformAndSetData(response.data.content)
+      total.value = allMaterials.value.length
+      
+      // 检查是否还有未对平的物资
+      const hasUnmatchedItems = response.data.content.length > 0
+      if (!hasUnmatchedItems) {
+        ElMessage.success('所有物资已完成对平！')
+      } else {
+        ElMessage.info(`查询到 ${response.data.content.length} 条未对平物资`)
+      }
     } else {
-      ElMessage.info("未查询到相关数据。");
+      ElMessage.info('所有物资已完成对平，没有需要处理的数据。')
+      allMaterials.value = []
+      total.value = 0
     }
   } catch (error) {
-    console.error("加载数据失败:", error);
-    ElMessage.error(`加载数据失败: ${error.message}`);
+    console.error('加载未对平物资数据失败:', error)
+    ElMessage.error(`加载数据失败: ${error.message}`)
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
-};
+}
 
 const transformAndSetData = (data) => {
   const transformed = data.map((item) => {
     // 根据 matchedType 判断匹配状态：0=未匹配, 1=精确匹配, 2=相似匹配, 3=历史匹配, 4=人工指定
-    const aligned =
-      item.matchedType !== 0 && item.matchedType !== 2 && item.baseDataId !== null;
-    console.log("匹配状态", aligned, "匹配类型", item.matchedType);
+    const aligned = item.matchedType !== 0 && item.matchedType !== 2 && item.baseDataId !== null
+    console.log('匹配状态', aligned, '匹配类型', item.matchedType)
 
     return {
       id: item.sourceId, // 使用 sourceId 作为唯一标识
@@ -302,119 +316,119 @@ const transformAndSetData = (data) => {
       matchedType: item.matchedType,
       matchScore: item.score,
       // 数据库物资信息 (如果已匹配)
-      dbCode: item.baseDataId || "/",
-      dbName: item.baseMaterialName || "/",
-      dbSpec: item.baseSpecificationModel || "/",
-      dbUnit: item.baseUnit || "/",
-      dbQuantity: item.quantity || "/",
+      dbCode: item.baseDataId || '/',
+      dbName: item.baseMaterialName || '/',
+      dbSpec: item.baseSpecificationModel || '/',
+      dbUnit: item.baseUnit || '/',
+      dbQuantity: item.quantity || '/',
       // 选择的物资信息
       selectedMaterial: null,
       // 原始数据，用于后续操作
-      originalData: item,
-    };
-  });
+      originalData: item
+    }
+  })
 
-  allMaterials.value = transformed;
-};
+  allMaterials.value = transformed
+}
 
 onMounted(() => {
-  fetchData();
-});
+  fetchData()
+})
 
 // --- 分页处理 ---
 function handlePageChange(page) {
-  currentPage.value = page;
+  currentPage.value = page
 }
 
 function handleSizeChange(size) {
-  pageSize.value = size;
-  currentPage.value = 1;
+  pageSize.value = size
+  currentPage.value = 1
 }
 
 // 选择数据库物资按钮事件
-function handleSelectDbMaterial(row, index) {
-  console.log("点击选择数据库物资按钮", row);
-  currentEditingRow.value = row;
-  dbMaterialSearch.value = "";
-  dbMaterialPageNum.value = 1;
+function handleSelectDbMaterial(row) {
+  console.log('点击选择数据库物资按钮', row)
+  currentEditingRow.value = row
+  dbMaterialSearch.value = ''
+  dbMaterialPageNum.value = 1
 
   // 调用真实的数据加载函数
-  fetchDbMaterialList(1, dbMaterialPageSize.value);
+  fetchDbMaterialList(1, dbMaterialPageSize.value)
 
-  showDbMaterialDialog.value = true;
-  console.log("弹窗状态:", showDbMaterialDialog.value);
+  showDbMaterialDialog.value = true
+  console.log('弹窗状态:', showDbMaterialDialog.value)
 }
 
 // 保存单个物资匹配
 async function handleSaveSingleMaterial(row) {
   if (!row.selectedMaterial) {
-    ElMessage.warning("请先选择数据库物资");
-    return;
+    ElMessage.warning('请先选择数据库物资')
+    return
   }
 
   try {
     // 验证必需的数据
     if (!row.originalData.sourceId) {
-      throw new Error("缺少源记录ID (sourceId)");
+      throw new Error('缺少源记录ID (sourceId)')
     }
     if (!row.originalData.sourceType) {
-      throw new Error("缺少源记录类型 (sourceType)");
+      throw new Error('缺少源记录类型 (sourceType)')
     }
-    if (!["requisition", "usage"].includes(row.originalData.sourceType)) {
+    if (!['requisition', 'usage'].includes(row.originalData.sourceType)) {
       throw new Error(
         `无效的源记录类型: ${row.originalData.sourceType}，必须是 'requisition' 或 'usage'`
-      );
+      )
     }
 
     // 调用人工匹配API
-    const selectedMaterial = row.selectedMaterial;
+    const selectedMaterial = row.selectedMaterial
     const baseDataId =
       selectedMaterial?.originalData?.m_id ||
       selectedMaterial?.originalData?.p_id ||
       selectedMaterial?.id ||
-      selectedMaterial?.code;
+      selectedMaterial?.code
 
     if (!baseDataId) {
-      throw new Error("无法获取标准物料ID，请重新选择物资");
+      throw new Error('无法获取标准物料ID，请重新选择物资')
     }
 
     const matchData = {
       sourceId: row.originalData.sourceId,
       sourceType: row.originalData.sourceType,
-      baseDataId: baseDataId,
-    };
+      baseDataId: baseDataId
+    }
 
-    console.log("保存物资匹配:", {
+    console.log('保存物资匹配:', {
       materialName: row.requestName,
-      matchData,
-    });
+      matchData
+    })
 
-    const response = await manualMatch(matchData);
+    const response = await manualMatch(matchData)
 
     // 检查API响应状态
     if (response && response.code === 200) {
-      console.log(`物资 "${row.requestName}" 匹配成功:`, response.msg);
+      console.log(`物资 "${row.requestName}" 匹配成功:`, response.msg)
 
       // 更新本地状态
-      const index = allMaterials.value.findIndex((item) => item.id === row.id);
+      const index = allMaterials.value.findIndex((item) => item.id === row.id)
       if (index !== -1) {
-        allMaterials.value[index].aligned = true;
-        allMaterials.value[index].dbCode = selectedMaterial.code || selectedMaterial.id;
-        allMaterials.value[index].dbName = selectedMaterial.material_name;
-        allMaterials.value[index].dbSpec = selectedMaterial.specification_model;
-        allMaterials.value[index].dbUnit = selectedMaterial.unit;
-        allMaterials.value[index].selectedMaterial = null; // 清除选择状态
+        allMaterials.value[index].aligned = true
+        allMaterials.value[index].dbCode = selectedMaterial.code || selectedMaterial.id
+        allMaterials.value[index].dbName = selectedMaterial.material_name
+        allMaterials.value[index].dbSpec = selectedMaterial.specification_model
+        allMaterials.value[index].dbUnit = selectedMaterial.unit
+        allMaterials.value[index].selectedMaterial = null // 清除选择状态
       }
 
-      ElMessage.success(`物资 "${row.requestName}" 匹配成功！`);
+      ElMessage.success(`物资 "${row.requestName}" 匹配成功！`)
       // 刷新数据
-      fetchData();
+      fetchData()
     } else {
-      throw new Error(response?.msg || "匹配失败，未知错误");
+      throw new Error(response?.msg || '匹配失败，未知错误')
     }
   } catch (error) {
-    console.error(`保存物资 "${row.requestName}" 匹配信息失败:`, error);
-    ElMessage.error(`保存失败: ${error.message}`);
+    console.error(`保存物资 "${row.requestName}" 匹配信息失败:`, error)
+    ElMessage.error(`保存失败: ${error.message}`)
   }
 }
 
@@ -423,39 +437,39 @@ async function handleConfirmSimilarMaterial(row) {
   try {
     // 验证必需的数据
     if (!row.originalData.sourceId) {
-      throw new Error("缺少源记录ID (sourceId)");
+      throw new Error('缺少源记录ID (sourceId)')
     }
     if (!row.originalData.sourceType) {
-      throw new Error("缺少源记录类型 (sourceType)");
+      throw new Error('缺少源记录类型 (sourceType)')
     }
     if (!row.originalData.baseDataId) {
-      throw new Error("缺少建议的物料ID (baseDataId)");
+      throw new Error('缺少建议的物料ID (baseDataId)')
     }
 
     const matchData = {
       sourceId: row.originalData.sourceId,
       sourceType: row.originalData.sourceType,
-      baseDataId: row.selectedMaterial?.id || row.originalData.baseDataId,
-    };
+      baseDataId: row.selectedMaterial?.id || row.originalData.baseDataId
+    }
 
-    console.log("确认相似物资匹配:", {
+    console.log('确认相似物资匹配:', {
       materialName: row.requestName,
-      matchData,
-    });
+      matchData
+    })
 
-    const response = await manualMatch(matchData);
+    const response = await manualMatch(matchData)
 
     if (response && response.code === 200) {
-      console.log(`物资 "${row.requestName}" 确认匹配成功:`, response.msg);
-      ElMessage.success(`物资 "${row.requestName}" 确认匹配成功！`);
+      console.log(`物资 "${row.requestName}" 确认匹配成功:`, response.msg)
+      ElMessage.success(`物资 "${row.requestName}" 确认匹配成功！`)
       // 刷新数据以更新整个列表的状态
-      fetchData();
+      fetchData()
     } else {
-      throw new Error(response?.msg || "确认匹配失败，未知错误");
+      throw new Error(response?.msg || '确认匹配失败，未知错误')
     }
   } catch (error) {
-    console.error(`确认物资 "${row.requestName}" 匹配信息失败:`, error);
-    ElMessage.error(`确认失败: ${error.message}`);
+    console.error(`确认物资 "${row.requestName}" 匹配信息失败:`, error)
+    ElMessage.error(`确认失败: ${error.message}`)
   }
 }
 
@@ -463,107 +477,107 @@ async function handleConfirmSimilarMaterial(row) {
 const fetchDbMaterialList = async (
   pageNum = dbMaterialPageNum.value,
   pageSize = dbMaterialPageSize.value,
-  searchTerm = ""
+  searchTerm = ''
 ) => {
-  dbMaterialLoading.value = true;
+  dbMaterialLoading.value = true
   try {
     // 构建请求参数，页码从0开始
     const params = {
       page: pageNum - 1, // API 页码从0开始，UI从1开始
-      size: pageSize,
-    };
+      size: pageSize
+    }
 
     // 如果有搜索条件，添加到参数中
     if (searchTerm && searchTerm.trim()) {
-      params.keyword = searchTerm.trim();
+      params.keyword = searchTerm.trim()
     }
 
-    const result = await queryMaterialBaseInfo(params);
+    const result = await queryMaterialBaseInfo(params)
 
     if (result && result.data) {
-      const { content, totalElements } = result.data;
+      const { content, totalElements } = result.data
 
       // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
       dbMaterialList.value = content.map((item) => ({
         id: item.id,
         material_name: item.materialName,
         specification_model: item.specificationModel,
-        tax_price: "", // API响应中没有价格信息，设为空
-        quarter: "", // API响应中没有季度信息，设为空
+        tax_price: '', // API响应中没有价格信息，设为空
+        quarter: '', // API响应中没有季度信息，设为空
         unit: item.unit,
         code: item.materialCode,
         // 保留原始数据
-        originalData: item,
-      }));
+        originalData: item
+      }))
 
-      dbMaterialTotal.value = totalElements;
+      dbMaterialTotal.value = totalElements
     } else {
-      console.warn("API返回数据为空");
-      dbMaterialList.value = [];
-      dbMaterialTotal.value = 0;
-      ElMessage.info("未查询到相关数据");
+      console.warn('API返回数据为空')
+      dbMaterialList.value = []
+      dbMaterialTotal.value = 0
+      ElMessage.info('未查询到相关数据')
     }
   } catch (error) {
-    console.error("加载数据库物资列表失败:", error);
-    ElMessage.error(`加载数据库物资列表失败: ${error.message}`);
-    dbMaterialList.value = [];
-    dbMaterialTotal.value = 0;
+    console.error('加载数据库物资列表失败:', error)
+    ElMessage.error(`加载数据库物资列表失败: ${error.message}`)
+    dbMaterialList.value = []
+    dbMaterialTotal.value = 0
   } finally {
-    dbMaterialLoading.value = false;
+    dbMaterialLoading.value = false
   }
-};
+}
 
 // 根据匹配类型返回ElTag的type
 const getMatchingTagType = (matchedType) => {
   switch (matchedType) {
     case 0:
-      return "danger"; // 红色 - 未匹配
+      return 'danger' // 红色 - 未匹配
     case 1:
-      return "success"; // 绿色 - 精确匹配
+      return 'success' // 绿色 - 精确匹配
     case 2:
-      return "warning"; // 黄色 - 相似匹配
+      return 'warning' // 黄色 - 相似匹配
     case 3:
-      return "info"; // 蓝色 - 历史匹配
+      return 'info' // 蓝色 - 历史匹配
     case 4:
-      return "success"; // 绿色 - 人工指定
+      return 'success' // 绿色 - 人工指定
     default:
-      return "danger";
+      return 'danger'
   }
-};
+}
 
 // 根据匹配类型返回显示文本
 const getMatchingStatusText = (matchedType) => {
   switch (matchedType) {
     case 0:
-      return "未匹配";
+      return '未匹配'
     case 1:
-      return "精确匹配";
+      return '精确匹配'
     case 2:
-      return "相似匹配";
+      return '相似匹配'
     case 3:
-      return "历史匹配";
+      return '历史匹配'
     case 4:
-      return "人工指定";
+      return '人工指定'
     default:
-      return "未知状态";
+      return '未知状态'
   }
-};
+}
 
 // 分页/搜索事件
 function handleDbMaterialPageChange(page) {
-  dbMaterialPageNum.value = page;
-  fetchDbMaterialList(page, dbMaterialPageSize.value, dbMaterialSearch.value);
+  dbMaterialPageNum.value = page
+  fetchDbMaterialList(page, dbMaterialPageSize.value, dbMaterialSearch.value)
 }
 
 function handleDbMaterialSizeChange(size) {
-  dbMaterialPageSize.value = size;
-  dbMaterialPageNum.value = 1;
-  fetchDbMaterialList(1, size, dbMaterialSearch.value);
+  dbMaterialPageSize.value = size
+  dbMaterialPageNum.value = 1
+  fetchDbMaterialList(1, size, dbMaterialSearch.value)
 }
 
 // 处理搜索事件
 function handleDbMaterialSearch(searchTerm) {
-  dbMaterialSearch.value = searchTerm;
+  dbMaterialSearch.value = searchTerm
   // 搜索逻辑在 watch 中处理，这里只更新搜索词
 }
 
@@ -571,83 +585,83 @@ function handleDbMaterialSearch(searchTerm) {
 function handleDbMaterialSelect(selected) {
   if (currentEditingRow.value && selected) {
     // 更新主表格数据
-    const material = allMaterials.value.find((m) => m.id === currentEditingRow.value.id);
+    const material = allMaterials.value.find((m) => m.id === currentEditingRow.value.id)
     if (material) {
-      material.selectedMaterial = selected;
+      material.selectedMaterial = selected
 
-      console.log("物资选择完成:", {
+      console.log('物资选择完成:', {
         materialName: material.requestName,
-        selectedMaterial: selected,
-      });
+        selectedMaterial: selected
+      })
     }
   }
-  showDbMaterialDialog.value = false;
+  showDbMaterialDialog.value = false
 }
 
 // 搜索事件 - 添加防抖处理
-let searchTimeout = null;
+let searchTimeout = null
 watch(dbMaterialSearch, (newVal) => {
   // 清除之前的定时器
   if (searchTimeout) {
-    clearTimeout(searchTimeout);
+    clearTimeout(searchTimeout)
   }
 
   // 设置新的定时器，300ms后执行搜索
   searchTimeout = setTimeout(() => {
-    dbMaterialPageNum.value = 1; // 重置到第一页
-    fetchDbMaterialList(1, dbMaterialPageSize.value, newVal);
-  }, 300);
-});
+    dbMaterialPageNum.value = 1 // 重置到第一页
+    fetchDbMaterialList(1, dbMaterialPageSize.value, newVal)
+  }, 300)
+})
 
 // 监听筛选条件变化
 watch(selectedMatchStatus, () => {
-  fetchData();
-});
+  fetchData()
+})
 
 // 检查所有物资是否已拉平
 async function checkAllAligned() {
   try {
-    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId;
+    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
     if (!taskId) {
-      ElMessage.error("缺少任务ID，无法检查对平状态。");
-      return false; // 缺少taskId，无法继续
+      ElMessage.error('缺少任务ID，无法检查对平状态。')
+      return false // 缺少taskId，无法继续
     }
 
     // 获取1000条内的所有物资数据
-    const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 });
+    const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 })
 
     if (!response || !response.data || !response.data.content) {
-      ElMessage.error("无法获取物资数据");
-      return false;
+      ElMessage.error('无法获取物资数据')
+      return false
     }
 
-    const materials = response.data.content;
+    const materials = response.data.content
 
     // 统计各种匹配状态的物资数量
-    const unmatchedMaterials = materials.filter((item) => item.matchedType === 0); // 未匹配
-    const similarMatchedMaterials = materials.filter((item) => item.matchedType === 2); // 相似匹配
+    const unmatchedMaterials = materials.filter((item) => item.matchedType === 0) // 未匹配
+    const similarMatchedMaterials = materials.filter((item) => item.matchedType === 2) // 相似匹配
     const exactlyMatchedMaterials = materials.filter(
       (item) => item.matchedType === 1 || item.matchedType === 3 || item.matchedType === 4
-    ); // 精确匹配、历史匹配、人工指定
+    ) // 精确匹配、历史匹配、人工指定
 
-    console.log("物资匹配状态统计:", {
+    console.log('物资匹配状态统计:', {
       total: materials.length,
       unmatched: unmatchedMaterials.length,
       similarMatched: similarMatchedMaterials.length,
-      exactlyMatched: exactlyMatchedMaterials.length,
-    });
+      exactlyMatched: exactlyMatchedMaterials.length
+    })
 
     // 如果有未匹配的物资，提示用户先处理
     if (unmatchedMaterials.length > 0) {
       await ElMessageBox.alert(
         `检测到 ${unmatchedMaterials.length} 条未匹配的物资，请先为这些物资选择匹配的数据库物资后再进行保存操作。`,
-        "存在未匹配物资",
+        '存在未匹配物资',
         {
-          confirmButtonText: "确定",
-          type: "warning",
+          confirmButtonText: '确定',
+          type: 'warning'
         }
-      );
-      return false;
+      )
+      return false
     }
 
     // 如果剩余的全部为相似匹配，进行批量确认保存
@@ -656,115 +670,104 @@ async function checkAllAligned() {
         // 询问用户是否批量确认相似匹配
         await ElMessageBox.confirm(
           `检测到 ${similarMatchedMaterials.length} 条相似匹配的物资，是否批量确认这些匹配结果？`,
-          "批量确认相似匹配",
+          '批量确认相似匹配',
           {
-            confirmButtonText: "确认批量保存",
-            cancelButtonText: "取消",
-            type: "info",
+            confirmButtonText: '确认批量保存',
+            cancelButtonText: '取消',
+            type: 'info'
           }
-        );
+        )
 
         // 批量循环调用保存接口
-        let successCount = 0;
-        let failCount = 0;
+        let successCount = 0
+        let failCount = 0
 
-        ElMessage.info(
-          `开始批量保存 ${similarMatchedMaterials.length} 条相似匹配物资...`
-        );
+        ElMessage.info(`开始批量保存 ${similarMatchedMaterials.length} 条相似匹配物资...`)
 
         for (const material of similarMatchedMaterials) {
           try {
             const matchData = {
               sourceId: material.sourceId,
               sourceType: material.sourceType,
-              baseDataId: material.baseDataId,
-            };
+              baseDataId: material.baseDataId
+            }
 
-            const saveResponse = await manualMatch(matchData);
+            const saveResponse = await manualMatch(matchData)
             if (saveResponse && saveResponse.code === 200) {
-              successCount++;
+              successCount++
             } else {
-              failCount++;
-              console.error(
-                `保存物资失败 (ID: ${material.sourceId}):`,
-                saveResponse?.msg
-              );
+              failCount++
+              console.error(`保存物资失败 (ID: ${material.sourceId}):`, saveResponse?.msg)
             }
           } catch (error) {
-            failCount++;
-            console.error(`保存物资异常 (ID: ${material.sourceId}):`, error);
+            failCount++
+            console.error(`保存物资异常 (ID: ${material.sourceId}):`, error)
           }
         }
 
         if (failCount === 0) {
-          ElMessage.success(`批量保存成功！共处理 ${successCount} 条相似匹配物资`);
+          ElMessage.success(`批量保存成功！共处理 ${successCount} 条相似匹配物资`)
           // 刷新数据
-          await fetchData();
-          return true;
+          await fetchData()
+          return true
         } else {
-          ElMessage.warning(
-            `批量保存完成：成功 ${successCount} 条，失败 ${failCount} 条`
-          );
+          ElMessage.warning(`批量保存完成：成功 ${successCount} 条，失败 ${failCount} 条`)
           // 刷新数据
-          await fetchData();
-          return false;
+          await fetchData()
+          return false
         }
       } catch (cancelError) {
         // 用户取消批量保存
-        console.log("用户取消批量保存操作");
-        return false;
+        console.log('用户取消批量保存操作')
+        return false
       }
     }
 
     // 如果全部已精确匹配，返回true
     if (unmatchedMaterials.length === 0 && similarMatchedMaterials.length === 0) {
-      return true;
+      return true
     }
 
     // 其他情况，返回false
-    return false;
+    return false
   } catch (error) {
-    console.error("检查对平状态失败:", error);
-    ElMessage.error(`检查对平状态失败: ${error.message}`);
-    return false; // 出错时，默认为未拉平，阻止保存
+    console.error('检查对平状态失败:', error)
+    ElMessage.error(`检查对平状态失败: ${error.message}`)
+    return false // 出错时，默认为未拉平，阻止保存
   }
 }
 
 // 保存按钮点击事件
 async function handleSaveClick() {
-  isSaving.value = true;
+  isSaving.value = true
   try {
-    const isAligned = await checkAllAligned();
+    const isAligned = await checkAllAligned()
     if (!isAligned) {
-      await ElMessageBox.alert(
-        "存在未匹配的物资信息，请先完成所有物资匹配操作",
-        "无法保存",
-        {
-          confirmButtonText: "确定",
-          type: "warning",
-        }
-      );
-      return;
+      await ElMessageBox.alert('存在未匹配的物资信息，请先完成所有物资匹配操作', '无法保存', {
+        confirmButtonText: '确定',
+        type: 'warning'
+      })
+      return
     }
 
-    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId;
+    const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
     if (!taskId) {
-      ElMessage.error("缺少任务ID，无法保存并返回首页。");
-      return;
+      ElMessage.error('缺少任务ID，无法保存并返回首页。')
+      return
     }
 
     // 实现真实保存逻辑
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 模拟API调用
-    ElMessage.success("物资信息保存成功");
+    await new Promise((resolve) => setTimeout(resolve, 1000)) // 模拟API调用
+    ElMessage.success('物资信息保存成功')
 
     // 标记状态并导航以触发重新解析
-    ownerMaterialStore.updateTaskStatus(taskId, TaskStatus.READY_FOR_ALIGNMENT);
-    router.push({ path: "/home", query: { triggerReparse: taskId } });
+    ownerMaterialStore.updateTaskStatus(taskId, TaskStatus.READY_FOR_ALIGNMENT)
+    router.push({ path: '/home', query: { triggerReparse: taskId } })
   } catch (error) {
-    console.error("保存失败:", error);
-    ElMessage.error("保存失败: " + error.message);
+    console.error('保存失败:', error)
+    ElMessage.error('保存失败: ' + error.message)
   } finally {
-    isSaving.value = false;
+    isSaving.value = false
   }
 }
 </script>
@@ -836,7 +839,7 @@ async function handleSaveClick() {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   color: var(--text-dark);
   overflow-x: hidden; /* 防止水平滚动条 */
 }
@@ -861,7 +864,7 @@ async function handleSaveClick() {
 }
 
 .page-header h2::before {
-  content: "";
+  content: '';
   position: absolute;
   left: 0;
   top: 50%;
@@ -939,7 +942,9 @@ async function handleSaveClick() {
   height: 60px;
   font-size: 14px;
   color: var(--text-dark);
-  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .material-table :deep(.el-table__row:hover) {
@@ -1150,5 +1155,47 @@ async function handleSaveClick() {
   background: linear-gradient(135deg, rgba(79, 70, 229, 0.005), rgba(79, 70, 229, 0.002));
   border-top: 1px solid var(--border-color);
   border-radius: 0 0 12px 12px;
+}
+
+/* 状态统计区域样式 */
+.status-summary {
+  margin-bottom: 24px;
+}
+
+.status-card {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  transition: all 0.3s ease;
+}
+
+.status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.1);
+}
+
+.status-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.status-info .el-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  padding: 8px 16px;
+}
+
+.total-info {
+  color: var(--text-light);
+  font-size: 14px;
+  font-weight: 500;
+  background-color: rgba(79, 70, 229, 0.03);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(79, 70, 229, 0.08);
 }
 </style>
