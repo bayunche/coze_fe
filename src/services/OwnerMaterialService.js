@@ -13,7 +13,7 @@ class OwnerMaterialService {
       return []
     }
     try {
-      const response = await request.get(`/materials/partya/queryMaterialsApplyData`, { params })
+      const response = await request.get(`/api/materials/partya/queryMaterialsApplyData`, { params })
       // 处理新的返回体结构 {code, msg, data}
       if (response && response.code === 200 && response.data) {
         return response.data
@@ -64,7 +64,7 @@ class OwnerMaterialService {
       return { success: false, message: '任务ID不能为空' }
     }
     try {
-      const response = await request.post('/materials/partya/align', params)
+      const response = await request.post('/api/materials/partya/align', params)
       // 处理新的返回体结构 {code, msg, data}
       if (response && response.code === 200) {
         return {
@@ -101,7 +101,7 @@ class OwnerMaterialService {
     try {
       console.log('【调用】甲供物资重新解析接口，参数:', params)
       
-      const response = await request.post('/materials/partya/performBalancing', params)
+      const response = await request.post('/api/materials/partya/performBalancing', params)
       
       console.log('【响应】甲供物资重新解析结果:', response)
       

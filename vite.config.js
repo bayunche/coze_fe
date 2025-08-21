@@ -45,6 +45,19 @@ export default defineConfig(({ mode }) => {
     // 增加请求体大小限制，支持大文件上传（1000MB）
     maxRequestSize: '1000mb',
     proxy: {
+      // 甲供物资相关API转发到1207端口（去掉/api前缀） - 优先级最高
+      '/api/materials/partya': {
+        target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+        changeOrigin: true,
+        timeout: 300000, // 5分钟超时
+        proxyTimeout: 300000,
+        rewrite: (path) => {
+          const newPath = path.replace(/^\/api/, '')
+          console.log(`[OwnerMaterial] 路径转换: ${path} -> ${newPath}`)
+          console.log(`[OwnerMaterial] 最终请求: ${env.VITE_API_TARGET}${newPath}`)
+          return newPath
+        }
+      },
       // 价格相关API特殊处理 - 转发到专门的价格API服务器
       '/api/backend-api/materials/priceinfo': {
         target: env.VITE_PRICE_API_TARGET || 'http://10.1.17.83:1207',
