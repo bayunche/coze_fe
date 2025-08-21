@@ -317,7 +317,7 @@ const loadProjectInfo = async (taskId) => {
   }
 }
 
-// 加载物资数据以进行分析
+// 加载物资数据以进行分析 - 优先使用详细对平结果接口
 const loadMaterialsData = async () => {
   if (!taskId.value) {
     console.warn('缺少任务ID')
@@ -325,18 +325,79 @@ const loadMaterialsData = async () => {
   }
 
   try {
+    // 首先尝试使用详细对平结果接口
+    const balanceResult = await OwnerMaterialService.queryBalanceDetails({
+      taskId: taskId.value,
+      page: 0,
+      size: 1000 // 获取所有数据用于分析
+    })
+    
+    if (balanceResult && balanceResult.content && balanceResult.content.length > 0) {
+      // 转换详细对平结果为分析所需格式
+      materialsData.value = transformBalanceDetailsForAnalysis(balanceResult.content)
+      console.log('使用详细对平结果数据进行分析:', materialsData.value.length, '条记录')
+    } else {
+      // 如果没有详细对平数据，尝试使用原有接口作为后备
+      await loadMaterialsDataFallback()
+    }
+    
+    // 计算统计数据
+    calculateMaterialsStatistics()
+  } catch (error) {
+    console.error('加载详细对平数据失败:', error)
+    // 使用后备方案
+    await loadMaterialsDataFallback()
+  }
+}
+
+// 后备数据加载方法
+const loadMaterialsDataFallback = async () => {
+  try {
+    console.log('使用后备接口加载数据...')
     const response = await OwnerMaterialService.queryMaterialsApplyData({
       taskDetailId: taskId.value
     })
     
     materialsData.value = response || []
-    
-    // 计算统计数据
-    calculateMaterialsStatistics()
+    console.log('后备接口加载数据:', materialsData.value.length, '条记录')
   } catch (error) {
-    console.error('加载物资数据失败:', error)
+    console.error('后备接口也失败了:', error)
     materialsData.value = []
   }
+}
+
+// 转换详细对平结果数据为分析格式
+const transformBalanceDetailsForAnalysis = (balanceDetails) => {
+  return balanceDetails.map(item => ({
+    // 基础信息
+    id: item.detailId,
+    materialName: item.baseMaterialName || item.usageMaterialName,
+    specifications: item.baseSpecificationModel || item.usageSpecificationModel,
+    unit: item.baseUnit,
+    
+    // 数量信息（合并用料和退料）
+    quantity: Math.abs(item.transactionQuantity || 0),
+    requisitionQuantity: item.requisitionQuantity || 0,
+    
+    // 价格信息（暂时设为0，因为API中没有）
+    unitPrice: 0,
+    totalPrice: 0,
+    
+    // 供应商信息
+    supplier: item.supplierName,
+    supplierName: item.supplierName,
+    
+    // 状态信息
+    balanceStatus: item.finalBalanceStatus,
+    transactionType: item.transactionQuantity >= 0 ? 'usage' : 'return',
+    
+    // 数据源
+    dataSourcePath: item.dataSourcePath,
+    transactionCount: item.transactionCountForSummary,
+    
+    // 原始数据
+    originalData: item
+  }))
 }
 
 // 计算统计数据（使用工具函数）

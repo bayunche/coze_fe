@@ -219,7 +219,30 @@ const formatPrice = (price) => {
   return Number(price).toFixed(2)
 }
 
-// 转换API数据为表格结构
+// 转换详细对平结果API数据为表格结构（新接口）
+const transformBalanceDetailsForTable = (data) => {
+  return data.map((item, index) => ({
+    id: item.detailId || `BD-${index + 1}`,
+    materialId: item.baseDataId || `BD-${index + 1}`,
+    materialName: item.baseMaterialName || item.usageMaterialName || '未知物资',
+    specification: item.baseSpecificationModel || item.usageSpecificationModel || '/',
+    unit: item.baseUnit || '个',
+    quantity: Math.abs(item.transactionQuantity) || 0, // 取绝对值，因为退料可能是负数
+    unitPrice: 0, // API中没有价格信息，需要从其他地方获取
+    totalPrice: 0,
+    supplier: item.supplierName || '待确定',
+    deliveryDate: '/', // API中没有交货日期
+    confirmed: item.finalBalanceStatus === 'BALANCED', // 根据对平状态判断
+    status: getBalanceStatusText(item.finalBalanceStatus),
+    transactionType: item.transactionQuantity >= 0 ? '用料' : '退料',
+    transactionCount: item.transactionCountForSummary || 1,
+    dataSourcePath: item.dataSourcePath || '/',
+    remark: `交易数量: ${item.transactionQuantity}, 状态: ${getBalanceStatusText(item.finalBalanceStatus)}`,
+    originalData: item
+  }))
+}
+
+// 转换API数据为表格结构（原接口后备）
 const transformDataForTable = (data) => {
   return data.map((item, index) => ({
     id: item.id || `OM-${index + 1}`,
@@ -236,6 +259,43 @@ const transformDataForTable = (data) => {
     remark: item.remark || item.notes || '/',
     originalData: item
   }))
+}
+
+// 获取对平状态文本
+const getBalanceStatusText = (status) => {
+  const statusMap = {
+    'BALANCED': '已对平',
+    'UNRETURNED': '未退库',
+    'DATA_MISSING': '资料缺失'
+  }
+  return statusMap[status] || '未知状态'
+}
+
+// 根据数据计算任务状态
+const calculateTaskStatus = (data) => {
+  if (!data.length) return 0
+  
+  const balancedCount = data.filter(item => 
+    item.originalData?.finalBalanceStatus === 'BALANCED'
+  ).length
+  
+  return balancedCount === data.length ? 1 : 0
+}
+
+// 计算统计信息
+const calculateStatistics = (data) => {
+  if (!data.length) {
+    totalMaterials.value = 0
+    confirmedMaterials.value = 0
+    pendingMaterials.value = 0
+    totalValue.value = 0
+    return
+  }
+
+  totalMaterials.value = data.length
+  confirmedMaterials.value = data.filter(item => item.confirmed).length
+  pendingMaterials.value = data.filter(item => !item.confirmed).length
+  totalValue.value = data.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
 }
 
 // 加载项目信息
@@ -255,7 +315,7 @@ const loadProjectInfo = async () => {
   }
 }
 
-// 加载详情数据
+// 加载详情数据 - 使用queryBalanceDetails接口获取详细的对平结果
 const loadDetailData = async (page = 1, size = 20) => {
   if (!taskId.value) {
     ElMessage.error('缺少任务ID')
@@ -263,6 +323,41 @@ const loadDetailData = async (page = 1, size = 20) => {
   }
 
   loading.value = true
+  try {
+    // 使用查询详细对平结果接口
+    const result = await OwnerMaterialService.queryBalanceDetails({
+      taskId: taskId.value,
+      page: page - 1, // API使用0开始的页码
+      size: size
+    })
+    
+    if (result && result.content && Array.isArray(result.content)) {
+      const transformedData = transformBalanceDetailsForTable(result.content)
+      tableData.value = transformedData
+      totalDetails.value = result.totalElements || transformedData.length
+      
+      // 根据对平结果计算任务状态
+      taskStatus.value = calculateTaskStatus(transformedData)
+      
+      // 计算统计信息
+      calculateStatistics(transformedData)
+    } else {
+      // 如果没有数据，尝试使用原有接口作为后备
+      await loadDetailDataFallback(page, size)
+    }
+  } catch (error) {
+    console.error('获取详细对平结果失败:', error)
+    console.log('尝试使用后备接口...')
+    
+    // 如果新接口失败，使用原有接口作为后备
+    await loadDetailDataFallback(page, size)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 后备数据加载方法
+const loadDetailDataFallback = async (page = 1, size = 20) => {
   try {
     const response = await OwnerMaterialService.queryMaterialsApplyData({
       taskDetailId: taskId.value,
@@ -275,26 +370,29 @@ const loadDetailData = async (page = 1, size = 20) => {
       tableData.value = transformedData
       totalDetails.value = transformedData.length
       
-      // 模拟任务状态
+      // 根据确认状态计算任务状态
       taskStatus.value = transformedData.every(item => item.confirmed) ? 1 : 0
+      
+      // 计算统计信息
+      calculateStatistics(transformedData)
     } else {
-      // 如果没有数据，创建模拟数据用于展示
+      // 如果都没有数据，创建模拟数据用于展示
       const mockData = generateMockData()
       tableData.value = mockData
       totalDetails.value = mockData.length
       taskStatus.value = 0
+      calculateStatistics(mockData)
     }
-  } catch (error) {
-    console.error('获取详情数据失败:', error)
+  } catch (fallbackError) {
+    console.error('后备接口也失败了:', fallbackError)
     ElMessage.error('获取数据失败')
     
-    // 错误时使用模拟数据
+    // 最终后备：使用模拟数据
     const mockData = generateMockData()
     tableData.value = mockData
     totalDetails.value = mockData.length
     taskStatus.value = 0
-  } finally {
-    loading.value = false
+    calculateStatistics(mockData)
   }
 }
 
