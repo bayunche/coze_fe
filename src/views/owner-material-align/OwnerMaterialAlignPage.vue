@@ -178,8 +178,15 @@
     <!-- 物资选择对话框 -->
     <MaterialSelectionDialog
       v-model="showSelectionDialog"
-      :current-row="currentRow"
-      @confirm="handleSelectionConfirm"
+      :data-list="materialSearchResults"
+      :total="materialSearchTotal"
+      :page-num="materialSearchPage"
+      :page-size="materialSearchSize"
+      :loading="materialSearchLoading"
+      @select="handleSelectionConfirm"
+      @page-change="handleMaterialPageChange"
+      @size-change="handleMaterialSizeChange"
+      @search="handleMaterialSearch"
     />
   </div>
 </template>
@@ -203,6 +210,14 @@ const pageSize = ref(20)
 const selectedMatchStatus = ref(null)
 const showSelectionDialog = ref(false)
 const currentRow = ref(null)
+
+// 物资搜索相关状态
+const materialSearchResults = ref([])
+const materialSearchTotal = ref(0)
+const materialSearchPage = ref(1)
+const materialSearchSize = ref(10)
+const materialSearchLoading = ref(false)
+const materialSearchKeyword = ref('')
 
 // 获取任务ID
 const taskId = computed(() => route.params.taskId)
@@ -256,7 +271,7 @@ const getMatchingStatusText = (matchedType) => {
   return textMap[matchedType] || '未知'
 }
 
-// 加载数据
+// 加载数据 - 使用新的API接口加载未匹配的对平结果
 const loadMaterials = async () => {
   if (!taskId.value) {
     ElMessage.error('缺少任务ID')
@@ -265,34 +280,83 @@ const loadMaterials = async () => {
 
   loading.value = true
   try {
-    const response = await OwnerMaterialService.queryMaterialsApplyData({
-      taskDetailId: taskId.value
+    // 使用新的API接口查询未匹配的甲供物资对平结果
+    const result = await OwnerMaterialService.queryUnmatchedBalanceResult({
+      taskId: taskId.value,
+      page: 0,
+      size: 1000  // 先获取所有数据，在前端处理分页
     })
     
-    // 模拟处理数据结构
-    materials.value = response.map((item, index) => ({
-      id: item.id || index,
-      requestCode: item.materialCode || `REQ-${index + 1}`,
-      requestName: item.materialName || '物资名称',
-      requestSpec: item.specifications || '规格型号',
-      requestUnit: item.unit || '个',
-      requestQuantity: item.quantity || 0,
-      matchedType: item.matchedType || 0,
-      matchScore: item.matchScore || 0,
-      aligned: item.aligned || false,
-      dbCode: item.dbCode || '',
-      dbName: item.dbName || '',
-      dbSpec: item.dbSpec || '',
-      dbUnit: item.dbUnit || '',
-      selectedMaterial: item.selectedMaterial || null,
-      originalData: item,
-      confirming: false
-    }))
+    if (result && result.content) {
+      // 转换API返回的数据结构为页面所需格式
+      materials.value = result.content.map((item, index) => ({
+        // 基础信息
+        id: item.id || index,
+        balanceResultId: item.id, // 用于人工匹配
+        
+        // 申领/用料信息（来自源数据）
+        requestCode: extractMaterialCode(item),
+        requestName: item.materialName || '未知物资',
+        requestSpec: item.specificationModel || '规格未知',
+        requestUnit: item.unit || '个',
+        requestQuantity: item.requisitionQuantity || 0,
+        
+        // 匹配状态信息
+        matchedType: getMatchedType(item.balanceStatus),
+        matchScore: 0, // API中没有匹配度字段，默认为0
+        aligned: item.balanceStatus !== 'UNMATCHED',
+        
+        // 数据库物资信息（目前为空，需要用户手动选择）
+        dbCode: '',
+        dbName: '',
+        dbSpec: '',
+        dbUnit: '',
+        
+        // 已选择的物资（如果有匹配）
+        selectedMaterial: null,
+        
+        // 原始数据
+        originalData: item,
+        
+        // UI状态
+        confirming: false
+      }))
+    } else {
+      materials.value = []
+    }
   } catch (error) {
     console.error('加载物资数据失败:', error)
     ElMessage.error('加载数据失败')
+    materials.value = []
   } finally {
     loading.value = false
+  }
+}
+
+// 从源数据中提取物资编码
+const extractMaterialCode = (item) => {
+  // 优先从申领记录中获取编码
+  if (item.sourceRequisitions && item.sourceRequisitions.length > 0) {
+    return item.sourceRequisitions[0].materialCode || '申领编码未知'
+  }
+  // 其次从用料记录中获取
+  if (item.sourceUsages && item.sourceUsages.length > 0) {
+    return item.sourceUsages[0].materialCode || '用料编码未知'
+  }
+  return '编码未知'
+}
+
+// 根据balanceStatus转换匹配类型
+const getMatchedType = (balanceStatus) => {
+  switch (balanceStatus) {
+    case 'UNMATCHED':
+      return 0 // 未匹配
+    case 'MANUAL_MATCH_PENDING':
+      return 4 // 人工指定
+    case 'BALANCED':
+      return 1 // 精确匹配（已对平）
+    default:
+      return 0 // 默认未匹配
   }
 }
 
@@ -352,20 +416,114 @@ const handleBatchConfirm = async () => {
   }
 }
 
-// 选择物资
+// 选择物资 - 打开物资选择对话框并加载初始数据
 const handleSelectMaterial = (row) => {
   currentRow.value = row
   showSelectionDialog.value = true
+  
+  // 重置搜索状态
+  materialSearchKeyword.value = ''
+  materialSearchPage.value = 1
+  
+  // 加载初始物资数据
+  loadBaseMaterials()
 }
 
-// 物资选择确认
-const handleSelectionConfirm = (selectedMaterial) => {
-  if (currentRow.value && selectedMaterial) {
-    currentRow.value.selectedMaterial = selectedMaterial
-    currentRow.value.aligned = true
-    ElMessage.success('物资选择成功')
+// 物资选择确认 - 使用人工匹配API
+const handleSelectionConfirm = async (selectedMaterial) => {
+  if (!currentRow.value || !selectedMaterial) {
+    showSelectionDialog.value = false
+    return
   }
+
+  try {
+    // 调用人工匹配API
+    const result = await OwnerMaterialService.manualMatch({
+      balanceResultId: currentRow.value.balanceResultId,
+      baseDataId: selectedMaterial.id
+    })
+
+    if (result.success) {
+      // 更新本地数据
+      currentRow.value.selectedMaterial = selectedMaterial
+      currentRow.value.aligned = true
+      currentRow.value.matchedType = 4 // 人工指定
+      
+      // 更新数据库物资信息字段
+      currentRow.value.dbCode = selectedMaterial.materialCode || selectedMaterial.code || ''
+      currentRow.value.dbName = selectedMaterial.materialName || selectedMaterial.material_name || ''
+      currentRow.value.dbSpec = selectedMaterial.specificationModel || selectedMaterial.specification_model || ''
+      currentRow.value.dbUnit = selectedMaterial.unit || ''
+      
+      ElMessage.success(result.message || '物资匹配成功')
+    } else {
+      ElMessage.error(result.message || '物资匹配失败')
+    }
+  } catch (error) {
+    console.error('物资匹配失败:', error)
+    ElMessage.error('物资匹配失败')
+  }
+
   showSelectionDialog.value = false
+}
+
+// 加载基础物资数据
+const loadBaseMaterials = async () => {
+  materialSearchLoading.value = true
+  try {
+    const result = await OwnerMaterialService.searchBaseMaterials({
+      keyword: materialSearchKeyword.value,
+      page: materialSearchPage.value - 1, // API使用0开始的页码
+      size: materialSearchSize.value
+    })
+    
+    if (result && result.content) {
+      // 转换数据格式以适配MaterialSelectionDialog组件
+      materialSearchResults.value = result.content.map(item => ({
+        // 保持原始数据结构
+        ...item,
+        
+        // 为兼容性添加的字段映射
+        material_name: item.materialName,
+        specification_model: item.specificationModel,
+        
+        // 模拟价格信息（如果API没有返回价格数据）
+        priceList: [],
+        materialBaseInfo: item
+      }))
+      materialSearchTotal.value = result.totalElements || 0
+    } else {
+      materialSearchResults.value = []
+      materialSearchTotal.value = 0
+    }
+  } catch (error) {
+    console.error('加载基础物资数据失败:', error)
+    ElMessage.error('加载物资数据失败')
+    materialSearchResults.value = []
+    materialSearchTotal.value = 0
+  } finally {
+    materialSearchLoading.value = false
+  }
+}
+
+// 处理物资搜索
+const handleMaterialSearch = (keyword) => {
+  materialSearchKeyword.value = keyword
+  materialSearchPage.value = 1
+  loadBaseMaterials()
+}
+
+// 处理分页变化
+const handleMaterialPageChange = (page) => {
+  materialSearchPage.value = page
+  loadBaseMaterials()
+}
+
+// 处理页大小变化
+const handleMaterialSizeChange = (size) => {
+  materialSearchSize.value = size
+  materialSearchPage.value = 1
+  loadBaseMaterials()
 }
 
 // 保存对平结果
