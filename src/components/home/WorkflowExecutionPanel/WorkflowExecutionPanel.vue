@@ -102,7 +102,7 @@ const onCustomButtonClick = ({ message, button }) => {
   if (button.action === 'confirm-material-alignment' && button.data?.taskId) {
     router.push({
       name: 'owner-material-align',
-      query: { taskId: button.data.taskId }
+      params: { taskId: button.data.taskId }
     })
   } else {
     emit('custom-button-click', {

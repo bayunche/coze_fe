@@ -48,6 +48,24 @@ const router = createRouter({
       name: 'supplier-material-confirm',
       component: () => import('../views/supplier-material-confirm'),
       props: true // 允许组件通过 props 接收路由参数
+    },
+    {
+      path: '/owner-material-align/:taskId',
+      name: 'owner-material-align',
+      component: () => import('../views/owner-material-align'),
+      props: route => ({ taskId: route.params.taskId })
+    },
+    {
+      path: '/owner-material-detail/:taskId',
+      name: 'owner-material-detail',
+      component: () => import('../views/owner-material-detail'),
+      props: route => ({ taskId: route.params.taskId })
+    },
+    {
+      path: '/owner-material-report/:taskId',
+      name: 'owner-material-report',
+      component: () => import('../views/owner-material-report'),
+      props: route => ({ taskId: route.params.taskId })
     }
   ]
 })
