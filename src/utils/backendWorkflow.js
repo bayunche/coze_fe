@@ -410,7 +410,7 @@ export async function uploadFile(file) {
 export async function queryMaterialsApplyData(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryMaterialsApplyData',
+      url: '/materials/partya/queryMaterialsApplyData',
       method: 'get',
       params: params
     })
@@ -434,7 +434,7 @@ export async function queryMaterialsApplyData(params) {
 export async function queryActualUsage(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryActualUsage',
+      url: '/materials/partya/queryActualUsage',
       method: 'get',
       params: params
     })
@@ -457,7 +457,7 @@ export async function queryActualUsage(params) {
 export async function queryUnmatchedBalanceResult(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryUnmatchedBalanceResult',
+      url: '/materials/partya/queryUnmatchedBalanceResult',
       method: 'get',
       params: params
     })
@@ -481,7 +481,7 @@ export async function queryUnmatchedBalanceResult(params) {
 export async function queryBalanceResult(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryBalanceResult',
+      url: '/materials/partya/queryBalanceResult',
       method: 'get',
       params: params
     })
@@ -512,7 +512,7 @@ export async function queryBalanceResult(params) {
 export async function manualMatch(data) {
   try {
     const response = await request({
-      url: '/api/materials/partya/manualMatch',
+      url: '/materials/partya/manualMatch',
       method: 'post',
       data: data
     })
@@ -535,7 +535,7 @@ export async function manualMatch(data) {
 export async function queryBalanceDetails(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryBalanceDetails',
+      url: '/materials/partya/queryBalanceDetails',
       method: 'get',
       params: params
     })
@@ -558,7 +558,7 @@ export async function queryBalanceDetails(params) {
 export async function queryMaterialMatchStatus(params) {
   try {
     const response = await request({
-      url: '/api/materials/partya/queryMaterialMatchStatus',
+      url: '/materials/partya/queryMaterialMatchStatus',
       method: 'get',
       params: params
     })
