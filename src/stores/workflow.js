@@ -756,7 +756,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
   }
 
   /**
-   * 处理甲供物资重新解析工作流（使用新接口）
+   * 处理甲供物资重新解析工作流
    * @param {string} taskId - 任务ID
    * @param {function} addMessageCallback - 添加消息的回调
    */
@@ -807,7 +807,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
-            
+
             // 物资确认按钮默认显示（除非是失败状态）
             chatStore.updateMessageProperties(streamingAgentMessage.id, {
               showViewResultButton: true

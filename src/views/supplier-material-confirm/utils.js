@@ -498,3 +498,57 @@ export const calculateStatistics = (data) => {
   
   return stats
 }
+
+/**
+ * 获取基础信息物资名称
+ * @param {Object} row - 行数据
+ * @returns {string} 基础信息物资名称
+ */
+export const getBaseInfoName = (row) => {
+  return row.matched_name || '/'
+}
+
+/**
+ * 获取基础信息规格
+ * @param {Object} row - 行数据
+ * @returns {string} 基础信息规格
+ */
+export const getBaseInfoSpec = (row) => {
+  return row.matched_specification || '/'
+}
+
+/**
+ * 获取价格文本
+ * @param {Object} row - 行数据
+ * @returns {string} 价格文本
+ */
+export const getPriceText = (row) => {
+  return row.matched_price || '/'
+}
+
+/**
+ * 获取价格季度
+ * @param {Object} row - 行数据
+ * @returns {string} 价格季度
+ */
+export const getPriceQuarter = (row) => {
+  return row.matched_quarter || '/'
+}
+
+/**
+ * 格式化数字显示
+ * @param {number|string} number - 数字
+ * @returns {string} 格式化后的数字
+ */
+export const formatNumber = (number) => {
+  if (number === null || number === undefined || number === '') {
+    return '/'
+  }
+  
+  const numValue = parseFloat(number)
+  if (isNaN(numValue)) {
+    return '/'
+  }
+  
+  return numValue.toLocaleString()
+}

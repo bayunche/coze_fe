@@ -52,7 +52,8 @@
               <div><span class="label">编码:</span> {{ row.selectedMaterial.code }}</div>
               <div><span class="label">名称:</span> {{ row.selectedMaterial.material_name }}</div>
               <div>
-                <span class="label">规格:</span> {{ row.selectedMaterial.specification_model }}
+                <span class="label">规格:</span>
+                {{ row.selectedMaterial.specification_model }}
               </div>
             </div>
             <el-tag v-else-if="!row.aligned" type="danger" size="small">未选择</el-tag>
@@ -139,7 +140,6 @@ const router = useRouter()
 const route = useRoute()
 const ownerMaterialStore = useOwnerMaterialStore()
 
-
 // --- 状态和数据管理 ---
 const allMaterials = ref([]) // 存储从后端获取的所有数据
 const isLoading = ref(false)
@@ -171,7 +171,6 @@ const dbMaterialLoading = ref(false)
 const dbMaterialSearch = ref('')
 const currentEditingRow = ref(null)
 
-
 // --- 数据获取和处理 ---
 const fetchData = async () => {
   isLoading.value = true
@@ -184,11 +183,9 @@ const fetchData = async () => {
     }
     // 使用新的物资匹配状态查询API
     const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 }) // 获取足够多的数据
-    console.log('获取到的数据:', response)
     if (response && response.data && response.data.content) {
       transformAndSetData(response.data.content)
       total.value = allMaterials.value.length
-      ElMessage.success('数据加载成功！')
     } else {
       ElMessage.info('未查询到相关数据。')
     }
@@ -378,8 +375,6 @@ const fetchDbMaterialList = async (
       }))
 
       dbMaterialTotal.value = totalElements
-
-      ElMessage.success(`成功加载 ${dbMaterialList.value.length} 条数据库物资数据`)
     } else {
       console.warn('API返回数据为空')
       dbMaterialList.value = []

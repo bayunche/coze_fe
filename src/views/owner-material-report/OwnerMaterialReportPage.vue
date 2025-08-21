@@ -22,7 +22,7 @@
 
     <!-- 动态显示 llmReport 内容 -->
     <div v-if="reportData.hasLlmReport">
-      <div 
+      <div
         v-for="(section, index) in reportData.reportSections"
         :key="index"
         class="report-section"
@@ -38,7 +38,7 @@
           <div class="analysis-content">
             <!-- 如果内容是对象，遍历显示子项 -->
             <div v-if="section.type === 'object'" class="analysis-item">
-              <div 
+              <div
                 v-for="(subcontent, subkey) in section.content"
                 :key="subkey"
                 class="analysis-subitem"
@@ -78,7 +78,8 @@
                 <span class="analysis-label">零申领物资</span>
               </div>
               <div class="analysis-text">
-                部分物资申领数为 0，如二层以太网交换机（4 光 4 电接口,不支持串口）、10kV 配电型避雷器等。可能是这些物资在当前项目中暂时不需要，或者在其他地方已有足够库存。建议与相关项目负责人沟通，确认是否真的不需要这些物资，避免后续紧急需求时供应不及时。
+                部分物资申领数为 0，如二层以太网交换机（4 光 4 电接口,不支持串口）、10kV
+                配电型避雷器等。可能是这些物资在当前项目中暂时不需要，或者在其他地方已有足够库存。建议与相关项目负责人沟通，确认是否真的不需要这些物资，避免后续紧急需求时供应不及时。
               </div>
             </div>
             <div class="analysis-item">
@@ -87,7 +88,8 @@
                 <span class="analysis-label">高需求物资</span>
               </div>
               <div class="analysis-text">
-                一些物资申领数较多，如 10kV 铜芯交联聚乙烯绝缘电力电缆、HDPE 管等。需要关注这些物资的供应情况，与供应商确认是否有足够的库存，以确保项目顺利进行。
+                一些物资申领数较多，如 10kV 铜芯交联聚乙烯绝缘电力电缆、HDPE
+                管等。需要关注这些物资的供应情况，与供应商确认是否有足够的库存，以确保项目顺利进行。
               </div>
             </div>
           </div>
@@ -111,7 +113,9 @@
                 <span class="analysis-label">重点供应商</span>
               </div>
               <div class="analysis-text">
-                深圳市惠程信息科技股份有限公司供应了多种物资，如 10kV 冷缩中间头、10kV 全冷缩户内终端头、10kV 全冷缩户外终端头等。可以与该供应商建立更紧密的合作关系，争取更好的价格和服务。
+                深圳市惠程信息科技股份有限公司供应了多种物资，如 10kV 冷缩中间头、10kV
+                全冷缩户内终端头、10kV
+                全冷缩户外终端头等。可以与该供应商建立更紧密的合作关系，争取更好的价格和服务。
               </div>
             </div>
             <div class="analysis-item">
@@ -120,7 +124,8 @@
                 <span class="analysis-label">供应商对比</span>
               </div>
               <div class="analysis-text">
-                对于不同供应商供应的同类型物资，如不同厂家的 10kV 铜芯交联聚乙烯绝缘电力电缆，可以对比价格、质量和服务，选择更优的供应商。
+                对于不同供应商供应的同类型物资，如不同厂家的 10kV
+                铜芯交联聚乙烯绝缘电力电缆，可以对比价格、质量和服务，选择更优的供应商。
               </div>
             </div>
           </div>
@@ -144,7 +149,8 @@
                 <span class="analysis-label">高成本物资</span>
               </div>
               <div class="analysis-text">
-                10kV 铜芯交联聚乙烯绝缘电力电缆的总价较高，在采购时需要重点关注价格波动情况，寻找降低成本的方法，如批量采购、与供应商谈判等。
+                10kV
+                铜芯交联聚乙烯绝缘电力电缆的总价较高，在采购时需要重点关注价格波动情况，寻找降低成本的方法，如批量采购、与供应商谈判等。
               </div>
             </div>
             <div class="analysis-item">
@@ -177,7 +183,9 @@
                 <span class="analysis-label">数据精度问题</span>
               </div>
               <div class="analysis-text">
-                部分数据存在小数位数较多的情况，如 10kV 铜芯交联聚乙烯绝缘电力电缆的申领数为 5.542000000000001 千米，可能会影响数据的可读性和准确性。建议在数据处理时进行适当的四舍五入。
+                部分数据存在小数位数较多的情况，如 10kV 铜芯交联聚乙烯绝缘电力电缆的申领数为
+                5.542000000000001
+                千米，可能会影响数据的可读性和准确性。建议在数据处理时进行适当的四舍五入。
               </div>
             </div>
             <div class="analysis-item">
@@ -186,7 +194,8 @@
                 <span class="analysis-label">数据缺失</span>
               </div>
               <div class="analysis-text">
-                规格型号存在 null 值的情况，可能会在物资采购和验收时造成混淆。建议补充完整规格型号信息，确保物资的准确性。
+                规格型号存在 null
+                值的情况，可能会在物资采购和验收时造成混淆。建议补充完整规格型号信息，确保物资的准确性。
               </div>
             </div>
           </div>
@@ -208,7 +217,16 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { queryTaskLinkProjectInfo, getOwnerMaterialLlmReport } from '@/utils/backendWorkflow'
-import { Document, Shop, Coin, DataAnalysis, Warning, InfoFilled, CircleCheckFilled, CircleCloseFilled } from '@element-plus/icons-vue'
+import {
+  Document,
+  Shop,
+  Coin,
+  DataAnalysis,
+  Warning,
+  InfoFilled,
+  CircleCheckFilled,
+  CircleCloseFilled
+} from '@element-plus/icons-vue'
 import html2pdf from 'html2pdf.js'
 
 const router = useRouter()
@@ -236,34 +254,36 @@ const handleBack = () => {
 const handleExport = async () => {
   try {
     exporting.value = true
-    
+
     // 获取报告内容元素
     const element = document.querySelector('.owner-material-report-page')
-    
+
     // 配置PDF选项
     const options = {
       margin: [10, 10, 10, 10],
-      filename: `甲供物资解析报告_${projectInfo.value.projectName || '项目'}_${new Date().toLocaleDateString('zh-CN')}.pdf`,
+      filename: `甲供物资解析报告_${
+        projectInfo.value.projectName || '项目'
+      }_${new Date().toLocaleDateString('zh-CN')}.pdf`,
       image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { 
-        scale: 2, 
+      html2canvas: {
+        scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         width: element.scrollWidth,
         height: element.scrollHeight
       },
-      jsPDF: { 
-        unit: 'mm', 
-        format: 'a4', 
-        orientation: 'portrait' 
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait'
       },
       pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     }
-    
+
     // 生成PDF
     await html2pdf().set(options).from(element).save()
-    
+
     ElMessage.success('PDF报告导出成功！')
   } catch (error) {
     console.error('导出PDF失败:', error)
@@ -298,7 +318,7 @@ const loadReportData = async (taskId) => {
   try {
     // 尝试获取来自重新解析工作流的 llmReport 数据
     const llmReport = getOwnerMaterialLlmReport(taskId)
-    
+
     if (llmReport && typeof llmReport === 'object') {
       reportData.value.hasLlmReport = true
       reportData.value.reportSections = Object.entries(llmReport).map(([category, content]) => ({
@@ -324,7 +344,7 @@ onMounted(async () => {
   try {
     // 设置报告生成时间
     reportTime.value = new Date().toLocaleString('zh-CN')
-    
+
     // 获取项目信息
     const taskId = route.params.taskId || route.query.taskId
     if (taskId) {
@@ -600,27 +620,27 @@ onMounted(async () => {
   .page-footer {
     display: none !important;
   }
-  
+
   .owner-material-report-page {
     padding: 20px !important;
     background: white !important;
     box-shadow: none !important;
   }
-  
+
   .report-section {
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  
+
   .analysis-item {
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  
+
   .project-info-card {
     page-break-after: avoid;
   }
-  
+
   .section-header {
     page-break-after: avoid;
   }

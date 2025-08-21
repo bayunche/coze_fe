@@ -171,6 +171,7 @@
           stripe
           max-height="60vh"
           :row-class-name="getRowClassName"
+          @selection-change="handleSelectionChange"
         >
           <!-- 表格列配置 - 与现有组件保持一致 -->
           <el-table-column 
@@ -320,7 +321,12 @@ import {
   getConfirmStatusConfig,
   filterDataByKeyword,
   calculateStatistics,
-  useNavigation
+  useNavigation,
+  getBaseInfoName,
+  getBaseInfoSpec,
+  getPriceText,
+  getPriceQuarter,
+  formatNumber
 } from './utils.js'
 
 // 路由参数 - 使用 props 传递的参数
@@ -514,6 +520,38 @@ const handleGoToDetail = () => {
   // 这里需要确定detailId，可能需要从任务信息中获取
   // 暂时使用taskId作为detailId
   goToDetail(taskId.value, taskId.value)
+}
+
+/**
+ * 获取表格行样式类名
+ * @param {Object} options - 行数据和索引
+ * @returns {string} CSS类名
+ */
+const getRowClassName = ({ row }) => {
+  if (row.confirm_status === 1) {
+    return 'row-confirmed'
+  } else if (row.confirm_status === 0) {
+    return 'row-unconfirmed'
+  }
+  return ''
+}
+
+/**
+ * 处理查看更多选项
+ * @param {Object} row - 行数据
+ */
+const handleViewOptions = (row) => {
+  console.log('【诊断】查看更多选项:', row)
+  ElMessage.info('更多选项功能待完善')
+}
+
+/**
+ * 处理表格选择变化
+ * @param {Array} selection - 选中的行数据
+ */
+const handleSelectionChange = (selection) => {
+  selectedRows.value = selection
+  console.log('【诊断】表格选择变化:', selection.length)
 }
 
 /**

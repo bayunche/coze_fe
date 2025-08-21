@@ -50,6 +50,11 @@ export const STATISTICS_CONFIG = {
  */
 export const TABLE_COLUMNS = [
   {
+    type: 'selection',
+    width: 55,
+    fixed: 'left'
+  },
+  {
     type: 'index',
     label: '序号',
     width: 60,
