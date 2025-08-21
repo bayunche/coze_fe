@@ -133,7 +133,7 @@ import {
   manualMatch,
   queryMaterialBaseInfo
 } from '@/utils/backendWorkflow' // 导入接口
-import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog.vue'
+import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog'
 
 const router = useRouter()
 const route = useRoute()
