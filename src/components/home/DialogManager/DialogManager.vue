@@ -42,6 +42,12 @@
   <!-- 结果详情对话框 -->
   <ResultDetailTableDialog />
 
+  <!-- 任务详情列表对话框 -->
+  <TaskDetailDialog 
+    v-model:show="showTaskDetail"
+    :task="{ id: currentTaskId }"
+  />
+
   <!-- 编辑长文本的对话框 -->
   <LongTextEditPopup />
 </template>
@@ -53,6 +59,7 @@ import { useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflow'
 import { useMaterialDialogStore } from '@/stores/materialDialog'
 import { useChatStore } from '@/stores/chat'
+import { useParsingResultStore } from '@/stores/parsingResult'
 
 // 异步加载弹窗组件
 const MaterialParsingResultDialog = defineAsyncComponent(() =>
@@ -73,6 +80,9 @@ const SmartBrainDialog = defineAsyncComponent(() =>
 const ResultDetailTableDialog = defineAsyncComponent(() =>
   import('@/components/home/ResultDetailTableDialog')
 )
+const TaskDetailDialog = defineAsyncComponent(() =>
+  import('@/components/home/TaskDetailDialog')
+)
 const LongTextEditPopup = defineAsyncComponent(() =>
   import('@/components/home/LongTextEditPopup')
 )
@@ -81,6 +91,7 @@ const LongTextEditPopup = defineAsyncComponent(() =>
 const workflowStore = useWorkflowStore()
 const materialDialogStore = useMaterialDialogStore()
 const chatStore = useChatStore()
+const parsingResultStore = useParsingResultStore()
 
 // 从 Store 中解构状态和方法
 const {
@@ -106,6 +117,11 @@ const {
   showSupplierMaterialTaskParsingDetailDialog,
   supplierMaterialTaskParsingDetailTaskId,
 } = storeToRefs(materialDialogStore)
+
+const {
+  showTaskDetail,
+  taskId: currentTaskId,
+} = storeToRefs(parsingResultStore)
 
 const { addMessage } = chatStore
 

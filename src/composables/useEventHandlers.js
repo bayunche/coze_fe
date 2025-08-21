@@ -15,10 +15,8 @@ export function useEventHandlers() {
    * @param {string} taskIdFromMessage - 消息中的任务ID
    */
   const viewResultDetail = async (taskIdFromMessage) => {
-    await parsingResultStore.viewResultDetail({ 
-      isSupplierMaterial: false, 
-      specificTaskId: taskIdFromMessage 
-    })
+    // 修改为打开任务详情列表弹窗而不是结果详情弹窗
+    await parsingResultStore.viewTaskDetail(taskIdFromMessage)
   }
 
   /**

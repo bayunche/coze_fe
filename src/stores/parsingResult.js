@@ -30,6 +30,8 @@ import {
 export const useParsingResultStore = defineStore('parsingResult', () => {
   /** @type {import('vue').Ref<boolean>} */
   const showResultDetail = ref(false)
+  /** @type {import('vue').Ref<boolean>} */
+  const showTaskDetail = ref(false)
   /** @type {import('vue').Ref<string | null>} */
   const taskId = ref(null) // 新增 taskId
   /** @type {import('vue').Ref<string | null>} */
@@ -96,6 +98,30 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       }
     }
     return tableJsonData
+  }
+
+  /**
+   * 处理查看任务详情列表的逻辑。
+   * @param {string} specificTaskId - 要查看的任务ID。
+   */
+  const viewTaskDetail = async (specificTaskId = null) => {
+    const workflowStore = useWorkflowStore()
+    let taskIdToUse = specificTaskId
+
+    if (!taskIdToUse) {
+      // 如果没有传入 specificTaskId，则从 workflowStore 获取
+      taskIdToUse = workflowStore.taskId
+    }
+
+    if (!taskIdToUse) {
+      console.warn('缺少任务ID，无法显示任务详情列表')
+      return
+    }
+
+    // 设置任务ID并显示任务详情弹窗
+    taskId.value = taskIdToUse
+    showTaskDetail.value = true
+    console.log('显示任务详情列表弹窗，任务ID:', taskIdToUse)
   }
 
   /**
@@ -476,6 +502,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
 
   return {
     showResultDetail,
+    showTaskDetail,
     taskId,
     currentTaskDetailId,
     tableData,
@@ -491,6 +518,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     editableField,
     editableFieldProp,
     parseResultJsonData,
+    viewTaskDetail,
     viewResultDetail,
     isLongText,
     openEditPopup,
