@@ -20,6 +20,36 @@
       </div>
     </el-card>
 
+    <!-- 统计概览 -->
+    <el-card v-if="statisticsData.totalMaterials" class="statistics-card">
+      <div class="statistics-header">
+        <el-icon class="statistics-icon"><DataAnalysis /></el-icon>
+        <span>统计概览</span>
+      </div>
+      <div class="statistics-grid">
+        <div class="stat-item">
+          <div class="stat-value">{{ statisticsData.totalMaterials || 0 }}</div>
+          <div class="stat-label">总物资条数</div>
+        </div>
+        <div class="stat-item warning">
+          <div class="stat-value">{{ statisticsData.zeroQuantityMaterials || 0 }}</div>
+          <div class="stat-label">零申领物资</div>
+        </div>
+        <div class="stat-item success">
+          <div class="stat-value">{{ statisticsData.highQuantityMaterials || 0 }}</div>
+          <div class="stat-label">高需求物资</div>
+        </div>
+        <div class="stat-item info">
+          <div class="stat-value">{{ statisticsData.uniqueSuppliers || 0 }}</div>
+          <div class="stat-label">供应商数量</div>
+        </div>
+        <div class="stat-item primary">
+          <div class="stat-value">¥{{ (statisticsData.totalValue || 0).toLocaleString() }}</div>
+          <div class="stat-label">预估总价值</div>
+        </div>
+      </div>
+    </el-card>
+
     <!-- 动态显示 llmReport 内容 -->
     <div v-if="reportData.hasLlmReport">
       <div 
@@ -209,7 +239,14 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { queryTaskLinkProjectInfo } from '@/utils/backendWorkflow'
 import { useOwnerMaterialStore } from '@/stores/ownerMaterial'
+import OwnerMaterialService from '@/services/OwnerMaterialService'
 import { Document, Shop, Coin, DataAnalysis, Warning, InfoFilled, CircleCheckFilled, CircleCloseFilled, Printer } from '@element-plus/icons-vue'
+import { 
+  calculateStatistics, 
+  handlePrint,
+  hasValidLlmReport,
+  formatLlmReportSections
+} from './utils.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -218,11 +255,16 @@ const ownerMaterialStore = useOwnerMaterialStore()
 const loading = ref(false)
 const exporting = ref(false)
 const reportTime = ref('')
+const materialsData = ref([])
+const statisticsData = ref({})
 
 const projectInfo = ref({
   projectName: '项目名称占位',
   projectNumber: '项目编号占位'
 })
+
+// 获取任务ID
+const taskId = computed(() => route.params.taskId)
 
 // 添加报告内容数据
 const reportData = ref({
@@ -234,37 +276,25 @@ const handleBack = () => {
   router.back()
 }
 
+// 使用工具函数处理导出
 const handleExport = async () => {
-  try {
-    exporting.value = true
-    
-    // 设置页面标题作为默认文件名
-    const originalTitle = document.title
-    document.title = `甲供物资解析报告_${projectInfo.value.projectName || '项目'}_${new Date().toLocaleDateString('zh-CN')}`
-    
-    // 添加打印专用的body类名
-    document.body.classList.add('printing')
-    
-    // 使用浏览器原生打印功能
-    window.print()
-    
-    // 恢复原始标题
-    setTimeout(() => {
-      document.title = originalTitle
-      document.body.classList.remove('printing')
-    }, 1000)
-    
-    ElMessage({
-      message: '打印对话框已打开，请选择"另存为PDF"来保存报告，或选择打印机进行打印',
-      type: 'success',
-      duration: 5000
-    })
-  } catch (error) {
-    console.error('打印失败:', error)
-    ElMessage.error('打印失败，请重试')
-  } finally {
-    exporting.value = false
-  }
+  exporting.value = true
+  
+  handlePrint(
+    projectInfo.value.projectName || '项目',
+    (message) => {
+      ElMessage({
+        message,
+        type: 'success',
+        duration: 5000
+      })
+      exporting.value = false
+    },
+    (error) => {
+      ElMessage.error(error)
+      exporting.value = false
+    }
+  )
 }
 
 // 获取项目信息
@@ -287,19 +317,42 @@ const loadProjectInfo = async (taskId) => {
   }
 }
 
-// 加载报告内容数据
+// 加载物资数据以进行分析
+const loadMaterialsData = async () => {
+  if (!taskId.value) {
+    console.warn('缺少任务ID')
+    return
+  }
+
+  try {
+    const response = await OwnerMaterialService.queryMaterialsApplyData({
+      taskDetailId: taskId.value
+    })
+    
+    materialsData.value = response || []
+    
+    // 计算统计数据
+    calculateMaterialsStatistics()
+  } catch (error) {
+    console.error('加载物资数据失败:', error)
+    materialsData.value = []
+  }
+}
+
+// 计算统计数据（使用工具函数）
+const calculateMaterialsStatistics = () => {
+  statisticsData.value = calculateStatistics(materialsData.value)
+}
+
+// 加载报告内容数据（使用工具函数）
 const loadReportData = async (taskId) => {
   try {
     // 尝试获取来自重新解析工作流的 llmReport 数据
     const llmReport = ownerMaterialStore.getLlmReport(taskId)
     
-    if (llmReport && typeof llmReport === 'object') {
+    if (hasValidLlmReport(llmReport)) {
       reportData.value.hasLlmReport = true
-      reportData.value.reportSections = Object.entries(llmReport).map(([category, content]) => ({
-        title: category,
-        content: content,
-        type: typeof content === 'object' ? 'object' : 'text'
-      }))
+      reportData.value.reportSections = formatLlmReportSections(llmReport)
       console.log('成功加载 llmReport 数据:', llmReport)
     } else {
       console.log('未找到 llmReport 数据，使用默认模板')
@@ -319,11 +372,13 @@ onMounted(async () => {
     // 设置报告生成时间
     reportTime.value = new Date().toLocaleString('zh-CN')
     
-    // 获取项目信息
-    const taskId = route.query.taskId
-    if (taskId) {
-      await loadProjectInfo(taskId)
-      await loadReportData(taskId)
+    // 获取项目信息和数据
+    if (taskId.value) {
+      await Promise.all([
+        loadProjectInfo(taskId.value),
+        loadReportData(taskId.value),
+        loadMaterialsData()
+      ])
     } else {
       // 从路由参数获取项目信息作为备用
       if (route.query.projectName) {
@@ -433,6 +488,107 @@ onMounted(async () => {
   padding: 6px 12px;
   border-radius: 6px;
   border: 1px solid rgba(79, 70, 229, 0.08);
+}
+
+/* 统计卡片样式 */
+.statistics-card {
+  margin-bottom: 32px;
+  padding: 24px 32px;
+  background: var(--card-background);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px var(--shadow-color);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease-in-out;
+}
+
+.statistics-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(79, 70, 229, 0.1);
+}
+
+.statistics-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.statistics-icon {
+  font-size: 24px;
+  color: var(--accent-color);
+}
+
+.statistics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.stat-item {
+  background: rgba(79, 70, 229, 0.02);
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px var(--shadow-color);
+  border-color: rgba(79, 70, 229, 0.15);
+}
+
+.stat-item.warning {
+  border-color: rgba(220, 104, 3, 0.2);
+  background: rgba(220, 104, 3, 0.02);
+}
+
+.stat-item.success {
+  border-color: rgba(13, 148, 136, 0.2);
+  background: rgba(13, 148, 136, 0.02);
+}
+
+.stat-item.info {
+  border-color: rgba(8, 145, 178, 0.2);
+  background: rgba(8, 145, 178, 0.02);
+}
+
+.stat-item.primary {
+  border-color: rgba(79, 70, 229, 0.2);
+  background: rgba(79, 70, 229, 0.02);
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent-color);
+  margin-bottom: 8px;
+}
+
+.stat-item.warning .stat-value {
+  color: var(--warning-color);
+}
+
+.stat-item.success .stat-value {
+  color: var(--success-color);
+}
+
+.stat-item.info .stat-value {
+  color: var(--info-color);
+}
+
+.stat-item.primary .stat-value {
+  color: var(--primary-color);
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text-light);
+  font-weight: 500;
 }
 
 .report-section {
