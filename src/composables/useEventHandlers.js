@@ -16,11 +16,22 @@ export function useEventHandlers() {
    */
   const viewResultDetail = async (message) => {
     console.log('【调试】viewResultDetail - 接收到消息:', message)
+    console.log('【调试】消息对象的详细结构:', {
+      id: message.id,
+      task: message.task,
+      taskId: message.taskId,
+      workflow: message.workflow,
+      sender: message.sender,
+      所有属性: Object.keys(message)
+    })
     
     // 从消息中提取任务ID
     const taskId = message.task || message.taskId || message.id
     
+    console.log('【调试】提取到的taskId:', taskId)
+    
     if (!taskId) {
+      console.error('【调试】未找到任务ID，消息对象:', message)
       ElMessage.warning('没有找到任务ID，无法查看结果详情')
       return
     }

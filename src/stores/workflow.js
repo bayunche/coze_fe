@@ -460,9 +460,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
               streamingAgentMessage.task = event.taskId
               // 同步更新存储中的消息对象，确保历史消息能访问到任务ID
               chatStore.updateMessageProperties(streamingAgentMessage.id, {
-                task: event.taskId
+                task: event.taskId,
+                showViewResultButton: true  // 获取到任务ID后立即显示按钮
               })
-              console.log('【合同解析】获取到任务ID:', event.taskId)
+              console.log('【合同解析】获取到任务ID:', event.taskId, '，显示查看结果按钮')
             }
 
             // 处理额外的任务信息
@@ -473,11 +474,16 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）
             chatStore.appendStreamContent(streamingAgentMessage.id, event.content)
             finalResult.push(event.content)
-            // 物资确认按钮默认显示（除非是失败状态）
-            // 使用chatStore方法更新消息属性，确保响应式更新
-            chatStore.updateMessageProperties(streamingAgentMessage.id, {
-              showViewResultButton: true
-            })
+            
+            // 只有当已经获取到任务ID时才显示查看结果按钮
+            if (streamingAgentMessage.task) {
+              console.log('【合同解析】有任务ID，显示查看结果按钮')
+              chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                showViewResultButton: true
+              })
+            } else {
+              console.log('【合同解析】暂无任务ID，暂不显示查看结果按钮')
+            }
           }
         },
         onError: (error) => {
@@ -489,11 +495,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
         },
         onComplete: () => {
           delete streamingAgentMessage.isStreaming
-          // 物资确认按钮默认显示（除非是失败状态）
-          // 使用chatStore方法更新消息属性，确保响应式更新
-          chatStore.updateMessageProperties(streamingAgentMessage.id, {
-            showViewResultButton: true
-          })
+          
+          // 只有当有任务ID时才显示查看结果按钮
+          if (streamingAgentMessage.task) {
+            console.log('【合同解析】完成时有任务ID，显示查看结果按钮')
+            chatStore.updateMessageProperties(streamingAgentMessage.id, {
+              showViewResultButton: true
+            })
+          } else {
+            console.log('【合同解析】完成时无任务ID，不显示查看结果按钮')
+          }
+          
           if (progressManager) progressManager.stop()
           loadingMessage.progress = 100
           loadingMessage.content = '合同解析任务执行完毕！'
