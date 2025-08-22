@@ -25,6 +25,21 @@ export const DYNAMIC_TABLE_COLUMNS = {
     { prop: 'contractInfo', label: '关联合同', minWidth: 250, type: 'contract' },
     { prop: 'startDate', label: '开始时间', width: 120, type: 'date' },
     { prop: 'endDate', label: '结束时间', width: 120, type: 'date' }
+  ],
+  // 甲供物资解析详情列配置
+  ownerMaterialDetail: [
+    { prop: 'id', label: 'ID', width: 80, fixed: true },
+    { prop: 'materialId', label: '物资编号', width: 120, fixed: true },
+    { prop: 'materialName', label: '物资名称', minWidth: 200, fixed: true },
+    { prop: 'specification', label: '规格型号', minWidth: 150 },
+    { prop: 'unit', label: '单位', width: 80 },
+    { prop: 'quantity', label: '需求数量', width: 100, type: 'number' },
+    { prop: 'statisticalQuantity', label: '统计数量', width: 100, type: 'number' },
+    { prop: 'transactionQuantity', label: '交易数量', width: 100, type: 'number' },
+    { prop: 'supplier', label: '供应商', minWidth: 150 },
+    { prop: 'materialStatus', label: '物资状态', width: 100, type: 'tag' },
+    { prop: 'sourceType', label: '来源类型', width: 100 },
+    { prop: 'transactionCountForSummary', label: '交易次数', width: 100, type: 'number' }
   ]
 }
 

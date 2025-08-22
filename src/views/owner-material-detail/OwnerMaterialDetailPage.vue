@@ -93,19 +93,29 @@ const transformDataForTable = (data) => {
       materialName: item.baseMaterialName || '未知物资',
       specification: item.baseSpecificationModel || '/',
       unit: item.baseUnit || '个',
+      // 使用实际字段：requisitionQuantity（需求数量）、statisticalQuantity（统计数量）、transactionQuantity（交易数量）
       quantity: item.requisitionQuantity || 0,
-      unitPrice: item.estimatedUnitPrice || 0,
-      totalPrice: (item.requisitionQuantity || 0) * (item.estimatedUnitPrice || 0),
+      statisticalQuantity: item.statisticalQuantity || 0,
+      transactionQuantity: item.transactionQuantity || 0,
+      // 如果没有价格字段，先设为0或根据其他字段计算
+      unitPrice: item.unitPrice || 0,
+      totalPrice: (item.requisitionQuantity || 0) * (item.unitPrice || 0),
       supplier: item.supplierName || '待确定',
-      deliveryDate: item.expectedDeliveryDate || '/',
+      deliveryDate: item.deliveryDate || '/',
+      // 根据实际的 finalBalanceStatus 字段映射状态
       materialStatus:
         item.finalBalanceStatus === 'BALANCED'
-          ? '已交付'
+          ? '已对平'
           : item.finalBalanceStatus === 'UNRETURNED'
-          ? '运输中'
+          ? '未返还'
           : item.finalBalanceStatus === 'DATA_MISSING'
-          ? '待发货'
+          ? '数据缺失'
           : '待确定',
+      // 添加新的字段以便在表格中显示
+      sourceType: item.sourceType || '',
+      transactionCountForSummary: item.transactionCountForSummary || 0,
+      taskId: item.taskId,
+      taskDetailId: item.taskDetailId,
       remark: item.remark || '/',
       // 保存原始数据
       originalData: item
@@ -131,8 +141,11 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
       size
     })
     console.log('API Response:', response)
-    if (response && response.data && response.data.content && response.data.content.length > 0) {
-      const flattenedData = transformDataForTable(response.data.content)
+    // 根据实际响应结构调整数据访问路径
+    // 响应格式: {code: 200, msg: "请求成功", data: {content: [...], totalElements: 15, ...}}
+    const responseData = response?.data?.data || response?.data || response
+    if (responseData && responseData.content && responseData.content.length > 0) {
+      const flattenedData = transformDataForTable(responseData.content)
       tableData.value = flattenedData.map((item) => ({
         ...item,
         original: { ...item },
@@ -140,7 +153,7 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
         isMergedStart: false
       }))
       originalData.value = flattenedData.map((item) => ({ ...item }))
-      totalDetails.value = response.data.totalElements || 0
+      totalDetails.value = responseData.totalElements || 0
       // 新API每条记录都是独立的，不需要合并单元格
       // getSpanArr(tableData.value) // 计算合并信息
       ElMessage.success('甲供物资详情数据加载成功！')
