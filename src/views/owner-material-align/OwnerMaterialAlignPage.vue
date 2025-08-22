@@ -270,7 +270,7 @@ const fetchData = async () => {
       params.matchedType = selectedMatchStatus.value
     }
 
-    const response = await queryBalanceResult(params)
+    const response = await queryMaterialMatchStatus(params)
     console.log('未对平物资查询结果:', response)
 
     if (response && response.data && response.data.content) {
