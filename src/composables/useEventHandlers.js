@@ -12,11 +12,35 @@ export function useEventHandlers() {
 
   /**
    * 处理查看结果详情
-   * @param {string} taskIdFromMessage - 消息中的任务ID
+   * @param {Object} message - 消息对象（包含任务ID和工作流信息）
    */
-  const viewResultDetail = async (taskIdFromMessage) => {
-    // 修改为打开任务详情列表弹窗而不是结果详情弹窗
-    await parsingResultStore.viewTaskDetail(taskIdFromMessage)
+  const viewResultDetail = async (message) => {
+    console.log('【调试】viewResultDetail - 接收到消息:', message)
+    
+    // 从消息中提取任务ID
+    const taskId = message.task || message.taskId || message.id
+    
+    if (!taskId) {
+      ElMessage.warning('没有找到任务ID，无法查看结果详情')
+      return
+    }
+    
+    // 检查是否为合同解析工作流（根据工作流名称和发送者判断）
+    const isContractParsing = message.workflow?.name?.includes('合同解析') ||
+                             message.sender?.includes('合同解析')
+    
+    if (isContractParsing) {
+      console.log('【调试】检测到合同解析工作流，直接弹出结果详情弹窗')
+      // 合同解析：直接弹出解析结果详情弹窗，使用 taskId 调用接口
+      await parsingResultStore.viewResultDetail({
+        isSupplierMaterial: false, // 合同解析，不是乙供物资
+        specificTaskId: taskId
+      })
+    } else {
+      console.log('【调试】非合同解析工作流，打开任务详情列表弹窗')
+      // 其他工作流：打开任务详情列表弹窗
+      await parsingResultStore.viewTaskDetail(taskId)
+    }
   }
 
   /**
