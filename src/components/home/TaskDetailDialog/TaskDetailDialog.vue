@@ -155,15 +155,13 @@ const handleViewDetail = (row) => {
  */
 const downloadFile = (row) => {
   console.log('【调试】下载文件 - row对象:', row)
-
-  import('@/utils/fileDownload.js')
-    .then(({ downloadSourceFile }) => {
-      downloadSourceFile(row)
-    })
-    .catch((error) => {
-      console.error('导入文件下载工具失败:', error)
-      ElMessage.error('下载功能加载失败')
-    })
+  
+  if (row.fileUrl) {
+    // 使用 window.open 在新标签页中打开文件链接
+    window.open(row.fileUrl, '_blank')
+  } else {
+    ElMessage.warning('该记录没有关联的文件')
+  }
 }
 
 /**

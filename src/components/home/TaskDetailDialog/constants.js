@@ -13,12 +13,25 @@ export const TASK_TYPES = {
   MATERIAL_PARSING: 'materialParsing',
   OWNER_MATERIAL: 'ownerMaterial'
 }
-export const TASK_DETAIL_STATUS_MAP = {
-  [TASK_DETAIL_STATUS.NOT_STARTED]: '未开始',
-  [TASK_DETAIL_STATUS.IN_PROGRESS]: '进行中',
-  [TASK_DETAIL_STATUS.COMPLETED]: '已完成',
-  [TASK_DETAIL_STATUS.FAILED]: '失败'
+
+// 任务详情状态枚举
+export const TASK_DETAIL_STATUS = {
+  NOT_STARTED: 0,
+  IN_PROGRESS: 1,
+  COMPLETED: 2,
+  CONFIRMED: 3,
+  FAILED: -1
 }
+
+// 任务详情状态映射
+export const TASK_DETAIL_STATUS_MAP = {
+  [TASK_DETAIL_STATUS.NOT_STARTED]: '排队中',
+  [TASK_DETAIL_STATUS.IN_PROGRESS]: '处理中',
+  [TASK_DETAIL_STATUS.COMPLETED]: '处理完成',
+  [TASK_DETAIL_STATUS.CONFIRMED]: '已确认',
+  [TASK_DETAIL_STATUS.FAILED]: '错误中断'
+}
+
 export const TABLE_COLUMNS = [
   { type: 'index', label: '序号', width: 60 },
   { prop: 'fileName', label: '文件名称' },
@@ -28,13 +41,6 @@ export const TABLE_COLUMNS = [
   { prop: 'errorReason', label: '失败原因' },
   { label: '操作' }
 ]
-
-export const TASK_DETAIL_STATUS = {
-  NOT_STARTED: '0',
-  IN_PROGRESS: '1',
-  COMPLETED: '2',
-  FAILED: '-1'
-}
 
 export const PAGINATION_CONFIG = {
   PAGE_SIZES: [10, 20, 50, 100],
