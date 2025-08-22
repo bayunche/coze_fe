@@ -95,21 +95,8 @@ const formatTaskDetailStatus = (status, errorReason) => {
   if (errorReason && Number(status) === -1) {
     return '解析失败'
   }
-  
-  switch (Number(status)) {
-    case 0:
-      return '排队中'
-    case 1:
-      return '处理中'
-    case 2:
-      return '处理完成'
-    case 3:
-      return '已确认'
-    case -1:
-      return '错误中断'
-    default:
-      return '未知状态'
-  }
+
+  return TASK_DETAIL_STATUS_MAP[status] || DEFAULT_VALUES.UNKNOWN_STATUS_TEXT
 }
 
 /**
@@ -125,10 +112,10 @@ const fetchDetailList = async () => {
       page: currentPage.value - 1, // 前端页码从1开始，后端从0开始
       size: pageSize.value
     }
-    
+
     const taskId = props.task.id || props.task.ID
     const result = await smartBrainService.getTaskDetailsList(taskId, params)
-    
+
     if (result && result.content && Array.isArray(result.content)) {
       tableData.value = result.content
       total.value = result.totalElements || 0
@@ -152,7 +139,7 @@ const fetchDetailList = async () => {
  */
 const handleViewDetail = (row) => {
   console.log('【调试】合同解析任务详情查看 - row对象:', row)
-  
+
   // 发出事件让父组件处理详情显示
   emit('view-detail', {
     taskId: props.task.id || props.task.ID,
@@ -167,13 +154,15 @@ const handleViewDetail = (row) => {
  */
 const downloadFile = (row) => {
   console.log('【调试】下载文件 - row对象:', row)
-  
-  if (row.fileUrl) {
-    // 使用 window.open 在新标签页中打开文件链接
-    window.open(row.fileUrl, '_blank')
-  } else {
-    ElMessage.warning('该记录没有关联的文件')
-  }
+
+  import('@/utils/fileDownload.js')
+    .then(({ downloadSourceFile }) => {
+      downloadSourceFile(row)
+    })
+    .catch((error) => {
+      console.error('导入文件下载工具失败:', error)
+      ElMessage.error('下载功能加载失败')
+    })
 }
 
 /**
