@@ -130,7 +130,7 @@ const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSiz
       page: page - 1, // 后端分页从0开始
       size
     })
-
+    console.log('API Response:', response)
     if (response && response.data && response.data.content && response.data.content.length > 0) {
       const flattenedData = transformDataForTable(response.data.content)
       tableData.value = flattenedData.map((item) => ({
