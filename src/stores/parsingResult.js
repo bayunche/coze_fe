@@ -186,9 +186,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         const result = await getContractAnalysisResults(taskIdToFetch)
         console.log('【诊断】合同解析接口返回结果:', result)
 
-        if (result && result.resultJson && Array.isArray(result.resultJson)) {
+        // 处理新的返回体结构 {code: 200, data: {resultJson: [...]}, message: 'Success'}
+        const resultJson = result?.data?.resultJson || result?.resultJson
+        
+        if (resultJson && Array.isArray(resultJson)) {
           // 将聚合后的数据转换为表格格式
-          tableJsonData = result.resultJson.map(item => ({
+          tableJsonData = resultJson.map(item => ({
             id: item.id,
             taskDetailId: item.id, // 保存 taskDetailId 用于后续接口调用
             resultStatus: item.resultStatus,
@@ -203,6 +206,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
           }
         } else {
           console.warn('合同解析接口返回数据格式异常:', result)
+          console.warn('期望的 resultJson 数组:', resultJson)
           tableJsonData = []
         }
       }
