@@ -446,19 +446,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow(inputs, '8', {
         onMessage: (event) => {
           if (event.isWaitMessage) {
-            // 处理排队消息
+            // 处理排队消息 - 追加到现有流式消息中
             console.log('【合同解析】接收到排队消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: workflow.id, 
-              name: workflow.name 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.isStartMessage) {
-            // 处理开始消息
+            // 处理开始消息 - 追加到现有流式消息中
             console.log('【合同解析】接收到开始消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: workflow.id, 
-              name: workflow.name 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.content) {
             // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
             if (event.taskId) {
@@ -538,19 +532,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow(inputs, '6', {
         onMessage: (event) => {
           if (event.isWaitMessage) {
-            // 处理排队消息
+            // 处理排队消息 - 追加到现有流式消息中
             console.log('【乙供物资解析】接收到排队消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: workflow.id, 
-              name: workflow.name 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.isStartMessage) {
-            // 处理开始消息
+            // 处理开始消息 - 追加到现有流式消息中
             console.log('【乙供物资解析】接收到开始消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: workflow.id, 
-              name: workflow.name 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.content) {
             // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
             if (event.taskId) {
@@ -672,19 +660,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow({ ...inputs }, '7', {
         onMessage: (event) => {
           if (event.isWaitMessage) {
-            // 处理排队消息
+            // 处理排队消息 - 追加到现有流式消息中
             console.log('【甲供物资解析】接收到排队消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: workflow.id, 
-              name: workflow.name 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.isStartMessage) {
-            // 处理开始消息
+            // 处理开始消息 - 追加到现有流式消息中
             console.log('【甲供物资解析】接收到开始消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: workflow.id, 
-              name: workflow.name 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.content) {
             console.log('【甲供物资解析】接收到消息:', event)
 
@@ -835,19 +817,13 @@ export const useWorkflowStore = defineStore('workflow', () => {
       await callStreamWorkflow({ taskId }, '9', {
         onMessage: async (event) => {
           if (event.isWaitMessage) {
-            // 处理排队消息
+            // 处理排队消息 - 追加到现有流式消息中
             console.log('【甲供物资重新解析】接收到排队消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: '9', 
-              name: '甲供物资重新解析' 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.isStartMessage) {
-            // 处理开始消息
+            // 处理开始消息 - 追加到现有流式消息中
             console.log('【甲供物资重新解析】接收到开始消息:', event.content)
-            chatStore.addMessage(event.content, 'agent', { 
-              id: '9', 
-              name: '甲供物资重新解析' 
-            })
+            chatStore.appendStreamContent(streamingAgentMessage.id, event.content + '\n')
           } else if (event.content) {
             // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
             if (event.taskId) {
