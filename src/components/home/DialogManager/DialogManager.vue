@@ -46,6 +46,7 @@
   <TaskDetailDialog 
     v-model:show="showTaskDetail"
     :task="{ id: currentTaskId }"
+    @view-detail="viewContractTaskDetail"
   />
 
   <!-- 编辑长文本的对话框 -->
@@ -167,6 +168,29 @@ const viewSupplierMaterialDetail = (row) => {
     '【诊断】DialogManager - 接收到 SupplierMaterialTaskParsingDetailDialog 的 view-detail 事件:',
     row
   )
+}
+
+const viewContractTaskDetail = (data) => {
+  console.log(
+    '【诊断】DialogManager - 接收到 TaskDetailDialog 的 view-detail 事件:',
+    data
+  )
+  
+  // 提取 taskId 和 detailId 参数
+  const taskId = data.taskId
+  const detailId = data.detailId || data.row?.id || data.row?.taskDetailId || data.row?.detailId
+  
+  console.log('【诊断】合同任务详情跳转参数 - taskId:', taskId, 'detailId:', detailId)
+  
+  // 检查参数有效性
+  if (!taskId || !detailId) {
+    console.error('跳转失败：缺少必要参数', { taskId, detailId })
+    return
+  }
+  
+  // 这里可以根据需要处理合同任务详情的查看逻辑
+  // 目前暂时只输出日志，后续可以根据需求添加具体的处理逻辑
+  console.log('【TODO】合同任务详情查看功能待实现，参数:', { taskId, detailId, row: data.row })
 }
 
 const onConfigDialogClose = () => {
