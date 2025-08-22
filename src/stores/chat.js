@@ -67,7 +67,17 @@ export const useChatStore = defineStore(
           {
             // onMessage 回调 - 处理流式消息
             onMessage: (messageData) => {
-              if (messageData.content) {
+              if (messageData.isWaitMessage) {
+                // 处理排队消息
+                console.log('【对话流】接收到排队消息:', messageData.content)
+                agentMessage.content += messageData.content
+                addMessage(agentMessage)
+              } else if (messageData.isStartMessage) {
+                // 处理开始消息
+                console.log('【对话流】接收到开始消息:', messageData.content)
+                agentMessage.content += messageData.content  
+                addMessage(agentMessage)
+              } else if (messageData.content) {
                 agentMessage.content += messageData.content
                 addMessage(agentMessage)
 

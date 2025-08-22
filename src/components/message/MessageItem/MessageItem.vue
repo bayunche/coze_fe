@@ -1,5 +1,5 @@
 <template>
-  <div :class="['message-item', messageItemClass]">
+  <div :class="['message-item', messageItemClass, messageTypeClass]">
     <div class="message-bubble">
       <!-- 发送者信息 -->
       <div v-if="shouldShowSenderInfo" class="message-sender">
@@ -61,7 +61,6 @@ import { computed } from 'vue'
 import StreamingMessage from '@/components/home/StreamingMessage'
 import { EMIT_EVENTS, UI_CONFIG } from './constants.js'
 import {
-  isUserMessage,
   isLoadingMessage,
   shouldShowSender,
   shouldShowActions,
@@ -88,6 +87,14 @@ const emit = defineEmits([
 
 // 计算属性
 const messageItemClass = computed(() => getMessageItemClass(props.message.from))
+const messageTypeClass = computed(() => {
+  if (props.message.isWaitMessage || props.message.type === 'WAIT') {
+    return 'wait-message'
+  } else if (props.message.isStartMessage || props.message.type === 'START') {
+    return 'start-message'
+  }
+  return ''
+})
 const shouldShowSenderInfo = computed(() => shouldShowSender(props.message.from))
 const shouldShowActionButtons = computed(() => shouldShowActions(props.message))
 const isLoadingType = computed(() => isLoadingMessage(props.message.type))
@@ -162,6 +169,23 @@ const clickCustomButton = (button) => {
   color: var(--theme-text-tertiary);
   margin-top: 6px;
   text-align: right;
+}
+
+/* WAIT 和 START 消息特殊样式 */
+.wait-message .message-bubble {
+  background: #fff7e6 !important;
+  border-left: 4px solid #faad14 !important;
+  border-radius: 8px !important;
+  color: #d46b08 !important;
+  font-weight: 500;
+}
+
+.start-message .message-bubble {
+  background: #f6ffed !important;
+  border-left: 4px solid #52c41a !important;
+  border-radius: 8px !important;
+  color: #389e0d !important;
+  font-weight: 500;
 }
 
 /* User messages */

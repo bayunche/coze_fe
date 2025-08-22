@@ -353,6 +353,32 @@ async function processMessageBlock(messageBlock, { onMessage, onError, onComplet
           }
           break
 
+        case 'WAIT':
+          // 处理排队消息
+          if (onMessage && typeof onMessage === 'function') {
+            const parsedData = JSON.parse(message.data)
+            console.log('【后端工作流】接收到WAIT消息:', parsedData)
+            onMessage({
+              content: parsedData.content || parsedData, // 消息内容是字符串
+              type: 'WAIT',
+              isWaitMessage: true
+            })
+          }
+          break
+
+        case 'START':
+          // 处理开始消息  
+          if (onMessage && typeof onMessage === 'function') {
+            const parsedData = JSON.parse(message.data)
+            console.log('【后端工作流】接收到START消息:', parsedData)
+            onMessage({
+              content: parsedData.content || parsedData, // 消息内容是字符串
+              type: 'START', 
+              isStartMessage: true
+            })
+          }
+          break
+
         default:
           console.warn('收到未知事件类型:', message.event)
       }
