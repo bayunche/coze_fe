@@ -93,7 +93,8 @@ const viewResultDetail = (message) => {
       params: { taskId: message.task }
     })
   } else if (isContractWorkflow(workflowName)) {
-    emit('view-result-detail', message.task)
+    // 传递完整的消息对象，而不是只传递任务ID
+    emit('view-result-detail', message)
   } else if (isSupplierMaterialWorkflow(workflowName)) {
     emit('view-material-result-detail', message.task)
   } else if (isOwnerMaterialWorkflow(workflowName)) {

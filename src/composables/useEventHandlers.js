@@ -12,36 +12,72 @@ export function useEventHandlers() {
 
   /**
    * 处理查看结果详情
-   * @param {Object} message - 消息对象（包含任务ID和工作流信息）
+   * @param {Object|string} messageOrTaskId - 消息对象或任务ID字符串
    */
-  const viewResultDetail = async (message) => {
-    console.log('【调试】viewResultDetail - 接收到消息:', message)
-    console.log('【调试】消息对象的详细结构:', {
-      id: message.id,
-      task: message.task,
-      taskId: message.taskId,
-      workflow: message.workflow,
-      sender: message.sender,
-      所有属性: Object.keys(message)
-    })
+  const viewResultDetail = async (messageOrTaskId) => {
+    console.log('【调试】viewResultDetail - 接收到参数:', messageOrTaskId)
+    console.log('【调试】参数类型:', typeof messageOrTaskId)
     
-    // 从消息中提取任务ID
-    const taskId = message.task || message.taskId || message.id
+    let message = null
+    let taskId = null
     
-    console.log('【调试】提取到的taskId:', taskId)
+    // 判断传入的是消息对象还是任务ID字符串
+    if (typeof messageOrTaskId === 'string') {
+      // 如果是字符串，说明是直接传入的任务ID（兼容旧版本调用）
+      taskId = messageOrTaskId
+      console.log('【调试】检测到字符串参数，作为任务ID处理:', taskId)
+      message = { task: taskId } // 创建一个简单的消息对象
+    } else if (typeof messageOrTaskId === 'object' && messageOrTaskId !== null) {
+      // 如果是对象，说明是消息对象
+      message = messageOrTaskId
+      taskId = message.task || message.taskId || message.id
+      console.log('【调试】检测到消息对象，提取任务ID:', taskId)
+      console.log('【调试】消息对象的详细结构:', {
+        id: message.id,
+        task: message.task,
+        taskId: message.taskId,
+        workflow: message.workflow,
+        sender: message.sender,
+        所有属性: Object.keys(message)
+      })
+    } else {
+      console.error('【调试】无效的参数类型:', typeof messageOrTaskId, messageOrTaskId)
+      ElMessage.warning('参数类型错误，无法查看结果详情')
+      return
+    }
     
     if (!taskId) {
-      console.error('【调试】未找到任务ID，消息对象:', message)
+      console.error('【调试】未找到任务ID，原始参数:', messageOrTaskId)
       ElMessage.warning('没有找到任务ID，无法查看结果详情')
       return
     }
     
     // 检查是否为合同解析工作流（根据工作流名称和发送者判断）
-    const isContractParsing = message.workflow?.name?.includes('合同解析') ||
-                             message.sender?.includes('合同解析')
+    let isContractParsing = message.workflow?.name?.includes('合同解析') ||
+                           message.sender?.includes('合同解析')
+    
+    // 如果从消息对象无法判断，尝试通过调用合同解析接口来验证
+    if (!isContractParsing && typeof messageOrTaskId === 'string') {
+      console.log('【调试】无法从消息判断工作流类型，尝试调用合同解析接口验证')
+      try {
+        // 尝试调用合同解析接口，如果成功说明是合同解析任务
+        await parsingResultStore.viewResultDetail({
+          isSupplierMaterial: false,
+          specificTaskId: taskId
+        })
+        console.log('【调试】合同解析接口调用成功，确认为合同解析任务')
+        return // 成功调用后直接返回
+      } catch (error) {
+        console.log('【调试】合同解析接口调用失败，可能不是合同解析任务，尝试其他方式:', error.message)
+        // 如果合同解析接口调用失败，说明可能不是合同解析任务，继续其他处理
+        isContractParsing = false
+      }
+    }
+    
+    console.log('【调试】最终判断 - 是否为合同解析工作流:', isContractParsing)
     
     if (isContractParsing) {
-      console.log('【调试】检测到合同解析工作流，直接弹出结果详情弹窗')
+      console.log('【调试】确认为合同解析工作流，直接弹出结果详情弹窗')
       // 合同解析：直接弹出解析结果详情弹窗，使用 taskId 调用接口
       await parsingResultStore.viewResultDetail({
         isSupplierMaterial: false, // 合同解析，不是乙供物资
