@@ -193,17 +193,16 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
           // 将聚合后的数据转换为表格格式
           tableJsonData = resultJson.map(item => ({
             id: item.id,
-            taskDetailId: item.id, // 保存 taskDetailId 用于后续接口调用
+            taskDetailId: item.id, // 单个解析记录的ID（用于单条记录操作）
+            taskId: taskIdToFetch, // 任务级别的ID（用于接口调用）
             resultStatus: item.resultStatus,
             ...item.docJson, // 展开解析字段
             editing: false
           }))
           console.log('【诊断】转换后的表格数据:', tableJsonData)
           
-          // 保存第一个记录的 taskDetailId 作为当前任务详情ID
-          if (tableJsonData.length > 0) {
-            currentTaskDetailId.value = tableJsonData[0].taskDetailId
-          }
+          // 保存任务ID作为当前任务详情ID（合同解析使用任务级别ID）
+          currentTaskDetailId.value = taskIdToFetch
         } else {
           console.warn('合同解析接口返回数据格式异常:', result)
           console.warn('期望的 resultJson 数组:', resultJson)
@@ -213,7 +212,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
 
       if (Array.isArray(tableJsonData) && tableJsonData.length > 0) {
         tableColumns.value = Object.keys(tableJsonData[0])
-          .filter(key => key !== 'editing') // 过滤掉编辑状态字段
+          .filter(key => !['editing', 'taskDetailId', 'taskId'].includes(key)) // 过滤掉内部字段
           .map((key) => ({
             prop: key,
             label: translateHeader(key)
