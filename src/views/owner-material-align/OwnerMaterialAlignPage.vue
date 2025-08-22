@@ -198,6 +198,7 @@ import {
   queryUnmatchedBalanceResult,
   manualMatch,
   queryBalanceResult,
+  queryMaterialMatchStatus,
   queryMaterialBaseInfo
 } from '@/utils/backendWorkflow' // 导入接口
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
