@@ -26,20 +26,22 @@ export const DYNAMIC_TABLE_COLUMNS = {
     { prop: 'startDate', label: '开始时间', width: 120, type: 'date' },
     { prop: 'endDate', label: '结束时间', width: 120, type: 'date' }
   ],
-  // 甲供物资解析详情列配置
+  // 甲供物资解析详情列配置 - 保持原有列名规范
   ownerMaterialDetail: [
-    { prop: 'id', label: 'ID', width: 80, fixed: true },
-    { prop: 'materialId', label: '物资编号', width: 120, fixed: true },
-    { prop: 'materialName', label: '物资名称', minWidth: 200, fixed: true },
-    { prop: 'specification', label: '规格型号', minWidth: 150 },
-    { prop: 'unit', label: '单位', width: 80 },
-    { prop: 'quantity', label: '需求数量', width: 100, type: 'number' },
-    { prop: 'statisticalQuantity', label: '统计数量', width: 100, type: 'number' },
-    { prop: 'transactionQuantity', label: '交易数量', width: 100, type: 'number' },
+    { prop: 'materialName', label: '物资名称', minWidth: 150 },
+    { prop: 'materialCategoryCode', label: '物资品类编码', minWidth: 180 },
+    { prop: 'specificationModel', label: '规格型号', minWidth: 180 },
+    { prop: 'unit', label: '计量单位', minWidth: 100 },
+    { prop: 'statisticalQuantity', label: '统计数据数', minWidth: 100, type: 'number' },
+    { prop: 'requisitionQuantity', label: '统计后申领数', minWidth: 150, type: 'number' },
     { prop: 'supplier', label: '供应商', minWidth: 150 },
-    { prop: 'materialStatus', label: '物资状态', width: 100, type: 'tag' },
-    { prop: 'sourceType', label: '来源类型', width: 100 },
-    { prop: 'transactionCountForSummary', label: '交易次数', width: 100, type: 'number' }
+    { prop: 'matchingStatus', label: '对平情况', minWidth: 120, type: 'tag' },
+    { prop: 'actualSource', label: '实际领料单数据来源', minWidth: 180 },
+    { prop: 'actualMaterialName', label: '实际领料单物资名称', minWidth: 180 },
+    { prop: 'actualSpecifications', label: '实际领料单规格型号', minWidth: 180 },
+    { prop: 'actualUnit', label: '实际领料单计量单位', minWidth: 150 },
+    { prop: 'actualApplicationQuantity', label: '交易数量', minWidth: 120, type: 'material-quantity' },
+    { prop: 'transactionCount', label: '关联交易数', minWidth: 120, type: 'number' }
   ]
 }
 

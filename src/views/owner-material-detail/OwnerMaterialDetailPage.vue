@@ -84,40 +84,45 @@ const paginatedData = computed(() => {
   return tableData.value
 })
 
-// 转换新API数据为表格需要的结构（专注于物资信息）
+// 转换新API数据为表格需要的结构（匹配原有列名规范）
 const transformDataForTable = (data) => {
   return data.map((item, index) => {
     return {
       id: item.id, // 使用 id 作为唯一标识
-      materialId: item.baseDataId || `OM-${index + 1}`,
+      // 基础物资信息 - 使用原有字段名
       materialName: item.baseMaterialName || '未知物资',
-      specification: item.baseSpecificationModel || '/',
+      materialCategoryCode: item.materialCategoryCode || '/', // 如果API没有此字段，设为默认值
+      specificationModel: item.baseSpecificationModel || '/',
       unit: item.baseUnit || '个',
-      // 使用实际字段：requisitionQuantity（需求数量）、statisticalQuantity（统计数量）、transactionQuantity（交易数量）
-      quantity: item.requisitionQuantity || 0,
+      
+      // 数量相关字段 - 保持原有字段名
       statisticalQuantity: item.statisticalQuantity || 0,
-      transactionQuantity: item.transactionQuantity || 0,
-      // 如果没有价格字段，先设为0或根据其他字段计算
-      unitPrice: item.unitPrice || 0,
-      totalPrice: (item.requisitionQuantity || 0) * (item.unitPrice || 0),
+      requisitionQuantity: item.requisitionQuantity || 0,
+      
+      // 供应商信息
       supplier: item.supplierName || '待确定',
-      deliveryDate: item.deliveryDate || '/',
-      // 根据实际的 finalBalanceStatus 字段映射状态
-      materialStatus:
+      
+      // 对平状态 - 映射 finalBalanceStatus 到 matchingStatus
+      matchingStatus:
         item.finalBalanceStatus === 'BALANCED'
-          ? '已对平'
+          ? 'BALANCED'
           : item.finalBalanceStatus === 'UNRETURNED'
-          ? '未返还'
+          ? 'UNRETURNED'
           : item.finalBalanceStatus === 'DATA_MISSING'
-          ? '数据缺失'
-          : '待确定',
-      // 添加新的字段以便在表格中显示
-      sourceType: item.sourceType || '',
-      transactionCountForSummary: item.transactionCountForSummary || 0,
+          ? 'DATA_MISSING'
+          : 'UNMATCHED',
+      
+      // 实际领料单相关字段 - 根据API数据结构映射
+      actualSource: item.dataSourcePath || item.sourceType || '/',
+      actualMaterialName: item.usageMaterialName || '/', // API中可能为null
+      actualSpecifications: item.usageSpecificationModel || '/', // API中可能为null  
+      actualUnit: item.baseUnit || '/', // 使用基础单位或默认值
+      actualApplicationQuantity: item.transactionQuantity || 0, // 交易数量
+      transactionCount: item.transactionCountForSummary || 0, // 关联交易数
+      
+      // 保存原始数据和其他必要字段
       taskId: item.taskId,
       taskDetailId: item.taskDetailId,
-      remark: item.remark || '/',
-      // 保存原始数据
       originalData: item
     }
   })
@@ -222,14 +227,37 @@ const handleSizeChange = (newSize) => {
 
 const handleGenerateReport = () => {
   // 导航到甲供物资解析报告页面
-  router.push({
-    name: 'OwnerMaterialReport',
-    query: {
-      taskId: route.query.taskId || route.query.taskDetailId || ownerMaterialStore.currentTaskId,
-      projectName: projectInfo.value.projectName,
-      projectNumber: projectInfo.value.projectNumber
-    }
+  // 统一使用与数据加载相同的 taskId 获取逻辑
+  const taskId = ownerMaterialStore.currentTask.taskId || route.params.taskId || route.query.taskId || route.query.taskDetailId || ownerMaterialStore.currentTaskId
+  
+  console.log('【生成报告】尝试跳转，taskId:', taskId)
+  console.log('【生成报告】路由参数:', {
+    params: route.params,
+    query: route.query,
+    currentTask: ownerMaterialStore.currentTask,
+    currentTaskId: ownerMaterialStore.currentTaskId
   })
+  
+  if (!taskId) {
+    ElMessage.error('缺少任务ID，无法生成报告')
+    return
+  }
+  
+  try {
+    router.push({
+      name: 'owner-material-report', // 修正路由名称，使用小写连字符格式
+      params: {
+        taskId: taskId // 路由配置要求 taskId 作为路径参数
+      },
+      query: {
+        projectName: projectInfo.value.projectName,
+        projectNumber: projectInfo.value.projectNumber
+      }
+    })
+  } catch (error) {
+    console.error('【生成报告】路由跳转失败:', error)
+    ElMessage.error('页面跳转失败，请检查路由配置')
+  }
 }
 
 // 单元格合并方法已移除 - 新API提供独立的交易记录，无需合并
