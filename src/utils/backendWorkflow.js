@@ -46,6 +46,7 @@ export async function callStreamWorkflow(
     const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
     let buffer = ''
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { value, done } = await reader.read()
       if (done) {
@@ -280,7 +281,24 @@ async function processMessageBlock(messageBlock, { onMessage, onError, onComplet
     }
   }
 
-  // 处理消息
+  // 预过滤处理：针对 WAIT 和 START 消息进行特殊处理，避免 JSON 解析错误
+  if (message.event === 'WAIT' || message.event === 'START') {
+    if (onMessage && typeof onMessage === 'function') {
+      // 直接使用原始数据，不尝试 JSON 解析，避免 "Unexpected token" 错误
+      const messageContent = message.data || ''
+      console.log(`【后端工作流】接收到${message.event}消息:`, messageContent)
+      
+      onMessage({
+        content: messageContent,
+        type: message.event,
+        isWaitMessage: message.event === 'WAIT',
+        isStartMessage: message.event === 'START'
+      })
+    }
+    return // 提前返回，不进入后续处理流程
+  }
+
+  // 处理其他类型的消息
   if (message.event && message.data) {
     try {
       // 根据事件类型调用相应的回调函数
@@ -350,32 +368,6 @@ async function processMessageBlock(messageBlock, { onMessage, onError, onComplet
           if (onComplete && typeof onComplete === 'function') {
             // Done 事件通常 data 为 "Done"，不需要解析
             onComplete()
-          }
-          break
-
-        case 'WAIT':
-          // 处理排队消息
-          if (onMessage && typeof onMessage === 'function') {
-            const parsedData = JSON.parse(message.data)
-            console.log('【后端工作流】接收到WAIT消息:', parsedData)
-            onMessage({
-              content: parsedData.content || parsedData, // 消息内容是字符串
-              type: 'WAIT',
-              isWaitMessage: true
-            })
-          }
-          break
-
-        case 'START':
-          // 处理开始消息  
-          if (onMessage && typeof onMessage === 'function') {
-            const parsedData = JSON.parse(message.data)
-            console.log('【后端工作流】接收到START消息:', parsedData)
-            onMessage({
-              content: parsedData.content || parsedData, // 消息内容是字符串
-              type: 'START', 
-              isStartMessage: true
-            })
           }
           break
 
