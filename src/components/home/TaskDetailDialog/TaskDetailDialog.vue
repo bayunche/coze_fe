@@ -59,7 +59,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import smartBrainService from '@/services/SmartBrainService.js'
 import { TASK_DETAIL_STATUS_MAP, DEFAULT_VALUES } from './constants.js'
-
+import { downloadSourceFile } from '@/utils/fileDownload.js'
 const props = defineProps({
   show: {
     type: Boolean,
@@ -155,10 +155,10 @@ const handleViewDetail = (row) => {
  */
 const downloadFile = (row) => {
   console.log('【调试】下载文件 - row对象:', row)
-  
+
   if (row.fileUrl) {
     // 使用 window.open 在新标签页中打开文件链接
-    window.open(row.fileUrl, '_blank')
+    downloadSourceFile(row)
   } else {
     ElMessage.warning('该记录没有关联的文件')
   }
