@@ -458,6 +458,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
             if (event.taskId) {
               taskId.value = event.taskId
               streamingAgentMessage.task = event.taskId
+              // 同步更新存储中的消息对象，确保历史消息能访问到任务ID
+              chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                task: event.taskId
+              })
               console.log('【合同解析】获取到任务ID:', event.taskId)
             }
 
@@ -544,6 +548,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
             if (event.taskId) {
               supplierTaskId.value = event.taskId
               streamingAgentMessage.task = event.taskId
+              // 同步更新存储中的消息对象，确保历史消息能访问到任务ID
+              chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                task: event.taskId
+              })
               console.log('【乙供物资解析】获取到任务ID:', event.taskId)
             }
 
@@ -674,6 +682,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
             if (event.taskId) {
               taskId.value = event.taskId
               streamingAgentMessage.task = event.taskId
+              // 同步更新存储中的消息对象，确保历史消息能访问到任务ID
+              chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                task: event.taskId
+              })
               ownerMaterialStore.setTask(event.taskId)
               console.log('【甲供物资解析】获取到任务ID:', event.taskId)
             }
@@ -828,6 +840,10 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
             if (event.taskId) {
               streamingAgentMessage.task = event.taskId
+              // 同步更新存储中的消息对象，确保历史消息能访问到任务ID
+              chatStore.updateMessageProperties(streamingAgentMessage.id, {
+                task: event.taskId
+              })
               console.log('【甲供物资重新解析】获取到任务ID:', event.taskId)
             }
 
