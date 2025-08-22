@@ -60,6 +60,7 @@ import { ElMessage } from 'element-plus'
 import smartBrainService from '@/services/SmartBrainService.js'
 import { TASK_DETAIL_STATUS_MAP, DEFAULT_VALUES } from './constants.js'
 import { downloadSourceFile } from '@/utils/fileDownload.js'
+import { useParsingResultStore } from '@/stores/parsingResult'
 const props = defineProps({
   show: {
     type: Boolean,
@@ -72,6 +73,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['update:show', 'view-detail'])
+
+// Stores
+const parsingResultStore = useParsingResultStore()
 
 const dialogVisible = computed({
   get: () => props.show,
@@ -138,15 +142,27 @@ const fetchDetailList = async () => {
  * 处理查看详情按钮点击
  * @param {Object} row - 表格行数据
  */
-const handleViewDetail = (row) => {
+const handleViewDetail = async (row) => {
   console.log('【调试】合同解析任务详情查看 - row对象:', row)
 
-  // 发出事件让父组件处理详情显示
-  emit('view-detail', {
-    taskId: props.task.id || props.task.ID,
-    detailId: row.id || row.taskDetailId || row.detailId,
-    row: row
-  })
+  // 检查任务状态，只有处理完成或已确认的任务才能查看解析结果详情
+  if (row.taskDetailStatus !== 2 && row.taskDetailStatus !== 3) {
+    ElMessage.warning('只有处理完成或已确认的任务才能查看解析结果详情')
+    return
+  }
+
+  try {
+    // 调用 parsingResultStore 的 viewResultDetail 方法显示合同解析结果详情
+    await parsingResultStore.viewResultDetail({
+      isSupplierMaterial: false, // 合同解析，不是乙供物资
+      specificTaskId: props.task.id || props.task.ID // 使用当前任务ID
+    })
+    
+    console.log('【调试】已调用 parsingResultStore.viewResultDetail 显示合同解析结果详情')
+  } catch (error) {
+    console.error('查看合同解析结果详情失败:', error)
+    ElMessage.error('查看解析结果详情失败: ' + (error.message || '未知错误'))
+  }
 }
 
 /**
