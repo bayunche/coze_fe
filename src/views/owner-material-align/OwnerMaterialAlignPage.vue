@@ -8,15 +8,9 @@
     <div class="status-summary" v-if="total > 0">
       <el-card class="status-card">
         <div class="status-info">
-          <el-tag v-if="hasUnalignedMaterials" type="warning" size="large">
-            <el-icon><Warning /></el-icon>
-            <span>待处理：{{ unmatchedCount }} 条物资需要对平</span>
+          <el-tag type="success" size="large">
+            <span class="total-info">总计：{{ total }} 条物资</span>
           </el-tag>
-          <el-tag v-else type="success" size="large">
-            <el-icon><CircleCheck /></el-icon>
-            <span>全部完成：所有物资已对平</span>
-          </el-tag>
-          <span class="total-info">总计：{{ total }} 条物资</span>
         </div>
       </el-card>
     </div>
@@ -272,21 +266,14 @@ const fetchData = async () => {
     }
 
     const response = await queryMaterialMatchStatus(params)
-    console.log('未对平物资查询结果:', response)
+    console.log('物资查询结果:', response)
 
     if (response && response.data && response.data.content) {
       transformAndSetData(response.data.content)
       total.value = allMaterials.value.length
 
       // 检查是否还有未对平的物资
-      const hasUnmatchedItems = response.data.content.length > 0
-      if (!hasUnmatchedItems) {
-        ElMessage.success('所有物资已完成对平！')
-      } else {
-        ElMessage.info(`查询到 ${response.data.content.length} 条未对平物资`)
-      }
     } else {
-      ElMessage.info('所有物资已完成对平，没有需要处理的数据。')
       allMaterials.value = []
       total.value = 0
     }
@@ -629,7 +616,7 @@ async function checkAllAligned() {
     }
 
     // 获取1000条内的所有物资数据
-    const response = await queryUnmatchedBalanceResult({ taskId, page: 0, size: 1000 })
+    const response = await queryMaterialMatchStatus({ taskId, page: 0, size: 1000 })
 
     if (!response || !response.data || !response.data.content) {
       ElMessage.error('无法获取物资数据')
@@ -638,10 +625,24 @@ async function checkAllAligned() {
 
     const materials = response.data.content
 
+    // 统计各种匹配状态的物资数量
+    const unmatchedMaterials = materials.filter((item) => item.matchedType === 0) // 未匹配
+    const similarMatchedMaterials = materials.filter((item) => item.matchedType === 2) // 相似匹配
+    const exactlyMatchedMaterials = materials.filter(
+      (item) => item.matchedType === 1 || item.matchedType === 3 || item.matchedType === 4
+    ) // 精确匹配、历史匹配、人工指定
+
+    console.log('物资匹配状态统计:', {
+      total: materials.length,
+      unmatched: unmatchedMaterials.length,
+      similarMatched: similarMatchedMaterials.length,
+      exactlyMatched: exactlyMatchedMaterials.length
+    })
+
     // 如果有未匹配的物资，提示用户先处理
-    if (materials.length > 0) {
+    if (unmatchedMaterials.length > 0) {
       await ElMessageBox.alert(
-        `检测到 ${materials.length} 条未匹配的物资，请先为这些物资选择匹配的数据库物资后再进行保存操作。`,
+        `检测到 ${unmatchedMaterials.length} 条未匹配的物资，请先为这些物资选择匹配的数据库物资后再进行保存操作。`,
         '存在未匹配物资',
         {
           confirmButtonText: '确定',
@@ -651,8 +652,67 @@ async function checkAllAligned() {
       return false
     }
 
+    // 如果剩余的全部为相似匹配，进行批量确认保存
+    if (similarMatchedMaterials.length > 0) {
+      try {
+        // 询问用户是否批量确认相似匹配
+        await ElMessageBox.confirm(
+          `检测到 ${similarMatchedMaterials.length} 条相似匹配的物资，是否批量确认这些匹配结果？`,
+          '批量确认相似匹配',
+          {
+            confirmButtonText: '确认批量保存',
+            cancelButtonText: '取消',
+            type: 'info'
+          }
+        )
+
+        // 批量循环调用保存接口
+        let successCount = 0
+        let failCount = 0
+
+        ElMessage.info(`开始批量保存 ${similarMatchedMaterials.length} 条相似匹配物资...`)
+
+        for (const material of similarMatchedMaterials) {
+          try {
+            const matchData = {
+              sourceId: material.sourceId,
+              sourceType: material.sourceType,
+              baseDataId: material.baseDataId
+            }
+
+            const saveResponse = await manualMatch(matchData)
+            if (saveResponse && saveResponse.code === 200) {
+              successCount++
+            } else {
+              failCount++
+              console.error(`保存物资失败 (ID: ${material.sourceId}):`, saveResponse?.msg)
+            }
+          } catch (error) {
+            failCount++
+            console.error(`保存物资异常 (ID: ${material.sourceId}):`, error)
+          }
+        }
+
+        if (failCount === 0) {
+          ElMessage.success(`批量保存成功！共处理 ${successCount} 条相似匹配物资`)
+          // 刷新数据
+          await fetchData()
+          return true
+        } else {
+          ElMessage.warning(`批量保存完成：成功 ${successCount} 条，失败 ${failCount} 条`)
+          // 刷新数据
+          await fetchData()
+          return false
+        }
+      } catch (cancelError) {
+        // 用户取消批量保存
+        console.log('用户取消批量保存操作')
+        return false
+      }
+    }
+
     // 如果全部已精确匹配，返回true
-    if (materials.length === 0) {
+    if (unmatchedMaterials.length === 0 && similarMatchedMaterials.length === 0) {
       return true
     }
 
