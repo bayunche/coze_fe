@@ -29,7 +29,9 @@ export async function callStreamWorkflow(
     const response = await fetch(`${BASE_URL}/v1/chat/generate`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'text/event-stream',  // 告诉服务器期望接收 SSE 流
+        'Cache-Control': 'no-cache'     // 禁用缓存，确保实时接收数据
       },
       body: JSON.stringify({
         stream: true,
