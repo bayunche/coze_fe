@@ -791,7 +791,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
 
       // 使用后端工作流 API，agentManagementId: '9' (甲供物资重新解析工作流)
       await callStreamWorkflow({ taskId }, '9', {
-        onMessage: (event) => {
+        onMessage: async (event) => {
           if (event.content) {
             // 统一处理 taskId 提取 - 智能消息处理已经完成了提取和清理
             if (event.taskId) {
@@ -802,6 +802,22 @@ export const useWorkflowStore = defineStore('workflow', () => {
             // 处理额外的任务信息
             if (event.taskInfo) {
               console.log('【甲供物资重新解析】获取到任务信息:', event.taskInfo)
+            }
+
+            // 检查是否为甲供物资重新解析新格式，需要保存到 store
+            if (event.isOwnerMaterialReparse && event.llmReportData && event.taskId) {
+              console.log('【甲供物资重新解析】检测到新格式，保存 llmReport 数据')
+              try {
+                // 导入 ownerMaterial store
+                const { useOwnerMaterialStore } = await import('@/stores/ownerMaterial')
+                const ownerMaterialStore = useOwnerMaterialStore()
+                
+                // 保存分析数据到 store
+                ownerMaterialStore.setLlmReport(event.taskId, event.llmReportData)
+                console.log('【甲供物资重新解析】已保存 llmReport 数据到 store，taskId:', event.taskId)
+              } catch (error) {
+                console.error('【甲供物资重新解析】保存 llmReport 数据失败:', error)
+              }
             }
 
             // 处理流式消息内容（已经过滤掉了 taskId 等技术信息）

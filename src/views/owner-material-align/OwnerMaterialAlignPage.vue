@@ -4,17 +4,6 @@
       <h2>物资信息确认</h2>
     </div>
 
-    <!-- 对平状态统计区域 -->
-    <div class="status-summary" v-if="total > 0">
-      <el-card class="status-card">
-        <div class="status-info">
-          <el-tag type="success" size="large">
-            <span class="total-info">总计：{{ total }} 条物资</span>
-          </el-tag>
-        </div>
-      </el-card>
-    </div>
-
     <!-- 新增筛选区域 -->
     <div class="filter-container">
       <el-select

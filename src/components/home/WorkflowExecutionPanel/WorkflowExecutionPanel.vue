@@ -86,7 +86,13 @@ const viewResultDetail = (message) => {
 
   const workflowName = message.workflow?.name
 
-  if (isContractWorkflow(workflowName)) {
+  // 甲供物资重新解析工作流，直接跳转到甲供物资详情页面
+  if (workflowName === '甲供物资重新解析') {
+    router.push({
+      name: 'owner-material-detail',
+      params: { taskId: message.task }
+    })
+  } else if (isContractWorkflow(workflowName)) {
     emit('view-result-detail', message.task)
   } else if (isSupplierMaterialWorkflow(workflowName)) {
     emit('view-material-result-detail', message.task)

@@ -125,12 +125,30 @@ function processMessageContent(parsedData) {
             // 对象格式：甲供物资二次解析格式
             const output = contentJson.modelAnswer.output
             if (typeof output === 'object') {
-              // 将分析结果对象格式化为可读文本
-              result.content = formatAnalysisOutput(output)
-              console.log('【消息处理】从 modelAnswer 对象中提取到分析结果', {
-                类型: typeof output,
-                内容长度: result.content.length
-              })
+              // 检查是否为甲供物资重新解析的新格式（包含具体分析结果）
+              const hasAnalysisKeys = Object.keys(output).some(key => 
+                key.includes('分析') || key.includes('结论') || key.includes('建议')
+              )
+              
+              if (hasAnalysisKeys) {
+                // 甲供物资重新解析新格式：保存到 store，简化消息显示
+                console.log('【消息处理】检测到甲供物资重新解析新格式，保存到 store')
+                
+                // 标记为需要保存到 store 的数据
+                result.llmReportData = output
+                result.isOwnerMaterialReparse = true
+                
+                // 简化消息内容，不显示复杂的分析结果
+                result.content = '甲供物资重新解析工作流调用成功'
+                console.log('【消息处理】甲供物资重新解析：设置简化消息内容')
+              } else {
+                // 原有的对象格式处理逻辑
+                result.content = formatAnalysisOutput(output)
+                console.log('【消息处理】从 modelAnswer 对象中提取到分析结果', {
+                  类型: typeof output,
+                  内容长度: result.content.length
+                })
+              }
             } else if (typeof output === 'string') {
               result.content = output
               console.log('【消息处理】从 modelAnswer 对象中提取到字符串输出')
