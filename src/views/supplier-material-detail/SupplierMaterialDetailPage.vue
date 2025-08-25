@@ -212,12 +212,12 @@
               </div>
               
               <!-- 精确匹配：无需操作 -->
-              <div v-else-if="getMatchTypeTag(row.matchedType).text === '精确匹配'">
+              <div v-else-if="getMatchTypeTagInfo(row.matchedType).text === '精确匹配'">
                 <el-button type="info" size="small" disabled>已精确匹配</el-button>
               </div>
               
               <!-- 相似匹配、历史匹配：显示选择下拉框 -->
-              <div v-else-if="['相似匹配', '历史匹配'].includes(getMatchTypeTag(row.matchedType).text) && row.matchOptions && row.matchOptions.length > 0">
+              <div v-else-if="['相似匹配', '历史匹配'].includes(getMatchTypeTagInfo(row.matchedType).text) && row.matchOptions && row.matchOptions.length > 0">
                 <el-select
                   v-model="row.selectedMaterial"
                   placeholder="选择物资"
