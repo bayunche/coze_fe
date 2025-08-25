@@ -23,7 +23,7 @@
       </el-table-column>
       <el-table-column prop="taskDetailStatus" label="任务解析状态">
         <template #default="{ row }">
-          {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
+          <span>{{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}</span>
         </template>
       </el-table-column>
       <el-table-column prop="errorReason" label="失败原因">
@@ -34,7 +34,9 @@
 
       <el-table-column label="操作">
         <template #default="{ row }">
-          <el-button type="text" @click="handleViewDetail(row)">查看详情</el-button>
+          <el-button type="text" v-if="row.taskDetailStatus != -1" @click="handleViewDetail(row)"
+            >查看详情</el-button
+          >
           <el-button type="text" @click="downLoadFile(row)">查看源文件</el-button>
         </template>
       </el-table-column>
@@ -65,7 +67,6 @@ const props = defineProps({
     required: true
   },
   modelValue: {
-    // 假设v-model绑定的是modelValue
     type: Boolean,
     default: false
   }
@@ -78,7 +79,7 @@ const formatTaskDetailStatus = (status, errorReason) => {
   if (errorReason && Number(status) === -1) {
     return '解析失败'
   }
-  
+
   switch (Number(status)) {
     case 0:
       return '排队中'
@@ -106,7 +107,6 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-
 const fetchDetailList = async () => {
   loading.value = true
   try {
@@ -115,9 +115,9 @@ const fetchDetailList = async () => {
       page: currentPage.value - 1, // 前端页码从1开始，后端从0开始
       size: pageSize.value
     }
-    
+
     const result = await smartBrainService.getTaskDetailsList(props.taskId, params)
-    
+
     if (result && result.content && Array.isArray(result.content)) {
       tableData.value = result.content
       total.value = result.totalElements || 0
@@ -137,7 +137,7 @@ const fetchDetailList = async () => {
 
 const handleViewDetail = (row) => {
   console.log('【调试】甲供物资详情查看 - row对象:', row)
-  
+
   // 甲供物资应该使用对话框显示详情，而不是路由跳转
   // 发出事件让父组件处理详情显示
   emit('view-detail', {
@@ -145,7 +145,7 @@ const handleViewDetail = (row) => {
     detailId: row.id || row.taskDetailId || row.detailId,
     row: row
   })
-  
+
   // 暂时不关闭当前弹窗，让用户可以继续查看列表
   // dialogVisible.value = false
 }
@@ -178,7 +178,7 @@ const handleSizeChange = (val) => {
 }
 const downLoadFile = async (row) => {
   console.log('下载源文件:', row)
-  
+
   try {
     // 动态导入文件下载工具函数
     const { downloadSourceFile } = await import('@/utils/fileDownload.js')
