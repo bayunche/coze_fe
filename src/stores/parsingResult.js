@@ -9,8 +9,7 @@ import {
   editSupplierMaterialParsingResults,
   confirmSupplierMaterialParsingResults,
   editContractAnalysisResults,
-  updateContractAnalysisResult,
-  confirmContractAnalysisResults
+  updateContractAnalysisResult
 } from '@/utils/backendWorkflow.js'
 
 /**
@@ -467,39 +466,106 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
           ElMessage.error(results?.message || '确认失败')
         }
       } else {
-        // 合同解析结果确认 - 使用新的批量确认接口
-        const confirmData = {
-          taskId: taskId.value,
-          remark: '批量确认所有合同解析结果'
-        }
-
-        console.log('【诊断】批量确认数据:', confirmData)
-        results = await confirmContractAnalysisResults(confirmData)
-
-        if (results && results.success) {
-          const confirmedCount = results.newlyConfirmedCount || 0
-          const totalCount = results.confirmedCount || 0
-
-          if (confirmedCount > 0) {
-            ElMessage.success(
-              `成功确认 ${confirmedCount} 条合同解析记录！总计 ${totalCount} 条记录已确认`
-            )
-            chatStore.addMessage(`已批量确认${confirmedCount}个合同解析结果`, 'system')
-          } else {
-            ElMessage.info('所有记录已经确认，无需重复操作')
-          }
-
-          // 更新本地数据状态为已确认
-          tableData.value.forEach((item) => {
-            item.resultStatus = 1
-          })
-          editFormModels.value.forEach((item) => {
-            item.resultStatus = 1
-          })
-
+        // 合同解析结果确认 - 批量调用单行修改接口
+        console.log('【诊断】开始批量调用单行修改接口进行确认')
+        
+        // 过滤出需要确认的记录（未确认的记录）
+        const recordsToConfirm = tableData.value.filter(item => item.resultStatus !== 1)
+        
+        if (recordsToConfirm.length === 0) {
+          ElMessage.info('所有记录已经确认，无需重复操作')
           showResultDetail.value = false
+          return
+        }
+        
+        console.log(`【诊断】需要确认的记录数量: ${recordsToConfirm.length}`)
+        
+        // 批量调用单行修改接口
+        const updatePromises = recordsToConfirm.map(async (item) => {
+          try {
+            // 构造字段数据
+            const fieldData = []
+            Object.keys(item).forEach((key) => {
+              if (key !== 'editing' && key !== 'id' && key !== 'taskDetailId' && key !== 'taskId' && key !== 'resultStatus') {
+                fieldData.push({
+                  columnCode: key,
+                  columnName: translateHeader(key),
+                  columnValue: item[key] || ''
+                })
+              }
+            })
+            
+            const updateData = {
+              taskDetailId: item.taskDetailId,
+              resultStatus: 1, // 设置为已确认
+              fieldData: fieldData,
+              remark: '批量确认合同解析结果'
+            }
+            
+            const result = await updateContractAnalysisResult(updateData)
+            return {
+              success: result && result.success,
+              item: item,
+              result: result,
+              error: null
+            }
+          } catch (error) {
+            console.error(`确认记录失败 (ID: ${item.id}):`, error)
+            return {
+              success: false,
+              item: item,
+              result: null,
+              error: error
+            }
+          }
+        })
+        
+        // 等待所有请求完成
+        const updateResults = await Promise.allSettled(updatePromises)
+        
+        // 统计结果
+        let successCount = 0
+        let failureCount = 0
+        const failureDetails = []
+        
+        updateResults.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.success) {
+            successCount++
+            // 更新本地数据状态为已确认
+            const item = recordsToConfirm[index]
+            const tableIndex = tableData.value.findIndex(t => t.id === item.id)
+            const editIndex = editFormModels.value.findIndex(t => t.id === item.id)
+            
+            if (tableIndex !== -1) {
+              tableData.value[tableIndex].resultStatus = 1
+            }
+            if (editIndex !== -1) {
+              editFormModels.value[editIndex].resultStatus = 1
+            }
+          } else {
+            failureCount++
+            const item = recordsToConfirm[index]
+            const errorMsg = result.status === 'fulfilled' 
+              ? (result.value.result?.message || result.value.error?.message || '未知错误')
+              : result.reason?.message || '请求失败'
+            failureDetails.push(`记录 ${item.id}: ${errorMsg}`)
+          }
+        })
+        
+        // 显示结果
+        if (failureCount === 0) {
+          ElMessage.success(`批量确认成功！共处理 ${successCount} 条合同解析记录`)
+          chatStore.addMessage(`已批量确认${successCount}个合同解析结果`, 'system')
+          showResultDetail.value = false
+        } else if (successCount > 0) {
+          ElMessage.warning(
+            `部分确认成功：成功 ${successCount} 条，失败 ${failureCount} 条。详情请查看控制台`
+          )
+          console.warn('批量确认失败详情:', failureDetails)
+          chatStore.addMessage(`批量确认部分成功：${successCount}成功，${failureCount}失败`, 'system')
         } else {
-          ElMessage.error(results?.message || '确认失败')
+          ElMessage.error(`批量确认失败！所有 ${failureCount} 条记录都处理失败`)
+          console.error('批量确认失败详情:', failureDetails)
         }
       }
     } catch (error) {
