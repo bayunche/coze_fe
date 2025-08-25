@@ -900,6 +900,11 @@ const handleFilterChange = () => {
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的数据
+  if (row.confirmResult === 1 && row.confirmedBaseName) {
+    return row.confirmedBaseName
+  }
+  
   // 优先从直接的baseInfo获取
   if (row.baseInfo && row.baseInfo.materialName) {
     return row.baseInfo.materialName
@@ -915,6 +920,11 @@ const getBaseInfoName = (row) => {
 
 // 获取基础信息规格
 const getBaseInfoSpec = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的数据
+  if (row.confirmResult === 1 && row.confirmedBaseSpec) {
+    return row.confirmedBaseSpec
+  }
+  
   // 优先从直接的baseInfo获取
   if (row.baseInfo && row.baseInfo.specifications) {
     return row.baseInfo.specifications
@@ -930,6 +940,11 @@ const getBaseInfoSpec = (row) => {
 
 // 获取价格文本
 const getPriceText = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的价格
+  if (row.confirmResult === 1 && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
+    return `¥${formatNumber(row.confirmedPrice)}`
+  }
+  
   // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.taxPrice) {
     return `¥${formatNumber(row.priceInfo.taxPrice)}`
@@ -950,6 +965,11 @@ const getPriceText = (row) => {
 
 // 获取价格季度
 const getPriceQuarter = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的季度信息
+  if (row.confirmResult === 1 && row.confirmedPriceQuarter) {
+    return row.confirmedPriceQuarter
+  }
+  
   // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.quarter) {
     return row.priceInfo.quarter

@@ -96,15 +96,11 @@
         <!-- 操作列 -->
         <el-table-column label="操作" width="180" v-if="hasUnalignedMaterials">
           <template #default="{ row, $index }">
-            <!-- 精确匹配且未确认的操作按钮 -->
-            <div v-if="row.matchedType === 1 && !row.aligned">
-              <el-button type="success" size="small" @click="handleConfirmExactMaterial(row)">
-                确认
-              </el-button>
-            </div>
+            <!-- 精确匹配且未确认时不显示任何按钮 -->
+            <!-- 因为精确匹配在数据处理阶段已经自动设为已确认，这种情况不应该出现 -->
 
             <!-- 相似匹配的操作按钮 -->
-            <div v-else-if="row.matchedType === 2 && !row.aligned">
+            <div v-if="row.matchedType === 2 && !row.aligned">
               <el-button type="success" size="small" @click="handleConfirmSimilarMaterial(row)">
                 确认匹配
               </el-button>
@@ -277,8 +273,14 @@ const fetchData = async () => {
 const transformAndSetData = (data) => {
   const transformed = data.map((item) => {
     // 根据 matchedType 判断匹配状态：0=未匹配, 1=精确匹配, 2=相似匹配, 3=历史匹配, 4=人工指定
-    const aligned = item.matchedType !== 0 && item.matchedType !== 2 && item.baseDataId !== null
-    console.log('匹配状态', aligned, '匹配类型', item.matchedType)
+    // 精确匹配时直接设为已确认状态
+    let aligned = item.confirmationStatus
+    if (item.matchedType === 1) {
+      // 精确匹配时，不管原始确认状态如何，都设为已确认
+      aligned = true
+    }
+    
+    console.log('匹配状态', aligned, '匹配类型', item.matchedType, '原始确认状态', item.confirmationStatus)
 
     return {
       id: item.sourceId, // 使用 sourceId 作为唯一标识
@@ -288,8 +290,8 @@ const transformAndSetData = (data) => {
       requestSpec: item.specificationModel,
       requestUnit: item.unit,
       requestQuantity: item.quantity,
-      // 确认状态
-      aligned: item.confirmationStatus,
+      // 确认状态 - 精确匹配时强制设为已确认
+      aligned: aligned,
       matchedType: item.matchedType,
       matchScore: item.score,
       // 数据库物资信息 (如果已匹配)
@@ -409,46 +411,6 @@ async function handleSaveSingleMaterial(row) {
   }
 }
 
-// 确认精确匹配的物资
-async function handleConfirmExactMaterial(row) {
-  try {
-    // 验证必需的数据
-    if (!row.originalData.sourceId) {
-      throw new Error('缺少源记录ID (sourceId)')
-    }
-    if (!row.originalData.sourceType) {
-      throw new Error('缺少源记录类型 (sourceType)')
-    }
-    if (!row.originalData.baseDataId) {
-      throw new Error('缺少精确匹配的物料ID (baseDataId)')
-    }
-
-    const matchData = {
-      sourceId: row.originalData.sourceId,
-      sourceType: row.originalData.sourceType,
-      baseDataId: row.originalData.baseDataId
-    }
-
-    console.log('确认精确物资匹配:', {
-      materialName: row.requestName,
-      matchData
-    })
-
-    const response = await manualMatch(matchData)
-
-    if (response && response.code === 200) {
-      console.log(`物资 "${row.requestName}" 精确匹配确认成功:`, response.msg)
-      ElMessage.success(`物资 "${row.requestName}" 精确匹配确认成功！`)
-      // 刷新数据以更新整个列表的状态
-      fetchData()
-    } else {
-      throw new Error(response?.msg || '确认精确匹配失败，未知错误')
-    }
-  } catch (error) {
-    console.error(`确认精确匹配物资 "${row.requestName}" 失败:`, error)
-    ElMessage.error(`确认失败: ${error.message}`)
-  }
-}
 
 // 确认相似匹配的物资
 async function handleConfirmSimilarMaterial(row) {
