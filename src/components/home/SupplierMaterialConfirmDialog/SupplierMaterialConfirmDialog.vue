@@ -330,10 +330,10 @@ const fetchData = async () => {
       console.log('【调试】response.content:', response?.content)
       console.log('【调试】response.content长度:', response?.content?.length)
       
-      if (response) {
-        materialData.value = response.content || []
-        statistics.value = response.statistics || {}
-        total.value = response.page?.totalElements || 0
+      if (response && response.data) {
+        materialData.value = response.data.content || []
+        statistics.value = response.data.statistics || {}
+        total.value = response.data.page?.totalElements || 0
         
         console.log('【调试】赋值后materialData.value:', materialData.value)
         console.log('【调试】赋值后statistics.value:', statistics.value)
