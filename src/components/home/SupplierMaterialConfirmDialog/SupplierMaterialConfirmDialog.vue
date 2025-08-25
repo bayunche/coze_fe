@@ -256,7 +256,8 @@ import MaterialSelectionDialog from '../MaterialSelectionDialog/MaterialSelectio
 import { 
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
-  confirmSupplierMaterialData 
+  confirmSupplierMaterialData,
+  queryMaterialBaseInfoWithPrices
 } from '@/utils/backendWorkflow.js'
 
 // Props定义
@@ -681,19 +682,91 @@ const handleSelectFromDatabase = (row) => {
 const fetchMaterialOptions = async () => {
   materialSelectionLoading.value = true
   try {
-    // 这里需要调用获取物资基础数据的API
-    // 暂时使用示例数据结构，实际需要根据后端API调整
+    // 调用获取带价格信息的物资基础数据API
+    const params = {
+      page: materialSearchParams.value.page - 1,
+      size: materialSearchParams.value.size,
+      keyword: materialSearchParams.value.keyword
+    }
     
-    // TODO: 调用实际的物资基础数据查询API
-    // const response = await getMaterialBaseDataList({
-    //   page: materialSearchParams.value.page - 1,
-    //   size: materialSearchParams.value.size,
-    //   keyword: materialSearchParams.value.keyword
-    // })
+    const response = await queryMaterialBaseInfoWithPrices(params)
+    console.log('【SupplierMaterialConfirmDialog 调试】获取物资选择数据:', response)
     
-    // 暂时使用空数据，等待后端API集成
-    materialSelectionData.value = []
-    materialSelectionTotal.value = 0
+    if (response && response.data && response.data.content) {
+      // 直接进行价格维度的扁平化，与MaterialSelectionDialog的formattedData逻辑一致
+      const flattenedData = []
+      
+      response.data.content.forEach(item => {
+        const materialBaseInfo = item.materialBaseInfo || {}
+        const priceList = item.priceList || []
+        
+        // 如果有价格数据，每个价格创建一条记录
+        if (priceList.length > 0) {
+          priceList.forEach(price => {
+            flattenedData.push({
+              // 原始数据，包含物资和价格信息
+              originalData: {
+                materialBaseInfo,
+                priceInfo: price,
+                fullItem: item
+              },
+              
+              // 物资信息
+              materialName: materialBaseInfo.materialName || '-',
+              specificationModel: materialBaseInfo.specificationModel || '-',
+              unit: materialBaseInfo.unit || '-',
+              type: materialBaseInfo.type || '-',
+              materialCode: materialBaseInfo.materialCode || '-',
+              
+              // 价格信息 - 确保价格正确显示，包括0价格
+              taxPrice: price.taxPrice !== undefined && price.taxPrice !== null 
+                ? parseFloat(price.taxPrice).toFixed(2) 
+                : '0.00',
+              quarter: price.quarter || '-',
+              priceId: price.id,
+              baseInfoId: price.baseInfoId,
+              
+              // 兼容旧格式的字段映射
+              material_name: materialBaseInfo.materialName,
+              specification_model: materialBaseInfo.specificationModel,
+              tax_price: price.taxPrice,
+              id: materialBaseInfo.id
+            })
+          })
+        } else {
+          // 如果没有价格数据，仍然创建一条记录但价格字段为空
+          flattenedData.push({
+            originalData: {
+              materialBaseInfo,
+              priceInfo: null,
+              fullItem: item
+            },
+            
+            materialName: materialBaseInfo.materialName || '-',
+            specificationModel: materialBaseInfo.specificationModel || '-',
+            unit: materialBaseInfo.unit || '-',
+            type: materialBaseInfo.type || '-',
+            materialCode: materialBaseInfo.materialCode || '-',
+            
+            taxPrice: '-',
+            quarter: '-',
+            priceId: null,
+            baseInfoId: materialBaseInfo.id,
+            
+            material_name: materialBaseInfo.materialName,
+            specification_model: materialBaseInfo.specificationModel,
+            tax_price: null,
+            id: materialBaseInfo.id
+          })
+        }
+      })
+      
+      materialSelectionData.value = flattenedData
+      materialSelectionTotal.value = response.data.totalElements || 0
+    } else {
+      materialSelectionData.value = []
+      materialSelectionTotal.value = 0
+    }
     
   } catch (error) {
     console.error('获取物资选择数据失败:', error)

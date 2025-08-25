@@ -33,44 +33,55 @@
     <!-- 材料选择对话框 -->
     <MaterialSelectionDialog
       v-model="showSelectionDialog"
-      :current-row="currentRow"
-      @confirm="handleSelectionConfirm"
+      :data-list="materialSelectionList"
+      :total="selectionTotal"
+      :page-num="selectionPage"
+      :page-size="selectionPageSize"
+      :loading="selectionLoading"
+      @select="handleMaterialSelection"
+      @page-change="handleSelectionPageChange"
+      @size-change="handleSelectionSizeChange"
+      @search="handleSelectionSearch"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog'
 import CozeService from '@/utils/coze.js'
 import { useChatStore } from '@/stores/chat'
-import MaterialService from '@/services/MaterialService.js'
+// import MaterialService from '@/services/MaterialService.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useWorkflowStore } from '@/stores/workflow'
-import { queryMaterialBaseInfo } from '@/utils/backendWorkflow'
+import { queryMaterialBaseInfoWithPrices } from '@/utils/backendWorkflow'
 import DynamicTable from '@/views/project-data-management/components/DynamicTable.vue'
 import { generateDynamicColumns } from '@/views/project-data-management/utils.js'
 
-const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
+// const cozeService = new CozeService(import.meta.env.VITE_COZE_API_KEY)
 
-const chatStore = useChatStore()
-const workflowStore = useWorkflowStore()
+// const chatStore = useChatStore()
+// const workflowStore = useWorkflowStore()
 const route = useRoute()
 const router = useRouter()
 
 const taskId = ref(route.params.taskId)
-const detailId = ref(route.query.detailId)
+// const detailId = ref(route.query.detailId)
 
 const loading = ref(false)
-const saving = ref(false)
+// const saving = ref(false)
 const tableData = ref([])
 const showSelectionDialog = ref(false)
 const currentRow = ref(null)
 
-const showSelectionPageNum = ref(1)
-const showSelectionPageSize = ref(10)
-const showSelectionList = ref([])
+// 物资选择相关数据
+const materialSelectionList = ref([])
+const selectionTotal = ref(0)
+const selectionPage = ref(1)
+const selectionPageSize = ref(10)
+const selectionLoading = ref(false)
+const selectionSearchKeyword = ref('')
 
 const currentPage = ref(1)
 const pageSize = ref(10)
@@ -99,7 +110,7 @@ const handleSizeChange = (newSize) => {
 }
 
 // 数据获取
-const fetchMaterialDetails = async (page = 1, size = 10) => {
+const fetchMaterialDetails = async (pageNum = 1, pageSize = 10) => {
   loading.value = true
   try {
     // 模拟API调用
@@ -161,13 +172,133 @@ const fetchMaterialDetails = async (page = 1, size = 10) => {
 }
 
 // 选择确认处理
-const handleSelectionConfirm = (selectedMaterial) => {
+// 加载物资选择数据
+const loadMaterialSelectionData = async (keyword = '') => {
+  selectionLoading.value = true
+  try {
+    const params = {
+      page: selectionPage.value - 1,
+      size: selectionPageSize.value
+    }
+    
+    if (keyword && keyword.trim()) {
+      params.keyword = keyword.trim()
+    }
+    
+    const response = await queryMaterialBaseInfoWithPrices(params)
+    if (response && response.data && response.data.content) {
+      // 直接进行价格维度的扁平化，与MaterialSelectionDialog的formattedData逻辑一致
+      const flattenedData = []
+      
+      response.data.content.forEach(item => {
+        const materialBaseInfo = item.materialBaseInfo || {}
+        const priceList = item.priceList || []
+        
+        // 如果有价格数据，每个价格创建一条记录
+        if (priceList.length > 0) {
+          priceList.forEach(price => {
+            flattenedData.push({
+              // 原始数据，包含物资和价格信息
+              originalData: {
+                materialBaseInfo,
+                priceInfo: price,
+                fullItem: item
+              },
+              
+              // 物资信息
+              materialName: materialBaseInfo.materialName || '-',
+              specificationModel: materialBaseInfo.specificationModel || '-',
+              unit: materialBaseInfo.unit || '-',
+              type: materialBaseInfo.type || '-',
+              materialCode: materialBaseInfo.materialCode || '-',
+              
+              // 价格信息
+              taxPrice: price.taxPrice !== undefined && price.taxPrice !== null 
+                ? parseFloat(price.taxPrice).toFixed(2) 
+                : '0.00',
+              quarter: price.quarter || '-',
+              priceId: price.id,
+              baseInfoId: price.baseInfoId,
+              
+              // 兼容旧格式的字段映射
+              material_name: materialBaseInfo.materialName,
+              specification_model: materialBaseInfo.specificationModel,
+              tax_price: price.taxPrice,
+              id: materialBaseInfo.id
+            })
+          })
+        } else {
+          // 如果没有价格数据，仍然创建一条记录但价格字段为空
+          flattenedData.push({
+            originalData: {
+              materialBaseInfo,
+              priceInfo: null,
+              fullItem: item
+            },
+            
+            materialName: materialBaseInfo.materialName || '-',
+            specificationModel: materialBaseInfo.specificationModel || '-',
+            unit: materialBaseInfo.unit || '-',
+            type: materialBaseInfo.type || '-',
+            materialCode: materialBaseInfo.materialCode || '-',
+            
+            taxPrice: '-',
+            quarter: '-',
+            priceId: null,
+            baseInfoId: materialBaseInfo.id,
+            
+            material_name: materialBaseInfo.materialName,
+            specification_model: materialBaseInfo.specificationModel,
+            tax_price: null,
+            id: materialBaseInfo.id
+          })
+        }
+      })
+      
+      materialSelectionList.value = flattenedData
+      selectionTotal.value = response.data.totalElements || 0
+    } else {
+      materialSelectionList.value = []
+      selectionTotal.value = 0
+    }
+  } catch (error) {
+    console.error('加载物资选择数据失败:', error)
+    ElMessage.error('加载数据失败')
+    materialSelectionList.value = []
+    selectionTotal.value = 0
+  } finally {
+    selectionLoading.value = false
+  }
+}
+
+// 处理物资选择
+const handleMaterialSelection = (selectedMaterial) => {
   if (currentRow.value && selectedMaterial) {
     // 更新选中的材料信息
     Object.assign(currentRow.value, selectedMaterial)
     ElMessage.success('材料选择成功')
   }
   showSelectionDialog.value = false
+}
+
+// 处理分页变化
+const handleSelectionPageChange = (page) => {
+  selectionPage.value = page
+  loadMaterialSelectionData(selectionSearchKeyword.value)
+}
+
+// 处理页大小变化
+const handleSelectionSizeChange = (size) => {
+  selectionPageSize.value = size
+  selectionPage.value = 1
+  loadMaterialSelectionData(selectionSearchKeyword.value)
+}
+
+// 处理搜索
+const handleSelectionSearch = (keyword) => {
+  selectionSearchKeyword.value = keyword
+  selectionPage.value = 1
+  loadMaterialSelectionData(keyword)
 }
 
 const handleBack = () => {

@@ -823,38 +823,75 @@ const loadMaterialSelectionData = async (keyword = '') => {
     const response = await queryMaterialBaseInfoWithPrices(params)
     console.log('【调试】加载物资选择数据:', response)
     if (response && response.data && response.data.content) {
-      // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
-      materialSelectionList.value = response.data.content.map((item) => {
+      // 直接进行价格维度的扁平化，与MaterialSelectionDialog的formattedData逻辑一致
+      const flattenedData = []
+      
+      response.data.content.forEach(item => {
         const materialBaseInfo = item.materialBaseInfo || {}
         const priceList = item.priceList || []
-
-        // 获取最新价格（第一个价格选项，因为按季度降序排序）
-        const latestPrice = priceList.length > 0 ? priceList[0] : null
-
-        return {
-          // 原始数据，用于选择时传递完整信息
-          originalData: item,
-
-          // 显示字段，适配MaterialSelectionDialog组件
-          id: materialBaseInfo.id,
-          material_name: materialBaseInfo.materialName,
-          specification_model: materialBaseInfo.specificationModel,
-          unit: materialBaseInfo.unit,
-          code: materialBaseInfo.materialCode,
-
-          // 价格信息
-          tax_price: latestPrice ? latestPrice.taxPrice : null,
-          quarter: latestPrice ? latestPrice.quarter : null,
-
-          // 兼容MaterialSelectionDialog的formattedData计算属性
-          materialName: materialBaseInfo.materialName,
-          specificationModel: materialBaseInfo.specificationModel,
-          latestPrice: latestPrice ? parseFloat(latestPrice.taxPrice).toFixed(2) : null,
-          latestQuarter: latestPrice ? latestPrice.quarter : null,
-          priceCount: priceList.length,
-          type: materialBaseInfo.type
+        
+        // 如果有价格数据，每个价格创建一条记录
+        if (priceList.length > 0) {
+          priceList.forEach(price => {
+            flattenedData.push({
+              // 原始数据，包含物资和价格信息
+              originalData: {
+                materialBaseInfo,
+                priceInfo: price,
+                fullItem: item
+              },
+              
+              // 物资信息
+              materialName: materialBaseInfo.materialName || '-',
+              specificationModel: materialBaseInfo.specificationModel || '-',
+              unit: materialBaseInfo.unit || '-',
+              type: materialBaseInfo.type || '-',
+              materialCode: materialBaseInfo.materialCode || '-',
+              
+              // 价格信息 - 确保价格正确显示，包括0价格
+              taxPrice: price.taxPrice !== undefined && price.taxPrice !== null 
+                ? parseFloat(price.taxPrice).toFixed(2) 
+                : '0.00',
+              quarter: price.quarter || '-',
+              priceId: price.id,
+              baseInfoId: price.baseInfoId,
+              
+              // 兼容旧格式的字段映射
+              material_name: materialBaseInfo.materialName,
+              specification_model: materialBaseInfo.specificationModel,
+              tax_price: price.taxPrice,
+              id: materialBaseInfo.id
+            })
+          })
+        } else {
+          // 如果没有价格数据，仍然创建一条记录但价格字段为空
+          flattenedData.push({
+            originalData: {
+              materialBaseInfo,
+              priceInfo: null,
+              fullItem: item
+            },
+            
+            materialName: materialBaseInfo.materialName || '-',
+            specificationModel: materialBaseInfo.specificationModel || '-',
+            unit: materialBaseInfo.unit || '-',
+            type: materialBaseInfo.type || '-',
+            materialCode: materialBaseInfo.materialCode || '-',
+            
+            taxPrice: '-',
+            quarter: '-',
+            priceId: null,
+            baseInfoId: materialBaseInfo.id,
+            
+            material_name: materialBaseInfo.materialName,
+            specification_model: materialBaseInfo.specificationModel,
+            tax_price: null,
+            id: materialBaseInfo.id
+          })
         }
       })
+      
+      materialSelectionList.value = flattenedData
 
       selectionTotal.value = response.data.totalElements || 0
     } else {

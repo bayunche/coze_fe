@@ -515,17 +515,35 @@ const fetchDbMaterialList = async (
     if (result && result.data) {
       const { content, totalElements } = result.data
 
-      // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
+      // 直接进行扁平化处理，与MaterialSelectionDialog的formattedData逻辑一致
+      // 由于这个API没有价格数据，每个物资创建一条无价格记录
       dbMaterialList.value = content.map((item) => ({
-        id: item.id,
+        // 原始数据，包含物资信息
+        originalData: {
+          materialBaseInfo: item,
+          priceInfo: null,
+          fullItem: item
+        },
+        
+        // 物资信息
+        materialName: item.materialName || '-',
+        specificationModel: item.specificationModel || '-',
+        unit: item.unit || '-',
+        type: item.type || '-',
+        materialCode: item.materialCode || '-',
+        
+        // 价格信息为空，因为这个API不提供价格
+        taxPrice: '-',
+        quarter: '-',
+        priceId: null,
+        baseInfoId: item.id,
+        
+        // 兼容旧格式的字段映射
         material_name: item.materialName,
         specification_model: item.specificationModel,
-        tax_price: '', // API响应中没有价格信息，设为空
-        quarter: '', // API响应中没有季度信息，设为空
-        unit: item.unit,
-        code: item.materialCode,
-        // 保留原始数据
-        originalData: item
+        tax_price: null,
+        id: item.id,
+        code: item.materialCode
       }))
 
       dbMaterialTotal.value = totalElements
