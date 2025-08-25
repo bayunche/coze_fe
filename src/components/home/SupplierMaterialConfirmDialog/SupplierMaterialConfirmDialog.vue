@@ -175,31 +175,106 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="220" fixed="right" align="center">
+        <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
-            <!-- 无匹配时显示选择按钮 -->
-            <el-button 
-              v-if="row.matchedType === 0 && row.confirmResult !== 1"
-              type="warning" 
-              size="small"
-              @click="handleSelectFromDatabase(row)"
-            >
-              从数据库中选择数据
-            </el-button>
-            <!-- 有匹配时显示确认按钮 -->
-            <el-button 
-              v-else
-              type="primary" 
-              size="small"
-              :disabled="row.confirmResult === 1"
-              @click="handleConfirm(row)"
-            >
-              {{ row.confirmResult === 1 ? '已确认' : '确认' }}
-            </el-button>
+            <!-- 根据匹配类型显示不同的操作 -->
+            <div v-if="row.matchedType === 0 && row.confirmResult !== 1">
+              <!-- 无匹配时显示选择按钮 -->
+              <el-button 
+                type="warning" 
+                size="small"
+                @click="handleSelectFromDatabase(row)"
+              >
+                从数据库中选择数据
+              </el-button>
+            </div>
+            <div v-else-if="row.matchedType === 1 && row.confirmResult !== 1">
+              <!-- 精确匹配时显示下拉框选择 -->
+              <div class="select-container">
+                <el-select
+                  v-model="row.selectedMaterial"
+                  placeholder="选择物资"
+                  value-key="matchedId"
+                  @change="handleMaterialSelectChange(row, $event)"
+                  size="small"
+                  style="width: 100%; margin-bottom: 4px"
+                >
+                  <el-option
+                    v-for="item in row.materialOptions || []"
+                    :key="item.matchedId"
+                    :label="`${item.name || '-'} ${item.specification || '-'}`"
+                    :value="item"
+                  />
+                </el-select>
+                <el-select
+                  v-model="row.selectedPriceQuarter"
+                  placeholder="选择价格和季度"
+                  value-key="id"
+                  @change="handlePriceQuarterChange(row, $event)"
+                  size="small"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in row.priceQuarterOptions || []"
+                    :key="item.id"
+                    :label="`¥${item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '-'} (${item.quarter || '-'})`"
+                    :value="item"
+                  />
+                </el-select>
+              </div>
+            </div>
+            <div v-else-if="[2, 3].includes(row.matchedType) && row.confirmResult !== 1">
+              <!-- 相似匹配和历史匹配时显示下拉框选择 -->
+              <div class="select-container">
+                <el-select
+                  v-model="row.selectedMaterial"
+                  placeholder="选择物资"
+                  value-key="matchedId"
+                  @change="handleMaterialSelectChange(row, $event)"
+                  size="small"
+                  style="width: 100%; margin-bottom: 4px"
+                >
+                  <el-option
+                    v-for="item in row.materialOptions || []"
+                    :key="item.matchedId"
+                    :label="`${item.name || '-'} ${item.specification || '-'}`"
+                    :value="item"
+                  />
+                </el-select>
+                <el-select
+                  v-model="row.selectedPriceQuarter"
+                  placeholder="选择价格和季度"
+                  value-key="id"
+                  @change="handlePriceQuarterChange(row, $event)"
+                  size="small"
+                  style="width: 100%"
+                >
+                  <el-option
+                    v-for="item in row.priceQuarterOptions || []"
+                    :key="item.id"
+                    :label="`¥${item.taxPrice !== null && item.taxPrice !== undefined ? item.taxPrice : '-'} (${item.quarter || '-'})`"
+                    :value="item"
+                  />
+                </el-select>
+              </div>
+            </div>
+            <div v-else>
+              <!-- 其他情况或已确认状态显示确认按钮 -->
+              <el-button 
+                type="primary" 
+                size="small"
+                :disabled="row.confirmResult === 1"
+                @click="handleConfirm(row)"
+              >
+                {{ row.confirmResult === 1 ? '已确认' : '确认' }}
+              </el-button>
+            </div>
+            <!-- 更多选项按钮 -->
             <el-button 
               type="text" 
               size="small"
               @click="handleViewOptions(row)"
+              style="margin-top: 4px"
             >
               更多选项
             </el-button>
@@ -333,6 +408,54 @@ const pendingCount = computed(() => {
   return materialData.value.filter(item => item.confirmResult !== 1).length
 })
 
+// 处理物资项目，为下拉框选择初始化必要字段
+const processItemForSelection = (item) => {
+  const processedItem = { ...item }
+  
+  // 初始化下拉框相关字段
+  processedItem.selectedMaterial = null
+  processedItem.selectedPriceQuarter = null
+  processedItem.materialOptions = []
+  processedItem.priceQuarterOptions = []
+  processedItem.isUserConfirmed = false
+  
+  // 根据匹配类型处理数据
+  if (processedItem.matchOptions && processedItem.matchOptions.length > 0) {
+    // 处理匹配选项为物资选择选项
+    processedItem.materialOptions = processedItem.matchOptions.map(option => ({
+      matchedId: option.matchedId || option.id,
+      name: option.baseInfo?.materialName || option.materialName || '-',
+      specification: option.baseInfo?.specifications || option.specifications || '-',
+      unit: option.baseInfo?.unit || option.unit || '-'
+    }))
+    
+    // 如果已经有推荐的匹配，设置为选中状态
+    if (processedItem.recommendedBaseDataId) {
+      const currentMatch = processedItem.materialOptions.find(opt => 
+        opt.matchedId === processedItem.recommendedBaseDataId
+      )
+      if (currentMatch) {
+        processedItem.selectedMaterial = currentMatch
+        
+        // 如果有推荐价格ID，初始化价格选项
+        if (processedItem.recommendedPriceId && processedItem.recommendedPrice) {
+          processedItem.selectedPriceQuarter = {
+            id: processedItem.recommendedPriceId,
+            taxPrice: processedItem.recommendedPrice,
+            quarter: processedItem.recommendedPriceQuarter || '-'
+          }
+          processedItem.priceQuarterOptions = [processedItem.selectedPriceQuarter]
+        }
+      }
+    } else if (processedItem.materialOptions.length > 0) {
+      // 没有推荐匹配时，默认选择第一个
+      processedItem.selectedMaterial = processedItem.materialOptions[0]
+    }
+  }
+  
+  return processedItem
+}
+
 // 获取解析结果数据
 const fetchData = async () => {
   if (!props.taskId) return
@@ -367,7 +490,7 @@ const fetchData = async () => {
       response = await querySupplierMaterialsComplex(params)
       
       if (response && response.data) {
-        materialData.value = response.data.content || []
+        materialData.value = (response.data.content || []).map(item => processItemForSelection(item))
         statistics.value = response.data.statistics || {}
         total.value = response.data.page?.totalElements || 0
       }
@@ -379,7 +502,7 @@ const fetchData = async () => {
       })
       
       if (response && response.content) {
-        materialData.value = response.content
+        materialData.value = response.content.map(item => processItemForSelection(item))
         total.value = response.totalElements || 0
         statistics.value = null
       }
@@ -441,6 +564,75 @@ const getRowClassName = ({ row }) => {
     return 'confirmed-row'
   }
   return 'pending-row'
+}
+
+// 处理物资选择变化
+const handleMaterialSelectChange = async (row, selectedMaterial) => {
+  console.log('物资选择变化:', { row, selectedMaterial })
+  
+  row.selectedMaterial = selectedMaterial
+  row.selectedPriceQuarter = null
+  row.priceQuarterOptions = []
+
+  if (selectedMaterial && selectedMaterial.matchedId) {
+    try {
+      // 获取价格选项 - 使用相同的API逻辑
+      const response = await queryMaterialBaseInfoWithPrices({
+        baseInfoId: selectedMaterial.matchedId
+      })
+      
+      if (response && response.content && response.content.length > 0) {
+        const materialInfo = response.content[0]
+        if (materialInfo.priceList && materialInfo.priceList.length > 0) {
+          row.priceQuarterOptions = materialInfo.priceList.map(price => ({
+            id: price.id,
+            taxPrice: price.taxPrice,
+            quarter: price.quarter,
+            baseInfoId: price.baseInfoId
+          }))
+          
+          // 如果只有一个价格选项，自动选择
+          if (row.priceQuarterOptions.length === 1) {
+            row.selectedPriceQuarter = row.priceQuarterOptions[0]
+            handlePriceQuarterChange(row, row.priceQuarterOptions[0])
+          }
+        }
+      }
+    } catch (error) {
+      console.error('获取价格信息失败:', error)
+      ElMessage.error('获取价格信息失败')
+    }
+  }
+  
+  // 标记用户已手动选择
+  row.isUserConfirmed = true
+}
+
+// 处理价格季度选择变化
+const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
+  console.log('价格季度选择变化:', { row, selectedPriceQuarter })
+  
+  row.selectedPriceQuarter = selectedPriceQuarter
+
+  // 更新行显示的匹配信息
+  if (row.selectedMaterial) {
+    row.recommendedBaseName = row.selectedMaterial.name
+    row.recommendedBaseSpec = row.selectedMaterial.specification
+  }
+  
+  if (selectedPriceQuarter) {
+    row.recommendedPrice = selectedPriceQuarter.taxPrice
+    row.recommendedPriceQuarter = selectedPriceQuarter.quarter
+  }
+
+  // 更新推荐数据ID，用于保存
+  row.recommendedBaseDataId = row.selectedMaterial?.matchedId || null
+  row.recommendedPriceId = selectedPriceQuarter?.id || null
+  
+  // 标记用户已手动选择
+  row.isUserConfirmed = true
+  
+  console.log('更新后的行数据:', row)
 }
 
 // 确认单个物资
@@ -1277,128 +1469,37 @@ watch(() => props.show, (newShow) => {
   color: var(--theme-text-secondary);
 }
 
-/* 价格信息样式 - 统一使用包装器样式 */
-.price-info,
+/* 简洁的表格样式 */
+.select-container {
+  width: 100%;
+}
+
+/* 价格信息简洁显示 */
 .price-info-wrapper {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
-.price-info .price-text,
 .price-info-wrapper .price-text {
-  font-weight: 500;
   color: var(--theme-success);
-  margin-bottom: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.price-info .price-quarter,
-.price-info-wrapper .price-quarter {
-  font-size: 11px;
-  color: var(--theme-text-secondary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 按钮样式优化 */
-:deep(.el-button) {
-  border-radius: 6px;
   font-weight: 500;
-  transition: all 0.3s ease;
 }
 
-:deep(.el-button--primary) {
-  background: var(--theme-primary) !important;
-  border-color: var(--theme-primary) !important;
-  color: var(--theme-text-inverse) !important;
+.price-info-wrapper .price-quarter {
+  font-size: 12px;
+  color: var(--theme-text-secondary);
 }
 
-:deep(.el-button--primary:hover) {
-  opacity: 0.8;
-  transform: translateY(-1px);
-}
-
-:deep(.el-button--success) {
-  background: var(--theme-success) !important;
-  border-color: var(--theme-success) !important;
-  color: var(--theme-text-inverse) !important;
-}
-
-:deep(.el-button--success:hover) {
-  opacity: 0.8;
-  transform: translateY(-1px);
-}
-
-:deep(.el-button--warning) {
-  background: var(--theme-warning) !important;
-  border-color: var(--theme-warning) !important;
-  color: var(--theme-text-inverse) !important;
-}
-
-:deep(.el-button--text) {
-  color: var(--theme-primary) !important;
-}
-
-:deep(.el-button--text:hover) {
-  color: var(--theme-primary) !important;
-  background: rgba(var(--theme-primary-rgb), 0.1) !important;
-}
-
-/* 分页样式优化 */
-:deep(.el-pagination) {
+/* 推荐信息简洁显示 */
+.recommend-info .material-name {
   color: var(--theme-text-primary);
+  margin: 0 0 2px 0;
 }
 
-:deep(.el-pagination .el-pager li) {
-  background: var(--theme-bg-secondary);
-  color: var(--theme-text-primary);
-  border: 1px solid var(--theme-border-secondary);
-}
-
-:deep(.el-pagination .el-pager li.is-active) {
-  background: var(--theme-primary) !important;
-  color: var(--theme-text-inverse) !important;
-  border-color: var(--theme-primary) !important;
-}
-
-:deep(.el-pagination .btn-prev),
-:deep(.el-pagination .btn-next) {
-  background: var(--theme-bg-secondary);
-  color: var(--theme-text-primary);
-  border: 1px solid var(--theme-border-secondary);
-}
-
-:deep(.el-pagination .btn-prev:hover),
-:deep(.el-pagination .btn-next:hover) {
-  color: var(--theme-primary);
-}
-
-/* 输入框和选择器样式 */
-:deep(.el-input__wrapper) {
-  background-color: var(--theme-bg-secondary) !important;
-  border-color: var(--theme-border-secondary) !important;
-  border-radius: 6px;
-}
-
-:deep(.el-input__inner) {
-  color: var(--theme-text-primary) !important;
-}
-
-:deep(.el-input__wrapper:hover) {
-  border-color: var(--theme-primary) !important;
-}
-
-:deep(.el-input__wrapper.is-focus) {
-  border-color: var(--theme-primary) !important;
-  box-shadow: 0 0 0 2px rgba(var(--theme-primary-rgb), 0.2) !important;
-}
-
-:deep(.el-select .el-input .el-input__wrapper) {
-  background-color: var(--theme-bg-secondary) !important;
+.recommend-info .material-spec {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  margin: 0;
 }
 
 /* 响应式设计 */
