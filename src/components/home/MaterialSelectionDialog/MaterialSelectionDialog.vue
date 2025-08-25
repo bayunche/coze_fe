@@ -144,8 +144,20 @@ const formattedData = computed(() => {
   props.dataList.forEach((item, itemIndex) => {
     console.log(`【MaterialSelectionDialog 调试】处理第 ${itemIndex + 1} 个物资:`, item)
     
-    const materialBaseInfo = item.materialBaseInfo || item
-    const priceList = item.priceList || []
+    // 检查数据结构并正确访问 materialBaseInfo 和 priceList
+    let materialBaseInfo, priceList
+    
+    if (item.originalData) {
+      // 如果数据已经被格式化过，从 originalData 中获取
+      materialBaseInfo = item.originalData.materialBaseInfo || item
+      priceList = item.originalData.priceList || []
+      console.log(`【MaterialSelectionDialog 调试】从 originalData 访问数据`)
+    } else {
+      // 如果是直接的 API 数据格式
+      materialBaseInfo = item.materialBaseInfo || item
+      priceList = item.priceList || []
+      console.log(`【MaterialSelectionDialog 调试】从直接数据访问`)
+    }
     
     console.log(`【MaterialSelectionDialog 调试】物资基础信息:`, materialBaseInfo)
     console.log(`【MaterialSelectionDialog 调试】价格列表:`, priceList)
