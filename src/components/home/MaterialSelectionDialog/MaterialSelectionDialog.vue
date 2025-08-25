@@ -144,9 +144,11 @@ const formattedData = computed(() => {
           type: materialBaseInfo.type || '-',
           materialCode: materialBaseInfo.materialCode || '-',
           
-          // 价格信息
-          taxPrice: parseFloat(price.taxPrice).toFixed(2),
-          quarter: price.quarter,
+          // 价格信息 - 确保价格正确显示，包括0价格
+          taxPrice: price.taxPrice !== undefined && price.taxPrice !== null 
+            ? parseFloat(price.taxPrice).toFixed(2) 
+            : '0.00',
+          quarter: price.quarter || '-',
           priceId: price.id,
           baseInfoId: price.baseInfoId,
           
