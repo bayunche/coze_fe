@@ -343,7 +343,7 @@ import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
   confirmSupplierMaterialData,
-  queryMaterialBaseInfoWithPrices
+  queryMaterialBaseInfo
 } from '@/utils/backendWorkflow.js'
 
 // 导入常量和工具函数
@@ -809,16 +809,38 @@ const handleViewOptions = async (row) => {
 const loadMaterialSelectionData = async (keyword = '') => {
   selectionLoading.value = true
   try {
-    const response = await queryMaterialBaseInfoWithPrices({
-      keyword: keyword,
-      page: selectionPage.value - 1,
+    // 构建请求参数，页码从0开始
+    const params = {
+      page: selectionPage.value - 1, // API 页码从0开始，UI从1开始
       size: selectionPageSize.value
-    })
+    }
 
-    if (response && response.content) {
-      materialSelectionList.value = response.content
-      selectionTotal.value = response.totalElements || 0
+    // 如果有搜索条件，添加到参数中
+    if (keyword && keyword.trim()) {
+      params.keyword = keyword.trim()
+    }
+
+    const response = await queryMaterialBaseInfo(params)
+    
+    if (response && response.data) {
+      const { content, totalElements } = response.data
+
+      // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
+      materialSelectionList.value = content.map((item) => ({
+        id: item.id,
+        material_name: item.materialName,
+        specification_model: item.specificationModel,
+        tax_price: '', // API响应中没有价格信息，设为空
+        quarter: '', // API响应中没有季度信息，设为空
+        unit: item.unit,
+        code: item.materialCode,
+        // 保留原始数据
+        originalData: item
+      }))
+
+      selectionTotal.value = totalElements
     } else {
+      console.warn('API返回数据为空')
       materialSelectionList.value = []
       selectionTotal.value = 0
     }
@@ -843,27 +865,24 @@ const handleMaterialSelection = (selectedMaterial) => {
     )
 
     if (item) {
-      // 获取物资基础信息
-      const materialBaseInfo = selectedMaterial.materialBaseInfo || selectedMaterial
-      const priceList = selectedMaterial.priceList || []
-
-      // 选择第一个价格（如果有）
-      const firstPrice = priceList.length > 0 ? priceList[0] : null
-
-      // 更新物资信息
-      item.confirmedBaseName = materialBaseInfo.materialName
-      item.confirmedBaseSpec =
-        materialBaseInfo.specificationModel || materialBaseInfo.specifications
-      item.confirmedPrice = firstPrice ? firstPrice.taxPrice : null
-      item.confirmedPriceQuarter = firstPrice ? firstPrice.quarter : null
+      // 更新物资信息，参考OwnerMaterialAlignPage的逻辑
+      item.confirmedBaseName = selectedMaterial.material_name
+      item.confirmedBaseSpec = selectedMaterial.specification_model
+      item.confirmedPrice = null // 基础数据API没有价格信息
+      item.confirmedPriceQuarter = null
 
       // 标记用户已从数据库中选择了数据
       item.hasUserSelectedData = true
-      // 保存用户选择的数据ID
-      item.selectedBaseDataId = materialBaseInfo.id
-      item.selectedPriceId = firstPrice ? firstPrice.id : null
+      // 保存用户选择的数据ID，优先使用originalData中的id
+      item.selectedBaseDataId = selectedMaterial.originalData?.id || selectedMaterial.id || selectedMaterial.code
+      item.selectedPriceId = null // 基础数据API没有价格ID
       // 标记为用户修改过的数据
       item.isUserModified = true
+
+      console.log('物资选择完成:', {
+        materialName: item.materialName,
+        selectedMaterial: selectedMaterial
+      })
     }
 
     ElMessage.success('数据选择成功，请点击确认按钮完成确认')
