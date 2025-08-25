@@ -745,27 +745,35 @@ const getMatchTypeTagInfo = (matchedType) => {
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
+  console.log(`【调试】getBaseInfoName - row.id: ${row.id}, confirmResult: ${row.confirmResult}, hasUserSelectedData: ${row.hasUserSelectedData}, confirmedBaseName: ${row.confirmedBaseName}`)
+  
   // 最优先：如果用户已确认选择，显示确认的数据
   if (row.confirmResult === 1 && row.confirmedBaseName) {
+    console.log('【调试】getBaseInfoName - 返回已确认的数据:', row.confirmedBaseName)
     return row.confirmedBaseName
   }
   
   // 如果用户已选择但未确认，显示选择的数据
   if (row.hasUserSelectedData && row.confirmedBaseName) {
+    console.log('【调试】getBaseInfoName - 返回用户选择的数据:', row.confirmedBaseName)
     return row.confirmedBaseName
   }
 
   // 优先从直接的baseInfo获取
   if (row.baseInfo && row.baseInfo.materialName) {
+    console.log('【调试】getBaseInfoName - 返回baseInfo数据:', row.baseInfo.materialName)
     return row.baseInfo.materialName
   }
 
   // 从matchOptions中获取第一个匹配的基础数据
   if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
+    console.log('【调试】getBaseInfoName - 返回matchOptions数据:', row.matchOptions[0].baseInfo.materialName)
     return row.matchOptions[0].baseInfo.materialName
   }
 
-  return row.recommendedBaseName || '无匹配'
+  const fallback = row.recommendedBaseName || '无匹配'
+  console.log('【调试】getBaseInfoName - 返回后备数据:', fallback)
+  return fallback
 }
 
 // 获取基础信息规格
@@ -795,18 +803,23 @@ const getBaseInfoSpec = (row) => {
 
 // 获取价格文本
 const getPriceText = (row) => {
+  console.log(`【调试】getPriceText - row.id: ${row.id}, confirmResult: ${row.confirmResult}, hasUserSelectedData: ${row.hasUserSelectedData}, confirmedPrice: ${row.confirmedPrice}`)
+  
   // 最优先：如果用户已确认选择，显示确认的价格
   if (row.confirmResult === 1 && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
+    console.log('【调试】getPriceText - 返回已确认的价格:', row.confirmedPrice)
     return `¥${formatNumber(row.confirmedPrice)}`
   }
   
   // 如果用户已选择但未确认，显示选择的价格
   if (row.hasUserSelectedData && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
+    console.log('【调试】getPriceText - 返回用户选择的价格:', row.confirmedPrice)
     return `¥${formatNumber(row.confirmedPrice)}`
   }
 
   // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.taxPrice) {
+    console.log('【调试】getPriceText - 返回priceInfo价格:', row.priceInfo.taxPrice)
     return `¥${formatNumber(row.priceInfo.taxPrice)}`
   }
 
@@ -816,11 +829,14 @@ const getPriceText = (row) => {
     if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
       // 取最新的价格（通常是第一个）
       const latestPrice = matchOption.priceOptions[0]
+      console.log('【调试】getPriceText - 返回matchOptions价格:', latestPrice.taxPrice)
       return `¥${formatNumber(latestPrice.taxPrice)}`
     }
   }
 
-  return row.recommendedPrice ? `¥${formatNumber(row.recommendedPrice)}` : '无价格'
+  const fallback = row.recommendedPrice ? `¥${formatNumber(row.recommendedPrice)}` : '无价格'
+  console.log('【调试】getPriceText - 返回后备价格:', fallback)
+  return fallback
 }
 
 // 获取价格季度
@@ -971,13 +987,21 @@ const loadMaterialSelectionData = async (keyword = '') => {
 
 // 处理物资选择
 const handleMaterialSelection = (selectedMaterial) => {
-  if (!selectedMaterial || !currentMaterial.value) return
+  console.log('【调试】handleMaterialSelection 开始，接收参数:', selectedMaterial)
+  console.log('【调试】currentMaterial.value:', currentMaterial.value)
+  
+  if (!selectedMaterial || !currentMaterial.value) {
+    console.log('【调试】参数缺失，退出')
+    return
+  }
 
   try {
     const item = materialData.value.find(
       (item) =>
         item.id === currentMaterial.value.id || item.taskDataId === currentMaterial.value.taskDataId
     )
+    
+    console.log('【调试】找到的 item:', item)
 
     if (item) {
       // 现在 selectedMaterial 已经是价格维度的数据
@@ -992,25 +1016,46 @@ const handleMaterialSelection = (selectedMaterial) => {
         quarter: selectedMaterial.quarter,
         id: selectedMaterial.priceId
       }
+      
+      console.log('【调试】解析出的物资基础信息:', materialBaseInfo)
+      console.log('【调试】解析出的价格信息:', priceInfo)
 
-      // 更新物资信息
-      item.confirmedBaseName = materialBaseInfo.materialName || selectedMaterial.materialName
-      item.confirmedBaseSpec = materialBaseInfo.specificationModel || selectedMaterial.specificationModel
-      item.confirmedPrice = priceInfo.taxPrice || selectedMaterial.taxPrice
-      item.confirmedPriceQuarter = priceInfo.quarter || selectedMaterial.quarter
-
-      // 标记用户已从数据库中选择了数据
-      item.hasUserSelectedData = true
-      // 保存用户选择的数据ID
-      item.selectedBaseDataId = materialBaseInfo.id || selectedMaterial.baseInfoId
-      item.selectedPriceId = priceInfo.id || selectedMaterial.priceId
-      // 标记为用户修改过的数据
-      item.isUserModified = true
+      // 更新物资信息 - 使用Vue的响应式赋值
+      const confirmBaseName = materialBaseInfo.materialName || selectedMaterial.materialName
+      const confirmBaseSpec = materialBaseInfo.specificationModel || selectedMaterial.specificationModel
+      const confirmPrice = priceInfo.taxPrice || selectedMaterial.taxPrice
+      const confirmPriceQuarter = priceInfo.quarter || selectedMaterial.quarter
+      
+      // 确保响应式更新 - 先保存原始对象的索引
+      const itemIndex = materialData.value.findIndex(
+        (dataItem) =>
+          dataItem.id === currentMaterial.value.id || dataItem.taskDataId === currentMaterial.value.taskDataId
+      )
+      
+      if (itemIndex !== -1) {
+        // 直接更新数组中的对象属性，确保Vue能检测到变化
+        materialData.value[itemIndex].confirmedBaseName = confirmBaseName
+        materialData.value[itemIndex].confirmedBaseSpec = confirmBaseSpec
+        materialData.value[itemIndex].confirmedPrice = confirmPrice
+        materialData.value[itemIndex].confirmedPriceQuarter = confirmPriceQuarter
+        materialData.value[itemIndex].hasUserSelectedData = true
+        materialData.value[itemIndex].selectedBaseDataId = materialBaseInfo.id || selectedMaterial.baseInfoId
+        materialData.value[itemIndex].selectedPriceId = priceInfo.id || selectedMaterial.priceId
+        materialData.value[itemIndex].isUserModified = true
+        
+        console.log('【调试】更新后的 item:', materialData.value[itemIndex])
+        console.log('【调试】确认的物资名称:', confirmBaseName)
+        console.log('【调试】确认的规格:', confirmBaseSpec)
+        console.log('【调试】确认的价格:', confirmPrice)
+      }
 
       console.log('物资选择完成:', {
         materialName: item.materialName,
         selectedMaterial: selectedMaterial,
-        selectedPrice: priceInfo
+        selectedPrice: priceInfo,
+        confirmedBaseName: confirmBaseName,
+        confirmedBaseSpec: confirmBaseSpec,
+        confirmedPrice: confirmPrice
       })
     }
 
