@@ -192,14 +192,8 @@
                   row.matchOptions.length > 0
                 "
               >
-                <!-- 调试信息 -->
-                <div v-if="false" style="font-size: 10px; color: #666; margin-bottom: 2px">
-                  调试: selectedMaterial={{ !!row.selectedMaterial }}, selectedPriceQuarter={{
-                    !!row.selectedPriceQuarter
-                  }}
-                </div>
                 <el-select
-                  v-model="row.selectedMaterial"
+                  v-model="row.selectedMaterialId"
                   placeholder="选择物资"
                   size="small"
                   style="width: 100%; margin-bottom: 5px"
@@ -211,11 +205,11 @@
                     :label="`${option.baseInfo?.materialName || '未知'} ${
                       option.baseInfo?.specifications || ''
                     }`"
-                    :value="option"
+                    :value="option.matchedId"
                   />
                 </el-select>
                 <el-select
-                  v-model="row.selectedPriceQuarter"
+                  v-model="row.selectedPriceId"
                   placeholder="选择价格和季度"
                   size="small"
                   style="width: 100%"
@@ -225,7 +219,7 @@
                     v-for="priceOption in row.selectedMaterial?.priceOptions || []"
                     :key="priceOption.priceId"
                     :label="`¥${formatNumber(priceOption.taxPrice)} (${priceOption.quarter})`"
-                    :value="priceOption"
+                    :value="priceOption.priceId"
                   />
                 </el-select>
               </div>
@@ -1151,42 +1145,56 @@ watch(
 )
 
 // 新增：物资选择处理函数
-const handleMaterialSelectChange = async (row, selectedMaterial) => {
-  console.log('物资选择变化:', selectedMaterial)
-  row.selectedMaterial = selectedMaterial
-  row.selectedPriceQuarter = null
+const handleMaterialSelectChange = async (row, selectedMaterialId) => {
+  console.log('物资选择变化 ID:', selectedMaterialId)
+  
+  // 根据 ID 找到对应的物资对象
+  const selectedMaterial = row.matchOptions?.find(option => option.matchedId === selectedMaterialId)
+  console.log('找到的物资对象:', selectedMaterial)
+  
+  if (selectedMaterial) {
+    row.selectedMaterial = selectedMaterial
+    row.selectedMaterialId = selectedMaterialId
+    row.selectedPriceQuarter = null
+    row.selectedPriceId = null
 
-  // 如果有价格选项，默认选择第一个
-  if (
-    selectedMaterial &&
-    selectedMaterial.priceOptions &&
-    selectedMaterial.priceOptions.length > 0
-  ) {
-    row.selectedPriceQuarter = selectedMaterial.priceOptions[0]
-    // 自动触发价格选择变化
-    handlePriceQuarterChange(row, selectedMaterial.priceOptions[0])
+    // 如果有价格选项，默认选择第一个
+    if (selectedMaterial.priceOptions && selectedMaterial.priceOptions.length > 0) {
+      const firstPrice = selectedMaterial.priceOptions[0]
+      row.selectedPriceQuarter = firstPrice
+      row.selectedPriceId = firstPrice.priceId
+      // 自动触发价格选择变化
+      handlePriceQuarterChange(row, firstPrice.priceId)
+    }
   }
 
   row.isUserModified = true
 }
 
 // 新增：价格季度选择处理函数
-const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
-  console.log('价格季度选择变化:', selectedPriceQuarter)
-  row.selectedPriceQuarter = selectedPriceQuarter
+const handlePriceQuarterChange = (row, selectedPriceId) => {
+  console.log('价格季度选择变化 ID:', selectedPriceId)
+  
+  // 根据 ID 找到对应的价格对象
+  const selectedPriceQuarter = row.selectedMaterial?.priceOptions?.find(price => price.priceId === selectedPriceId)
+  console.log('找到的价格对象:', selectedPriceQuarter)
+  
+  if (selectedPriceQuarter) {
+    row.selectedPriceQuarter = selectedPriceQuarter
+    row.selectedPriceId = selectedPriceId
 
-  // 更新显示的匹配信息
-  if (row.selectedMaterial && selectedPriceQuarter) {
-    // 更新表格显示的数据
-    row.matchedBaseName = row.selectedMaterial.baseInfo.materialName
-    row.matchedBaseSpec = row.selectedMaterial.baseInfo.specifications
-    row.matchedPrice = selectedPriceQuarter.taxPrice
-    row.matchedPriceQuarter = selectedPriceQuarter.quarter
+    // 更新显示的匹配信息
+    if (row.selectedMaterial) {
+      // 更新表格显示的数据
+      row.matchedBaseName = row.selectedMaterial.baseInfo.materialName
+      row.matchedBaseSpec = row.selectedMaterial.baseInfo.specifications
+      row.matchedPrice = selectedPriceQuarter.taxPrice
+      row.matchedPriceQuarter = selectedPriceQuarter.quarter
 
-    // 标记为用户修改
-    row.isUserModified = true
-    row.selectedBaseDataId = row.selectedMaterial.matchedId
-    row.selectedPriceId = selectedPriceQuarter.priceId
+      // 标记为用户修改
+      row.isUserModified = true
+      row.selectedBaseDataId = row.selectedMaterial.matchedId
+    }
   }
 }
 
@@ -1264,18 +1272,16 @@ const handleQuickConfirm = async (row) => {
 
 // 新增：初始化行数据
 const initializeRowData = (row) => {
-  console.log('【调试-初始化】开始处理行数据:', row.materialName)
-  console.log('【调试-初始化】matchOptions:', row.matchOptions)
-
   // 创建响应式对象，包含原始数据和新增的选择状态
   const reactiveRow = reactive({
     ...row,
-    // 为每行添加响应式的选择状态
+    // 为每行添加响应式的选择状态，使用 ID 方式避免对象引用问题
     selectedMaterial: null,
     selectedPriceQuarter: null,
+    selectedMaterialId: null,
+    selectedPriceId: null,
     isUserModified: false,
     selectedBaseDataId: null,
-    selectedPriceId: null,
     // 标识用户是否已从数据库中选择了数据，用于控制确认按钮的显示
     hasUserSelectedData: false
   })
@@ -1283,12 +1289,15 @@ const initializeRowData = (row) => {
   // 如果有匹配选项，预选第一个
   if (reactiveRow.matchOptions && reactiveRow.matchOptions.length > 0) {
     const firstMatch = reactiveRow.matchOptions[0]
-    console.log('【调试-初始化】预选第一个匹配项:', firstMatch)
+    // 设置对象引用（用于获取数据）
     reactiveRow.selectedMaterial = firstMatch
+    reactiveRow.selectedMaterialId = firstMatch.matchedId
 
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
-      reactiveRow.selectedPriceQuarter = firstMatch.priceOptions[0]
-      console.log('【调试-初始化】预选第一个价格:', firstMatch.priceOptions[0])
+      const firstPrice = firstMatch.priceOptions[0]
+      reactiveRow.selectedPriceQuarter = firstPrice
+      reactiveRow.selectedPriceId = firstPrice.priceId
+      reactiveRow.selectedBaseDataId = firstMatch.matchedId
     }
   }
 
@@ -1296,9 +1305,7 @@ const initializeRowData = (row) => {
   if (reactiveRow.recommendedBaseDataId && reactiveRow.recommendedPriceId) {
     reactiveRow.hasUserSelectedData = true
   }
-
-  console.log('【调试-初始化】最终 selectedMaterial:', reactiveRow.selectedMaterial)
-  console.log('【调试-初始化】最终 selectedPriceQuarter:', reactiveRow.selectedPriceQuarter)
+  
   return reactiveRow
 }
 
