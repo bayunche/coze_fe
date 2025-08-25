@@ -250,24 +250,27 @@
                 </el-select>
               </div>
 
-              <!-- 无匹配或其他情况：显示确认和更多选项按钮 -->
+              <!-- 无匹配或其他情况：显示从数据库选择按钮和条件性确认按钮 -->
               <div v-else>
+                <!-- 当有用户已选择的数据时才显示确认按钮 -->
                 <el-button
+                  v-if="row.hasUserSelectedData && row.confirmResult !== 1"
                   type="primary"
                   size="small"
-                  :disabled="row.confirmResult === 1"
                   @click="handleQuickConfirm(row)"
                   style="margin-bottom: 5px; width: 100%"
                 >
-                  {{ row.confirmResult === 1 ? '已确认' : '确认' }}
+                  确认
                 </el-button>
+                <!-- 从数据库中选择已有数据按钮 -->
                 <el-button
                   type="text"
                   size="small"
                   @click="handleViewOptions(row)"
                   style="width: 100%"
+                  :icon="row.hasUserSelectedData ? Edit : Plus"
                 >
-                  更多选项
+                  {{ row.hasUserSelectedData ? '重新选择数据' : '从数据库中选择已有数据' }}
                 </el-button>
               </div>
             </template>
@@ -303,12 +306,18 @@
       </div>
     </div>
 
-    <!-- 确认选项对话框 -->
-    <ConfirmOptionsDialog
+    <!-- 物资选择对话框 -->
+    <MaterialSelectionDialog
       v-model="showOptionsDialog"
-      :material-data="currentMaterial"
-      @confirm="handleOptionConfirm"
-      @close="showOptionsDialog = false"
+      :data-list="materialSelectionList"
+      :total="selectionTotal"
+      :page-num="selectionPage"
+      :page-size="selectionPageSize"
+      :loading="selectionLoading"
+      @select="handleMaterialSelection"
+      @page-change="handleSelectionPageChange"
+      @size-change="handleSelectionSizeChange"
+      @search="handleSelectionSearch"
     />
   </div>
 </template>
@@ -327,13 +336,14 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import ConfirmOptionsDialog from '@/components/home/SupplierMaterialConfirmDialog/ConfirmOptionsDialog.vue'
+import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog/MaterialSelectionDialog.vue'
 import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
-  confirmSupplierMaterialData
+  confirmSupplierMaterialData,
+  queryMaterialBaseInfoWithPrices
 } from '@/utils/backendWorkflow.js'
 
 // 导入常量和工具函数
@@ -368,6 +378,14 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const showOptionsDialog = ref(false)
 const currentMaterial = ref(null)
+
+// 物资选择相关数据
+const materialSelectionList = ref([])
+const selectionTotal = ref(0)
+const selectionPage = ref(1)
+const selectionPageSize = ref(10)
+const selectionLoading = ref(false)
+const selectionSearchKeyword = ref('')
 
 // 搜索和筛选参数
 const searchKeyword = ref('')
@@ -775,105 +793,107 @@ const getPriceQuarter = (row) => {
   return row.recommendedPriceQuarter || ''
 }
 
-// 确认单个物资
-const handleConfirm = async (row) => {
-  if (row.confirmResult === 1) {
-    ElMessage.info('该物资已确认')
-    return
-  }
 
-  // 检查是否有推荐数据或匹配选项
-  let baseDataId = row.recommendedBaseDataId
-  let priceId = row.recommendedPriceId
-
-  // 如果没有直接的推荐数据，尝试从matchOptions获取
-  if (!baseDataId && row.matchOptions && row.matchOptions.length > 0) {
-    const firstMatch = row.matchOptions[0]
-    baseDataId = firstMatch.matchedId
-
-    if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
-      priceId = firstMatch.priceOptions[0].priceId
-    }
-  }
-
-  if (!baseDataId || !priceId) {
-    ElMessage.warning('该物资缺少推荐的基础数据或价格数据，请点击"更多选项"手动选择')
-    return
-  }
-
-  try {
-    await ElMessageBox.confirm(`确认物资"${row.materialName}"的匹配结果？`, '确认操作', {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-
-    const confirmData = {
-      id: row.taskDataId || row.id, // 使用taskDataId作为主要标识符
-      confirmBaseDataId: baseDataId,
-      confirmPriceId: priceId
-    }
-
-    const result = await confirmSupplierMaterialData(confirmData)
-
-    if (result && result.code === 200) {
-      // 更新本地数据
-      row.confirmResult = 1
-      row.confirmType = result.data?.confirmType || 1
-      ElMessage.success('确认成功')
-    } else {
-      const errorMsg = result?.message || result?.msg || '确认失败'
-      ElMessage.error(errorMsg)
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('确认失败:', error)
-      const errorMsg =
-        error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
-      ElMessage.error(errorMsg)
-    }
-  }
-}
-
-// 查看更多选项
-const handleViewOptions = (row) => {
+// 查看更多选项 - 打开物资选择对话框
+const handleViewOptions = async (row) => {
   currentMaterial.value = row
+  // 重置选择相关数据
+  selectionPage.value = 1
+  selectionSearchKeyword.value = ''
+  
+  // 根据当前物资名称进行初始搜索
+  await loadMaterialSelectionData(row.materialName || '')
   showOptionsDialog.value = true
 }
 
-// 处理选项确认结果
-const handleOptionConfirm = async (confirmData) => {
+// 加载物资选择数据
+const loadMaterialSelectionData = async (keyword = '') => {
+  selectionLoading.value = true
   try {
-    const result = await confirmSupplierMaterialData({
-      id: confirmData.materialId,
-      confirmBaseDataId: confirmData.confirmBaseDataId,
-      confirmPriceId: confirmData.confirmPriceId
+    const response = await queryMaterialBaseInfoWithPrices({
+      keyword: keyword,
+      page: selectionPage.value - 1,
+      size: selectionPageSize.value
     })
-
-    if (result && result.code === 200) {
-      // 更新本地数据
-      const item = materialData.value.find((item) => item.id === confirmData.materialId)
-      if (item) {
-        item.confirmResult = 1
-        item.confirmType = result.data?.confirmType || 3
-        item.confirmedBaseName = confirmData.selectedBaseName
-        item.confirmedBaseSpec = confirmData.selectedBaseSpec
-        item.confirmedPrice = confirmData.selectedPrice
-        item.confirmedPriceQuarter = confirmData.selectedPriceQuarter
-      }
-      ElMessage.success('确认成功')
-      showOptionsDialog.value = false
+    
+    if (response && response.content) {
+      materialSelectionList.value = response.content
+      selectionTotal.value = response.totalElements || 0
     } else {
-      const errorMsg = result?.message || result?.msg || '确认失败'
-      ElMessage.error(errorMsg)
+      materialSelectionList.value = []
+      selectionTotal.value = 0
     }
   } catch (error) {
-    console.error('选项确认失败:', error)
-    const errorMsg =
-      error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
-    ElMessage.error(errorMsg)
+    console.error('加载物资选择数据失败:', error)
+    ElMessage.error('加载数据失败，请重试')
+    materialSelectionList.value = []
+    selectionTotal.value = 0
+  } finally {
+    selectionLoading.value = false
   }
 }
+
+// 处理物资选择
+const handleMaterialSelection = (selectedMaterial) => {
+  if (!selectedMaterial || !currentMaterial.value) return
+  
+  try {
+    const item = materialData.value.find((item) => 
+      item.id === currentMaterial.value.id || 
+      item.taskDataId === currentMaterial.value.taskDataId
+    )
+    
+    if (item) {
+      // 获取物资基础信息
+      const materialBaseInfo = selectedMaterial.materialBaseInfo || selectedMaterial
+      const priceList = selectedMaterial.priceList || []
+      
+      // 选择第一个价格（如果有）
+      const firstPrice = priceList.length > 0 ? priceList[0] : null
+      
+      // 更新物资信息
+      item.confirmedBaseName = materialBaseInfo.materialName
+      item.confirmedBaseSpec = materialBaseInfo.specificationModel || materialBaseInfo.specifications
+      item.confirmedPrice = firstPrice ? firstPrice.taxPrice : null
+      item.confirmedPriceQuarter = firstPrice ? firstPrice.quarter : null
+      
+      // 标记用户已从数据库中选择了数据
+      item.hasUserSelectedData = true
+      // 保存用户选择的数据ID
+      item.selectedBaseDataId = materialBaseInfo.id
+      item.selectedPriceId = firstPrice ? firstPrice.id : null
+      // 标记为用户修改过的数据
+      item.isUserModified = true
+    }
+    
+    ElMessage.success('数据选择成功，请点击确认按钮完成确认')
+    showOptionsDialog.value = false
+  } catch (error) {
+    console.error('保存选择失败:', error)
+    ElMessage.error('保存选择失败')
+  }
+}
+
+// 处理分页变化
+const handleSelectionPageChange = (page) => {
+  selectionPage.value = page
+  loadMaterialSelectionData(selectionSearchKeyword.value)
+}
+
+// 处理页大小变化
+const handleSelectionSizeChange = (size) => {
+  selectionPageSize.value = size
+  selectionPage.value = 1
+  loadMaterialSelectionData(selectionSearchKeyword.value)
+}
+
+// 处理搜索
+const handleSelectionSearch = (keyword) => {
+  selectionSearchKeyword.value = keyword
+  selectionPage.value = 1
+  loadMaterialSelectionData(keyword)
+}
+
 
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
@@ -1017,6 +1037,8 @@ const initializeRowData = (row) => {
   row.isUserModified = false
   row.selectedBaseDataId = null
   row.selectedPriceId = null
+  // 标识用户是否已从数据库中选择了数据，用于控制确认按钮的显示
+  row.hasUserSelectedData = false
 
   // 如果有匹配选项，预选第一个
   if (row.matchOptions && row.matchOptions.length > 0) {
@@ -1026,6 +1048,11 @@ const initializeRowData = (row) => {
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
       row.selectedPriceQuarter = firstMatch.priceOptions[0]
     }
+  }
+
+  // 检查是否有推荐数据，如果有则认为已有可用数据
+  if (row.recommendedBaseDataId && row.recommendedPriceId) {
+    row.hasUserSelectedData = true
   }
 
   return row
