@@ -96,8 +96,15 @@
         <!-- 操作列 -->
         <el-table-column label="操作" width="180" v-if="hasUnalignedMaterials">
           <template #default="{ row, $index }">
+            <!-- 精确匹配且未确认的操作按钮 -->
+            <div v-if="row.matchedType === 1 && !row.aligned">
+              <el-button type="success" size="small" @click="handleConfirmExactMaterial(row)">
+                确认
+              </el-button>
+            </div>
+
             <!-- 相似匹配的操作按钮 -->
-            <div v-if="row.matchedType === 2 && !row.aligned">
+            <div v-else-if="row.matchedType === 2 && !row.aligned">
               <el-button type="success" size="small" @click="handleConfirmSimilarMaterial(row)">
                 确认匹配
               </el-button>
@@ -178,14 +185,11 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter, useRoute } from 'vue-router'
 import { useOwnerMaterialStore, TaskStatus } from '@/stores/ownerMaterial'
 import {
-  queryUnmatchedBalanceResult,
   manualMatch,
-  queryBalanceResult,
   queryMaterialMatchStatus,
   queryMaterialBaseInfo
 } from '@/utils/backendWorkflow' // 导入接口
 import { ElTable, ElTableColumn, ElTag, ElSelect, ElOption } from 'element-plus'
-import { Warning, CircleCheck } from '@element-plus/icons-vue'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog'
 
 const router = useRouter()
@@ -214,10 +218,6 @@ const hasUnalignedMaterials = computed(() => {
   return allMaterials.value.some((material) => !material.aligned)
 })
 
-// 计算未匹配物资的数量
-const unmatchedCount = computed(() => {
-  return allMaterials.value.filter((material) => !material.aligned).length
-})
 
 // --- 数据库物资选择弹窗相关 ---
 const showDbMaterialDialog = ref(false)
@@ -406,6 +406,47 @@ async function handleSaveSingleMaterial(row) {
   } catch (error) {
     console.error(`保存物资 "${row.requestName}" 匹配信息失败:`, error)
     ElMessage.error(`保存失败: ${error.message}`)
+  }
+}
+
+// 确认精确匹配的物资
+async function handleConfirmExactMaterial(row) {
+  try {
+    // 验证必需的数据
+    if (!row.originalData.sourceId) {
+      throw new Error('缺少源记录ID (sourceId)')
+    }
+    if (!row.originalData.sourceType) {
+      throw new Error('缺少源记录类型 (sourceType)')
+    }
+    if (!row.originalData.baseDataId) {
+      throw new Error('缺少精确匹配的物料ID (baseDataId)')
+    }
+
+    const matchData = {
+      sourceId: row.originalData.sourceId,
+      sourceType: row.originalData.sourceType,
+      baseDataId: row.originalData.baseDataId
+    }
+
+    console.log('确认精确物资匹配:', {
+      materialName: row.requestName,
+      matchData
+    })
+
+    const response = await manualMatch(matchData)
+
+    if (response && response.code === 200) {
+      console.log(`物资 "${row.requestName}" 精确匹配确认成功:`, response.msg)
+      ElMessage.success(`物资 "${row.requestName}" 精确匹配确认成功！`)
+      // 刷新数据以更新整个列表的状态
+      fetchData()
+    } else {
+      throw new Error(response?.msg || '确认精确匹配失败，未知错误')
+    }
+  } catch (error) {
+    console.error(`确认精确匹配物资 "${row.requestName}" 失败:`, error)
+    ElMessage.error(`确认失败: ${error.message}`)
   }
 }
 
