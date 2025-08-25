@@ -113,7 +113,7 @@
         
         <el-table-column prop="materialName" label="物资名称" min-width="140" show-overflow-tooltip />
         
-        <el-table-column prop="specification" label="规格型号" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="specifications" label="规格型号" min-width="140" show-overflow-tooltip />
         
         <el-table-column prop="unit" label="单位" width="80" />
         
@@ -398,8 +398,21 @@ const handleConfirm = async (row) => {
     return
   }
   
-  // 检查是否有推荐数据
-  if (!row.recommendedBaseDataId || !row.recommendedPriceId) {
+  // 检查是否有推荐数据或匹配选项
+  let baseDataId = row.recommendedBaseDataId
+  let priceId = row.recommendedPriceId
+  
+  // 如果没有直接的推荐数据，尝试从matchOptions获取
+  if (!baseDataId && row.matchOptions && row.matchOptions.length > 0) {
+    const firstMatch = row.matchOptions[0]
+    baseDataId = firstMatch.matchedId
+    
+    if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
+      priceId = firstMatch.priceOptions[0].priceId
+    }
+  }
+  
+  if (!baseDataId || !priceId) {
     ElMessage.warning('该物资缺少推荐的基础数据或价格数据，请点击"更多选项"手动选择')
     return
   }
@@ -416,9 +429,9 @@ const handleConfirm = async (row) => {
     )
     
     const confirmData = {
-      id: row.id,
-      confirmBaseDataId: row.recommendedBaseDataId,
-      confirmPriceId: row.recommendedPriceId
+      id: row.taskDataId || row.id, // 使用taskDataId作为主要标识符
+      confirmBaseDataId: baseDataId,
+      confirmPriceId: priceId
     }
     
     const result = await confirmSupplierMaterialData(confirmData)
@@ -450,9 +463,22 @@ const handleBatchConfirm = async () => {
   }
   
   // 检查是否有缺少推荐数据的物资
-  const missingDataItems = pendingItems.filter(
-    item => !item.recommendedBaseDataId || !item.recommendedPriceId
-  )
+  const missingDataItems = pendingItems.filter(item => {
+    let baseDataId = item.recommendedBaseDataId
+    let priceId = item.recommendedPriceId
+    
+    // 如果没有直接的推荐数据，尝试从matchOptions获取
+    if (!baseDataId && item.matchOptions && item.matchOptions.length > 0) {
+      const firstMatch = item.matchOptions[0]
+      baseDataId = firstMatch.matchedId
+      
+      if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
+        priceId = firstMatch.priceOptions[0].priceId
+      }
+    }
+    
+    return !baseDataId || !priceId
+  })
   
   if (missingDataItems.length > 0) {
     ElMessage.warning(
@@ -474,13 +500,26 @@ const handleBatchConfirm = async () => {
     
     batchConfirming.value = true
     
-    const confirmPromises = pendingItems.map(item => 
-      confirmSupplierMaterialData({
-        id: item.id,
-        confirmBaseDataId: item.recommendedBaseDataId,
-        confirmPriceId: item.recommendedPriceId
+    const confirmPromises = pendingItems.map(item => {
+      let baseDataId = item.recommendedBaseDataId
+      let priceId = item.recommendedPriceId
+      
+      // 如果没有直接的推荐数据，尝试从matchOptions获取
+      if (!baseDataId && item.matchOptions && item.matchOptions.length > 0) {
+        const firstMatch = item.matchOptions[0]
+        baseDataId = firstMatch.matchedId
+        
+        if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
+          priceId = firstMatch.priceOptions[0].priceId
+        }
+      }
+      
+      return confirmSupplierMaterialData({
+        id: item.taskDataId || item.id,
+        confirmBaseDataId: baseDataId,
+        confirmPriceId: priceId
       })
-    )
+    })
     
     const results = await Promise.allSettled(confirmPromises)
     
@@ -598,33 +637,71 @@ const handleFilterChange = () => {
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
+  // 优先从直接的baseInfo获取
   if (row.baseInfo && row.baseInfo.materialName) {
     return row.baseInfo.materialName
   }
+  
+  // 从matchOptions中获取第一个匹配的基础数据
+  if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
+    return row.matchOptions[0].baseInfo.materialName
+  }
+  
   return row.recommendedBaseName || '无匹配'
 }
 
 // 获取基础信息规格
 const getBaseInfoSpec = (row) => {
+  // 优先从直接的baseInfo获取
   if (row.baseInfo && row.baseInfo.specifications) {
     return row.baseInfo.specifications
   }
+  
+  // 从matchOptions中获取第一个匹配的基础数据
+  if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
+    return row.matchOptions[0].baseInfo.specifications || ''
+  }
+  
   return row.recommendedBaseSpec || ''
 }
 
 // 获取价格文本
 const getPriceText = (row) => {
+  // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.taxPrice) {
     return `¥${formatNumber(row.priceInfo.taxPrice)}`
   }
+  
+  // 从matchOptions中获取第一个匹配选项的最新价格信息
+  if (row.matchOptions && row.matchOptions.length > 0) {
+    const matchOption = row.matchOptions[0]
+    if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
+      // 取最新的价格（通常是第一个）
+      const latestPrice = matchOption.priceOptions[0]
+      return `¥${formatNumber(latestPrice.taxPrice)}`
+    }
+  }
+  
   return row.recommendedPrice ? `¥${formatNumber(row.recommendedPrice)}` : '无价格'
 }
 
 // 获取价格季度
 const getPriceQuarter = (row) => {
+  // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.quarter) {
     return row.priceInfo.quarter
   }
+  
+  // 从matchOptions中获取第一个匹配选项的最新价格季度信息
+  if (row.matchOptions && row.matchOptions.length > 0) {
+    const matchOption = row.matchOptions[0]
+    if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
+      // 取最新的价格季度（通常是第一个）
+      const latestPrice = matchOption.priceOptions[0]
+      return latestPrice.quarter || ''
+    }
+  }
+  
   return row.recommendedPriceQuarter || ''
 }
 
