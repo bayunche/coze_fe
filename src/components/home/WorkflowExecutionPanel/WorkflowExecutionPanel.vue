@@ -96,9 +96,11 @@ const viewResultDetail = (message) => {
     // 传递完整的消息对象，而不是只传递任务ID
     emit('view-result-detail', message)
   } else if (isSupplierMaterialWorkflow(workflowName)) {
-    emit('view-material-result-detail', message.task)
-  } else if (isOwnerMaterialWorkflow(workflowName)) {
+    // 乙供物资工作流 -> 发射乙供物资结果详情事件
     emit('view-supplier-material-result-detail', message.task)
+  } else if (isOwnerMaterialWorkflow(workflowName)) {
+    // 甲供物资工作流 -> 发射甲供物资结果详情事件
+    emit('view-material-result-detail', message.task)
   }
 }
 

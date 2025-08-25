@@ -1,66 +1,100 @@
 <template>
   <el-dialog
-    title="乙供物资解析任务详情列表"
     v-model="dialogVisible"
-    width="60%"
-    :close-on-click-modal="false"
+    :title="DIALOG_CONFIG.TITLE"
+    :width="DIALOG_CONFIG.WIDTH"
+    :close-on-click-modal="DIALOG_CONFIG.CLOSE_ON_CLICK_MODAL"
     append-to-body
   >
-    <el-table :data="tableData" v-loading="loading" style="width: 100%">
-      <!-- 序号 -->
-      <el-table-column type="index" prop="" label="序号" width="60"></el-table-column>
-
-      <el-table-column prop="fileName" label="文件名称"></el-table-column>
-      <el-table-column prop="startTime" label="开始时间">
-        <template #default="{ row }">
-          {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
+    <el-table 
+      :data="tableData" 
+      v-loading="loading" 
+      style="width: 100%"
+    >
+      <el-table-column 
+        v-for="column in TABLE_COLUMNS"
+        :key="column.prop || column.label"
+        v-bind="column"
+      >
+        <!-- 开始时间列 -->
+        <template v-if="column.prop === 'startTime'" #default="{ row }">
+          <span>{{ formatStartTime(row.startTime) }}</span>
         </template>
-      </el-table-column>
-      <el-table-column prop="endTime" label="结束时间">
-        <template #default="{ row }">
-          {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
+        
+        <!-- 结束时间列 -->
+        <template v-else-if="column.prop === 'endTime'" #default="{ row }">
+          <span>{{ formatEndTime(row.endTime) }}</span>
         </template>
-      </el-table-column>
-      <el-table-column prop="taskDetailStatus" label="任务解析状态">
-        <template #default="{ row }">
+        
+        <!-- 任务解析状态列 -->
+        <template v-else-if="column.prop === 'taskDetailStatus'" #default="{ row }">
           <span>{{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}</span>
         </template>
-      </el-table-column>
-      <el-table-column prop="errorReason" label="失败原因">
-        <template #default="{ row }">
-          {{ row.errorReason || '无' }}
+        
+        <!-- 失败原因列 -->
+        <template v-else-if="column.prop === 'errorReason'" #default="{ row }">
+          <span>{{ formatErrorReason(row.errorReason) }}</span>
         </template>
-      </el-table-column>
-
-      <el-table-column label="操作">
-        <template #default="{ row }">
-          <el-button type="text" v-if="row.taskDetailStatus != -1" @click="handleViewDetail(row)"
-            >查看详情</el-button
+        
+        <!-- 操作列 -->
+        <template v-else-if="column.label === '操作'" #default="{ row }">
+          <!-- 查看详情按钮：当解析失败时隐藏（errorReason不为空且taskDetailStatus为-1） -->
+          <el-button 
+            v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+            type="text" 
+            @click="() => onViewDetail(row)"
           >
-          <el-button type="text" @click="downLoadFile(row)">查看源文件</el-button>
+            {{ BUTTON_LABELS.VIEW_DETAIL }}
+          </el-button>
+          <el-button 
+            type="text" 
+            @click="() => onDownloadFile(row)"
+          >
+            {{ BUTTON_LABELS.VIEW_SOURCE_FILE }}
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
+    
     <el-pagination
-      @size-change="handleSizeChange"
-      @current-change="handleCurrentChange"
+      @size-change="onSizeChange"
+      @current-change="onCurrentChange"
       :current-page="currentPage"
-      :page-sizes="[10, 20, 50, 100]"
+      :page-sizes="PAGINATION_CONFIG.PAGE_SIZES"
       :page-size="pageSize"
-      layout="total, sizes, prev, pager, next, jumper"
+      :layout="PAGINATION_CONFIG.LAYOUT"
       :total="total"
-      background
-      style="margin-top: 20px; text-align: right"
-    >
-    </el-pagination>
+      :background="PAGINATION_CONFIG.BACKGROUND"
+      :style="PAGINATION_CONFIG.STYLE"
+    />
   </el-dialog>
 </template>
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { ElMessage } from 'element-plus'
-import smartBrainService from '@/services/SmartBrainService.js'
 
+// 导入常量和工具函数
+import {
+  DIALOG_CONFIG,
+  TABLE_COLUMNS,
+  BUTTON_LABELS,
+  PAGINATION_CONFIG
+} from './constants.js'
+
+import {
+  formatTaskDetailStatus,
+  formatStartTime,
+  formatEndTime,
+  formatErrorReason,
+  viewDetail,
+  downloadFile,
+  onCurrentChange as utilOnCurrentChange,
+  onSizeChange as utilOnSizeChange,
+  createFetchDataFunction,
+  shouldFetchData
+} from './utils.js'
+
+// Props定义
 const props = defineProps({
   taskId: {
     type: [String, Number],
@@ -74,82 +108,58 @@ const props = defineProps({
 
 console.log('OwnerMaterialTaskParsingDetailDialog setup - initial modelValue:', props.modelValue)
 
-const formatTaskDetailStatus = (status, errorReason) => {
-  // 当 errorReason 不为空且 taskDetailStatus 为 -1 时，标记为解析失败
-  if (errorReason && Number(status) === -1) {
-    return '解析失败'
-  }
-
-  switch (Number(status)) {
-    case 0:
-      return '排队中'
-    case 1:
-      return '处理中'
-    case 2:
-      return '处理完成'
-    case 3:
-      return '已确认'
-    case -1:
-      return '错误中断'
-    default:
-      return '未知状态'
-  }
-}
+// Emits定义
 const emit = defineEmits(['update:modelValue', 'view-detail'])
 
+// 计算属性 - 对话框可见性
 const dialogVisible = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
+
+// 响应式数据
 const tableData = ref([])
 const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 
-const fetchDetailList = async () => {
-  loading.value = true
-  try {
-    // 调用后端接口获取任务详情列表，页码从0开始
-    const params = {
-      page: currentPage.value - 1, // 前端页码从1开始，后端从0开始
-      size: pageSize.value
-    }
+// 数据设置函数
+const setLoading = (value) => { loading.value = value }
+const setTableData = (data) => { tableData.value = data }
+const setTotal = (value) => { total.value = value }
+const setCurrentPage = (page) => { currentPage.value = page }
+const setPageSize = (size) => { pageSize.value = size }
 
-    const result = await smartBrainService.getTaskDetailsList(props.taskId, params)
+// 创建获取数据函数
+const fetchDetailList = createFetchDataFunction({
+  taskId: computed(() => props.taskId),
+  currentPage,
+  pageSize,
+  setLoading,
+  setTableData,
+  setTotal
+})
 
-    if (result && result.content && Array.isArray(result.content)) {
-      tableData.value = result.content
-      total.value = result.totalElements || 0
-    } else {
-      tableData.value = []
-      total.value = 0
-    }
-  } catch (error) {
-    console.error('获取甲供物资解析详情列表失败:', error)
-    ElMessage.error('获取甲供物资解析详情列表失败: ' + (error.message || '未知错误'))
-    tableData.value = []
-    total.value = 0
-  } finally {
-    loading.value = false
-  }
+// 事件处理函数
+const onViewDetail = (row) => {
+  // 传递 props 中的 taskId 和 row 中的信息
+  viewDetail(row, props.taskId, emit)
 }
 
-const handleViewDetail = (row) => {
-  console.log('【调试】甲供物资详情查看 - row对象:', row)
-
-  // 甲供物资应该使用对话框显示详情，而不是路由跳转
-  // 发出事件让父组件处理详情显示
-  emit('view-detail', {
-    taskId: props.taskId,
-    detailId: row.id || row.taskDetailId || row.detailId,
-    row: row
-  })
-
-  // 暂时不关闭当前弹窗，让用户可以继续查看列表
-  // dialogVisible.value = false
+const onDownloadFile = (row) => {
+  downloadFile(row)
 }
 
+const onCurrentChange = (page) => {
+  utilOnCurrentChange(page, setCurrentPage, fetchDetailList)
+}
+
+const onSizeChange = (size) => {
+  utilOnSizeChange(size, setPageSize, setCurrentPage, fetchDetailList)
+}
+
+// 监听对话框显示和任务ID变化
 watch(
   [dialogVisible, () => props.taskId],
   ([newDialogVisible, newTaskId]) => {
@@ -157,39 +167,173 @@ watch(
       newDialogVisible,
       newTaskId
     })
-    if (newDialogVisible && newTaskId) {
-      currentPage.value = 1 // 重置页码
+    
+    if (shouldFetchData(newDialogVisible, newTaskId)) {
+      setCurrentPage(1) // 重置页码
       fetchDetailList()
     }
   },
   { immediate: true } // 确保在组件初始化时如果条件满足就立即执行
 )
-
-// 处理分页变化
-const handleCurrentChange = (val) => {
-  currentPage.value = val
-  fetchDetailList()
-}
-
-const handleSizeChange = (val) => {
-  pageSize.value = val
-  currentPage.value = 1 // 改变每页大小时重置到第一页
-  fetchDetailList()
-}
-const downLoadFile = async (row) => {
-  console.log('下载源文件:', row)
-
-  try {
-    // 动态导入文件下载工具函数
-    const { downloadSourceFile } = await import('@/utils/fileDownload.js')
-    downloadSourceFile(row)
-  } catch (error) {
-    console.error('导入文件下载工具失败:', error)
-    ElMessage.error('下载功能加载失败')
-  }
-}
 </script>
 
 <style scoped>
-/* 样式可以根据需要添加 */
+/* OwnerMaterialTaskParsingDetailDialog 组件样式 */
+
+/* 对话框主体样式 */
+:deep(.el-dialog) {
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.el-dialog__header) {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+  padding: 20px 24px;
+}
+
+:deep(.el-dialog__title) {
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+}
+
+:deep(.el-dialog__close) {
+  color: white !important;
+  font-size: 18px;
+}
+
+:deep(.el-dialog__close:hover) {
+  color: #f0f0f0 !important;
+}
+
+:deep(.el-dialog__body) {
+  padding: 24px;
+  background: #fafafa;
+}
+
+/* 表格样式 */
+:deep(.el-table) {
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-table th) {
+  background: #f8f9fa !important;
+  color: #495057;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+:deep(.el-table td) {
+  border-bottom: 1px solid #eee;
+  padding: 12px 0;
+}
+
+:deep(.el-table tr:hover > td) {
+  background: #f8f9ff !important;
+}
+
+/* 按钮样式 */
+:deep(.el-button--text) {
+  color: #667eea;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+:deep(.el-button--text:hover) {
+  background: rgba(102, 126, 234, 0.1);
+  color: #5a6fd8;
+}
+
+/* 分页器样式 */
+:deep(.el-pagination) {
+  margin-top: 24px;
+  text-align: right;
+}
+
+:deep(.el-pagination .btn-next),
+:deep(.el-pagination .btn-prev) {
+  background: white;
+  color: #666;
+}
+
+:deep(.el-pagination .el-pager li.active) {
+  background: #667eea;
+  color: white;
+}
+
+:deep(.el-pagination .el-pager li:hover) {
+  color: #667eea;
+}
+
+/* 加载状态样式 */
+:deep(.el-loading-mask) {
+  border-radius: 6px;
+}
+
+/* 状态标签样式 */
+.status-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-processing {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-completed {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.status-failed {
+  background: #ffebee;
+  color: #c62828;
+}
+
+.status-confirmed {
+  background: #f3e5f5;
+  color: #7b1fa2;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  :deep(.el-dialog) {
+    width: 95% !important;
+    margin: 5vh auto;
+  }
+  
+  :deep(.el-dialog__body) {
+    padding: 16px;
+  }
+  
+  :deep(.el-table) {
+    font-size: 13px;
+  }
+  
+  :deep(.el-pagination) {
+    text-align: center;
+  }
+}
+
+/* 操作按钮区域样式 */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin-left: 0 !important;
+  margin-right: 8px;
+}
 </style>

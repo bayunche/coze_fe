@@ -91,7 +91,7 @@ export function useEventHandlers() {
   }
 
   /**
-   * 处理查看乙供物资结果详情
+   * 处理查看甲供物资(OwnerMaterial)结果详情
    * @param {string} taskId - 任务ID
    */
   const viewMaterialResultDetail = (taskId) => {
@@ -99,12 +99,12 @@ export function useEventHandlers() {
       materialDialogStore.ownerMaterialTaskParsingDetailTaskId = taskId
       materialDialogStore.showOwnerMaterialTaskParsingDetailDialog = true
     } else {
-      ElMessage.warning('没有可供解析的乙供物资任务ID。')
+      ElMessage.warning('没有可供解析的甲供物资任务ID。')
     }
   }
 
   /**
-   * 处理查看甲供物资结果详情
+   * 处理查看乙供物资(SupplierMaterial)结果详情
    * @param {string} taskId - 任务ID
    */
   const viewSupplierMaterialResultDetail = (taskId) => {
@@ -112,12 +112,12 @@ export function useEventHandlers() {
       materialDialogStore.supplierMaterialTaskParsingDetailTaskId = taskId
       materialDialogStore.showSupplierMaterialTaskParsingDetailDialog = true
     } else {
-      ElMessage.warning('没有可供解析的甲供物资任务ID。')
+      ElMessage.warning('没有可供解析的乙供物资任务ID。')
     }
   }
 
   /**
-   * 处理乙供物资详情查看事件
+   * 处理甲供物资(OwnerMaterial)详情查看事件
    * @param {Object} row - 行数据
    */
   const viewOwnerMaterialDetail = (row) => {
@@ -128,7 +128,7 @@ export function useEventHandlers() {
   }
 
   /**
-   * 处理甲供物资详情查看事件
+   * 处理乙供物资(SupplierMaterial)详情查看事件
    * @param {Object} row - 行数据
    */
   const viewSupplierMaterialDetail = (row) => {
