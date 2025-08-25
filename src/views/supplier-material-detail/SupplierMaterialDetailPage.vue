@@ -993,6 +993,8 @@ const loadMaterialSelectionData = async (keyword = '') => {
 const handleMaterialSelection = (selectedMaterial) => {
   console.log('【调试】handleMaterialSelection 开始，接收参数:', selectedMaterial)
   console.log('【调试】currentMaterial.value:', currentMaterial.value)
+  console.log('【调试】当前 materialData 总数:', materialData.value.length)
+  console.log('【调试】materialData 中所有的 taskDataId:', materialData.value.map(item => ({ taskDataId: item.taskDataId, materialName: item.materialName })))
   
   if (!selectedMaterial || !currentMaterial.value) {
     console.log('【调试】参数缺失，退出')
@@ -1006,15 +1008,21 @@ const handleMaterialSelection = (selectedMaterial) => {
         // 优先使用taskDataId进行精确匹配
         const matchByTaskDataId = item.taskDataId === currentMaterial.value.taskDataId
         // 如果taskDataId匹配失败，尝试使用id匹配（备用）
-        const matchById = item.id === currentMaterial.value.id
+        const matchById = currentMaterial.value.id && item.id === currentMaterial.value.id
         
-        console.log(`【调试】匹配检查 - item.taskDataId: ${item.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, 匹配结果: ${matchByTaskDataId}`)
+        console.log(`【调试】匹配检查 - item.taskDataId: ${item.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, item.id: ${item.id}, current.id: ${currentMaterial.value.id}, taskDataId匹配: ${matchByTaskDataId}, id匹配: ${matchById}`)
         
         return matchByTaskDataId || matchById
       }
     )
     
     console.log('【调试】找到的 item:', item)
+
+    if (!item) {
+      console.error('【错误】未找到匹配的物资项！currentMaterial:', currentMaterial.value)
+      ElMessage.error('未找到对应的物资项，无法更新数据')
+      return
+    }
 
     if (item) {
       // 现在 selectedMaterial 已经是价格维度的数据
