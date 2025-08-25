@@ -343,7 +343,7 @@ import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
   confirmSupplierMaterialData,
-  queryMaterialBaseInfo
+  queryMaterialBaseInfoWithPrices
 } from '@/utils/backendWorkflow.js'
 
 // 导入常量和工具函数
@@ -820,25 +820,43 @@ const loadMaterialSelectionData = async (keyword = '') => {
       params.keyword = keyword.trim()
     }
 
-    const response = await queryMaterialBaseInfo(params)
+    const response = await queryMaterialBaseInfoWithPrices(params)
     
-    if (response && response.data) {
-      const { content, totalElements } = response.data
-
+    if (response && response.content) {
       // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
-      materialSelectionList.value = content.map((item) => ({
-        id: item.id,
-        material_name: item.materialName,
-        specification_model: item.specificationModel,
-        tax_price: '', // API响应中没有价格信息，设为空
-        quarter: '', // API响应中没有季度信息，设为空
-        unit: item.unit,
-        code: item.materialCode,
-        // 保留原始数据
-        originalData: item
-      }))
+      materialSelectionList.value = response.content.map((item) => {
+        const materialBaseInfo = item.materialBaseInfo || {}
+        const priceList = item.priceList || []
+        
+        // 获取最新价格（第一个价格选项，因为按季度降序排序）
+        const latestPrice = priceList.length > 0 ? priceList[0] : null
+        
+        return {
+          // 原始数据，用于选择时传递完整信息
+          originalData: item,
+          
+          // 显示字段，适配MaterialSelectionDialog组件
+          id: materialBaseInfo.id,
+          material_name: materialBaseInfo.materialName,
+          specification_model: materialBaseInfo.specificationModel,
+          unit: materialBaseInfo.unit,
+          code: materialBaseInfo.materialCode,
+          
+          // 价格信息
+          tax_price: latestPrice ? latestPrice.taxPrice : null,
+          quarter: latestPrice ? latestPrice.quarter : null,
+          
+          // 兼容MaterialSelectionDialog的formattedData计算属性
+          materialName: materialBaseInfo.materialName,
+          specificationModel: materialBaseInfo.specificationModel,
+          latestPrice: latestPrice ? parseFloat(latestPrice.taxPrice).toFixed(2) : null,
+          latestQuarter: latestPrice ? latestPrice.quarter : null,
+          priceCount: priceList.length,
+          type: materialBaseInfo.type
+        }
+      })
 
-      selectionTotal.value = totalElements
+      selectionTotal.value = response.totalElements || 0
     } else {
       console.warn('API返回数据为空')
       materialSelectionList.value = []
@@ -865,23 +883,31 @@ const handleMaterialSelection = (selectedMaterial) => {
     )
 
     if (item) {
-      // 更新物资信息，参考OwnerMaterialAlignPage的逻辑
-      item.confirmedBaseName = selectedMaterial.material_name
-      item.confirmedBaseSpec = selectedMaterial.specification_model
-      item.confirmedPrice = null // 基础数据API没有价格信息
-      item.confirmedPriceQuarter = null
+      // 获取物资基础信息和价格列表
+      const materialBaseInfo = selectedMaterial.originalData?.materialBaseInfo || selectedMaterial
+      const priceList = selectedMaterial.originalData?.priceList || []
+      
+      // 选择第一个价格（最新季度的价格）
+      const firstPrice = priceList.length > 0 ? priceList[0] : null
+
+      // 更新物资信息
+      item.confirmedBaseName = materialBaseInfo.materialName || selectedMaterial.material_name
+      item.confirmedBaseSpec = materialBaseInfo.specificationModel || selectedMaterial.specification_model
+      item.confirmedPrice = firstPrice ? firstPrice.taxPrice : null
+      item.confirmedPriceQuarter = firstPrice ? firstPrice.quarter : null
 
       // 标记用户已从数据库中选择了数据
       item.hasUserSelectedData = true
-      // 保存用户选择的数据ID，优先使用originalData中的id
-      item.selectedBaseDataId = selectedMaterial.originalData?.id || selectedMaterial.id || selectedMaterial.code
-      item.selectedPriceId = null // 基础数据API没有价格ID
+      // 保存用户选择的数据ID
+      item.selectedBaseDataId = materialBaseInfo.id || selectedMaterial.id
+      item.selectedPriceId = firstPrice ? firstPrice.id : null
       // 标记为用户修改过的数据
       item.isUserModified = true
 
       console.log('物资选择完成:', {
         materialName: item.materialName,
-        selectedMaterial: selectedMaterial
+        selectedMaterial: selectedMaterial,
+        selectedPrice: firstPrice
       })
     }
 
