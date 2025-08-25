@@ -821,31 +821,31 @@ const loadMaterialSelectionData = async (keyword = '') => {
     }
 
     const response = await queryMaterialBaseInfoWithPrices(params)
-    
+    console.log('【调试】加载物资选择数据:', response)
     if (response && response.content) {
       // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
       materialSelectionList.value = response.content.map((item) => {
         const materialBaseInfo = item.materialBaseInfo || {}
         const priceList = item.priceList || []
-        
+
         // 获取最新价格（第一个价格选项，因为按季度降序排序）
         const latestPrice = priceList.length > 0 ? priceList[0] : null
-        
+
         return {
           // 原始数据，用于选择时传递完整信息
           originalData: item,
-          
+
           // 显示字段，适配MaterialSelectionDialog组件
           id: materialBaseInfo.id,
           material_name: materialBaseInfo.materialName,
           specification_model: materialBaseInfo.specificationModel,
           unit: materialBaseInfo.unit,
           code: materialBaseInfo.materialCode,
-          
+
           // 价格信息
           tax_price: latestPrice ? latestPrice.taxPrice : null,
           quarter: latestPrice ? latestPrice.quarter : null,
-          
+
           // 兼容MaterialSelectionDialog的formattedData计算属性
           materialName: materialBaseInfo.materialName,
           specificationModel: materialBaseInfo.specificationModel,
@@ -886,13 +886,14 @@ const handleMaterialSelection = (selectedMaterial) => {
       // 获取物资基础信息和价格列表
       const materialBaseInfo = selectedMaterial.originalData?.materialBaseInfo || selectedMaterial
       const priceList = selectedMaterial.originalData?.priceList || []
-      
+
       // 选择第一个价格（最新季度的价格）
       const firstPrice = priceList.length > 0 ? priceList[0] : null
 
       // 更新物资信息
       item.confirmedBaseName = materialBaseInfo.materialName || selectedMaterial.material_name
-      item.confirmedBaseSpec = materialBaseInfo.specificationModel || selectedMaterial.specification_model
+      item.confirmedBaseSpec =
+        materialBaseInfo.specificationModel || selectedMaterial.specification_model
       item.confirmedPrice = firstPrice ? firstPrice.taxPrice : null
       item.confirmedPriceQuarter = firstPrice ? firstPrice.quarter : null
 
