@@ -323,7 +323,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 
 // 定义 props 接收路由参数
 const props = defineProps({
@@ -1284,31 +1284,35 @@ const handleQuickConfirm = async (row) => {
 
 // 新增：初始化行数据
 const initializeRowData = (row) => {
-  // 为每行添加选择状态
-  row.selectedMaterial = null
-  row.selectedPriceQuarter = null
-  row.isUserModified = false
-  row.selectedBaseDataId = null
-  row.selectedPriceId = null
-  // 标识用户是否已从数据库中选择了数据，用于控制确认按钮的显示
-  row.hasUserSelectedData = false
+  // 创建响应式对象，包含原始数据和新增的选择状态
+  const reactiveRow = reactive({
+    ...row,
+    // 为每行添加响应式的选择状态
+    selectedMaterial: null,
+    selectedPriceQuarter: null,
+    isUserModified: false,
+    selectedBaseDataId: null,
+    selectedPriceId: null,
+    // 标识用户是否已从数据库中选择了数据，用于控制确认按钮的显示
+    hasUserSelectedData: false
+  })
 
   // 如果有匹配选项，预选第一个
-  if (row.matchOptions && row.matchOptions.length > 0) {
-    const firstMatch = row.matchOptions[0]
-    row.selectedMaterial = firstMatch
+  if (reactiveRow.matchOptions && reactiveRow.matchOptions.length > 0) {
+    const firstMatch = reactiveRow.matchOptions[0]
+    reactiveRow.selectedMaterial = firstMatch
 
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
-      row.selectedPriceQuarter = firstMatch.priceOptions[0]
+      reactiveRow.selectedPriceQuarter = firstMatch.priceOptions[0]
     }
   }
 
   // 检查是否有推荐数据，如果有则认为已有可用数据
-  if (row.recommendedBaseDataId && row.recommendedPriceId) {
-    row.hasUserSelectedData = true
+  if (reactiveRow.recommendedBaseDataId && reactiveRow.recommendedPriceId) {
+    reactiveRow.hasUserSelectedData = true
   }
 
-  return row
+  return reactiveRow
 }
 
 // 新增：保存解析结果
@@ -2096,19 +2100,8 @@ const handleBack = () => {
 /* 行状态样式 - 使用主题变量 */
 :deep(.confirmed-row) {
   background-color: rgba(var(--theme-success-rgb), 0.1) !important;
-  position: relative;
-  backdrop-filter: var(--theme-backdrop-blur, none);
-}
 
-:deep(.confirmed-row::before) {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, var(--theme-success), rgba(var(--theme-success-rgb), 0.7));
-  border-radius: 0 4px 4px 0;
+  backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
 :deep(.confirmed-row:hover > td.el-table__cell) {
