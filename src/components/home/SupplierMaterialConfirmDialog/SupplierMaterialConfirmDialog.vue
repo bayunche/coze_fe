@@ -545,11 +545,7 @@ const handleBatchConfirm = async () => {
   })
   
   if (missingDataItems.length > 0) {
-    let message = `有 ${missingDataItems.length} 个物资缺少推荐数据，请先手动处理这些物资`
-    if (noMatchItems.length > 0) {
-      message += `，另外还有 ${noMatchItems.length} 个无匹配物资需要手动选择数据`
-    }
-    ElMessage.warning(message)
+    ElMessage.warning(`有 ${missingDataItems.length} 个物资缺少推荐数据，请先手动处理这些物资`)
     return
   }
   
