@@ -21,7 +21,7 @@
           </template>
         </el-input>
       </div>
-      
+
       <el-table
         :data="formattedData"
         v-loading="loading"
@@ -33,11 +33,26 @@
         stripe
         :row-class-name="getRowClassName"
       >
-        <el-table-column prop="materialName" label="物资名称" min-width="150" show-overflow-tooltip></el-table-column>
-        <el-table-column prop="specificationModel" label="规格型号" min-width="150" show-overflow-tooltip></el-table-column>
+        <el-table-column
+          prop="materialName"
+          label="物资名称"
+          min-width="150"
+          show-overflow-tooltip
+        ></el-table-column>
+        <el-table-column
+          prop="specificationModel"
+          label="规格型号"
+          min-width="150"
+          show-overflow-tooltip
+        ></el-table-column>
         <el-table-column prop="unit" label="单位" width="80"></el-table-column>
         <el-table-column prop="type" label="类型" width="100"></el-table-column>
-        <el-table-column prop="materialCode" label="物资编码" width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column
+          prop="materialCode"
+          label="物资编码"
+          width="120"
+          show-overflow-tooltip
+        ></el-table-column>
         <el-table-column label="价格" width="120" align="right">
           <template #default="{ row }">
             <div class="price-info">
@@ -121,14 +136,13 @@ const selectedMaterial = ref(null)
 // 格式化数据：将物资+价格列表转换为以价格为维度的扁平化数据
 const formattedData = computed(() => {
   const result = []
-  
-  props.dataList.forEach(item => {
+
+  props.dataList.forEach((item) => {
     const materialBaseInfo = item.materialBaseInfo || item
     const priceList = item.priceList || []
-    
     // 如果有价格数据，每个价格创建一条记录
     if (priceList.length > 0) {
-      priceList.forEach(price => {
+      priceList.forEach((price) => {
         result.push({
           // 原始数据，包含物资和价格信息
           originalData: {
@@ -136,28 +150,30 @@ const formattedData = computed(() => {
             priceInfo: price,
             fullItem: item
           },
-          
+
           // 物资信息
           materialName: materialBaseInfo.materialName || '-',
           specificationModel: materialBaseInfo.specificationModel || '-',
           unit: materialBaseInfo.unit || '-',
           type: materialBaseInfo.type || '-',
           materialCode: materialBaseInfo.materialCode || '-',
-          
+
           // 价格信息 - 确保价格正确显示，包括0价格
-          taxPrice: price.taxPrice !== undefined && price.taxPrice !== null 
-            ? parseFloat(price.taxPrice).toFixed(2) 
-            : '0.00',
+          taxPrice:
+            price.taxPrice !== undefined && price.taxPrice !== null
+              ? parseFloat(price.taxPrice).toFixed(2)
+              : '0.00',
           quarter: price.quarter || '-',
           priceId: price.id,
           baseInfoId: price.baseInfoId,
-          
+
           // 兼容旧格式的字段映射
           material_name: materialBaseInfo.materialName,
           specification_model: materialBaseInfo.specificationModel,
           tax_price: price.taxPrice
         })
       })
+      console.log('formattedData', result)
     } else {
       // 如果没有价格数据，仍然创建一条记录但价格字段为空
       result.push({
@@ -166,25 +182,25 @@ const formattedData = computed(() => {
           priceInfo: null,
           fullItem: item
         },
-        
+
         materialName: materialBaseInfo.materialName || '-',
         specificationModel: materialBaseInfo.specificationModel || '-',
         unit: materialBaseInfo.unit || '-',
         type: materialBaseInfo.type || '-',
         materialCode: materialBaseInfo.materialCode || '-',
-        
+
         taxPrice: '-',
         quarter: '-',
         priceId: null,
         baseInfoId: materialBaseInfo.id,
-        
+
         material_name: materialBaseInfo.materialName,
         specification_model: materialBaseInfo.specificationModel,
         tax_price: null
       })
     }
   })
-  
+
   return result
 })
 
@@ -237,9 +253,11 @@ const onSizeChange = (size) => {
 
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
-  if (selectedMaterial.value && 
-      selectedMaterial.value.priceId === row.priceId &&
-      selectedMaterial.value.baseInfoId === row.baseInfoId) {
+  if (
+    selectedMaterial.value &&
+    selectedMaterial.value.priceId === row.priceId &&
+    selectedMaterial.value.baseInfoId === row.baseInfoId
+  ) {
     return 'selected-row'
   }
   return 'selectable-row'
@@ -431,24 +449,24 @@ const getRowClassName = ({ row }) => {
     width: 95% !important;
     margin: 5vh auto !important;
   }
-  
+
   .search-input {
     max-width: none;
   }
-  
+
   :deep(.el-table .el-table__cell) {
     padding: 8px 4px !important;
     font-size: 12px !important;
   }
-  
+
   .pagination-wrapper {
     margin-top: 16px;
   }
-  
+
   :deep(.el-pagination) {
     text-align: center !important;
   }
-  
+
   :deep(.el-pagination .el-pagination__sizes),
   :deep(.el-pagination .el-pagination__jump) {
     display: none !important;
