@@ -37,7 +37,9 @@
         
         <!-- 操作列 -->
         <template v-else-if="column.label === '操作'" #default="{ row }">
+          <!-- 查看详情按钮：当解析失败时隐藏（errorReason不为空且taskDetailStatus为-1） -->
           <el-button 
+            v-if="!(row.errorReason && row.taskDetailStatus == -1)"
             type="text" 
             @click="() => onViewDetail(row)"
           >

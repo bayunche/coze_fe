@@ -8,7 +8,6 @@ import {
   getContractAnalysisResults,
   editSupplierMaterialParsingResults,
   confirmSupplierMaterialParsingResults,
-  editContractAnalysisResults,
   updateContractAnalysisResult
 } from '@/utils/backendWorkflow.js'
 
@@ -400,8 +399,88 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         // 乙供物资解析结果编辑
         results = await editSupplierMaterialParsingResults(payloads)
       } else {
-        // 合同解析结果编辑
-        results = await editContractAnalysisResults(payloads)
+        // 合同解析结果编辑 - 批量调用单行修改接口
+        console.log('【诊断】saveAll: 开始批量调用单行修改接口保存编辑')
+        
+        // 批量调用单行修改接口
+        const updatePromises = payloads.map(async (item) => {
+          try {
+            // 构造字段数据
+            const fieldData = []
+            Object.keys(item).forEach((key) => {
+              if (key !== 'editing' && key !== 'id' && key !== 'taskDetailId' && key !== 'taskId' && key !== 'resultStatus') {
+                fieldData.push({
+                  columnCode: key,
+                  columnName: translateHeader(key),
+                  columnValue: item[key] || ''
+                })
+              }
+            })
+            
+            const updateData = {
+              taskDetailId: item.taskDetailId,
+              resultStatus: item.resultStatus || 0, // 保持原有状态，不强制确认
+              fieldData: fieldData,
+              remark: '批量保存合同解析结果编辑'
+            }
+            
+            const result = await updateContractAnalysisResult(updateData)
+            return {
+              success: result && result.success,
+              item: item,
+              result: result,
+              error: null
+            }
+          } catch (error) {
+            console.error(`保存记录失败 (ID: ${item.id}):`, error)
+            return {
+              success: false,
+              item: item,
+              result: null,
+              error: error
+            }
+          }
+        })
+        
+        // 等待所有请求完成
+        const updateResults = await Promise.allSettled(updatePromises)
+        
+        // 统计结果
+        let successCount = 0
+        let failureCount = 0
+        const failureDetails = []
+        
+        updateResults.forEach((result, index) => {
+          if (result.status === 'fulfilled' && result.value.success) {
+            successCount++
+          } else {
+            failureCount++
+            const item = payloads[index]
+            const errorMsg = result.status === 'fulfilled' 
+              ? (result.value.result?.message || result.value.error?.message || '未知错误')
+              : result.reason?.message || '请求失败'
+            failureDetails.push(`记录 ${item.id}: ${errorMsg}`)
+          }
+        })
+        
+        // 模拟原有的返回格式
+        if (failureCount === 0) {
+          results = { code: 200, message: '成功' }
+        } else {
+          results = { 
+            code: failureCount === payloads.length ? 500 : 206, // 206 表示部分成功
+            message: failureCount === payloads.length ? '全部失败' : '部分成功',
+            successCount,
+            failureCount,
+            failureDetails
+          }
+          
+          if (failureCount < payloads.length) {
+            console.warn('批量保存失败详情:', failureDetails)
+          } else {
+            console.error('批量保存失败详情:', failureDetails)
+          }
+        }
       }
 
       if (results && results.code === 200) {
