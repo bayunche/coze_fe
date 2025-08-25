@@ -27,8 +27,8 @@
                 parsingResultStore.formatCellValue(scope.row[column.prop], column.prop)
               }}</span>
               <template v-else>
-                <!-- resultStatus 字段不允许编辑，始终显示为只读 -->
-                <span v-if="column.prop === 'resultStatus'">{{
+                <!-- resultStatus 和 id 字段不允许编辑，始终显示为只读 -->
+                <span v-if="column.prop === 'resultStatus' || column.prop === 'id'">{{
                   parsingResultStore.formatCellValue(scope.row[column.prop], column.prop)
                 }}</span>
                 <div v-else-if="parsingResultStore.isLongText(scope.row[column.prop])">
