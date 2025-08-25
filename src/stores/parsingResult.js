@@ -358,11 +358,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       } else {
         // 合同解析使用新接口
         result = await updateContractAnalysisResult(updateData)
+        console.log('【诊断】单行保存并确认返回值:', result)
       }
 
       if (result && result.success) {
-        ElMessage.success(`成功确认 ${result.updatedFieldCount || 0} 个字段`)
-        chatStore.addMessage(`已确认单行解析结果`, 'system')
+        ElMessage.success(result.message || `成功处理 ${result.updatedFieldCount || 0} 个字段`)
+        chatStore.addMessage(`已确认单行解析结果：${result.operationDetails || '处理完成'}`, 'system')
 
         // 更新本地数据状态
         const indexInEditModels = editFormModels.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
@@ -440,7 +441,9 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
               success: result && result.success,
               item: item,
               result: result,
-              error: null
+              error: null,
+              updatedFieldCount: result?.updatedFieldCount || 0,
+              message: result?.message || ''
             }
           } catch (error) {
             console.error(`保存记录失败 (taskDetailId: ${item.taskDetailId}):`, error)
@@ -459,11 +462,13 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         // 统计结果
         let successCount = 0
         let failureCount = 0
+        let totalUpdatedFields = 0
         const failureDetails = []
         
         updateResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value.success) {
             successCount++
+            totalUpdatedFields += result.value.updatedFieldCount || 0
           } else {
             failureCount++
             const item = payloads[index]
@@ -495,12 +500,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       }
 
       if (results && results.code === 200) {
-        ElMessage.success(`成功保存了 ${payloads.length} 条未确认的解析结果！`)
+        ElMessage.success(`批量保存成功！处理了 ${successCount} 条记录，更新了 ${totalUpdatedFields} 个字段`)
         const resultType = isSupplierMaterialMode.value ? '乙供物资' : '合同'
         const confirmedCount = editFormModels.value.length - unconfirmedRecords.length
         const message = confirmedCount > 0 
-          ? `已保存${payloads.length}个${resultType}解析结果（跳过了${confirmedCount}个已确认记录）`
-          : `已保存${payloads.length}个${resultType}解析结果`
+          ? `已保存${successCount}个${resultType}解析结果，更新${totalUpdatedFields}个字段（跳过了${confirmedCount}个已确认记录）`
+          : `已保存${successCount}个${resultType}解析结果，更新${totalUpdatedFields}个字段`
         chatStore.addMessage(message, 'system')
 
         // 更新本地数据
@@ -601,7 +606,9 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
               success: result && result.success,
               item: item,
               result: result,
-              error: null
+              error: null,
+              updatedFieldCount: result?.updatedFieldCount || 0,
+              message: result?.message || ''
             }
           } catch (error) {
             console.error(`确认记录失败 (taskDetailId: ${item.taskDetailId}):`, error)
@@ -620,11 +627,13 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         // 统计结果
         let successCount = 0
         let failureCount = 0
+        let totalUpdatedFields = 0
         const failureDetails = []
         
         updateResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value.success) {
             successCount++
+            totalUpdatedFields += result.value.updatedFieldCount || 0
             // 更新本地数据状态为已确认
             const item = recordsToConfirm[index]
             const tableIndex = tableData.value.findIndex(t => t.taskDetailId === item.taskDetailId)
@@ -648,15 +657,15 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         
         // 显示结果
         if (failureCount === 0) {
-          ElMessage.success(`批量确认成功！共处理 ${successCount} 条合同解析记录`)
-          chatStore.addMessage(`已批量确认${successCount}个合同解析结果`, 'system')
+          ElMessage.success(`批量确认成功！处理了 ${successCount} 条记录，确认了 ${totalUpdatedFields} 个字段`)
+          chatStore.addMessage(`已批量确认${successCount}个合同解析结果，确认${totalUpdatedFields}个字段`, 'system')
           showResultDetail.value = false
         } else if (successCount > 0) {
           ElMessage.warning(
-            `部分确认成功：成功 ${successCount} 条，失败 ${failureCount} 条。详情请查看控制台`
+            `部分确认成功：成功 ${successCount} 条（确认${totalUpdatedFields}个字段），失败 ${failureCount} 条。详情请查看控制台`
           )
           console.warn('批量确认失败详情:', failureDetails)
-          chatStore.addMessage(`批量确认部分成功：${successCount}成功，${failureCount}失败`, 'system')
+          chatStore.addMessage(`批量确认部分成功：${successCount}成功（确认${totalUpdatedFields}个字段），${failureCount}失败`, 'system')
         } else {
           ElMessage.error(`批量确认失败！所有 ${failureCount} 条记录都处理失败`)
           console.error('批量确认失败详情:', failureDetails)
