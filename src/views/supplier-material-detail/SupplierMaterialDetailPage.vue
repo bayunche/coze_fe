@@ -447,11 +447,7 @@ const fetchData = async () => {
       if (response && response.data) {
         // 获取数据并初始化每行数据
         const rawData = response.data.content || []
-        materialData.value = rawData.map(item => {
-          const initialized = initializeRowData(item)
-          console.log('【调试】初始化后的数据项:', initialized)
-          return initialized
-        })
+        materialData.value = rawData.map(item => initializeRowData(item))
         statistics.value = response.data.statistics || {}
         total.value = response.data.page?.totalElements || 0
       }
