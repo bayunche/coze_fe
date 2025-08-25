@@ -189,8 +189,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         const result = await getContractAnalysisResults(taskIdToFetch)
         console.log('【诊断】合同解析接口返回结果:', result)
 
-        // 处理新的返回体结构 {code: 200, data: {resultJson: [...]}, message: 'Success'}
-        const resultJson = result?.data?.resultJson || result?.resultJson
+        // 处理新的返回体结构 {code: 200, data: [...], message: 'Success'}
+        const resultJson = result?.data
 
         if (resultJson && Array.isArray(resultJson)) {
           // 将聚合后的数据转换为表格格式
