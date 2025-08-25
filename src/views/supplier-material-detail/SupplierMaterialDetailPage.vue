@@ -1051,8 +1051,8 @@ const handleMaterialSelection = (selectedMaterial) => {
       const itemIndex = materialData.value.findIndex(
         (dataItem) => {
           const matchByTaskDataId = dataItem.taskDataId === currentMaterial.value.taskDataId
-          const matchById = dataItem.id === currentMaterial.value.id
-          console.log(`【调试】索引匹配检查 - dataItem.taskDataId: ${dataItem.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, 匹配结果: ${matchByTaskDataId}`)
+          const matchById = currentMaterial.value.id && dataItem.id === currentMaterial.value.id
+          console.log(`【调试】索引匹配检查 - dataItem.taskDataId: ${dataItem.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, dataItem.id: ${dataItem.id}, current.id: ${currentMaterial.value.id}, taskDataId匹配: ${matchByTaskDataId}, id匹配: ${matchById}`)
           return matchByTaskDataId || matchById
         }
       )
