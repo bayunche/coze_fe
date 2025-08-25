@@ -793,16 +793,15 @@ const getPriceQuarter = (row) => {
   return row.recommendedPriceQuarter || ''
 }
 
-
 // 查看更多选项 - 打开物资选择对话框
 const handleViewOptions = async (row) => {
   currentMaterial.value = row
   // 重置选择相关数据
   selectionPage.value = 1
   selectionSearchKeyword.value = ''
-  
+
   // 根据当前物资名称进行初始搜索
-  await loadMaterialSelectionData(row.materialName || '')
+  await loadMaterialSelectionData('')
   showOptionsDialog.value = true
 }
 
@@ -815,7 +814,7 @@ const loadMaterialSelectionData = async (keyword = '') => {
       page: selectionPage.value - 1,
       size: selectionPageSize.value
     })
-    
+
     if (response && response.content) {
       materialSelectionList.value = response.content
       selectionTotal.value = response.totalElements || 0
@@ -836,27 +835,28 @@ const loadMaterialSelectionData = async (keyword = '') => {
 // 处理物资选择
 const handleMaterialSelection = (selectedMaterial) => {
   if (!selectedMaterial || !currentMaterial.value) return
-  
+
   try {
-    const item = materialData.value.find((item) => 
-      item.id === currentMaterial.value.id || 
-      item.taskDataId === currentMaterial.value.taskDataId
+    const item = materialData.value.find(
+      (item) =>
+        item.id === currentMaterial.value.id || item.taskDataId === currentMaterial.value.taskDataId
     )
-    
+
     if (item) {
       // 获取物资基础信息
       const materialBaseInfo = selectedMaterial.materialBaseInfo || selectedMaterial
       const priceList = selectedMaterial.priceList || []
-      
+
       // 选择第一个价格（如果有）
       const firstPrice = priceList.length > 0 ? priceList[0] : null
-      
+
       // 更新物资信息
       item.confirmedBaseName = materialBaseInfo.materialName
-      item.confirmedBaseSpec = materialBaseInfo.specificationModel || materialBaseInfo.specifications
+      item.confirmedBaseSpec =
+        materialBaseInfo.specificationModel || materialBaseInfo.specifications
       item.confirmedPrice = firstPrice ? firstPrice.taxPrice : null
       item.confirmedPriceQuarter = firstPrice ? firstPrice.quarter : null
-      
+
       // 标记用户已从数据库中选择了数据
       item.hasUserSelectedData = true
       // 保存用户选择的数据ID
@@ -865,7 +865,7 @@ const handleMaterialSelection = (selectedMaterial) => {
       // 标记为用户修改过的数据
       item.isUserModified = true
     }
-    
+
     ElMessage.success('数据选择成功，请点击确认按钮完成确认')
     showOptionsDialog.value = false
   } catch (error) {
@@ -893,7 +893,6 @@ const handleSelectionSearch = (keyword) => {
   selectionPage.value = 1
   loadMaterialSelectionData(keyword)
 }
-
 
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
