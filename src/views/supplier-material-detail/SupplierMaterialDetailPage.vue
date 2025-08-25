@@ -140,7 +140,7 @@
           stripe
           max-height="60vh"
         >
-          <el-table-column type="index" label="序号" width="80" fixed="left" />
+          <el-table-column type="index" label="序号" width="80" />
 
           <el-table-column
             prop="materialName"
@@ -198,7 +198,7 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="操作" width="200" fixed="right" align="center">
+          <el-table-column label="操作" width="200" align="center">
             <template #default="{ row }">
               <!-- 已确认状态 -->
               <div v-if="row.confirmResult === 1">
