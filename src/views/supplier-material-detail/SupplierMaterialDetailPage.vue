@@ -141,19 +141,7 @@
           </div>
         </div>
 
-        <!-- 调试信息 -->
-        <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 12px;">
-          <strong>页面调试信息:</strong><br>
-          materialData数组长度: {{ materialData.length }}<br>
-          total值: {{ total }}<br>
-          tableLoading状态: {{ tableLoading }}<br>
-          taskId: {{ taskId }}<br>
-          <div v-if="materialData.length > 0">
-            第一条数据: {{ JSON.stringify(materialData[0], null, 2) }}
-          </div>
-        </div>
-
-        <el-table 
+<el-table 
           :data="materialData" 
           v-loading="tableLoading"
           style="width: 100%" 
@@ -216,23 +204,70 @@
             </template>
           </el-table-column>
           
-          <el-table-column label="操作" width="200" fixed="right" align="center">
+          <el-table-column label="操作" width="250" fixed="right" align="center">
             <template #default="{ row }">
-              <el-button 
-                type="primary" 
-                size="small"
-                :disabled="row.confirmResult === 1"
-                @click="handleConfirm(row)"
-              >
-                {{ row.confirmResult === 1 ? '已确认' : '确认' }}
-              </el-button>
-              <el-button 
-                type="text" 
-                size="small"
-                @click="handleViewOptions(row)"
-              >
-                更多选项
-              </el-button>
+              <!-- 已确认状态 -->
+              <div v-if="row.confirmResult === 1">
+                <el-button type="success" size="small" disabled>已确认</el-button>
+              </div>
+              
+              <!-- 精确匹配：无需操作 -->
+              <div v-else-if="getMatchTypeTag(row.matchedType).text === '精确匹配'">
+                <el-button type="info" size="small" disabled>已精确匹配</el-button>
+              </div>
+              
+              <!-- 相似匹配、历史匹配：显示选择下拉框 -->
+              <div v-else-if="['相似匹配', '历史匹配'].includes(getMatchTypeTag(row.matchedType).text) && row.matchOptions && row.matchOptions.length > 0">
+                <el-select
+                  v-model="row.selectedMaterial"
+                  placeholder="选择物资"
+                  size="small"
+                  style="width: 100%; margin-bottom: 5px"
+                  @change="handleMaterialSelectChange(row, $event)"
+                >
+                  <el-option
+                    v-for="option in row.matchOptions"
+                    :key="option.matchedId"
+                    :label="`${option.baseInfo?.materialName || '未知'} ${option.baseInfo?.specifications || ''}`"
+                    :value="option"
+                  />
+                </el-select>
+                <el-select
+                  v-model="row.selectedPriceQuarter"
+                  placeholder="选择价格和季度"
+                  size="small"
+                  style="width: 100%"
+                  @change="handlePriceQuarterChange(row, $event)"
+                >
+                  <el-option
+                    v-for="priceOption in (row.selectedMaterial?.priceOptions || [])"
+                    :key="priceOption.priceId"
+                    :label="`¥${formatNumber(priceOption.taxPrice)} (${priceOption.quarter})`"
+                    :value="priceOption"
+                  />
+                </el-select>
+              </div>
+              
+              <!-- 无匹配或其他情况：显示确认和更多选项按钮 -->
+              <div v-else>
+                <el-button 
+                  type="primary" 
+                  size="small"
+                  :disabled="row.confirmResult === 1"
+                  @click="handleQuickConfirm(row)"
+                  style="margin-bottom: 5px; width: 100%;"
+                >
+                  {{ row.confirmResult === 1 ? '已确认' : '确认' }}
+                </el-button>
+                <el-button 
+                  type="text" 
+                  size="small"
+                  @click="handleViewOptions(row)"
+                  style="width: 100%;"
+                >
+                  更多选项
+                </el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -249,6 +284,19 @@
           @size-change="handleSizeChange"
           style="margin-top: 20px; text-align: right"
         />
+
+        <!-- 页面底部操作按钮 -->
+        <div class="page-footer">
+          <el-button @click="handleBack">关闭</el-button>
+          <el-button 
+            type="primary" 
+            @click="handleSaveResults" 
+            :loading="saving"
+            :disabled="!hasModifiedData"
+          >
+            保存解析结果
+          </el-button>
+        </div>
       </div>
     </div>
 
@@ -321,6 +369,7 @@ const tableLoading = ref(false)
 const refreshLoading = ref(false)
 const batchConfirming = ref(false)
 const exportLoading = ref(false)
+const saving = ref(false)
 
 const materialData = ref([])
 const total = ref(0)
@@ -341,6 +390,11 @@ const useComplexQuery = ref(true) // 是否使用复杂查询接口
 // 计算确认统计
 const confirmedCount = computed(() => {
   return materialData.value.filter(item => item.confirmResult === 1).length
+})
+
+// 计算是否有修改过的数据
+const hasModifiedData = computed(() => {
+  return materialData.value.some(item => item.isUserModified === true)
 })
 
 const pendingCount = computed(() => {
@@ -382,18 +436,12 @@ const fetchData = async () => {
       console.log('使用复杂查询参数:', params)
       response = await querySupplierMaterialsComplex(params)
       
-      console.log('【页面调试】API返回的完整response:', response)
-      console.log('【页面调试】response.content:', response?.content)
-      console.log('【页面调试】response.content长度:', response?.content?.length)
-      
       if (response && response.data) {
-        materialData.value = response.data.content || []
+        // 获取数据并初始化每行数据
+        const rawData = response.data.content || []
+        materialData.value = rawData.map(item => initializeRowData(item))
         statistics.value = response.data.statistics || {}
         total.value = response.data.page?.totalElements || 0
-        
-        console.log('【页面调试】赋值后materialData.value:', materialData.value)
-        console.log('【页面调试】赋值后statistics.value:', statistics.value)
-        console.log('【页面调试】赋值后total.value:', total.value)
       }
     } else {
       // 使用简单查询接口（后备方案）
@@ -403,7 +451,8 @@ const fetchData = async () => {
       })
       
       if (response && response.content) {
-        materialData.value = response.content
+        // 初始化简单查询接口的数据
+        materialData.value = response.content.map(item => initializeRowData(item))
         total.value = response.totalElements || 0
         statistics.value = null
       }
@@ -868,6 +917,178 @@ watch(
   },
   { immediate: false }
 )
+
+// 新增：物资选择处理函数
+const handleMaterialSelectChange = async (row, selectedMaterial) => {
+  console.log('物资选择变化:', selectedMaterial)
+  row.selectedMaterial = selectedMaterial
+  row.selectedPriceQuarter = null
+  
+  // 如果有价格选项，默认选择第一个
+  if (selectedMaterial && selectedMaterial.priceOptions && selectedMaterial.priceOptions.length > 0) {
+    row.selectedPriceQuarter = selectedMaterial.priceOptions[0]
+    // 自动触发价格选择变化
+    handlePriceQuarterChange(row, selectedMaterial.priceOptions[0])
+  }
+  
+  row.isUserModified = true
+}
+
+// 新增：价格季度选择处理函数
+const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
+  console.log('价格季度选择变化:', selectedPriceQuarter)
+  row.selectedPriceQuarter = selectedPriceQuarter
+  
+  // 更新显示的匹配信息
+  if (row.selectedMaterial && selectedPriceQuarter) {
+    // 更新表格显示的数据
+    row.matchedBaseName = row.selectedMaterial.baseInfo.materialName
+    row.matchedBaseSpec = row.selectedMaterial.baseInfo.specifications
+    row.matchedPrice = selectedPriceQuarter.taxPrice
+    row.matchedPriceQuarter = selectedPriceQuarter.quarter
+    
+    // 标记为用户修改
+    row.isUserModified = true
+    row.selectedBaseDataId = row.selectedMaterial.matchedId
+    row.selectedPriceId = selectedPriceQuarter.priceId
+  }
+}
+
+// 新增：快速确认（已有推荐数据的情况）
+const handleQuickConfirm = async (row) => {
+  if (row.confirmResult === 1) {
+    ElMessage.info('该物资已确认')
+    return
+  }
+  
+  // 检查是否有推荐数据或用户选择的数据
+  let baseDataId = row.selectedBaseDataId || row.recommendedBaseDataId
+  let priceId = row.selectedPriceId || row.recommendedPriceId
+  
+  // 如果没有数据，从matchOptions获取
+  if (!baseDataId && row.matchOptions && row.matchOptions.length > 0) {
+    const firstMatch = row.matchOptions[0]
+    baseDataId = firstMatch.matchedId
+    
+    if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
+      priceId = firstMatch.priceOptions[0].priceId
+    }
+  }
+  
+  if (!baseDataId || !priceId) {
+    ElMessage.warning('该物资缺少推荐的基础数据或价格数据，请点击"更多选项"手动选择')
+    return
+  }
+  
+  try {
+    const confirmData = {
+      id: row.taskDataId || row.id,
+      confirmBaseDataId: baseDataId,
+      confirmPriceId: priceId
+    }
+    
+    const result = await confirmSupplierMaterialData(confirmData)
+    
+    if (result && result.code === 200) {
+      row.confirmResult = 1
+      row.confirmType = result.data?.confirmType || 1
+      row.isUserModified = true
+      ElMessage.success('确认成功')
+    } else {
+      ElMessage.error(result?.message || '确认失败')
+    }
+  } catch (error) {
+    console.error('快速确认失败:', error)
+    ElMessage.error(error.message || '确认失败')
+  }
+}
+
+// 新增：初始化行数据
+const initializeRowData = (row) => {
+  // 为每行添加选择状态
+  row.selectedMaterial = null
+  row.selectedPriceQuarter = null
+  row.isUserModified = false
+  row.selectedBaseDataId = null
+  row.selectedPriceId = null
+  
+  // 如果有匹配选项，预选第一个
+  if (row.matchOptions && row.matchOptions.length > 0) {
+    const firstMatch = row.matchOptions[0]
+    row.selectedMaterial = firstMatch
+    
+    if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
+      row.selectedPriceQuarter = firstMatch.priceOptions[0]
+    }
+  }
+  
+  return row
+}
+
+// 新增：保存解析结果
+const handleSaveResults = async () => {
+  const modifiedItems = materialData.value.filter(item => item.isUserModified === true)
+  
+  if (modifiedItems.length === 0) {
+    ElMessage.info('未检测到修改的数据，无需保存。')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `即将保存 ${modifiedItems.length} 个物资的解析结果，确认继续？`,
+      '确认保存',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    saving.value = true
+    
+    // 准备保存数据
+    const updateObjList = modifiedItems.map(item => ({
+      id: item.taskDataId || item.id,
+      confirmBaseDataId: item.selectedBaseDataId || (item.matchOptions?.[0]?.matchedId),
+      confirmPriceId: item.selectedPriceId || (item.matchOptions?.[0]?.priceOptions?.[0]?.priceId),
+      confirmType: 2 // 人工确认
+    }))
+
+    // 这里应该调用保存的API接口
+    // 暂时使用确认接口的批量版本
+    const promises = updateObjList.map(data => confirmSupplierMaterialData(data))
+    const results = await Promise.allSettled(promises)
+    
+    let successCount = 0
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value?.code === 200) {
+        successCount++
+      }
+    })
+    
+    if (successCount > 0) {
+      ElMessage.success(`成功保存 ${successCount} 个物资的解析结果`)
+      // 刷新数据
+      fetchData()
+    } else {
+      ElMessage.error('保存失败')
+    }
+    
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('保存解析结果失败:', error)
+      ElMessage.error(error.message || '保存失败')
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+// 新增：返回按钮处理
+const handleBack = () => {
+  goBack()
+}
 </script>
 
 <style scoped>
@@ -2092,5 +2313,22 @@ watch(
 
 .stat-card:hover .stat-value {
   transform: scale(1.05);
+}
+
+/* 页面底部操作按钮区域 */
+.page-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 20px 0;
+  border-top: 1px solid var(--el-border-color-light);
+}
+
+.page-footer .el-button {
+  min-width: 100px;
+  height: 36px;
+  font-weight: 500;
 }
 </style>
