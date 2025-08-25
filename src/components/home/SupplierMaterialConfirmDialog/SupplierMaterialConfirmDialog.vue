@@ -502,14 +502,23 @@ const handleBatchConfirm = async () => {
     return
   }
   
-  // 过滤掉无匹配的物资（matchedType === 0）
-  const confirmableItems = pendingItems.filter(item => item.matchedType !== 0)
+  // 检查是否有无匹配的物资
   const noMatchItems = pendingItems.filter(item => item.matchedType === 0)
+  if (noMatchItems.length > 0) {
+    ElMessage.error(
+      `发现 ${noMatchItems.length} 个无匹配物资，请先处理这些物资后再进行批量确认。请使用"从数据库中选择数据"按钮为无匹配物资选择匹配项。`
+    )
+    return
+  }
+  
+  // 过滤掉精确匹配的物资（matchedType === 1），只处理相似匹配、历史匹配、人工匹配等
+  const exactMatchItems = pendingItems.filter(item => item.matchedType === 1)
+  const confirmableItems = pendingItems.filter(item => item.matchedType !== 1)
   
   if (confirmableItems.length === 0) {
-    if (noMatchItems.length > 0) {
-      ElMessage.warning(
-        `所有待确认的物资都是无匹配状态，请使用"从数据库中选择数据"按钮进行手动匹配`
+    if (exactMatchItems.length > 0) {
+      ElMessage.info(
+        `所有待确认的物资都是精确匹配状态，无需批量确认`
       )
     } else {
       ElMessage.info('没有可以批量确认的物资')
@@ -545,9 +554,9 @@ const handleBatchConfirm = async () => {
   }
   
   try {
-    let confirmMessage = `确认批量处理 ${confirmableItems.length} 个可确认的物资？`
-    if (noMatchItems.length > 0) {
-      confirmMessage += `\n（将跳过 ${noMatchItems.length} 个无匹配物资）`
+    let confirmMessage = `确认批量处理 ${confirmableItems.length} 个待确认的物资？`
+    if (exactMatchItems.length > 0) {
+      confirmMessage += `\n（将跳过 ${exactMatchItems.length} 个精确匹配物资）`
     }
     
     await ElMessageBox.confirm(
@@ -608,8 +617,8 @@ const handleBatchConfirm = async () => {
       resultMessage = `批量确认成功！共处理 ${successCount} 个物资`
     }
     
-    if (noMatchItems.length > 0) {
-      resultMessage += `，跳过了 ${noMatchItems.length} 个无匹配物资`
+    if (exactMatchItems.length > 0) {
+      resultMessage += `，跳过了 ${exactMatchItems.length} 个精确匹配物资`
     }
     
     if (failureCount > 0) {
