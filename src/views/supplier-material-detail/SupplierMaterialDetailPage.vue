@@ -822,9 +822,9 @@ const loadMaterialSelectionData = async (keyword = '') => {
 
     const response = await queryMaterialBaseInfoWithPrices(params)
     console.log('【调试】加载物资选择数据:', response)
-    if (response && response.content) {
+    if (response && response.data && response.data.content) {
       // 格式化数据以匹配 MaterialSelectionDialog 组件的期望格式
-      materialSelectionList.value = response.content.map((item) => {
+      materialSelectionList.value = response.data.content.map((item) => {
         const materialBaseInfo = item.materialBaseInfo || {}
         const priceList = item.priceList || []
 
@@ -856,7 +856,7 @@ const loadMaterialSelectionData = async (keyword = '') => {
         }
       })
 
-      selectionTotal.value = response.totalElements || 0
+      selectionTotal.value = response.data.totalElements || 0
     } else {
       console.warn('API返回数据为空')
       materialSelectionList.value = []
