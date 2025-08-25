@@ -137,13 +137,26 @@ const selectedMaterial = ref(null)
 const formattedData = computed(() => {
   const result = []
 
-  props.dataList.forEach((item) => {
+  console.log('【MaterialSelectionDialog 调试】开始处理数据')
+  console.log('【MaterialSelectionDialog 调试】原始 props.dataList:', props.dataList)
+  console.log('【MaterialSelectionDialog 调试】dataList 长度:', props.dataList.length)
+
+  props.dataList.forEach((item, itemIndex) => {
+    console.log(`【MaterialSelectionDialog 调试】处理第 ${itemIndex + 1} 个物资:`, item)
+    
     const materialBaseInfo = item.materialBaseInfo || item
     const priceList = item.priceList || []
+    
+    console.log(`【MaterialSelectionDialog 调试】物资基础信息:`, materialBaseInfo)
+    console.log(`【MaterialSelectionDialog 调试】价格列表:`, priceList)
+    console.log(`【MaterialSelectionDialog 调试】价格列表长度:`, priceList.length)
+    
     // 如果有价格数据，每个价格创建一条记录
     if (priceList.length > 0) {
-      priceList.forEach((price) => {
-        result.push({
+      priceList.forEach((price, priceIndex) => {
+        console.log(`【MaterialSelectionDialog 调试】处理第 ${priceIndex + 1} 个价格:`, price)
+        
+        const formattedRecord = {
           // 原始数据，包含物资和价格信息
           originalData: {
             materialBaseInfo,
@@ -171,12 +184,19 @@ const formattedData = computed(() => {
           material_name: materialBaseInfo.materialName,
           specification_model: materialBaseInfo.specificationModel,
           tax_price: price.taxPrice
-        })
+        }
+        
+        console.log(`【MaterialSelectionDialog 调试】格式化后的记录:`, formattedRecord)
+        console.log(`【MaterialSelectionDialog 调试】价格字段检查 - 原始价格:`, price.taxPrice, '格式化价格:', formattedRecord.taxPrice)
+        console.log(`【MaterialSelectionDialog 调试】季度字段检查 - 原始季度:`, price.quarter, '格式化季度:', formattedRecord.quarter)
+        
+        result.push(formattedRecord)
       })
-      console.log('formattedData', result)
     } else {
+      console.log(`【MaterialSelectionDialog 调试】物资 ${materialBaseInfo.materialName} 没有价格数据`)
+      
       // 如果没有价格数据，仍然创建一条记录但价格字段为空
-      result.push({
+      const emptyRecord = {
         originalData: {
           materialBaseInfo,
           priceInfo: null,
@@ -197,8 +217,26 @@ const formattedData = computed(() => {
         material_name: materialBaseInfo.materialName,
         specification_model: materialBaseInfo.specificationModel,
         tax_price: null
-      })
+      }
+      
+      console.log(`【MaterialSelectionDialog 调试】空价格记录:`, emptyRecord)
+      result.push(emptyRecord)
     }
+  })
+
+  console.log('【MaterialSelectionDialog 调试】最终扁平化结果:')
+  console.log('【MaterialSelectionDialog 调试】结果长度:', result.length)
+  console.log('【MaterialSelectionDialog 调试】完整结果:', result)
+  
+  // 检查前几条记录的关键字段
+  result.slice(0, 3).forEach((record, index) => {
+    console.log(`【MaterialSelectionDialog 调试】第 ${index + 1} 条记录关键字段:`, {
+      materialName: record.materialName,
+      taxPrice: record.taxPrice,
+      quarter: record.quarter,
+      priceId: record.priceId,
+      baseInfoId: record.baseInfoId
+    })
   })
 
   return result
