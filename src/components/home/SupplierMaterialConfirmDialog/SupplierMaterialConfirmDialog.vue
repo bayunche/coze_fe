@@ -350,7 +350,8 @@ const fetchData = async () => {
       return
     }
     
-    ElMessage.error('获取解析结果失败，请稍后重试')
+    const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '获取解析结果失败，请稍后重试'
+    ElMessage.error(errorMsg)
     materialData.value = []
     total.value = 0
     statistics.value = null

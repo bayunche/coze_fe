@@ -289,6 +289,7 @@
         <div class="page-footer">
           <el-button @click="handleBack">关闭</el-button>
           <el-button 
+            v-if="shouldShowSaveButton"
             type="primary" 
             @click="handleSaveResults" 
             :loading="saving"
@@ -397,6 +398,13 @@ const hasModifiedData = computed(() => {
   return materialData.value.some(item => item.isUserModified === true)
 })
 
+// 计算是否应该显示保存按钮（有未确认的数据或有修改过的数据）
+const shouldShowSaveButton = computed(() => {
+  const hasUnconfirmed = materialData.value.some(item => item.confirmResult !== 1)
+  const hasModified = hasModifiedData.value
+  return hasUnconfirmed || hasModified
+})
+
 const pendingCount = computed(() => {
   return materialData.value.filter(item => item.confirmResult !== 1).length
 })
@@ -439,7 +447,11 @@ const fetchData = async () => {
       if (response && response.data) {
         // 获取数据并初始化每行数据
         const rawData = response.data.content || []
-        materialData.value = rawData.map(item => initializeRowData(item))
+        materialData.value = rawData.map(item => {
+          const initialized = initializeRowData(item)
+          console.log('【调试】初始化后的数据项:', initialized)
+          return initialized
+        })
         statistics.value = response.data.statistics || {}
         total.value = response.data.page?.totalElements || 0
       }
@@ -474,7 +486,8 @@ const fetchData = async () => {
       return
     }
     
-    ElMessage.error('获取解析结果失败，请稍后重试')
+    const errorMsg = error?.response?.data?.message || error?.message || '获取解析结果失败，请稍后重试'
+    ElMessage.error(errorMsg)
     materialData.value = []
     total.value = 0
     statistics.value = null
@@ -565,7 +578,8 @@ const handleExport = async () => {
     console.log('【提示】导出功能正在开发中')
   } catch (error) {
     console.error('【错误】处理导出失败:', error)
-    ElMessage.error('处理失败，请稍后再试')
+    const errorMsg = error?.response?.data?.message || error?.message || '处理失败，请稍后再试'
+    ElMessage.error(errorMsg)
   } finally {
     exportLoading.value = false
   }
@@ -668,7 +682,8 @@ const handleBatchConfirm = async () => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('批量确认失败:', error)
-      ElMessage.error('批量确认失败')
+      const errorMsg = error?.response?.data?.message || error?.message || '批量确认失败'
+      ElMessage.error(errorMsg)
     }
   } finally {
     batchConfirming.value = false
@@ -826,13 +841,15 @@ const handleConfirm = async (row) => {
       row.confirmType = result.data?.confirmType || 1
       ElMessage.success('确认成功')
     } else {
-      ElMessage.error(result?.message || '确认失败')
+      const errorMsg = result?.message || result?.msg || '确认失败'
+      ElMessage.error(errorMsg)
     }
     
   } catch (error) {
     if (error !== 'cancel') {
       console.error('确认失败:', error)
-      ElMessage.error(error.message || '确认失败')
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
+      ElMessage.error(errorMsg)
     }
   }
 }
@@ -866,12 +883,14 @@ const handleOptionConfirm = async (confirmData) => {
       ElMessage.success('确认成功')
       showOptionsDialog.value = false
     } else {
-      ElMessage.error(result?.message || '确认失败')
+      const errorMsg = result?.message || result?.msg || '确认失败'
+      ElMessage.error(errorMsg)
     }
     
   } catch (error) {
     console.error('选项确认失败:', error)
-    ElMessage.error(error.message || '确认失败')
+    const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -995,11 +1014,13 @@ const handleQuickConfirm = async (row) => {
       row.isUserModified = true
       ElMessage.success('确认成功')
     } else {
-      ElMessage.error(result?.message || '确认失败')
+      const errorMsg = result?.message || result?.msg || '确认失败'
+      ElMessage.error(errorMsg)
     }
   } catch (error) {
     console.error('快速确认失败:', error)
-    ElMessage.error(error.message || '确认失败')
+    const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
+    ElMessage.error(errorMsg)
   }
 }
 
@@ -1078,7 +1099,8 @@ const handleSaveResults = async () => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('保存解析结果失败:', error)
-      ElMessage.error(error.message || '保存失败')
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '保存失败'
+      ElMessage.error(errorMsg)
     }
   } finally {
     saving.value = false
