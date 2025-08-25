@@ -163,9 +163,20 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column label="操作" width="220" fixed="right" align="center">
           <template #default="{ row }">
+            <!-- 无匹配时显示选择按钮 -->
             <el-button 
+              v-if="row.matchedType === 0 && row.confirmResult !== 1"
+              type="warning" 
+              size="small"
+              @click="handleSelectFromDatabase(row)"
+            >
+              从数据库中选择数据
+            </el-button>
+            <!-- 有匹配时显示确认按钮 -->
+            <el-button 
+              v-else
               type="primary" 
               size="small"
               :disabled="row.confirmResult === 1"
@@ -220,6 +231,20 @@
     @confirm="handleOptionConfirm"
     @close="showOptionsDialog = false"
   />
+  
+  <!-- 物资选择对话框 -->
+  <MaterialSelectionDialog
+    v-model="showMaterialSelectionDialog"
+    :data-list="materialSelectionData"
+    :total="materialSelectionTotal"
+    :page-num="materialSearchParams.page"
+    :page-size="materialSearchParams.size"
+    :loading="materialSelectionLoading"
+    @select="handleMaterialSelection"
+    @page-change="handleMaterialPageChange"
+    @size-change="handleMaterialSizeChange"
+    @search="handleMaterialSearch"
+  />
 </template>
 
 <script setup>
@@ -227,6 +252,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import ConfirmOptionsDialog from './ConfirmOptionsDialog.vue'
+import MaterialSelectionDialog from '../MaterialSelectionDialog/MaterialSelectionDialog.vue'
 import { 
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
@@ -257,6 +283,18 @@ const pageSize = ref(20)
 const total = ref(0)
 const showOptionsDialog = ref(false)
 const currentMaterial = ref(null)
+
+// 物资选择相关
+const showMaterialSelectionDialog = ref(false)
+const currentSelectingMaterial = ref(null)
+const materialSelectionData = ref([])
+const materialSearchParams = ref({
+  page: 1,
+  size: 20,
+  keyword: ''
+})
+const materialSelectionTotal = ref(0)
+const materialSelectionLoading = ref(false)
 
 // 搜索和筛选参数
 const searchKeyword = ref('')
@@ -463,8 +501,23 @@ const handleBatchConfirm = async () => {
     return
   }
   
-  // 检查是否有缺少推荐数据的物资
-  const missingDataItems = pendingItems.filter(item => {
+  // 过滤掉无匹配的物资（matchedType === 0）
+  const confirmableItems = pendingItems.filter(item => item.matchedType !== 0)
+  const noMatchItems = pendingItems.filter(item => item.matchedType === 0)
+  
+  if (confirmableItems.length === 0) {
+    if (noMatchItems.length > 0) {
+      ElMessage.warning(
+        `所有待确认的物资都是无匹配状态，请使用"从数据库中选择数据"按钮进行手动匹配`
+      )
+    } else {
+      ElMessage.info('没有可以批量确认的物资')
+    }
+    return
+  }
+  
+  // 检查可确认物资是否有缺少推荐数据的物资
+  const missingDataItems = confirmableItems.filter(item => {
     let baseDataId = item.recommendedBaseDataId
     let priceId = item.recommendedPriceId
     
@@ -482,15 +535,22 @@ const handleBatchConfirm = async () => {
   })
   
   if (missingDataItems.length > 0) {
-    ElMessage.warning(
-      `有 ${missingDataItems.length} 个物资缺少推荐数据，请先手动处理这些物资`
-    )
+    let message = `有 ${missingDataItems.length} 个物资缺少推荐数据，请先手动处理这些物资`
+    if (noMatchItems.length > 0) {
+      message += `，另外还有 ${noMatchItems.length} 个无匹配物资需要手动选择数据`
+    }
+    ElMessage.warning(message)
     return
   }
   
   try {
+    let confirmMessage = `确认批量处理 ${confirmableItems.length} 个可确认的物资？`
+    if (noMatchItems.length > 0) {
+      confirmMessage += `\n（将跳过 ${noMatchItems.length} 个无匹配物资）`
+    }
+    
     await ElMessageBox.confirm(
-      `确认批量处理 ${pendingItems.length} 个待确认的物资？`,
+      confirmMessage,
       '批量确认',
       {
         confirmButtonText: '确认',
@@ -501,7 +561,7 @@ const handleBatchConfirm = async () => {
     
     batchConfirming.value = true
     
-    const confirmPromises = pendingItems.map(item => {
+    const confirmPromises = confirmableItems.map(item => {
       let baseDataId = item.recommendedBaseDataId
       let priceId = item.recommendedPriceId
       
@@ -530,7 +590,7 @@ const handleBatchConfirm = async () => {
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value?.code === 200) {
         // 更新本地数据
-        const item = pendingItems[index]
+        const item = confirmableItems[index]
         item.confirmResult = 1
         item.confirmType = result.value.data?.confirmType || 1
         successCount++
@@ -540,10 +600,21 @@ const handleBatchConfirm = async () => {
       }
     })
     
+    let resultMessage = ''
     if (failureCount > 0) {
-      ElMessage.warning(`成功确认 ${successCount} 个，失败 ${failureCount} 个`)
+      resultMessage = `成功确认 ${successCount} 个，失败 ${failureCount} 个`
     } else {
-      ElMessage.success(`批量确认成功！共处理 ${successCount} 个物资`)
+      resultMessage = `批量确认成功！共处理 ${successCount} 个物资`
+    }
+    
+    if (noMatchItems.length > 0) {
+      resultMessage += `，跳过了 ${noMatchItems.length} 个无匹配物资`
+    }
+    
+    if (failureCount > 0) {
+      ElMessage.warning(resultMessage)
+    } else {
+      ElMessage.success(resultMessage)
     }
     
   } catch (error) {
@@ -592,6 +663,122 @@ const handleOptionConfirm = async (confirmData) => {
     console.error('选项确认失败:', error)
     ElMessage.error(error.message || '确认失败')
   }
+}
+
+// 处理"从数据库中选择数据"按钮点击
+const handleSelectFromDatabase = (row) => {
+  currentSelectingMaterial.value = row
+  materialSearchParams.value = {
+    page: 1,
+    size: 20,
+    keyword: '' // 不自动带出搜索内容
+  }
+  showMaterialSelectionDialog.value = true
+  fetchMaterialOptions()
+}
+
+// 获取物资选择数据
+const fetchMaterialOptions = async () => {
+  materialSelectionLoading.value = true
+  try {
+    // 这里需要调用获取物资基础数据的API
+    // 暂时使用示例数据结构，实际需要根据后端API调整
+    const params = {
+      page: materialSearchParams.value.page - 1,
+      size: materialSearchParams.value.size,
+      keyword: materialSearchParams.value.keyword
+    }
+    
+    // TODO: 调用实际的物资基础数据查询API
+    // const response = await getMaterialBaseDataList(params)
+    
+    // 暂时使用空数据，等待后端API集成
+    materialSelectionData.value = []
+    materialSelectionTotal.value = 0
+    
+  } catch (error) {
+    console.error('获取物资选择数据失败:', error)
+    ElMessage.error('获取物资数据失败')
+    materialSelectionData.value = []
+    materialSelectionTotal.value = 0
+  } finally {
+    materialSelectionLoading.value = false
+  }
+}
+
+// 处理物资选择结果
+const handleMaterialSelection = async (selectedMaterial) => {
+  if (!currentSelectingMaterial.value || !selectedMaterial) return
+  
+  try {
+    // 根据选择的物资数据构造确认数据
+    const materialBaseInfo = selectedMaterial.materialBaseInfo || selectedMaterial
+    const priceList = selectedMaterial.priceList || []
+    
+    if (!materialBaseInfo.id) {
+      ElMessage.error('选择的物资数据无效')
+      return
+    }
+    
+    let confirmPriceId = null
+    if (priceList.length > 0) {
+      // 使用最新价格（第一个价格）
+      confirmPriceId = priceList[0].id
+    }
+    
+    if (!confirmPriceId) {
+      ElMessage.warning('选择的物资没有价格信息，请选择其他物资')
+      return
+    }
+    
+    const confirmData = {
+      id: currentSelectingMaterial.value.taskDataId || currentSelectingMaterial.value.id,
+      confirmBaseDataId: materialBaseInfo.id,
+      confirmPriceId: confirmPriceId
+    }
+    
+    const result = await confirmSupplierMaterialData(confirmData)
+    
+    if (result && result.code === 200) {
+      // 更新本地数据
+      const item = currentSelectingMaterial.value
+      item.confirmResult = 1
+      item.confirmType = 4 // 人工匹配
+      item.matchedType = 4 // 更新匹配类型为人工匹配
+      item.confirmedBaseName = materialBaseInfo.materialName
+      item.confirmedBaseSpec = materialBaseInfo.specificationModel
+      item.confirmedPrice = priceList[0].taxPrice
+      item.confirmedPriceQuarter = priceList[0].quarter
+      
+      ElMessage.success('选择并确认成功')
+      showMaterialSelectionDialog.value = false
+    } else {
+      ElMessage.error(result?.message || '确认失败')
+    }
+    
+  } catch (error) {
+    console.error('物资选择确认失败:', error)
+    ElMessage.error(error.message || '确认失败')
+  }
+}
+
+// 物资选择弹框的分页处理
+const handleMaterialPageChange = (page) => {
+  materialSearchParams.value.page = page
+  fetchMaterialOptions()
+}
+
+const handleMaterialSizeChange = (size) => {
+  materialSearchParams.value.size = size
+  materialSearchParams.value.page = 1
+  fetchMaterialOptions()
+}
+
+// 物资选择弹框的搜索处理
+const handleMaterialSearch = (keyword) => {
+  materialSearchParams.value.keyword = keyword || ''
+  materialSearchParams.value.page = 1
+  fetchMaterialOptions()
 }
 
 // 刷新数据

@@ -361,9 +361,11 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         console.log('【诊断】单行保存并确认返回值:', result)
       }
 
-      if (result && result.success) {
-        ElMessage.success(result.message || `成功处理 ${result.updatedFieldCount || 0} 个字段`)
-        chatStore.addMessage(`已确认单行解析结果：${result.operationDetails || '处理完成'}`, 'system')
+      // 修复：正确判断成功状态，result.data.success 才是真正的成功标识
+      if (result && result.code === 200 && result.data?.success) {
+        const { data } = result
+        ElMessage.success(data.message || `成功处理 ${data.updatedFieldCount || 0} 个字段`)
+        chatStore.addMessage(`已确认单行解析结果：${data.operationDetails || '处理完成'}`, 'system')
 
         // 更新本地数据状态
         const indexInEditModels = editFormModels.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
@@ -377,7 +379,9 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
           tableData.value[indexInTableData].editing = false
         }
       } else {
-        ElMessage.error(result?.message || '确认失败')
+        // 修复：正确显示错误信息，优先显示 data 中的错误信息
+        const errorMessage = result?.data?.message || result?.message || '确认失败'
+        ElMessage.error(errorMessage)
       }
     } catch (error) {
       console.error('保存并确认单行编辑失败:', error)
@@ -390,6 +394,10 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
    */
   const saveAll = async () => {
     savingAllEdits.value = true
+    // 定义统计变量在函数级别
+    let successCount = 0
+    let totalUpdatedFields = 0
+    
     try {
       // 过滤掉已确认的记录，只提交未确认的记录
       const unconfirmedRecords = editFormModels.value.filter(item => item.resultStatus !== 1)
@@ -438,12 +446,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
             
             const result = await updateContractAnalysisResult(updateData)
             return {
-              success: result && result.success,
+              success: result && result.code === 200 && result.data?.success,
               item: item,
               result: result,
               error: null,
-              updatedFieldCount: result?.updatedFieldCount || 0,
-              message: result?.message || ''
+              updatedFieldCount: result?.data?.updatedFieldCount || 0,
+              message: result?.data?.message || result?.message || ''
             }
           } catch (error) {
             console.error(`保存记录失败 (taskDetailId: ${item.taskDetailId}):`, error)
@@ -459,11 +467,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         // 等待所有请求完成
         const updateResults = await Promise.allSettled(updatePromises)
         
-        // 统计结果
-        let successCount = 0
+        // 统计结果 (复用函数级别的变量)
         let failureCount = 0
-        let totalUpdatedFields = 0
         const failureDetails = []
+        // 重置统计变量
+        successCount = 0
+        totalUpdatedFields = 0
         
         updateResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value.success) {
@@ -545,6 +554,9 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
     }
 
     isConfirming.value = true
+    // 定义统计变量在函数级别
+    let successCount = 0
+    let totalUpdatedFields = 0
 
     try {
       let results
@@ -603,12 +615,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
             
             const result = await updateContractAnalysisResult(updateData)
             return {
-              success: result && result.success,
+              success: result && result.code === 200 && result.data?.success,
               item: item,
               result: result,
               error: null,
-              updatedFieldCount: result?.updatedFieldCount || 0,
-              message: result?.message || ''
+              updatedFieldCount: result?.data?.updatedFieldCount || 0,
+              message: result?.data?.message || result?.message || ''
             }
           } catch (error) {
             console.error(`确认记录失败 (taskDetailId: ${item.taskDetailId}):`, error)
@@ -624,11 +636,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         // 等待所有请求完成
         const updateResults = await Promise.allSettled(updatePromises)
         
-        // 统计结果
-        let successCount = 0
+        // 统计结果 (复用函数级别的变量)
         let failureCount = 0
-        let totalUpdatedFields = 0
         const failureDetails = []
+        // 重置统计变量
+        successCount = 0
+        totalUpdatedFields = 0
         
         updateResults.forEach((result, index) => {
           if (result.status === 'fulfilled' && result.value.success) {

@@ -2,59 +2,74 @@
   <el-dialog
     v-model="dialogVisible"
     title="选择匹配物资"
-    width="50%"
+    width="70%"
     :before-close="closeDialog"
     append-to-body
+    custom-class="material-selection-dialog"
+    top="5vh"
   >
     <div class="selection-dialog-content">
-      <el-input
-        v-model="searchTerm"
-        placeholder="搜索物资名称"
-        clearable
-        style="margin-bottom: 20px"
-      ></el-input>
+      <div class="search-section">
+        <el-input
+          v-model="searchTerm"
+          placeholder="搜索物资名称、规格型号等..."
+          clearable
+          class="search-input"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+      </div>
+      
       <el-table
         :data="formattedData"
         v-loading="loading"
         @row-click="onRowClick"
         style="width: 100%"
-        height="40vh"
+        height="50vh"
         highlight-current-row
+        border
+        stripe
+        :row-class-name="getRowClassName"
       >
         <el-table-column prop="materialName" label="物资名称" min-width="150" show-overflow-tooltip></el-table-column>
         <el-table-column prop="specificationModel" label="规格型号" min-width="150" show-overflow-tooltip></el-table-column>
         <el-table-column prop="unit" label="单位" width="80"></el-table-column>
-        <el-table-column label="最新价格" width="120" align="right">
+        <el-table-column label="最新价格" width="130" align="right">
           <template #default="{ row }">
-            <span v-if="row.latestPrice">¥{{ row.latestPrice }}</span>
-            <span v-else class="text-gray-400">暂无价格</span>
+            <div class="price-info">
+              <span v-if="row.latestPrice" class="price-value">¥{{ row.latestPrice }}</span>
+              <span v-else class="no-price">暂无价格</span>
+            </div>
           </template>
         </el-table-column>
-        <el-table-column label="价格季度" width="100">
+        <el-table-column label="价格季度" width="110">
           <template #default="{ row }">
-            <span v-if="row.latestQuarter">{{ row.latestQuarter }}</span>
-            <span v-else class="text-gray-400">-</span>
+            <span v-if="row.latestQuarter" class="quarter-info">{{ row.latestQuarter }}</span>
+            <span v-else class="no-data">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="type" label="类型" width="100"></el-table-column>
-        <el-table-column label="历史价格" width="100">
+        <el-table-column label="历史价格" width="110" align="center">
           <template #default="{ row }">
-            <el-tag size="small" type="info">{{ row.priceCount }}个</el-tag>
+            <el-tag size="small" type="primary">{{ row.priceCount }}个</el-tag>
           </template>
         </el-table-column>
       </el-table>
-      <el-pagination
-        v-if="total > pageSize"
-        background
-        layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        :page-sizes="[10, 20, 50, 100]"
-        :page-size="pageSize"
-        :current-page="pageNum"
-        @current-change="onPageChange"
-        @size-change="onSizeChange"
-        style="margin-top: 10px; text-align: right"
-      />
+      <div class="pagination-wrapper">
+        <el-pagination
+          v-if="total > pageSize"
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          :page-size="pageSize"
+          :current-page="pageNum"
+          @current-change="onPageChange"
+          @size-change="onSizeChange"
+        />
+      </div>
     </div>
     <template #footer>
       <span class="dialog-footer">
@@ -70,6 +85,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 
 const props = defineProps({
   modelValue: {
@@ -188,10 +204,223 @@ const onPageChange = (page) => {
 const onSizeChange = (size) => {
   emit('size-change', size)
 }
+
+// 获取行样式类名
+const getRowClassName = ({ row }) => {
+  if (selectedMaterial.value && 
+      selectedMaterial.value.originalData === row.originalData) {
+    return 'selected-row'
+  }
+  return 'selectable-row'
+}
 </script>
 
 <style scoped>
+/* 对话框样式 */
+:deep(.material-selection-dialog) {
+  background: var(--theme-dialog-bg);
+  border: 1px solid var(--theme-dialog-border);
+  box-shadow: var(--theme-dialog-shadow);
+}
+
+:deep(.material-selection-dialog .el-dialog__header) {
+  background: var(--theme-dialog-header-bg);
+  color: var(--theme-text-primary);
+  border-bottom: 1px solid var(--theme-border-secondary);
+  padding: 16px 24px;
+}
+
+:deep(.material-selection-dialog .el-dialog__body) {
+  padding: 24px;
+  background: var(--theme-bg-primary);
+  color: var(--theme-text-primary);
+}
+
 .selection-dialog-content {
-  padding: 10px;
+  width: 100%;
+}
+
+/* 搜索区域样式 */
+.search-section {
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* 价格信息样式 */
+.price-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.price-value {
+  font-weight: 600;
+  color: var(--theme-success);
+  font-size: 14px;
+}
+
+.no-price {
+  color: var(--theme-text-tertiary);
+  font-size: 12px;
+}
+
+.quarter-info {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+}
+
+.no-data {
+  color: var(--theme-text-tertiary);
+  font-size: 12px;
+}
+
+/* 分页样式 */
+.pagination-wrapper {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--theme-border-secondary);
+}
+
+/* 表格样式 */
+:deep(.el-table) {
+  background: var(--theme-bg-primary) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-table-border);
+}
+
+:deep(.el-table th.el-table__cell) {
+  background: var(--theme-table-header-bg) !important;
+  color: var(--theme-text-primary) !important;
+  border-color: var(--theme-table-border) !important;
+  font-weight: 600;
+}
+
+:deep(.el-table td.el-table__cell) {
+  border-color: var(--theme-table-border) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: var(--theme-table-stripe-bg) !important;
+}
+
+/* 行样式 */
+:deep(.el-table .selectable-row) {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+:deep(.el-table .selectable-row:hover td.el-table__cell) {
+  background: var(--theme-table-hover-bg) !important;
+}
+
+:deep(.el-table .selected-row td.el-table__cell) {
+  background: var(--theme-primary-light) !important;
+  color: var(--theme-primary) !important;
+}
+
+:deep(.el-table .el-table__row.current-row > td.el-table__cell) {
+  background: var(--theme-primary-light) !important;
+}
+
+/* 标签样式 */
+:deep(.el-tag--primary) {
+  background: var(--theme-primary) !important;
+  color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-primary) !important;
+}
+
+/* 输入框样式 */
+:deep(.el-input__wrapper) {
+  background: var(--theme-input-bg) !important;
+  border-color: var(--theme-input-border) !important;
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-input__wrapper:hover) {
+  border-color: var(--theme-primary) !important;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 2px var(--theme-primary-light) !important;
+}
+
+:deep(.el-input__inner) {
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-input__inner::placeholder) {
+  color: var(--theme-text-tertiary) !important;
+}
+
+/* 分页组件样式 */
+:deep(.el-pagination) {
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-pagination .el-pager li) {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+  border: 1px solid var(--theme-border-primary) !important;
+}
+
+:deep(.el-pagination .el-pager li:hover) {
+  background: var(--theme-primary-light) !important;
+  color: var(--theme-primary) !important;
+}
+
+:deep(.el-pagination .el-pager li.is-active) {
+  background: var(--theme-primary) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-pagination .btn-prev),
+:deep(.el-pagination .btn-next) {
+  background: var(--theme-bg-secondary) !important;
+  color: var(--theme-text-primary) !important;
+  border: 1px solid var(--theme-border-primary) !important;
+}
+
+:deep(.el-pagination .btn-prev:hover),
+:deep(.el-pagination .btn-next:hover) {
+  background: var(--theme-primary-light) !important;
+  color: var(--theme-primary) !important;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  :deep(.material-selection-dialog) {
+    width: 95% !important;
+    margin: 5vh auto !important;
+  }
+  
+  .search-input {
+    max-width: none;
+  }
+  
+  :deep(.el-table .el-table__cell) {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+  }
+  
+  .pagination-wrapper {
+    margin-top: 16px;
+  }
+  
+  :deep(.el-pagination) {
+    text-align: center !important;
+  }
+  
+  :deep(.el-pagination .el-pagination__sizes),
+  :deep(.el-pagination .el-pagination__jump) {
+    display: none !important;
+  }
 }
 </style>

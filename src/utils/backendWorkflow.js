@@ -892,7 +892,7 @@ export async function updateContractAnalysisResult(updateData) {
     return response
   } catch (error) {
     console.error('修改确认合同解析结果失败:', error)
-    ElMessage.error(error.message || '修改确认合同解析结果失败')
+    // 移除这里的ElMessage.error，让调用方决定如何处理错误提示
     throw error
   }
 }

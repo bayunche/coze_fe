@@ -3,10 +3,10 @@
     <!-- 页面头部 -->
     <div :class="CSS_CLASSES.PAGE_HEADER">
       <div class="header-left">
-        <el-button 
-          @click="handleGoBack" 
-          :icon="ArrowLeft" 
-          type="text" 
+        <el-button
+          @click="handleGoBack"
+          :icon="ArrowLeft"
+          type="text"
           :class="CSS_CLASSES.BACK_BUTTON"
         >
           {{ BUTTON_CONFIG.BACK.text }}
@@ -17,25 +17,15 @@
         </div>
       </div>
       <div class="header-right">
-        <el-button 
-          @click="handleRefresh" 
-          :icon="Refresh" 
-          type="default"
-          :loading="refreshLoading"
-        >
+        <el-button @click="handleRefresh" :icon="Refresh" type="default" :loading="refreshLoading">
           刷新数据
         </el-button>
-        <el-button 
-          @click="handleExport" 
-          :icon="Download" 
-          type="default"
-          :loading="exportLoading"
-        >
+        <el-button @click="handleExport" :icon="Download" type="default" :loading="exportLoading">
           导出数据
         </el-button>
-        <el-button 
-          @click="handleBatchConfirm" 
-          :icon="Check" 
+        <el-button
+          @click="handleBatchConfirm"
+          :icon="Check"
           type="success"
           :loading="batchConfirming"
           :disabled="pendingCount === 0"
@@ -63,7 +53,7 @@
             </template>
           </el-input>
         </div>
-        
+
         <div class="filter-section">
           <el-select
             v-model="queryParams.confirmResult"
@@ -76,7 +66,7 @@
             <el-option label="未确认" :value="0" />
             <el-option label="已确认" :value="1" />
           </el-select>
-          
+
           <el-select
             v-model="queryParams.matchedType"
             placeholder="匹配类型"
@@ -129,8 +119,8 @@
             </span>
           </div>
           <div class="toolbar-right">
-            <el-button 
-              type="success" 
+            <el-button
+              type="success"
               :loading="batchConfirming"
               :disabled="pendingCount === 0"
               @click="handleBatchConfirm"
@@ -141,29 +131,39 @@
           </div>
         </div>
 
-<el-table 
-          :data="materialData" 
+        <el-table
+          :data="materialData"
           v-loading="tableLoading"
-          style="width: 100%" 
+          style="width: 100%"
           :row-class-name="getRowClassName"
           border
           stripe
           max-height="60vh"
         >
-          <el-table-column type="index" label="序号" width="60" fixed="left" />
-          
-          <el-table-column prop="materialName" label="物资名称" min-width="140" show-overflow-tooltip />
-          
-          <el-table-column prop="specifications" label="规格型号" min-width="140" show-overflow-tooltip />
-          
+          <el-table-column type="index" label="序号" width="80" fixed="left" />
+
+          <el-table-column
+            prop="materialName"
+            label="物资名称"
+            min-width="140"
+            show-overflow-tooltip
+          />
+
+          <el-table-column
+            prop="specifications"
+            label="规格型号"
+            min-width="140"
+            show-overflow-tooltip
+          />
+
           <el-table-column prop="unit" label="单位" width="80" />
-          
+
           <el-table-column prop="quantity" label="数量" width="100">
             <template #default="{ row }">
               <span>{{ formatNumber(row.quantity) }}</span>
             </template>
           </el-table-column>
-          
+
           <el-table-column label="匹配基础数据" min-width="160" show-overflow-tooltip>
             <template #default="{ row }">
               <div class="recommend-info">
@@ -172,7 +172,7 @@
               </div>
             </template>
           </el-table-column>
-          
+
           <el-table-column label="价格信息" width="140">
             <template #default="{ row }">
               <div class="price-info">
@@ -181,43 +181,43 @@
               </div>
             </template>
           </el-table-column>
-          
-          <el-table-column label="匹配类型" width="100" align="center">
+
+          <el-table-column label="匹配类型" width="140" align="center">
             <template #default="{ row }">
-              <el-tag 
-                :type="getMatchTypeTagInfo(row.matchedType).type"
-                size="small"
-              >
+              <el-tag :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
                 {{ getMatchTypeTagInfo(row.matchedType).text }}
               </el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column label="确认状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag 
-                :type="getConfirmStatusType(row.confirmResult)"
-                size="small"
-              >
+              <el-tag :type="getConfirmStatusType(row.confirmResult)" size="small">
                 {{ getConfirmStatusText(row.confirmResult) }}
               </el-tag>
             </template>
           </el-table-column>
-          
+
           <el-table-column label="操作" width="250" fixed="right" align="center">
             <template #default="{ row }">
               <!-- 已确认状态 -->
               <div v-if="row.confirmResult === 1">
                 <el-button type="success" size="small" disabled>已确认</el-button>
               </div>
-              
+
               <!-- 精确匹配：无需操作 -->
               <div v-else-if="getMatchTypeTagInfo(row.matchedType).text === '精确匹配'">
                 <el-button type="info" size="small" disabled>已精确匹配</el-button>
               </div>
-              
+
               <!-- 相似匹配、历史匹配：显示选择下拉框 -->
-              <div v-else-if="['相似匹配', '历史匹配'].includes(getMatchTypeTagInfo(row.matchedType).text) && row.matchOptions && row.matchOptions.length > 0">
+              <div
+                v-else-if="
+                  ['相似匹配', '历史匹配'].includes(getMatchTypeTagInfo(row.matchedType).text) &&
+                  row.matchOptions &&
+                  row.matchOptions.length > 0
+                "
+              >
                 <el-select
                   v-model="row.selectedMaterial"
                   placeholder="选择物资"
@@ -228,7 +228,9 @@
                   <el-option
                     v-for="option in row.matchOptions"
                     :key="option.matchedId"
-                    :label="`${option.baseInfo?.materialName || '未知'} ${option.baseInfo?.specifications || ''}`"
+                    :label="`${option.baseInfo?.materialName || '未知'} ${
+                      option.baseInfo?.specifications || ''
+                    }`"
                     :value="option"
                   />
                 </el-select>
@@ -240,30 +242,30 @@
                   @change="handlePriceQuarterChange(row, $event)"
                 >
                   <el-option
-                    v-for="priceOption in (row.selectedMaterial?.priceOptions || [])"
+                    v-for="priceOption in row.selectedMaterial?.priceOptions || []"
                     :key="priceOption.priceId"
                     :label="`¥${formatNumber(priceOption.taxPrice)} (${priceOption.quarter})`"
                     :value="priceOption"
                   />
                 </el-select>
               </div>
-              
+
               <!-- 无匹配或其他情况：显示确认和更多选项按钮 -->
               <div v-else>
-                <el-button 
-                  type="primary" 
+                <el-button
+                  type="primary"
                   size="small"
                   :disabled="row.confirmResult === 1"
                   @click="handleQuickConfirm(row)"
-                  style="margin-bottom: 5px; width: 100%;"
+                  style="margin-bottom: 5px; width: 100%"
                 >
                   {{ row.confirmResult === 1 ? '已确认' : '确认' }}
                 </el-button>
-                <el-button 
-                  type="text" 
+                <el-button
+                  type="text"
                   size="small"
                   @click="handleViewOptions(row)"
-                  style="width: 100%;"
+                  style="width: 100%"
                 >
                   更多选项
                 </el-button>
@@ -288,10 +290,10 @@
         <!-- 页面底部操作按钮 -->
         <div class="page-footer">
           <el-button @click="handleBack">关闭</el-button>
-          <el-button 
+          <el-button
             v-if="shouldShowSaveButton"
-            type="primary" 
-            @click="handleSaveResults" 
+            type="primary"
+            @click="handleSaveResults"
             :loading="saving"
             :disabled="!hasModifiedData"
           >
@@ -325,31 +327,19 @@ const props = defineProps({
     required: true
   }
 })
-import { 
-  ArrowLeft, 
-  Refresh, 
-  Download, 
-  Check, 
-  Search 
-} from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import ConfirmOptionsDialog from '@/components/home/SupplierMaterialConfirmDialog/ConfirmOptionsDialog.vue'
-import { 
+import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
-  confirmSupplierMaterialData 
+  confirmSupplierMaterialData
 } from '@/utils/backendWorkflow.js'
 
 // 导入常量和工具函数
-import {
-  BUTTON_CONFIG,
-  PAGINATION_CONFIG,
-  CSS_CLASSES
-} from './constants.js'
+import { BUTTON_CONFIG, PAGINATION_CONFIG, CSS_CLASSES } from './constants.js'
 
-import {
-  useNavigation
-} from './utils.js'
+import { useNavigation } from './utils.js'
 
 // 路由参数 - 使用 props 传递的参数
 const taskId = computed(() => {
@@ -390,23 +380,23 @@ const useComplexQuery = ref(true) // 是否使用复杂查询接口
 
 // 计算确认统计
 const confirmedCount = computed(() => {
-  return materialData.value.filter(item => item.confirmResult === 1).length
+  return materialData.value.filter((item) => item.confirmResult === 1).length
 })
 
 // 计算是否有修改过的数据
 const hasModifiedData = computed(() => {
-  return materialData.value.some(item => item.isUserModified === true)
+  return materialData.value.some((item) => item.isUserModified === true)
 })
 
 // 计算是否应该显示保存按钮（有未确认的数据或有修改过的数据）
 const shouldShowSaveButton = computed(() => {
-  const hasUnconfirmed = materialData.value.some(item => item.confirmResult !== 1)
+  const hasUnconfirmed = materialData.value.some((item) => item.confirmResult !== 1)
   const hasModified = hasModifiedData.value
   return hasUnconfirmed || hasModified
 })
 
 const pendingCount = computed(() => {
-  return materialData.value.filter(item => item.confirmResult !== 1).length
+  return materialData.value.filter((item) => item.confirmResult !== 1).length
 })
 
 /**
@@ -414,11 +404,11 @@ const pendingCount = computed(() => {
  */
 const fetchData = async () => {
   if (!taskId.value) return
-  
+
   tableLoading.value = true
   try {
     let response
-    
+
     if (useComplexQuery.value) {
       // 使用复杂查询接口
       const params = {
@@ -426,28 +416,28 @@ const fetchData = async () => {
         page: currentPage.value - 1,
         size: pageSize.value
       }
-      
+
       // 添加搜索关键词
       if (searchKeyword.value && searchKeyword.value.trim()) {
         params.keyword = searchKeyword.value.trim()
       }
-      
+
       // 添加筛选条件
       if (queryParams.value.confirmResult !== undefined) {
         params.confirmResult = queryParams.value.confirmResult
       }
-      
+
       if (queryParams.value.matchedType !== undefined) {
         params.matchedType = queryParams.value.matchedType
       }
-      
+
       console.log('使用复杂查询参数:', params)
       response = await querySupplierMaterialsComplex(params)
-      
+
       if (response && response.data) {
         // 获取数据并初始化每行数据
         const rawData = response.data.content || []
-        materialData.value = rawData.map(item => initializeRowData(item))
+        materialData.value = rawData.map((item) => initializeRowData(item))
         statistics.value = response.data.statistics || {}
         total.value = response.data.page?.totalElements || 0
       }
@@ -457,21 +447,20 @@ const fetchData = async () => {
         page: currentPage.value - 1,
         size: pageSize.value
       })
-      
+
       if (response && response.content) {
         // 初始化简单查询接口的数据
-        materialData.value = response.content.map(item => initializeRowData(item))
+        materialData.value = response.content.map((item) => initializeRowData(item))
         total.value = response.totalElements || 0
         statistics.value = null
       }
     }
-    
+
     if (!response) {
       materialData.value = []
       total.value = 0
       statistics.value = null
     }
-    
   } catch (error) {
     console.error('获取乙供物资解析结果失败:', error)
     // 如果复杂查询失败，尝试使用简单查询
@@ -481,8 +470,9 @@ const fetchData = async () => {
       await fetchData()
       return
     }
-    
-    const errorMsg = error?.response?.data?.message || error?.message || '获取解析结果失败，请稍后重试'
+
+    const errorMsg =
+      error?.response?.data?.message || error?.message || '获取解析结果失败，请稍后重试'
     ElMessage.error(errorMsg)
     materialData.value = []
     total.value = 0
@@ -560,17 +550,17 @@ const handleRefresh = () => {
  */
 const handleExport = async () => {
   exportLoading.value = true
-  
+
   try {
     // 模拟加载时间，提供更好的用户体验
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
     ElMessage.info({
       message: '此功能正在开发中，请等待功能上线！',
       duration: 3000,
       showClose: true
     })
-    
+
     console.log('【提示】导出功能正在开发中')
   } catch (error) {
     console.error('【错误】处理导出失败:', error)
@@ -585,77 +575,71 @@ const handleExport = async () => {
  * 批量确认全部
  */
 const handleBatchConfirm = async () => {
-  const pendingItems = materialData.value.filter(item => item.confirmResult !== 1)
-  
+  const pendingItems = materialData.value.filter((item) => item.confirmResult !== 1)
+
   if (pendingItems.length === 0) {
     ElMessage.info('没有需要确认的物资')
     return
   }
-  
+
   // 检查是否有缺少推荐数据的物资
-  const missingDataItems = pendingItems.filter(item => {
+  const missingDataItems = pendingItems.filter((item) => {
     let baseDataId = item.recommendedBaseDataId
     let priceId = item.recommendedPriceId
-    
+
     // 如果没有直接的推荐数据，尝试从matchOptions获取
     if (!baseDataId && item.matchOptions && item.matchOptions.length > 0) {
       const firstMatch = item.matchOptions[0]
       baseDataId = firstMatch.matchedId
-      
+
       if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
         priceId = firstMatch.priceOptions[0].priceId
       }
     }
-    
+
     return !baseDataId || !priceId
   })
-  
+
   if (missingDataItems.length > 0) {
-    ElMessage.warning(
-      `有 ${missingDataItems.length} 个物资缺少推荐数据，请先手动处理这些物资`
-    )
+    ElMessage.warning(`有 ${missingDataItems.length} 个物资缺少推荐数据，请先手动处理这些物资`)
     return
   }
-  
+
   try {
-    await ElMessageBox.confirm(
-      `确认批量处理 ${pendingItems.length} 个待确认的物资？`,
-      '批量确认',
-      {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
+    await ElMessageBox.confirm(`确认批量处理 ${pendingItems.length} 个待确认的物资？`, '批量确认', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
     batchConfirming.value = true
-    
-    const confirmPromises = pendingItems.map(item => {
+
+    const confirmPromises = pendingItems.map((item) => {
       let baseDataId = item.recommendedBaseDataId
       let priceId = item.recommendedPriceId
-      
+
       // 如果没有直接的推荐数据，尝试从matchOptions获取
       if (!baseDataId && item.matchOptions && item.matchOptions.length > 0) {
         const firstMatch = item.matchOptions[0]
         baseDataId = firstMatch.matchedId
-        
+
         if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
           priceId = firstMatch.priceOptions[0].priceId
         }
       }
-      
+
       return confirmSupplierMaterialData({
         id: item.taskDataId || item.id,
         confirmBaseDataId: baseDataId,
         confirmPriceId: priceId
       })
     })
-    
+
     const results = await Promise.allSettled(confirmPromises)
-    
+
     let successCount = 0
     let failureCount = 0
-    
+
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value?.code === 200) {
         // 更新本地数据
@@ -668,13 +652,12 @@ const handleBatchConfirm = async () => {
         console.error('批量确认失败:', result.reason || result.value)
       }
     })
-    
+
     if (failureCount > 0) {
       ElMessage.warning(`成功确认 ${successCount} 个，失败 ${failureCount} 个`)
     } else {
       ElMessage.success(`批量确认成功！共处理 ${successCount} 个物资`)
     }
-    
   } catch (error) {
     if (error !== 'cancel') {
       console.error('批量确认失败:', error)
@@ -689,18 +672,24 @@ const handleBatchConfirm = async () => {
 // 获取确认状态类型
 const getConfirmStatusType = (status) => {
   switch (Number(status)) {
-    case 1: return 'success'
-    case 0: return 'warning'
-    default: return 'info'
+    case 1:
+      return 'success'
+    case 0:
+      return 'warning'
+    default:
+      return 'info'
   }
 }
 
 // 获取确认状态文本
 const getConfirmStatusText = (status) => {
   switch (Number(status)) {
-    case 1: return '已确认'
-    case 0: return '待确认'
-    default: return '未知'
+    case 1:
+      return '已确认'
+    case 0:
+      return '待确认'
+    default:
+      return '未知'
   }
 }
 
@@ -722,12 +711,12 @@ const getBaseInfoName = (row) => {
   if (row.baseInfo && row.baseInfo.materialName) {
     return row.baseInfo.materialName
   }
-  
+
   // 从matchOptions中获取第一个匹配的基础数据
   if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
     return row.matchOptions[0].baseInfo.materialName
   }
-  
+
   return row.recommendedBaseName || '无匹配'
 }
 
@@ -737,12 +726,12 @@ const getBaseInfoSpec = (row) => {
   if (row.baseInfo && row.baseInfo.specifications) {
     return row.baseInfo.specifications
   }
-  
+
   // 从matchOptions中获取第一个匹配的基础数据
   if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
     return row.matchOptions[0].baseInfo.specifications || ''
   }
-  
+
   return row.recommendedBaseSpec || ''
 }
 
@@ -752,7 +741,7 @@ const getPriceText = (row) => {
   if (row.priceInfo && row.priceInfo.taxPrice) {
     return `¥${formatNumber(row.priceInfo.taxPrice)}`
   }
-  
+
   // 从matchOptions中获取第一个匹配选项的最新价格信息
   if (row.matchOptions && row.matchOptions.length > 0) {
     const matchOption = row.matchOptions[0]
@@ -762,7 +751,7 @@ const getPriceText = (row) => {
       return `¥${formatNumber(latestPrice.taxPrice)}`
     }
   }
-  
+
   return row.recommendedPrice ? `¥${formatNumber(row.recommendedPrice)}` : '无价格'
 }
 
@@ -772,7 +761,7 @@ const getPriceQuarter = (row) => {
   if (row.priceInfo && row.priceInfo.quarter) {
     return row.priceInfo.quarter
   }
-  
+
   // 从matchOptions中获取第一个匹配选项的最新价格季度信息
   if (row.matchOptions && row.matchOptions.length > 0) {
     const matchOption = row.matchOptions[0]
@@ -782,7 +771,7 @@ const getPriceQuarter = (row) => {
       return latestPrice.quarter || ''
     }
   }
-  
+
   return row.recommendedPriceQuarter || ''
 }
 
@@ -792,45 +781,41 @@ const handleConfirm = async (row) => {
     ElMessage.info('该物资已确认')
     return
   }
-  
+
   // 检查是否有推荐数据或匹配选项
   let baseDataId = row.recommendedBaseDataId
   let priceId = row.recommendedPriceId
-  
+
   // 如果没有直接的推荐数据，尝试从matchOptions获取
   if (!baseDataId && row.matchOptions && row.matchOptions.length > 0) {
     const firstMatch = row.matchOptions[0]
     baseDataId = firstMatch.matchedId
-    
+
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
       priceId = firstMatch.priceOptions[0].priceId
     }
   }
-  
+
   if (!baseDataId || !priceId) {
     ElMessage.warning('该物资缺少推荐的基础数据或价格数据，请点击"更多选项"手动选择')
     return
   }
-  
+
   try {
-    await ElMessageBox.confirm(
-      `确认物资"${row.materialName}"的匹配结果？`,
-      '确认操作',
-      {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
+    await ElMessageBox.confirm(`确认物资"${row.materialName}"的匹配结果？`, '确认操作', {
+      confirmButtonText: '确认',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+
     const confirmData = {
       id: row.taskDataId || row.id, // 使用taskDataId作为主要标识符
       confirmBaseDataId: baseDataId,
       confirmPriceId: priceId
     }
-    
+
     const result = await confirmSupplierMaterialData(confirmData)
-    
+
     if (result && result.code === 200) {
       // 更新本地数据
       row.confirmResult = 1
@@ -840,11 +825,11 @@ const handleConfirm = async (row) => {
       const errorMsg = result?.message || result?.msg || '确认失败'
       ElMessage.error(errorMsg)
     }
-    
   } catch (error) {
     if (error !== 'cancel') {
       console.error('确认失败:', error)
-      const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
+      const errorMsg =
+        error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
       ElMessage.error(errorMsg)
     }
   }
@@ -864,10 +849,10 @@ const handleOptionConfirm = async (confirmData) => {
       confirmBaseDataId: confirmData.confirmBaseDataId,
       confirmPriceId: confirmData.confirmPriceId
     })
-    
+
     if (result && result.code === 200) {
       // 更新本地数据
-      const item = materialData.value.find(item => item.id === confirmData.materialId)
+      const item = materialData.value.find((item) => item.id === confirmData.materialId)
       if (item) {
         item.confirmResult = 1
         item.confirmType = result.data?.confirmType || 3
@@ -882,10 +867,10 @@ const handleOptionConfirm = async (confirmData) => {
       const errorMsg = result?.message || result?.msg || '确认失败'
       ElMessage.error(errorMsg)
     }
-    
   } catch (error) {
     console.error('选项确认失败:', error)
-    const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
+    const errorMsg =
+      error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
     ElMessage.error(errorMsg)
   }
 }
@@ -897,7 +882,6 @@ const getRowClassName = ({ row }) => {
   }
   return 'pending-row'
 }
-
 
 // 页面初始化时加载数据
 onMounted(() => {
@@ -938,14 +922,18 @@ const handleMaterialSelectChange = async (row, selectedMaterial) => {
   console.log('物资选择变化:', selectedMaterial)
   row.selectedMaterial = selectedMaterial
   row.selectedPriceQuarter = null
-  
+
   // 如果有价格选项，默认选择第一个
-  if (selectedMaterial && selectedMaterial.priceOptions && selectedMaterial.priceOptions.length > 0) {
+  if (
+    selectedMaterial &&
+    selectedMaterial.priceOptions &&
+    selectedMaterial.priceOptions.length > 0
+  ) {
     row.selectedPriceQuarter = selectedMaterial.priceOptions[0]
     // 自动触发价格选择变化
     handlePriceQuarterChange(row, selectedMaterial.priceOptions[0])
   }
-  
+
   row.isUserModified = true
 }
 
@@ -953,7 +941,7 @@ const handleMaterialSelectChange = async (row, selectedMaterial) => {
 const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
   console.log('价格季度选择变化:', selectedPriceQuarter)
   row.selectedPriceQuarter = selectedPriceQuarter
-  
+
   // 更新显示的匹配信息
   if (row.selectedMaterial && selectedPriceQuarter) {
     // 更新表格显示的数据
@@ -961,7 +949,7 @@ const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
     row.matchedBaseSpec = row.selectedMaterial.baseInfo.specifications
     row.matchedPrice = selectedPriceQuarter.taxPrice
     row.matchedPriceQuarter = selectedPriceQuarter.quarter
-    
+
     // 标记为用户修改
     row.isUserModified = true
     row.selectedBaseDataId = row.selectedMaterial.matchedId
@@ -975,35 +963,35 @@ const handleQuickConfirm = async (row) => {
     ElMessage.info('该物资已确认')
     return
   }
-  
+
   // 检查是否有推荐数据或用户选择的数据
   let baseDataId = row.selectedBaseDataId || row.recommendedBaseDataId
   let priceId = row.selectedPriceId || row.recommendedPriceId
-  
+
   // 如果没有数据，从matchOptions获取
   if (!baseDataId && row.matchOptions && row.matchOptions.length > 0) {
     const firstMatch = row.matchOptions[0]
     baseDataId = firstMatch.matchedId
-    
+
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
       priceId = firstMatch.priceOptions[0].priceId
     }
   }
-  
+
   if (!baseDataId || !priceId) {
     ElMessage.warning('该物资缺少推荐的基础数据或价格数据，请点击"更多选项"手动选择')
     return
   }
-  
+
   try {
     const confirmData = {
       id: row.taskDataId || row.id,
       confirmBaseDataId: baseDataId,
       confirmPriceId: priceId
     }
-    
+
     const result = await confirmSupplierMaterialData(confirmData)
-    
+
     if (result && result.code === 200) {
       row.confirmResult = 1
       row.confirmType = result.data?.confirmType || 1
@@ -1015,7 +1003,8 @@ const handleQuickConfirm = async (row) => {
     }
   } catch (error) {
     console.error('快速确认失败:', error)
-    const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
+    const errorMsg =
+      error?.response?.data?.message || error?.response?.data?.msg || error?.message || '确认失败'
     ElMessage.error(errorMsg)
   }
 }
@@ -1028,24 +1017,24 @@ const initializeRowData = (row) => {
   row.isUserModified = false
   row.selectedBaseDataId = null
   row.selectedPriceId = null
-  
+
   // 如果有匹配选项，预选第一个
   if (row.matchOptions && row.matchOptions.length > 0) {
     const firstMatch = row.matchOptions[0]
     row.selectedMaterial = firstMatch
-    
+
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
       row.selectedPriceQuarter = firstMatch.priceOptions[0]
     }
   }
-  
+
   return row
 }
 
 // 新增：保存解析结果
 const handleSaveResults = async () => {
-  const modifiedItems = materialData.value.filter(item => item.isUserModified === true)
-  
+  const modifiedItems = materialData.value.filter((item) => item.isUserModified === true)
+
   if (modifiedItems.length === 0) {
     ElMessage.info('未检测到修改的数据，无需保存。')
     return
@@ -1061,29 +1050,29 @@ const handleSaveResults = async () => {
         type: 'warning'
       }
     )
-    
+
     saving.value = true
-    
+
     // 准备保存数据
-    const updateObjList = modifiedItems.map(item => ({
+    const updateObjList = modifiedItems.map((item) => ({
       id: item.taskDataId || item.id,
-      confirmBaseDataId: item.selectedBaseDataId || (item.matchOptions?.[0]?.matchedId),
-      confirmPriceId: item.selectedPriceId || (item.matchOptions?.[0]?.priceOptions?.[0]?.priceId),
+      confirmBaseDataId: item.selectedBaseDataId || item.matchOptions?.[0]?.matchedId,
+      confirmPriceId: item.selectedPriceId || item.matchOptions?.[0]?.priceOptions?.[0]?.priceId,
       confirmType: 2 // 人工确认
     }))
 
     // 这里应该调用保存的API接口
     // 暂时使用确认接口的批量版本
-    const promises = updateObjList.map(data => confirmSupplierMaterialData(data))
+    const promises = updateObjList.map((data) => confirmSupplierMaterialData(data))
     const results = await Promise.allSettled(promises)
-    
+
     let successCount = 0
-    results.forEach(result => {
+    results.forEach((result) => {
       if (result.status === 'fulfilled' && result.value?.code === 200) {
         successCount++
       }
     })
-    
+
     if (successCount > 0) {
       ElMessage.success(`成功保存 ${successCount} 个物资的解析结果`)
       // 刷新数据
@@ -1091,11 +1080,11 @@ const handleSaveResults = async () => {
     } else {
       ElMessage.error('保存失败')
     }
-    
   } catch (error) {
     if (error !== 'cancel') {
       console.error('保存解析结果失败:', error)
-      const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '保存失败'
+      const errorMsg =
+        error?.response?.data?.message || error?.response?.data?.msg || error?.message || '保存失败'
       ElMessage.error(errorMsg)
     }
   } finally {
@@ -1142,8 +1131,7 @@ const handleBack = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: 
-    radial-gradient(circle at 20% 20%, rgba(0, 122, 255, 0.15) 0%, transparent 50%),
+  background-image: radial-gradient(circle at 20% 20%, rgba(0, 122, 255, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 80% 40%, rgba(90, 200, 250, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 40% 80%, rgba(0, 122, 255, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 90% 10%, rgba(90, 200, 250, 0.12) 0%, transparent 50%),
@@ -1155,7 +1143,8 @@ const handleBack = () => {
 
 /* 气泡漂浮动画 */
 @keyframes float-bubbles {
-  0%, 100% {
+  0%,
+  100% {
     transform: translate(0px, 0px) scale(1);
     opacity: 1;
   }
@@ -1175,13 +1164,7 @@ const handleBack = () => {
 
 /* 为科技蓝主题添加深色渐变背景和科技感效果 */
 [data-theme='tech-blue'] .supplier-material-detail-page {
-  background: linear-gradient(
-    135deg,
-    #0a0e1a 0%,
-    #1a2332 30%,
-    #243447 60%,
-    #1a2332 100%
-  );
+  background: linear-gradient(135deg, #0a0e1a 0%, #1a2332 30%, #243447 60%, #1a2332 100%);
   background-attachment: fixed;
   position: relative;
 }
@@ -1194,12 +1177,27 @@ const handleBack = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image:
-    linear-gradient(90deg, transparent 50%, rgba(0, 212, 255, 0.03) 51%, rgba(0, 212, 255, 0.03) 52%, transparent 53%),
-    linear-gradient(0deg, transparent 50%, rgba(0, 212, 255, 0.03) 51%, rgba(0, 212, 255, 0.03) 52%, transparent 53%),
+  background-image: linear-gradient(
+      90deg,
+      transparent 50%,
+      rgba(0, 212, 255, 0.03) 51%,
+      rgba(0, 212, 255, 0.03) 52%,
+      transparent 53%
+    ),
+    linear-gradient(
+      0deg,
+      transparent 50%,
+      rgba(0, 212, 255, 0.03) 51%,
+      rgba(0, 212, 255, 0.03) 52%,
+      transparent 53%
+    ),
     radial-gradient(circle at 25% 25%, rgba(0, 212, 255, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 75% 75%, rgba(51, 221, 255, 0.08) 0%, transparent 50%);
-  background-size: 40px 40px, 40px 40px, 200px 200px, 300px 300px;
+  background-size:
+    40px 40px,
+    40px 40px,
+    200px 200px,
+    300px 300px;
   pointer-events: none;
   z-index: -1;
   animation: tech-grid 15s linear infinite;
@@ -1208,10 +1206,18 @@ const handleBack = () => {
 /* 科技网格动画 */
 @keyframes tech-grid {
   0% {
-    background-position: 0px 0px, 0px 0px, 0px 0px, 0px 0px;
+    background-position:
+      0px 0px,
+      0px 0px,
+      0px 0px,
+      0px 0px;
   }
   100% {
-    background-position: 40px 40px, 40px 40px, 200px 200px, 300px 300px;
+    background-position:
+      40px 40px,
+      40px 40px,
+      200px 200px,
+      300px 300px;
   }
 }
 
@@ -1237,8 +1243,7 @@ const handleBack = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image:
-    radial-gradient(circle at 30% 20%, rgba(64, 158, 255, 0.08) 0%, transparent 50%),
+  background-image: radial-gradient(circle at 30% 20%, rgba(64, 158, 255, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 70% 60%, rgba(64, 158, 255, 0.05) 0%, transparent 50%),
     radial-gradient(circle at 20% 80%, rgba(64, 158, 255, 0.06) 0%, transparent 50%);
   pointer-events: none;
@@ -1248,7 +1253,8 @@ const handleBack = () => {
 
 /* 暗黑主题光晕效果 */
 @keyframes dark-glow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.3;
     transform: scale(1);
   }
@@ -1279,8 +1285,7 @@ const handleBack = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image:
-    radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+  background-image: radial-gradient(circle at 20% 30%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(167, 139, 250, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 40% 70%, rgba(196, 181, 253, 0.06) 0%, transparent 50%),
     radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 50%);
@@ -1290,7 +1295,8 @@ const handleBack = () => {
 }
 
 @keyframes purple-dream {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg) scale(1);
     opacity: 0.8;
   }
@@ -1325,8 +1331,7 @@ const handleBack = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image:
-    radial-gradient(ellipse at 25% 20%, rgba(5, 150, 105, 0.08) 0%, transparent 50%),
+  background-image: radial-gradient(ellipse at 25% 20%, rgba(5, 150, 105, 0.08) 0%, transparent 50%),
     radial-gradient(ellipse at 75% 40%, rgba(16, 185, 129, 0.06) 0%, transparent 50%),
     radial-gradient(ellipse at 30% 80%, rgba(52, 211, 153, 0.04) 0%, transparent 50%),
     radial-gradient(ellipse at 90% 70%, rgba(5, 150, 105, 0.05) 0%, transparent 50%);
@@ -1336,7 +1341,8 @@ const handleBack = () => {
 }
 
 @keyframes forest-breeze {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateX(0px) translateY(0px);
     opacity: 0.6;
   }
@@ -1375,8 +1381,7 @@ const handleBack = () => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image:
-    radial-gradient(circle at 30% 25%, rgba(234, 88, 12, 0.1) 0%, transparent 50%),
+  background-image: radial-gradient(circle at 30% 25%, rgba(234, 88, 12, 0.1) 0%, transparent 50%),
     radial-gradient(circle at 70% 30%, rgba(249, 115, 22, 0.08) 0%, transparent 50%),
     radial-gradient(circle at 20% 70%, rgba(251, 146, 60, 0.06) 0%, transparent 50%),
     radial-gradient(circle at 85% 75%, rgba(234, 88, 12, 0.04) 0%, transparent 50%);
@@ -1386,7 +1391,8 @@ const handleBack = () => {
 }
 
 @keyframes energy-pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.7;
   }
@@ -1531,7 +1537,9 @@ const handleBack = () => {
 
 .search-input :deep(.el-input__wrapper.is-focus) {
   border-color: var(--theme-input-focus-border);
-  box-shadow: 0 0 0 3px rgba(var(--theme-primary-rgb), 0.15), var(--theme-shadow-md);
+  box-shadow:
+    0 0 0 3px rgba(var(--theme-primary-rgb), 0.15),
+    var(--theme-shadow-md);
   transform: translateY(-1px);
 }
 
@@ -1570,7 +1578,9 @@ const handleBack = () => {
 
 .filter-select :deep(.el-select__wrapper.is-focused) {
   border-color: var(--theme-input-focus-border);
-  box-shadow: 0 0 0 3px rgba(var(--theme-primary-rgb), 0.15), var(--theme-shadow-md);
+  box-shadow:
+    0 0 0 3px rgba(var(--theme-primary-rgb), 0.15),
+    var(--theme-shadow-md);
 }
 
 .filter-select :deep(.el-input__inner) {
@@ -1713,7 +1723,9 @@ const handleBack = () => {
   color: var(--theme-text-secondary);
   line-height: 1.4;
   opacity: 0.8;
-  transition: color 0.3s ease, opacity 0.3s ease;
+  transition:
+    color 0.3s ease,
+    opacity 0.3s ease;
 }
 
 .price-info {
@@ -1744,7 +1756,6 @@ const handleBack = () => {
   backdrop-filter: var(--theme-backdrop-blur, none);
   transition: all 0.3s ease;
 }
-
 
 /* 表格样式 - 全面支持主题切换 */
 :deep(.el-table) {
@@ -1777,7 +1788,9 @@ const handleBack = () => {
   border-bottom: 1px solid var(--theme-table-border) !important;
   color: var(--theme-text-primary) !important;
   padding: 14px 12px;
-  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+  transition:
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s ease;
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
@@ -1990,16 +2003,16 @@ const handleBack = () => {
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
   }
-  
+
   .filter-section {
     flex-wrap: wrap;
     gap: 8px;
   }
-  
+
   .search-toolbar {
     padding: 16px;
   }
-  
+
   .page-header {
     padding: 16px 20px;
   }
@@ -2012,12 +2025,12 @@ const handleBack = () => {
     animation: none !important;
     opacity: 0.3 !important;
   }
-  
+
   /* 简化悬停效果 */
   .stat-card:hover {
     transform: translateY(-2px) !important;
   }
-  
+
   :deep(.el-button:hover) {
     transform: none !important;
   }
@@ -2028,7 +2041,7 @@ const handleBack = () => {
     padding: 12px;
     background-attachment: scroll;
   }
-  
+
   .page-header {
     flex-direction: column;
     gap: 16px;
@@ -2037,95 +2050,95 @@ const handleBack = () => {
     margin-bottom: 16px;
     border-radius: 8px;
   }
-  
+
   .header-left {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
-  
+
   .header-right {
     justify-content: stretch;
     flex-direction: column;
     gap: 8px;
   }
-  
+
   .header-right .el-button {
     width: 100%;
     padding: 10px 16px;
   }
-  
+
   .search-toolbar {
     flex-direction: column;
     gap: 16px;
     padding: 16px;
     border-radius: 8px;
   }
-  
+
   .search-section {
     max-width: none;
   }
-  
+
   .filter-section {
     width: 100%;
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .filter-select {
     width: 100%;
   }
-  
+
   .statistics-cards {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
-  
+
   .stat-card {
     padding: 12px;
     border-radius: 8px;
   }
-  
+
   .stat-value {
     font-size: 22px;
   }
-  
+
   .stat-label {
     font-size: 11px;
   }
-  
+
   .table-section {
     padding: 16px;
     border-radius: 8px;
   }
-  
+
   .table-toolbar {
     flex-direction: column;
     gap: 12px;
     text-align: center;
     padding: 10px 12px;
   }
-  
+
   .toolbar-right {
     width: 100%;
   }
-  
+
   .toolbar-right .el-button {
     width: 100%;
     padding: 8px 12px;
   }
-  
+
   :deep(.el-table) {
     font-size: 12px;
     border-radius: 6px;
   }
-  
+
   :deep(.el-table th.el-table__cell),
   :deep(.el-table td.el-table__cell) {
     padding: 8px 6px;
     font-size: 11px;
   }
-  
+
   :deep(.el-pagination) {
     margin-top: 16px;
   }
@@ -2136,17 +2149,17 @@ const handleBack = () => {
     padding: 8px;
     background-attachment: scroll;
   }
-  
+
   /* 在极小屏幕上使用纯色背景以提高性能 */
   [data-theme] .supplier-material-detail-page {
     background: var(--theme-bg-secondary) !important;
     background-attachment: scroll !important;
   }
-  
+
   [data-theme] .supplier-material-detail-page::before {
     display: none !important;
   }
-  
+
   .title-section h1 {
     font-size: 18px;
     line-height: 1.2;
@@ -2154,21 +2167,21 @@ const handleBack = () => {
     color: var(--theme-text-primary) !important;
     -webkit-text-fill-color: unset !important;
   }
-  
+
   .title-section p {
     font-size: 12px;
     margin-top: 6px;
   }
-  
+
   .statistics-cards {
     grid-template-columns: 1fr;
     gap: 8px;
   }
-  
+
   .stat-card {
     padding: 10px;
   }
-  
+
   .stat-value {
     font-size: 20px;
     margin-bottom: 6px;
@@ -2176,48 +2189,48 @@ const handleBack = () => {
     color: var(--theme-primary) !important;
     -webkit-text-fill-color: unset !important;
   }
-  
+
   .stat-label {
     font-size: 10px;
   }
-  
+
   .page-header {
     padding: 12px;
     margin-bottom: 12px;
   }
-  
+
   .search-toolbar {
     padding: 12px;
   }
-  
+
   .table-section {
     padding: 12px;
   }
-  
+
   :deep(.el-table th.el-table__cell),
   :deep(.el-table td.el-table__cell) {
     padding: 6px 4px;
     font-size: 10px;
   }
-  
+
   .price-info .price-text {
     font-size: 12px;
     background: none !important;
     color: var(--theme-price-color) !important;
     -webkit-text-fill-color: unset !important;
   }
-  
+
   .price-info .price-quarter {
     font-size: 9px;
     padding: 1px 4px;
   }
-  
+
   .total-info {
     background: none !important;
     color: var(--theme-text-primary) !important;
     -webkit-text-fill-color: unset !important;
   }
-  
+
   /* 禁用所有动画和过渡效果 */
   * {
     transition: none !important;

@@ -135,7 +135,7 @@ class MaterialService {
       if (params.page !== undefined) queryParams.append('page', params.page)
       if (params.size !== undefined) queryParams.append('size', params.size)
 
-      const response = await request.get(`/backend-api/materials/priceinfo/page?${queryParams}`)
+      const response = await request.get(`/materials/priceinfo/page?${queryParams}`)
       return response
     } catch (error) {
       console.error('查询物资价格列表失败:', error)
@@ -153,7 +153,7 @@ class MaterialService {
    */
   async createPrice(data) {
     try {
-      const response = await request.post('/backend-api/materials/priceinfo/add', data)
+      const response = await request.post('/materials/priceinfo/add', data)
       return response
     } catch (error) {
       console.error('新增物资价格失败:', error)
@@ -171,7 +171,7 @@ class MaterialService {
    */
   async updatePrice(data) {
     try {
-      const response = await request.put('/backend-api/materials/priceinfo/edit', data)
+      const response = await request.put('/materials/priceinfo/edit', data)
       return response
     } catch (error) {
       console.error('修改物资价格失败:', error)
@@ -186,7 +186,7 @@ class MaterialService {
    */
   async deletePrices(ids) {
     try {
-      const response = await request.delete('/backend-api/materials/priceinfo/delete', {
+      const response = await request.delete('/materials/priceinfo/delete', {
         data: ids
       })
       return response
@@ -203,9 +203,7 @@ class MaterialService {
    */
   async getPriceStatistics(baseInfoId) {
     try {
-      const response = await request.get(
-        `/backend-api/materials/priceinfo/statistics/${baseInfoId}`
-      )
+      const response = await request.get(`/materials/priceinfo/statistics/${baseInfoId}`)
       return response
     } catch (error) {
       console.error('获取物资价格统计信息失败:', error)
@@ -225,7 +223,7 @@ class MaterialService {
     }
     try {
       const response = await request.get(
-        `/backend-api/materials/priceinfo/queryPriceInfoList?baseMaterialsDataId=${baseMaterialsDataId}`
+        `/materials/priceinfo/queryPriceInfoList?baseMaterialsDataId=${baseMaterialsDataId}`
       )
       if (response && response.data) {
         return response.data
