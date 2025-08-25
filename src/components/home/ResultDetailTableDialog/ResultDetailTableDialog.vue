@@ -27,7 +27,11 @@
                 parsingResultStore.formatCellValue(scope.row[column.prop], column.prop)
               }}</span>
               <template v-else>
-                <div v-if="parsingResultStore.isLongText(scope.row[column.prop])">
+                <!-- resultStatus 字段不允许编辑，始终显示为只读 -->
+                <span v-if="column.prop === 'resultStatus'">{{
+                  parsingResultStore.formatCellValue(scope.row[column.prop], column.prop)
+                }}</span>
+                <div v-else-if="parsingResultStore.isLongText(scope.row[column.prop])">
                   <el-button
                     type="primary"
                     link
@@ -67,11 +71,22 @@
               >
             </div>
             <div v-else class="button-group">
+              <!-- 只有未确认状态（resultStatus !== 1）才允许编辑 -->
               <el-button
+                v-if="scope.row.resultStatus !== 1"
                 type="primary"
                 size="small"
                 @click="parsingResultStore.startRowEdit(scope.row)"
                 >编辑</el-button
+              >
+              <!-- 已确认状态显示提示信息 -->
+              <el-button
+                v-else
+                type="info"
+                size="small"
+                disabled
+                title="已确认的记录不允许修改"
+                >已锁定</el-button
               >
               <el-tag 
                 v-if="scope.row.resultStatus === 1" 

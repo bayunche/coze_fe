@@ -278,6 +278,12 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
    * @param {TableDataItem} row - 要编辑的行数据。
    */
   const startRowEdit = (row) => {
+    // 检查确认状态，已确认的记录不允许编辑
+    if (row.resultStatus === 1) {
+      ElMessage.warning('已确认的记录不允许修改，该状态由后端控制')
+      return
+    }
+    
     row.editing = true
   }
 
@@ -388,7 +394,16 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
   const saveAll = async () => {
     savingAllEdits.value = true
     try {
-      const payloads = editFormModels.value.map((item) => {
+      // 过滤掉已确认的记录，只提交未确认的记录
+      const unconfirmedRecords = editFormModels.value.filter(item => item.resultStatus !== 1)
+      
+      if (unconfirmedRecords.length === 0) {
+        ElMessage.info('没有可以提交的未确认记录，已确认的记录不允许修改')
+        savingAllEdits.value = false
+        return
+      }
+      
+      const payloads = unconfirmedRecords.map((item) => {
         const payload = { ...item }
         delete payload.editing
         return payload
@@ -484,9 +499,13 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       }
 
       if (results && results.code === 200) {
-        ElMessage.success('全部解析结果已成功保存！')
+        ElMessage.success(`成功保存了 ${payloads.length} 条未确认的解析结果！`)
         const resultType = isSupplierMaterialMode.value ? '乙供物资' : '合同'
-        chatStore.addMessage(`已保存${payloads.length}个${resultType}解析结果`, 'system')
+        const confirmedCount = editFormModels.value.length - unconfirmedRecords.length
+        const message = confirmedCount > 0 
+          ? `已保存${payloads.length}个${resultType}解析结果（跳过了${confirmedCount}个已确认记录）`
+          : `已保存${payloads.length}个${resultType}解析结果`
+        chatStore.addMessage(message, 'system')
 
         // 更新本地数据
         tableData.value = JSON.parse(
