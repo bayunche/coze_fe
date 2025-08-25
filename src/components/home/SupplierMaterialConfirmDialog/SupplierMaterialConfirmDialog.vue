@@ -111,11 +111,23 @@
       >
         <el-table-column type="index" label="序号" width="60" fixed="left" />
         
-        <el-table-column prop="materialName" label="物资名称" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="materialName" label="物资名称" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span>{{ row.materialName || '-' }}</span>
+          </template>
+        </el-table-column>
         
-        <el-table-column prop="specifications" label="规格型号" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="specifications" label="规格型号" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span>{{ row.specifications || '-' }}</span>
+          </template>
+        </el-table-column>
         
-        <el-table-column prop="unit" label="单位" width="80" />
+        <el-table-column prop="unit" label="单位" width="80">
+          <template #default="{ row }">
+            <span>{{ row.unit || '-' }}</span>
+          </template>
+        </el-table-column>
         
         <el-table-column prop="quantity" label="数量" width="100">
           <template #default="{ row }">
@@ -132,10 +144,10 @@
           </template>
         </el-table-column>
         
-        <el-table-column label="价格信息" width="140">
+        <el-table-column label="价格信息" min-width="120" width="160" show-overflow-tooltip>
           <template #default="{ row }">
-            <div class="price-info">
-              <span class="price-text">{{ getPriceText(row) }}</span>
+            <div class="price-info-wrapper">
+              <div class="price-text">{{ getPriceText(row) }}</div>
               <div class="price-quarter">{{ getPriceQuarter(row) }}</div>
             </div>
           </template>
@@ -1126,6 +1138,38 @@ watch(() => props.show, (newShow) => {
   border-color: var(--theme-table-border);
 }
 
+/* 修复表格滚动时的白块问题 */
+:deep(.el-table .el-table__body-wrapper) {
+  background: var(--theme-bg-primary) !important;
+}
+
+:deep(.el-table .el-table__header-wrapper) {
+  background: var(--theme-bg-primary) !important;
+}
+
+:deep(.el-table .el-table__fixed) {
+  background: var(--theme-bg-primary) !important;
+}
+
+:deep(.el-table .el-table__fixed-right) {
+  background: var(--theme-bg-primary) !important;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.el-table .el-table__fixed-left) {
+  background: var(--theme-bg-primary) !important;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 暗色主题下的阴影优化 */
+:deep(.dark .el-table .el-table__fixed-right) {
+  box-shadow: -2px 0 8px rgba(255, 255, 255, 0.1);
+}
+
+:deep(.dark .el-table .el-table__fixed-left) {
+  box-shadow: 2px 0 8px rgba(255, 255, 255, 0.1);
+}
+
 :deep(.el-table th.el-table__cell) {
   background: var(--theme-table-header-bg) !important;
   color: var(--theme-text-primary) !important;
@@ -1149,11 +1193,25 @@ watch(() => props.show, (newShow) => {
 :deep(.el-tag--success) {
   background: var(--theme-success) !important;
   color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-success) !important;
 }
 
 :deep(.el-tag--warning) {
   background: var(--theme-warning) !important;
   color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-warning) !important;
+}
+
+:deep(.el-tag--primary) {
+  background: var(--theme-primary) !important;
+  color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-primary) !important;
+}
+
+:deep(.el-tag--info) {
+  background: var(--theme-text-secondary) !important;
+  color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-text-secondary) !important;
 }
 
 /* 搜索工具栏样式 */
@@ -1219,24 +1277,145 @@ watch(() => props.show, (newShow) => {
   color: var(--theme-text-secondary);
 }
 
-/* 价格信息样式 */
-.price-info {
+/* 价格信息样式 - 统一使用包装器样式 */
+.price-info,
+.price-info-wrapper {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
-.price-info .price-text {
+.price-info .price-text,
+.price-info-wrapper .price-text {
   font-weight: 500;
   color: var(--theme-success);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.price-info .price-quarter {
+.price-info .price-quarter,
+.price-info-wrapper .price-quarter {
   font-size: 11px;
   color: var(--theme-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 按钮样式优化 */
+:deep(.el-button) {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+:deep(.el-button--primary) {
+  background: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-button--primary:hover) {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+:deep(.el-button--success) {
+  background: var(--theme-success) !important;
+  border-color: var(--theme-success) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-button--success:hover) {
+  opacity: 0.8;
+  transform: translateY(-1px);
+}
+
+:deep(.el-button--warning) {
+  background: var(--theme-warning) !important;
+  border-color: var(--theme-warning) !important;
+  color: var(--theme-text-inverse) !important;
+}
+
+:deep(.el-button--text) {
+  color: var(--theme-primary) !important;
+}
+
+:deep(.el-button--text:hover) {
+  color: var(--theme-primary) !important;
+  background: rgba(var(--theme-primary-rgb), 0.1) !important;
+}
+
+/* 分页样式优化 */
+:deep(.el-pagination) {
+  color: var(--theme-text-primary);
+}
+
+:deep(.el-pagination .el-pager li) {
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-secondary);
+}
+
+:deep(.el-pagination .el-pager li.is-active) {
+  background: var(--theme-primary) !important;
+  color: var(--theme-text-inverse) !important;
+  border-color: var(--theme-primary) !important;
+}
+
+:deep(.el-pagination .btn-prev),
+:deep(.el-pagination .btn-next) {
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  border: 1px solid var(--theme-border-secondary);
+}
+
+:deep(.el-pagination .btn-prev:hover),
+:deep(.el-pagination .btn-next:hover) {
+  color: var(--theme-primary);
+}
+
+/* 输入框和选择器样式 */
+:deep(.el-input__wrapper) {
+  background-color: var(--theme-bg-secondary) !important;
+  border-color: var(--theme-border-secondary) !important;
+  border-radius: 6px;
+}
+
+:deep(.el-input__inner) {
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-input__wrapper:hover) {
+  border-color: var(--theme-primary) !important;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary-rgb), 0.2) !important;
+}
+
+:deep(.el-select .el-input .el-input__wrapper) {
+  background-color: var(--theme-bg-secondary) !important;
 }
 
 /* 响应式设计 */
+@media (max-width: 1200px) {
+  .table-toolbar {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .toolbar-left,
+  .toolbar-right {
+    display: flex;
+    justify-content: center;
+  }
+}
+
 @media (max-width: 768px) {
   .search-toolbar {
     flex-direction: column;
@@ -1260,6 +1439,30 @@ watch(() => props.show, (newShow) => {
   
   .statistics-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .table-toolbar {
+    padding: 0;
+  }
+  
+  .total-info {
+    text-align: center;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.supplier-material-confirm-dialog) {
+    width: 95vw !important;
+    margin: 0 !important;
+  }
+  
+  .statistics-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

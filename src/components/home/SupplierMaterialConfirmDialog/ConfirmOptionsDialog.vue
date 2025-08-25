@@ -58,7 +58,7 @@
               :data="baseDataOptions"
               style="width: 100%"
               height="200px"
-              @row-click="selectBaseData"
+              @row-click="handleBaseDataRowClick"
               :row-class-name="getBaseDataRowClass"
               border
               size="small"
@@ -71,9 +71,9 @@
               <el-table-column label="选择" width="60" align="center">
                 <template #default="{ row }">
                   <el-radio 
-                    :model-value="confirmForm.confirmBaseDataId" 
+                    v-model="confirmForm.confirmBaseDataId" 
                     :label="row.materialBaseInfo.id"
-                    @change="selectBaseData(row)"
+                    @click.stop
                   >
                     <span></span>
                   </el-radio>
@@ -87,7 +87,7 @@
               :data="selectedBaseData.priceList"
               style="width: 100%"
               height="150px"
-              @row-click="selectPrice"
+              @row-click="handlePriceRowClick"
               :row-class-name="getPriceRowClass"
               border
               size="small"
@@ -102,9 +102,9 @@
               <el-table-column label="选择" width="60" align="center">
                 <template #default="{ row }">
                   <el-radio 
-                    :model-value="confirmForm.confirmPriceId" 
+                    v-model="confirmForm.confirmPriceId" 
                     :label="row.id"
-                    @change="selectPrice(row)"
+                    @click.stop
                   >
                     <span></span>
                   </el-radio>
@@ -241,8 +241,8 @@ const handleSearch = async () => {
   }
 }
 
-// 选择基础数据
-const selectBaseData = (row) => {
+// 点击基础数据行
+const handleBaseDataRowClick = (row) => {
   selectedBaseData.value = row
   confirmForm.value.confirmBaseDataId = row.materialBaseInfo.id
   // 清空价格选择
@@ -250,11 +250,38 @@ const selectBaseData = (row) => {
   selectedPrice.value = null
 }
 
-// 选择价格数据
-const selectPrice = (row) => {
+// 点击价格数据行
+const handlePriceRowClick = (row) => {
   selectedPrice.value = row
   confirmForm.value.confirmPriceId = row.id
 }
+
+// 监听基础数据选择变化
+watch(() => confirmForm.value.confirmBaseDataId, (newId) => {
+  if (newId && baseDataOptions.value.length > 0) {
+    const selected = baseDataOptions.value.find(item => 
+      item.materialBaseInfo.id === newId
+    )
+    if (selected && selected !== selectedBaseData.value) {
+      selectedBaseData.value = selected
+      // 清空价格选择
+      confirmForm.value.confirmPriceId = ''
+      selectedPrice.value = null
+    }
+  }
+})
+
+// 监听价格选择变化
+watch(() => confirmForm.value.confirmPriceId, (newId) => {
+  if (newId && selectedBaseData.value && selectedBaseData.value.priceList) {
+    const selected = selectedBaseData.value.priceList.find(item => 
+      item.id === newId
+    )
+    if (selected && selected !== selectedPrice.value) {
+      selectedPrice.value = selected
+    }
+  }
+})
 
 // 获取基础数据行样式
 const getBaseDataRowClass = ({ row }) => {
@@ -436,22 +463,54 @@ watch(() => props.modelValue, (newValue) => {
   color: var(--theme-text-primary) !important;
 }
 
+:deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
+  background: var(--theme-table-stripe-bg) !important;
+}
+
 :deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
   background: var(--theme-table-hover-bg) !important;
 }
 
 /* 单选按钮样式 */
 :deep(.el-radio__input.is-checked .el-radio__inner) {
-  background-color: var(--theme-primary);
-  border-color: var(--theme-primary);
+  background-color: var(--theme-primary) !important;
+  border-color: var(--theme-primary) !important;
 }
 
 :deep(.el-radio__input.is-checked + .el-radio__label) {
-  color: var(--theme-primary);
+  color: var(--theme-primary) !important;
+}
+
+:deep(.el-radio__inner) {
+  border-color: var(--theme-border-secondary);
+}
+
+:deep(.el-radio__inner:hover) {
+  border-color: var(--theme-primary);
 }
 
 /* 表单样式 */
 :deep(.el-form-item__label) {
   color: var(--theme-text-primary) !important;
+  font-weight: 500;
+}
+
+/* 输入框样式 */
+:deep(.el-input__wrapper) {
+  background-color: var(--theme-bg-secondary) !important;
+  border-color: var(--theme-border-secondary) !important;
+}
+
+:deep(.el-input__inner) {
+  color: var(--theme-text-primary) !important;
+}
+
+:deep(.el-input__wrapper:hover) {
+  border-color: var(--theme-primary) !important;
+}
+
+:deep(.el-input__wrapper.is-focus) {
+  border-color: var(--theme-primary) !important;
+  box-shadow: 0 0 0 2px rgba(var(--theme-primary-rgb), 0.2) !important;
 }
 </style>
