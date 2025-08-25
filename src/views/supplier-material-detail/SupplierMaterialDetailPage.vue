@@ -871,6 +871,10 @@ const getPriceQuarter = (row) => {
 
 // 查看更多选项 - 打开物资选择对话框
 const handleViewOptions = async (row) => {
+  console.log('【调试】handleViewOptions 被调用，设置 currentMaterial:', row)
+  console.log('【调试】row.taskDataId:', row.taskDataId)
+  console.log('【调试】row.materialName:', row.materialName)
+  
   currentMaterial.value = row
   // 重置选择相关数据
   selectionPage.value = 1
@@ -996,9 +1000,18 @@ const handleMaterialSelection = (selectedMaterial) => {
   }
 
   try {
+    // 精确匹配当前选择的物资
     const item = materialData.value.find(
-      (item) =>
-        item.id === currentMaterial.value.id || item.taskDataId === currentMaterial.value.taskDataId
+      (item) => {
+        // 优先使用taskDataId进行精确匹配
+        const matchByTaskDataId = item.taskDataId === currentMaterial.value.taskDataId
+        // 如果taskDataId匹配失败，尝试使用id匹配（备用）
+        const matchById = item.id === currentMaterial.value.id
+        
+        console.log(`【调试】匹配检查 - item.taskDataId: ${item.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, 匹配结果: ${matchByTaskDataId}`)
+        
+        return matchByTaskDataId || matchById
+      }
     )
     
     console.log('【调试】找到的 item:', item)
@@ -1028,8 +1041,12 @@ const handleMaterialSelection = (selectedMaterial) => {
       
       // 确保响应式更新 - 先保存原始对象的索引
       const itemIndex = materialData.value.findIndex(
-        (dataItem) =>
-          dataItem.id === currentMaterial.value.id || dataItem.taskDataId === currentMaterial.value.taskDataId
+        (dataItem) => {
+          const matchByTaskDataId = dataItem.taskDataId === currentMaterial.value.taskDataId
+          const matchById = dataItem.id === currentMaterial.value.id
+          console.log(`【调试】索引匹配检查 - dataItem.taskDataId: ${dataItem.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, 匹配结果: ${matchByTaskDataId}`)
+          return matchByTaskDataId || matchById
+        }
       )
       
       if (itemIndex !== -1) {
