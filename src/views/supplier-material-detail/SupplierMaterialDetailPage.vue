@@ -84,32 +84,6 @@
         </div>
       </div>
 
-      <!-- 统计信息面板 -->
-      <div class="statistics-panel" v-if="statistics">
-        <div class="statistics-cards">
-          <div class="stat-card">
-            <div class="stat-value">{{ statistics.totalCount || 0 }}</div>
-            <div class="stat-label">总记录数</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ statistics.confirmedCount || 0 }}</div>
-            <div class="stat-label">已确认</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ statistics.unconfirmedCount || 0 }}</div>
-            <div class="stat-label">待确认</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ statistics.exactMatchCount || 0 }}</div>
-            <div class="stat-label">精确匹配</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ statistics.noMatchCount || 0 }}</div>
-            <div class="stat-label">无匹配</div>
-          </div>
-        </div>
-      </div>
-
       <!-- 物资详情表格区块 -->
       <div :class="CSS_CLASSES.TABLE_SECTION">
         <div class="table-toolbar">
@@ -218,6 +192,12 @@
                   row.matchOptions.length > 0
                 "
               >
+                <!-- 调试信息 -->
+                <div v-if="false" style="font-size: 10px; color: #666; margin-bottom: 2px">
+                  调试: selectedMaterial={{ !!row.selectedMaterial }}, selectedPriceQuarter={{
+                    !!row.selectedPriceQuarter
+                  }}
+                </div>
                 <el-select
                   v-model="row.selectedMaterial"
                   placeholder="选择物资"
@@ -1284,6 +1264,9 @@ const handleQuickConfirm = async (row) => {
 
 // 新增：初始化行数据
 const initializeRowData = (row) => {
+  console.log('【调试-初始化】开始处理行数据:', row.materialName)
+  console.log('【调试-初始化】matchOptions:', row.matchOptions)
+
   // 创建响应式对象，包含原始数据和新增的选择状态
   const reactiveRow = reactive({
     ...row,
@@ -1300,10 +1283,12 @@ const initializeRowData = (row) => {
   // 如果有匹配选项，预选第一个
   if (reactiveRow.matchOptions && reactiveRow.matchOptions.length > 0) {
     const firstMatch = reactiveRow.matchOptions[0]
+    console.log('【调试-初始化】预选第一个匹配项:', firstMatch)
     reactiveRow.selectedMaterial = firstMatch
 
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
       reactiveRow.selectedPriceQuarter = firstMatch.priceOptions[0]
+      console.log('【调试-初始化】预选第一个价格:', firstMatch.priceOptions[0])
     }
   }
 
@@ -1312,6 +1297,8 @@ const initializeRowData = (row) => {
     reactiveRow.hasUserSelectedData = true
   }
 
+  console.log('【调试-初始化】最终 selectedMaterial:', reactiveRow.selectedMaterial)
+  console.log('【调试-初始化】最终 selectedPriceQuarter:', reactiveRow.selectedPriceQuarter)
   return reactiveRow
 }
 
