@@ -1,8 +1,8 @@
 <template>
   <el-dialog
     v-model="dialogVisible"
-    title="选择匹配物资"
-    width="70%"
+    title="选择匹配物资和价格"
+    width="80%"
     :before-close="closeDialog"
     append-to-body
     custom-class="material-selection-dialog"
@@ -36,24 +36,18 @@
         <el-table-column prop="materialName" label="物资名称" min-width="150" show-overflow-tooltip></el-table-column>
         <el-table-column prop="specificationModel" label="规格型号" min-width="150" show-overflow-tooltip></el-table-column>
         <el-table-column prop="unit" label="单位" width="80"></el-table-column>
-        <el-table-column label="最新价格" width="130" align="right">
+        <el-table-column prop="type" label="类型" width="100"></el-table-column>
+        <el-table-column prop="materialCode" label="物资编码" width="120" show-overflow-tooltip></el-table-column>
+        <el-table-column label="价格" width="120" align="right">
           <template #default="{ row }">
             <div class="price-info">
-              <span v-if="row.latestPrice" class="price-value">¥{{ row.latestPrice }}</span>
-              <span v-else class="no-price">暂无价格</span>
+              <span class="price-value">¥{{ row.taxPrice }}</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="价格季度" width="110">
+        <el-table-column label="季度" width="100" align="center">
           <template #default="{ row }">
-            <span v-if="row.latestQuarter" class="quarter-info">{{ row.latestQuarter }}</span>
-            <span v-else class="no-data">-</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="type" label="类型" width="100"></el-table-column>
-        <el-table-column label="历史价格" width="110" align="center">
-          <template #default="{ row }">
-            <el-tag size="small" type="primary">{{ row.priceCount }}个</el-tag>
+            <span class="quarter-info">{{ row.quarter }}</span>
           </template>
         </el-table-column>
       </el-table>
@@ -124,38 +118,72 @@ const dialogVisible = computed({
 const searchTerm = ref('')
 const selectedMaterial = ref(null)
 
-// 格式化数据以适配新的接口结构
+// 格式化数据：将物资+价格列表转换为以价格为维度的扁平化数据
 const formattedData = computed(() => {
-  return props.dataList.map(item => {
-    // 新接口格式：materialBaseInfo + priceList
+  const result = []
+  
+  props.dataList.forEach(item => {
     const materialBaseInfo = item.materialBaseInfo || item
     const priceList = item.priceList || []
     
-    // 获取最新价格（第一个价格选项）
-    const latestPrice = priceList.length > 0 ? priceList[0] : null
-    
-    return {
-      // 原始数据，用于选择时传递完整信息
-      originalData: item,
-      
-      // 显示字段
-      materialName: materialBaseInfo.materialName || materialBaseInfo.material_name || '-',
-      specificationModel: materialBaseInfo.specificationModel || materialBaseInfo.specification_model || '-',
-      unit: materialBaseInfo.unit || '-',
-      type: materialBaseInfo.type || '-',
-      
-      // 价格信息
-      latestPrice: latestPrice ? parseFloat(latestPrice.taxPrice).toFixed(2) : null,
-      latestQuarter: latestPrice ? latestPrice.quarter : null,
-      priceCount: priceList.length,
-      
-      // 兼容旧格式的字段映射
-      material_name: materialBaseInfo.materialName || materialBaseInfo.material_name,
-      specification_model: materialBaseInfo.specificationModel || materialBaseInfo.specification_model,
-      tax_price: latestPrice ? latestPrice.taxPrice : null,
-      quarter: latestPrice ? latestPrice.quarter : null
+    // 如果有价格数据，每个价格创建一条记录
+    if (priceList.length > 0) {
+      priceList.forEach(price => {
+        result.push({
+          // 原始数据，包含物资和价格信息
+          originalData: {
+            materialBaseInfo,
+            priceInfo: price,
+            fullItem: item
+          },
+          
+          // 物资信息
+          materialName: materialBaseInfo.materialName || '-',
+          specificationModel: materialBaseInfo.specificationModel || '-',
+          unit: materialBaseInfo.unit || '-',
+          type: materialBaseInfo.type || '-',
+          materialCode: materialBaseInfo.materialCode || '-',
+          
+          // 价格信息
+          taxPrice: parseFloat(price.taxPrice).toFixed(2),
+          quarter: price.quarter,
+          priceId: price.id,
+          baseInfoId: price.baseInfoId,
+          
+          // 兼容旧格式的字段映射
+          material_name: materialBaseInfo.materialName,
+          specification_model: materialBaseInfo.specificationModel,
+          tax_price: price.taxPrice
+        })
+      })
+    } else {
+      // 如果没有价格数据，仍然创建一条记录但价格字段为空
+      result.push({
+        originalData: {
+          materialBaseInfo,
+          priceInfo: null,
+          fullItem: item
+        },
+        
+        materialName: materialBaseInfo.materialName || '-',
+        specificationModel: materialBaseInfo.specificationModel || '-',
+        unit: materialBaseInfo.unit || '-',
+        type: materialBaseInfo.type || '-',
+        materialCode: materialBaseInfo.materialCode || '-',
+        
+        taxPrice: '-',
+        quarter: '-',
+        priceId: null,
+        baseInfoId: materialBaseInfo.id,
+        
+        material_name: materialBaseInfo.materialName,
+        specification_model: materialBaseInfo.specificationModel,
+        tax_price: null
+      })
     }
   })
+  
+  return result
 })
 
 // 添加搜索功能的监听器（防抖处理）
@@ -180,8 +208,8 @@ watch(
 )
 
 const onRowClick = (row) => {
-  // 使用格式化后的数据，但在选择时传递原始数据结构
-  selectedMaterial.value = row.originalData || row
+  // 选择价格维度的数据，传递包含物资和价格信息的完整数据
+  selectedMaterial.value = row
 }
 
 const confirmSelection = () => {
@@ -208,7 +236,8 @@ const onSizeChange = (size) => {
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
   if (selectedMaterial.value && 
-      selectedMaterial.value.originalData === row.originalData) {
+      selectedMaterial.value.priceId === row.priceId &&
+      selectedMaterial.value.baseInfoId === row.baseInfoId) {
     return 'selected-row'
   }
   return 'selectable-row'

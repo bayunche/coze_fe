@@ -883,32 +883,37 @@ const handleMaterialSelection = (selectedMaterial) => {
     )
 
     if (item) {
-      // 获取物资基础信息和价格列表
-      const materialBaseInfo = selectedMaterial.originalData?.materialBaseInfo || selectedMaterial
-      const priceList = selectedMaterial.originalData?.priceList || []
-
-      // 选择第一个价格（最新季度的价格）
-      const firstPrice = priceList.length > 0 ? priceList[0] : null
+      // 现在 selectedMaterial 已经是价格维度的数据
+      // 获取物资基础信息和价格信息
+      const materialBaseInfo = selectedMaterial.originalData?.materialBaseInfo || {
+        materialName: selectedMaterial.materialName,
+        specificationModel: selectedMaterial.specificationModel,
+        id: selectedMaterial.baseInfoId
+      }
+      const priceInfo = selectedMaterial.originalData?.priceInfo || {
+        taxPrice: selectedMaterial.taxPrice,
+        quarter: selectedMaterial.quarter,
+        id: selectedMaterial.priceId
+      }
 
       // 更新物资信息
-      item.confirmedBaseName = materialBaseInfo.materialName || selectedMaterial.material_name
-      item.confirmedBaseSpec =
-        materialBaseInfo.specificationModel || selectedMaterial.specification_model
-      item.confirmedPrice = firstPrice ? firstPrice.taxPrice : null
-      item.confirmedPriceQuarter = firstPrice ? firstPrice.quarter : null
+      item.confirmedBaseName = materialBaseInfo.materialName || selectedMaterial.materialName
+      item.confirmedBaseSpec = materialBaseInfo.specificationModel || selectedMaterial.specificationModel
+      item.confirmedPrice = priceInfo.taxPrice || selectedMaterial.taxPrice
+      item.confirmedPriceQuarter = priceInfo.quarter || selectedMaterial.quarter
 
       // 标记用户已从数据库中选择了数据
       item.hasUserSelectedData = true
       // 保存用户选择的数据ID
-      item.selectedBaseDataId = materialBaseInfo.id || selectedMaterial.id
-      item.selectedPriceId = firstPrice ? firstPrice.id : null
+      item.selectedBaseDataId = materialBaseInfo.id || selectedMaterial.baseInfoId
+      item.selectedPriceId = priceInfo.id || selectedMaterial.priceId
       // 标记为用户修改过的数据
       item.isUserModified = true
 
       console.log('物资选择完成:', {
         materialName: item.materialName,
         selectedMaterial: selectedMaterial,
-        selectedPrice: firstPrice
+        selectedPrice: priceInfo
       })
     }
 

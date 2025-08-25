@@ -683,14 +683,13 @@ const fetchMaterialOptions = async () => {
   try {
     // 这里需要调用获取物资基础数据的API
     // 暂时使用示例数据结构，实际需要根据后端API调整
-    const params = {
-      page: materialSearchParams.value.page - 1,
-      size: materialSearchParams.value.size,
-      keyword: materialSearchParams.value.keyword
-    }
     
     // TODO: 调用实际的物资基础数据查询API
-    // const response = await getMaterialBaseDataList(params)
+    // const response = await getMaterialBaseDataList({
+    //   page: materialSearchParams.value.page - 1,
+    //   size: materialSearchParams.value.size,
+    //   keyword: materialSearchParams.value.keyword
+    // })
     
     // 暂时使用空数据，等待后端API集成
     materialSelectionData.value = []
@@ -711,22 +710,25 @@ const handleMaterialSelection = async (selectedMaterial) => {
   if (!currentSelectingMaterial.value || !selectedMaterial) return
   
   try {
-    // 根据选择的物资数据构造确认数据
-    const materialBaseInfo = selectedMaterial.materialBaseInfo || selectedMaterial
-    const priceList = selectedMaterial.priceList || []
+    // 现在 selectedMaterial 已经是价格维度的数据
+    // 获取物资基础信息和价格信息
+    const materialBaseInfo = selectedMaterial.originalData?.materialBaseInfo || {
+      materialName: selectedMaterial.materialName,
+      specificationModel: selectedMaterial.specificationModel,
+      id: selectedMaterial.baseInfoId
+    }
+    const priceInfo = selectedMaterial.originalData?.priceInfo || {
+      taxPrice: selectedMaterial.taxPrice,
+      quarter: selectedMaterial.quarter,
+      id: selectedMaterial.priceId
+    }
     
     if (!materialBaseInfo.id) {
       ElMessage.error('选择的物资数据无效')
       return
     }
     
-    let confirmPriceId = null
-    if (priceList.length > 0) {
-      // 使用最新价格（第一个价格）
-      confirmPriceId = priceList[0].id
-    }
-    
-    if (!confirmPriceId) {
+    if (!priceInfo.id) {
       ElMessage.warning('选择的物资没有价格信息，请选择其他物资')
       return
     }
@@ -734,7 +736,7 @@ const handleMaterialSelection = async (selectedMaterial) => {
     const confirmData = {
       id: currentSelectingMaterial.value.taskDataId || currentSelectingMaterial.value.id,
       confirmBaseDataId: materialBaseInfo.id,
-      confirmPriceId: confirmPriceId
+      confirmPriceId: priceInfo.id
     }
     
     const result = await confirmSupplierMaterialData(confirmData)
@@ -747,8 +749,8 @@ const handleMaterialSelection = async (selectedMaterial) => {
       item.matchedType = 4 // 更新匹配类型为人工匹配
       item.confirmedBaseName = materialBaseInfo.materialName
       item.confirmedBaseSpec = materialBaseInfo.specificationModel
-      item.confirmedPrice = priceList[0].taxPrice
-      item.confirmedPriceQuarter = priceList[0].quarter
+      item.confirmedPrice = priceInfo.taxPrice
+      item.confirmedPriceQuarter = priceInfo.quarter
       
       ElMessage.success('选择并确认成功')
       showMaterialSelectionDialog.value = false
