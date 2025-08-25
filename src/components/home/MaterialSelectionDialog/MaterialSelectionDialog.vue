@@ -147,7 +147,13 @@ const formattedData = computed(() => {
     // 检查数据结构并正确访问 materialBaseInfo 和 priceList
     let materialBaseInfo, priceList
     
+    console.log(`【MaterialSelectionDialog 调试】检查 item.originalData:`, item.originalData)
+    
     if (item.originalData) {
+      console.log(`【MaterialSelectionDialog 调试】originalData 结构:`, item.originalData)
+      console.log(`【MaterialSelectionDialog 调试】originalData.materialBaseInfo:`, item.originalData.materialBaseInfo)
+      console.log(`【MaterialSelectionDialog 调试】originalData.priceList:`, item.originalData.priceList)
+      
       // 如果数据已经被格式化过，从 originalData 中获取
       materialBaseInfo = item.originalData.materialBaseInfo || item
       priceList = item.originalData.priceList || []
@@ -158,6 +164,9 @@ const formattedData = computed(() => {
       priceList = item.priceList || []
       console.log(`【MaterialSelectionDialog 调试】从直接数据访问`)
     }
+    
+    console.log(`【MaterialSelectionDialog 调试】最终获取的 materialBaseInfo:`, materialBaseInfo)
+    console.log(`【MaterialSelectionDialog 调试】最终获取的 priceList:`, priceList)
     
     console.log(`【MaterialSelectionDialog 调试】物资基础信息:`, materialBaseInfo)
     console.log(`【MaterialSelectionDialog 调试】价格列表:`, priceList)
