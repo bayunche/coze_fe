@@ -602,8 +602,9 @@ const handleBatchConfirm = async () => {
 
   // 检查是否有缺少推荐数据的物资
   const missingDataItems = pendingItems.filter((item) => {
-    let baseDataId = item.recommendedBaseDataId
-    let priceId = item.recommendedPriceId
+    // 优先检查用户选择的数据
+    let baseDataId = item.selectedBaseDataId || item.recommendedBaseDataId
+    let priceId = item.selectedPriceId || item.recommendedPriceId
 
     // 如果没有直接的推荐数据，尝试从matchOptions获取
     if (!baseDataId && item.matchOptions && item.matchOptions.length > 0) {
@@ -633,8 +634,9 @@ const handleBatchConfirm = async () => {
     batchConfirming.value = true
 
     const confirmPromises = pendingItems.map((item) => {
-      let baseDataId = item.recommendedBaseDataId
-      let priceId = item.recommendedPriceId
+      // 优先使用用户选择的数据
+      let baseDataId = item.selectedBaseDataId || item.recommendedBaseDataId
+      let priceId = item.selectedPriceId || item.recommendedPriceId
 
       // 如果没有直接的推荐数据，尝试从matchOptions获取
       if (!baseDataId && item.matchOptions && item.matchOptions.length > 0) {
@@ -664,6 +666,24 @@ const handleBatchConfirm = async () => {
         const item = pendingItems[index]
         item.confirmResult = 1
         item.confirmType = result.value.data?.confirmType || 1
+        
+        // 如果用户之前选择了数据，确认数据字段应该已经设置了
+        if (!item.hasUserSelectedData) {
+          // 如果是使用推荐数据确认的，需要设置确认数据字段以便正确显示
+          if (item.matchOptions && item.matchOptions.length > 0) {
+            const firstMatch = item.matchOptions[0]
+            if (firstMatch.baseInfo) {
+              item.confirmedBaseName = firstMatch.baseInfo.materialName
+              item.confirmedBaseSpec = firstMatch.baseInfo.specifications
+            }
+            if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
+              const firstPrice = firstMatch.priceOptions[0]
+              item.confirmedPrice = firstPrice.taxPrice
+              item.confirmedPriceQuarter = firstPrice.quarter
+            }
+          }
+        }
+        
         successCount++
       } else {
         failureCount++
@@ -725,6 +745,16 @@ const getMatchTypeTagInfo = (matchedType) => {
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的数据
+  if (row.confirmResult === 1 && row.confirmedBaseName) {
+    return row.confirmedBaseName
+  }
+  
+  // 如果用户已选择但未确认，显示选择的数据
+  if (row.hasUserSelectedData && row.confirmedBaseName) {
+    return row.confirmedBaseName
+  }
+
   // 优先从直接的baseInfo获取
   if (row.baseInfo && row.baseInfo.materialName) {
     return row.baseInfo.materialName
@@ -740,6 +770,16 @@ const getBaseInfoName = (row) => {
 
 // 获取基础信息规格
 const getBaseInfoSpec = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的数据
+  if (row.confirmResult === 1 && row.confirmedBaseSpec) {
+    return row.confirmedBaseSpec
+  }
+  
+  // 如果用户已选择但未确认，显示选择的数据
+  if (row.hasUserSelectedData && row.confirmedBaseSpec) {
+    return row.confirmedBaseSpec
+  }
+
   // 优先从直接的baseInfo获取
   if (row.baseInfo && row.baseInfo.specifications) {
     return row.baseInfo.specifications
@@ -755,6 +795,16 @@ const getBaseInfoSpec = (row) => {
 
 // 获取价格文本
 const getPriceText = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的价格
+  if (row.confirmResult === 1 && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
+    return `¥${formatNumber(row.confirmedPrice)}`
+  }
+  
+  // 如果用户已选择但未确认，显示选择的价格
+  if (row.hasUserSelectedData && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
+    return `¥${formatNumber(row.confirmedPrice)}`
+  }
+
   // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.taxPrice) {
     return `¥${formatNumber(row.priceInfo.taxPrice)}`
@@ -775,6 +825,16 @@ const getPriceText = (row) => {
 
 // 获取价格季度
 const getPriceQuarter = (row) => {
+  // 最优先：如果用户已确认选择，显示确认的季度信息
+  if (row.confirmResult === 1 && row.confirmedPriceQuarter) {
+    return row.confirmedPriceQuarter
+  }
+  
+  // 如果用户已选择但未确认，显示选择的季度信息
+  if (row.hasUserSelectedData && row.confirmedPriceQuarter) {
+    return row.confirmedPriceQuarter
+  }
+
   // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.quarter) {
     return row.priceInfo.quarter
@@ -1103,6 +1163,26 @@ const handleQuickConfirm = async (row) => {
       row.confirmResult = 1
       row.confirmType = result.data?.confirmType || 1
       row.isUserModified = true
+      
+      // 如果用户之前选择了数据，确保确认数据字段有值
+      if (row.hasUserSelectedData) {
+        // 用户选择的数据已经存在confirmedBaseName等字段中，无需重复设置
+      } else {
+        // 如果是使用推荐数据确认的，需要设置确认数据字段以便正确显示
+        if (row.matchOptions && row.matchOptions.length > 0) {
+          const firstMatch = row.matchOptions[0]
+          if (firstMatch.baseInfo) {
+            row.confirmedBaseName = firstMatch.baseInfo.materialName
+            row.confirmedBaseSpec = firstMatch.baseInfo.specifications
+          }
+          if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
+            const firstPrice = firstMatch.priceOptions[0]
+            row.confirmedPrice = firstPrice.taxPrice
+            row.confirmedPriceQuarter = firstPrice.quarter
+          }
+        }
+      }
+      
       ElMessage.success('确认成功')
     } else {
       const errorMsg = result?.message || result?.msg || '确认失败'
