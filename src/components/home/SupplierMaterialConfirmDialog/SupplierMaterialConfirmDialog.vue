@@ -101,6 +101,17 @@
         </div>
       </div>
 
+      <!-- 调试信息 -->
+      <div style="background: #f0f0f0; padding: 10px; margin-bottom: 10px; border-radius: 4px; font-size: 12px;">
+        <strong>调试信息:</strong><br>
+        materialData数组长度: {{ materialData.length }}<br>
+        total值: {{ total }}<br>
+        loading状态: {{ loading }}<br>
+        <div v-if="materialData.length > 0">
+          第一条数据: {{ JSON.stringify(materialData[0], null, 2) }}
+        </div>
+      </div>
+
       <el-table
         :data="materialData"
         style="width: 100%"
@@ -315,10 +326,18 @@ const fetchData = async () => {
       console.log('使用复杂查询参数:', params)
       response = await querySupplierMaterialsComplex(params)
       
+      console.log('【调试】API返回的完整response:', response)
+      console.log('【调试】response.content:', response?.content)
+      console.log('【调试】response.content长度:', response?.content?.length)
+      
       if (response) {
         materialData.value = response.content || []
         statistics.value = response.statistics || {}
         total.value = response.page?.totalElements || 0
+        
+        console.log('【调试】赋值后materialData.value:', materialData.value)
+        console.log('【调试】赋值后statistics.value:', statistics.value)
+        console.log('【调试】赋值后total.value:', total.value)
       }
     } else {
       // 使用简单查询接口（后备方案）
