@@ -195,11 +195,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         if (resultJson && Array.isArray(resultJson)) {
           // 将聚合后的数据转换为表格格式
           tableJsonData = resultJson.map((item) => ({
-            id: item.id,
-            taskDetailId: item.id, // 单个解析记录的ID（用于单条记录操作）
-            taskId: taskIdToFetch, // 任务级别的ID（用于接口调用）
-            resultStatus: item.resultStatus,
-            ...item.docJson, // 展开解析字段
+            ...item, // 展开所有字段，包括taskDetailId、taskId、resultStatus等
             editing: false
           }))
           console.log('【诊断】转换后的表格数据:', tableJsonData)
@@ -292,8 +288,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
    * @param {TableDataItem} row - 要取消编辑的行数据。
    */
   const cancelRowEdit = (row) => {
-    const indexInEditModels = editFormModels.value.findIndex((item) => item.id === row.id)
-    const indexInTableData = tableData.value.findIndex((item) => item.id === row.id)
+    const indexInEditModels = editFormModels.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
+    const indexInTableData = tableData.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
 
     if (indexInEditModels !== -1 && indexInTableData !== -1) {
       const originalRow = JSON.parse(JSON.stringify(tableData.value[indexInTableData]))
@@ -308,8 +304,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
    * @param {TableDataItem} row - 已编辑的行数据。
    */
   const saveRowEdit = (row) => {
-    const indexInEditModels = editFormModels.value.findIndex((item) => item.id === row.id)
-    const indexInTableData = tableData.value.findIndex((item) => item.id === row.id)
+    const indexInEditModels = editFormModels.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
+    const indexInTableData = tableData.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
 
     if (indexInEditModels !== -1 && indexInTableData !== -1) {
       // 将 editFormModels 中的最新数据同步到 tableData
@@ -336,7 +332,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       // 构造字段数据
       const fieldData = []
       Object.keys(row).forEach((key) => {
-        if (key !== 'editing' && key !== 'id' && key !== 'taskDetailId' && key !== 'resultStatus') {
+        if (key !== 'editing' && key !== 'taskDetailId' && key !== 'taskId' && key !== 'resultStatus') {
           fieldData.push({
             columnCode: key,
             columnName: translateHeader(key),
@@ -369,8 +365,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         chatStore.addMessage(`已确认单行解析结果`, 'system')
 
         // 更新本地数据状态
-        const indexInEditModels = editFormModels.value.findIndex((item) => item.id === row.id)
-        const indexInTableData = tableData.value.findIndex((item) => item.id === row.id)
+        const indexInEditModels = editFormModels.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
+        const indexInTableData = tableData.value.findIndex((item) => item.taskDetailId === row.taskDetailId)
 
         if (indexInEditModels !== -1 && indexInTableData !== -1) {
           // 更新状态为已确认
@@ -423,7 +419,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
             // 构造字段数据
             const fieldData = []
             Object.keys(item).forEach((key) => {
-              if (key !== 'editing' && key !== 'id' && key !== 'taskDetailId' && key !== 'taskId' && key !== 'resultStatus') {
+              if (key !== 'editing' && key !== 'taskDetailId' && key !== 'taskId' && key !== 'resultStatus') {
                 fieldData.push({
                   columnCode: key,
                   columnName: translateHeader(key),
@@ -447,7 +443,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
               error: null
             }
           } catch (error) {
-            console.error(`保存记录失败 (ID: ${item.id}):`, error)
+            console.error(`保存记录失败 (taskDetailId: ${item.taskDetailId}):`, error)
             return {
               success: false,
               item: item,
@@ -474,7 +470,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
             const errorMsg = result.status === 'fulfilled' 
               ? (result.value.result?.message || result.value.error?.message || '未知错误')
               : result.reason?.message || '请求失败'
-            failureDetails.push(`记录 ${item.id}: ${errorMsg}`)
+            failureDetails.push(`记录 ${item.taskDetailId}: ${errorMsg}`)
           }
         })
         
@@ -584,7 +580,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
             // 构造字段数据
             const fieldData = []
             Object.keys(item).forEach((key) => {
-              if (key !== 'editing' && key !== 'id' && key !== 'taskDetailId' && key !== 'taskId' && key !== 'resultStatus') {
+              if (key !== 'editing' && key !== 'taskDetailId' && key !== 'taskId' && key !== 'resultStatus') {
                 fieldData.push({
                   columnCode: key,
                   columnName: translateHeader(key),
@@ -608,7 +604,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
               error: null
             }
           } catch (error) {
-            console.error(`确认记录失败 (ID: ${item.id}):`, error)
+            console.error(`确认记录失败 (taskDetailId: ${item.taskDetailId}):`, error)
             return {
               success: false,
               item: item,
@@ -631,8 +627,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
             successCount++
             // 更新本地数据状态为已确认
             const item = recordsToConfirm[index]
-            const tableIndex = tableData.value.findIndex(t => t.id === item.id)
-            const editIndex = editFormModels.value.findIndex(t => t.id === item.id)
+            const tableIndex = tableData.value.findIndex(t => t.taskDetailId === item.taskDetailId)
+            const editIndex = editFormModels.value.findIndex(t => t.taskDetailId === item.taskDetailId)
             
             if (tableIndex !== -1) {
               tableData.value[tableIndex].resultStatus = 1
@@ -646,7 +642,7 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
             const errorMsg = result.status === 'fulfilled' 
               ? (result.value.result?.message || result.value.error?.message || '未知错误')
               : result.reason?.message || '请求失败'
-            failureDetails.push(`记录 ${item.id}: ${errorMsg}`)
+            failureDetails.push(`记录 ${item.taskDetailId}: ${errorMsg}`)
           }
         })
         
