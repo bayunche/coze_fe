@@ -9,11 +9,11 @@ export const DIALOG_CONFIG = {
 export const TABLE_COLUMNS = [
   { type: 'index', label: '序号', width: 60 },
   { prop: 'fileName', label: '文件名称' },
-  { prop: 'startTime', label: '开始时间' },
-  { prop: 'endTime', label: '结束时间' },
-  { prop: 'taskDetailStatus', label: '任务解析状态' },
+  { prop: 'startTime', label: '开始时间', width: 140 },
+  { prop: 'endTime', label: '结束时间', width: 140 },
+  { prop: 'taskDetailStatus', label: '任务解析状态', width: 120 },
   { prop: 'errorReason', label: '失败原因' },
-  { label: '操作' }
+  { label: '操作', width: 300, fixed: 'right' }
 ]
 
 export const TASK_DETAIL_STATUS = {

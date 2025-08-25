@@ -37,28 +37,35 @@
         
         <!-- 操作列 -->
         <template v-else-if="column.label === '操作'" #default="{ row }">
-          <!-- 查看详情按钮：当解析失败时隐藏（errorReason不为空且taskDetailStatus为-1） -->
-          <el-button 
-            v-if="!(row.errorReason && row.taskDetailStatus == -1)"
-            type="text" 
-            @click="() => onViewDetail(row)"
-          >
-            {{ BUTTON_LABELS.VIEW_DETAIL }}
-          </el-button>
-          <el-button 
-            type="text" 
-            @click="() => onDownloadFile(row)"
-          >
-            {{ BUTTON_LABELS.VIEW_SOURCE_FILE }}
-          </el-button>
-          <el-button 
-            type="primary" 
-            size="small"
-            @click="() => onConfirmResults(row)"
-            :disabled="row.taskDetailStatus !== '2'"
-          >
-            {{ BUTTON_LABELS.CONFIRM_RESULTS }}
-          </el-button>
+          <div class="action-buttons-container">
+            <!-- 查看详情按钮：当解析失败时隐藏（errorReason不为空且taskDetailStatus为-1） -->
+            <el-button 
+              v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+              type="text" 
+              size="small"
+              @click="() => onViewDetail(row)"
+              class="action-btn"
+            >
+              {{ BUTTON_LABELS.VIEW_DETAIL }}
+            </el-button>
+            <el-button 
+              type="text" 
+              size="small"
+              @click="() => onDownloadFile(row)"
+              class="action-btn"
+            >
+              {{ BUTTON_LABELS.VIEW_SOURCE_FILE }}
+            </el-button>
+            <el-button 
+              type="primary" 
+              size="small"
+              @click="() => onConfirmResults(row)"
+              :disabled="row.taskDetailStatus !== '2'"
+              class="action-btn confirm-btn"
+            >
+              {{ BUTTON_LABELS.CONFIRM_RESULTS }}
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -213,5 +220,93 @@ watch(
 </script>
 
 <style scoped>
-/* 可以根据需要添加样式 */
+/* SupplierMaterialTaskParsingDetailDialog 组件样式 */
+
+/* 操作按钮容器样式 - 确保按钮并排展示 */
+.action-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  min-width: 280px; /* 确保有足够空间容纳按钮 */
+}
+
+/* 操作按钮样式 */
+.action-btn {
+  white-space: nowrap; /* 防止按钮文字换行 */
+  flex-shrink: 0; /* 防止按钮被压缩 */
+  margin: 0 !important; /* 移除默认间距 */
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+/* 确认按钮特殊样式 */
+.confirm-btn {
+  background: #67c23a;
+  border-color: #67c23a;
+  color: white;
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: #5daf34;
+  border-color: #5daf34;
+}
+
+.confirm-btn:disabled {
+  background: #c0c4cc;
+  border-color: #c0c4cc;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+/* 文本按钮样式优化 */
+:deep(.el-button--text) {
+  padding: 4px 8px;
+  min-height: auto;
+  font-size: 12px;
+  color: #409eff;
+}
+
+:deep(.el-button--text:hover) {
+  color: #66b1ff;
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+/* 表格操作列宽度 */
+:deep(.el-table .el-table__cell) {
+  padding: 8px 0;
+}
+
+/* 专门针对操作列的样式 */
+:deep(.el-table__body .el-table__row .el-table__cell:last-child) {
+  min-width: 300px; /* 操作列最小宽度 */
+  width: auto;
+}
+
+/* 确保操作列内容不会溢出 */
+:deep(.el-table__body .el-table__row .el-table__cell:last-child .cell) {
+  overflow: visible;
+  text-overflow: initial;
+  white-space: nowrap;
+}
+
+/* 响应式处理 */
+@media (max-width: 768px) {
+  .action-buttons-container {
+    flex-wrap: wrap;
+    min-width: 200px;
+    gap: 4px;
+  }
+  
+  .action-btn {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+  
+  :deep(.el-table__body .el-table__row .el-table__cell:last-child) {
+    min-width: 220px;
+  }
+}
 </style>

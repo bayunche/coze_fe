@@ -38,20 +38,26 @@
         
         <!-- 操作列 -->
         <template v-else-if="column.label === '操作'" #default="{ row }">
-          <!-- 查看详情按钮：当解析失败时隐藏（errorReason不为空且taskDetailStatus为-1） -->
-          <el-button 
-            v-if="!(row.errorReason && row.taskDetailStatus == -1)"
-            type="text" 
-            @click="() => onViewDetail(row)"
-          >
-            {{ BUTTON_LABELS.VIEW_DETAIL }}
-          </el-button>
-          <el-button 
-            type="text" 
-            @click="() => onDownloadFile(row)"
-          >
-            {{ BUTTON_LABELS.VIEW_SOURCE_FILE }}
-          </el-button>
+          <div class="action-buttons-container">
+            <!-- 查看详情按钮：当解析失败时隐藏（errorReason不为空且taskDetailStatus为-1） -->
+            <el-button 
+              v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+              type="text" 
+              size="small"
+              @click="() => onViewDetail(row)"
+              class="action-btn"
+            >
+              {{ BUTTON_LABELS.VIEW_DETAIL }}
+            </el-button>
+            <el-button 
+              type="text" 
+              size="small"
+              @click="() => onDownloadFile(row)"
+              class="action-btn"
+            >
+              {{ BUTTON_LABELS.VIEW_SOURCE_FILE }}
+            </el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -325,7 +331,53 @@ watch(
   }
 }
 
-/* 操作按钮区域样式 */
+/* 操作按钮容器样式 - 确保按钮并排展示 */
+.action-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  min-width: 200px; /* 确保有足够空间容纳两个按钮 */
+}
+
+/* 操作按钮样式 */
+.action-btn {
+  white-space: nowrap; /* 防止按钮文字换行 */
+  flex-shrink: 0; /* 防止按钮被压缩 */
+  margin: 0 !important; /* 移除默认间距 */
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+/* 文本按钮样式优化 */
+:deep(.el-button--text) {
+  padding: 4px 8px;
+  min-height: auto;
+  font-size: 12px;
+  color: #409eff;
+}
+
+:deep(.el-button--text:hover) {
+  color: #66b1ff;
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+/* 专门针对操作列的样式 */
+:deep(.el-table__body .el-table__row .el-table__cell:last-child) {
+  min-width: 220px; /* 操作列最小宽度 */
+  width: auto;
+}
+
+/* 确保操作列内容不会溢出 */
+:deep(.el-table__body .el-table__row .el-table__cell:last-child .cell) {
+  overflow: visible;
+  text-overflow: initial;
+  white-space: nowrap;
+}
+
+/* 操作按钮区域样式（保留向后兼容性） */
 .action-buttons {
   display: flex;
   gap: 8px;
