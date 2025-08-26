@@ -127,9 +127,14 @@ export const closeDialog = (emit) => {
  * @param {Function} router - Vue router实例
  */
 export const navigateToDetail = ({ detailId, taskId }, router) => {
+  console.log('【调试】乙供物资详情跳转 - 参数:', { taskId, detailId })
+  
   router.push({
-    path: '/material-detail',
-    query: { taskId, detailId }
+    name: 'supplier-material-detail',
+    params: {
+      taskId: String(taskId),
+      detailId: String(detailId)
+    }
   })
 }
 

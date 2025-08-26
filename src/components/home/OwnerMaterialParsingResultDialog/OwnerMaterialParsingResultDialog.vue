@@ -8,7 +8,7 @@
     append-to-body
     top="5vh"
   >
-    <el-tabs v-model="activeTab" @tab-click="() => switchTab(() => (currentPage = 1))">
+    <el-tabs v-model="activeTab">
       <el-tab-pane v-for="tab in TAB_CONFIG" :key="tab.name" :label="tab.label" :name="tab.name" />
     </el-tabs>
 
@@ -76,12 +76,21 @@
       </span>
     </template>
   </el-dialog>
+
+  <!-- 甲供物资任务解析详情对话框 -->
+  <OwnerMaterialTaskParsingDetailDialog
+    v-model="showTaskDetailDialog"
+    :taskId="currentTaskIdForDetail"
+    @view-detail="handleViewDetail"
+  />
 </template>
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import SmartBrainService from '@/services/SmartBrainService'
 import { useWorkflowStore } from '@/stores/workflow'
+import OwnerMaterialTaskParsingDetailDialog from '@/components/home/OwnerMaterialTaskParsingDetailDialog'
 
 // 导入常量和工具函数
 import {
@@ -118,6 +127,7 @@ const emit = defineEmits(['update:show'])
 
 // Store
 const workflowStore = useWorkflowStore()
+const router = useRouter()
 
 // 响应式数据
 const activeTab = ref('all')
@@ -209,8 +219,18 @@ const setDialogVisible = (visible) => {
   showTaskDetailDialog.value = visible
 }
 
-const switchTab = () => {
-  // 标签切换逻辑已在watch中处理
+
+// 处理甲供物资详情查看
+const handleViewDetail = (params) => {
+  console.log('【调试】甲供物资详情查看 - 参数:', params)
+  
+  // 跳转到甲供物资详情页面
+  router.push({
+    name: 'owner-material-detail',
+    params: {
+      taskId: String(params.taskId)
+    }
+  })
 }
 </script>
 

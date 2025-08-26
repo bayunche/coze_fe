@@ -143,8 +143,6 @@ const fetchDetailList = async () => {
  * @param {Object} row - 表格行数据
  */
 const handleViewDetail = async (row) => {
-  console.log('【调试】合同解析任务详情查看 - row对象:', row)
-
   // 检查任务状态，只有处理完成或已确认的任务才能查看解析结果详情
   if (row.taskDetailStatus !== 2 && row.taskDetailStatus !== 3) {
     ElMessage.warning('只有处理完成或已确认的任务才能查看解析结果详情')
@@ -152,13 +150,22 @@ const handleViewDetail = async (row) => {
   }
 
   try {
+    // 使用主任务ID（从 props.task 获取）而不是任务详情ID
+    // 因为 getContractAnalysisResults API 需要主任务ID
+    const mainTaskId = props.task?.id || props.task?.ID
+    
+    if (!mainTaskId) {
+      ElMessage.error('无法获取任务ID，请重试')
+      return
+    }
+    
     // 调用 parsingResultStore 的 viewResultDetail 方法显示合同解析结果详情
+    // 传入主任务ID，将显示该任务下所有文件的解析结果
     await parsingResultStore.viewResultDetail({
       isSupplierMaterial: false, // 合同解析，不是乙供物资
-      specificTaskId: props.task.id || props.task.ID // 使用当前任务ID
+      specificTaskId: mainTaskId, // 使用主任务ID
+      taskDetailId: row.id || row.taskDetailId // 传递任务详情ID以便后续筛选
     })
-    
-    console.log('【调试】已调用 parsingResultStore.viewResultDetail 显示合同解析结果详情')
   } catch (error) {
     console.error('查看合同解析结果详情失败:', error)
     ElMessage.error('查看解析结果详情失败: ' + (error.message || '未知错误'))
@@ -170,7 +177,6 @@ const handleViewDetail = async (row) => {
  * @param {Object} row - 表格行数据
  */
 const downloadFile = (row) => {
-  console.log('【调试】下载文件 - row对象:', row)
 
   if (row.fileUrl) {
     // 使用 window.open 在新标签页中打开文件链接

@@ -570,10 +570,6 @@ const getRowClassName = ({ row }) => {
 
 // 处理物资选择变化
 const handleMaterialSelectChange = async (row, selectedMaterial) => {
-  console.log('=== 物资选择变化开始 ===')
-  console.log('行数据ID:', row.id || row.taskDataId)
-  console.log('选择的物资:', selectedMaterial)
-
   // 更新选择状态
   row.selectedMaterial = selectedMaterial
   row.selectedPriceQuarter = null
@@ -587,16 +583,10 @@ const handleMaterialSelectChange = async (row, selectedMaterial) => {
       recommendedBaseSpec: selectedMaterial.specification,
       recommendedBaseDataId: selectedMaterial.matchedId
     })
-    console.log('立即更新表格显示字段:', {
-      物资名称: row.recommendedBaseName,
-      规格型号: row.recommendedBaseSpec,
-      物资ID: row.recommendedBaseDataId
-    })
   }
 
   if (selectedMaterial && selectedMaterial.matchedId) {
     try {
-      console.log('开始获取价格选项，物资ID:', selectedMaterial.matchedId)
       // 获取价格选项
       const response = await queryMaterialBaseInfoWithPrices({
         baseInfoId: selectedMaterial.matchedId
@@ -612,11 +602,8 @@ const handleMaterialSelectChange = async (row, selectedMaterial) => {
             baseInfoId: price.baseInfoId
           }))
 
-          console.log('获取到价格选项:', row.priceQuarterOptions)
-
           // 如果只有一个价格选项，自动选择
           if (row.priceQuarterOptions.length === 1) {
-            console.log('只有一个价格，自动选择')
             row.selectedPriceQuarter = row.priceQuarterOptions[0]
             handlePriceQuarterChange(row, row.priceQuarterOptions[0])
           }
@@ -630,21 +617,10 @@ const handleMaterialSelectChange = async (row, selectedMaterial) => {
 
   // 标记用户已手动选择
   row.isUserConfirmed = true
-
-  console.log('选择后的表格显示:', {
-    推荐物资名: getBaseInfoName(row),
-    推荐规格: getBaseInfoSpec(row),
-    推荐价格: getPriceText(row)
-  })
-  console.log('=== 物资选择变化完成 ===')
 }
 
 // 处理价格季度选择变化
 const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
-  console.log('=== 价格季度选择变化开始 ===')
-  console.log('行数据ID:', row.id || row.taskDataId)
-  console.log('选择的价格:', selectedPriceQuarter)
-
   row.selectedPriceQuarter = selectedPriceQuarter
 
   // 立即更新表格显示用的价格字段，确保Vue响应性更新
@@ -654,12 +630,6 @@ const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
       recommendedPrice: selectedPriceQuarter.taxPrice,
       recommendedPriceQuarter: selectedPriceQuarter.quarter,
       recommendedPriceId: selectedPriceQuarter.id
-    })
-
-    console.log('立即更新价格显示字段:', {
-      价格: row.recommendedPrice,
-      季度: row.recommendedPriceQuarter,
-      价格ID: row.recommendedPriceId
     })
   }
 
@@ -674,13 +644,6 @@ const handlePriceQuarterChange = (row, selectedPriceQuarter) => {
 
   // 标记用户已手动选择
   row.isUserConfirmed = true
-
-  console.log('选择后的价格显示:', getPriceText(row))
-  console.log('最终的推荐数据ID:', {
-    物资ID: row.recommendedBaseDataId,
-    价格ID: row.recommendedPriceId
-  })
-  console.log('=== 价格季度选择变化完成 ===')
 }
 
 // 确认单个物资
@@ -933,7 +896,6 @@ const fetchMaterialOptions = async () => {
     }
 
     const response = await queryMaterialBaseInfoWithPrices(params)
-    console.log('【SupplierMaterialConfirmDialog 调试】获取物资选择数据:', response)
 
     if (response && response.data && response.data.content) {
       // 直接进行价格维度的扁平化，与MaterialSelectionDialog的formattedData逻辑一致
@@ -1023,15 +985,7 @@ const fetchMaterialOptions = async () => {
 
 // 处理物资选择结果
 const handleMaterialSelection = async (selectedMaterial) => {
-  console.log('【SupplierMaterialConfirmDialog 调试】接收到的物资选择数据:', selectedMaterial)
-  console.log('【SupplierMaterialConfirmDialog 调试】数据类型:', typeof selectedMaterial)
-  console.log(
-    '【SupplierMaterialConfirmDialog 调试】数据keys:',
-    Object.keys(selectedMaterial || {})
-  )
-
   if (!currentSelectingMaterial.value || !selectedMaterial) {
-    console.log('【SupplierMaterialConfirmDialog 调试】缺少必要参数，退出处理')
     return
   }
 
@@ -1042,10 +996,6 @@ const handleMaterialSelection = async (selectedMaterial) => {
     // 如果接收到的是包装后的数据，提取实际的选择材料
     if (selectedMaterial.selectedMaterial) {
       actualSelectedMaterial = selectedMaterial.selectedMaterial
-      console.log(
-        '【SupplierMaterialConfirmDialog 调试】提取包装数据中的 selectedMaterial:',
-        actualSelectedMaterial
-      )
     }
 
     // 现在 actualSelectedMaterial 已经是价格维度的数据
@@ -1061,8 +1011,6 @@ const handleMaterialSelection = async (selectedMaterial) => {
       id: actualSelectedMaterial.priceId
     }
 
-    console.log('【SupplierMaterialConfirmDialog 调试】解析出的物资基础信息:', materialBaseInfo)
-    console.log('【SupplierMaterialConfirmDialog 调试】解析出的价格信息:', priceInfo)
 
     if (!materialBaseInfo.id) {
       ElMessage.error('选择的物资数据无效')
@@ -1080,15 +1028,12 @@ const handleMaterialSelection = async (selectedMaterial) => {
       confirmPriceId: priceInfo.id
     }
 
-    console.log('【SupplierMaterialConfirmDialog 调试】发送确认数据到API:', confirmData)
     const result = await confirmSupplierMaterialData(confirmData)
-    console.log('【SupplierMaterialConfirmDialog 调试】API返回结果:', result)
 
     if (result && result.code === 200) {
       // 更新本地数据
       const item = currentSelectingMaterial.value
-      console.log('【SupplierMaterialConfirmDialog 调试】更新前的本地数据项:', item)
-
+      
       item.confirmResult = 1
       item.confirmType = 4 // 人工匹配
       item.matchedType = 4 // 更新匹配类型为人工匹配
@@ -1097,16 +1042,9 @@ const handleMaterialSelection = async (selectedMaterial) => {
       item.confirmedPrice = priceInfo.taxPrice
       item.confirmedPriceQuarter = priceInfo.quarter
 
-      console.log('【SupplierMaterialConfirmDialog 调试】更新后的本地数据项:', item)
-      console.log('【SupplierMaterialConfirmDialog 调试】确认的物资名称:', item.confirmedBaseName)
-      console.log('【SupplierMaterialConfirmDialog 调试】确认的规格:', item.confirmedBaseSpec)
-      console.log('【SupplierMaterialConfirmDialog 调试】确认的价格:', item.confirmedPrice)
-      console.log('【SupplierMaterialConfirmDialog 调试】确认的季度:', item.confirmedPriceQuarter)
-
       ElMessage.success('选择并确认成功')
       showMaterialSelectionDialog.value = false
     } else {
-      console.log('【SupplierMaterialConfirmDialog 调试】API确认失败:', result)
       ElMessage.error(result?.message || '确认失败')
     }
   } catch (error) {
@@ -1180,7 +1118,6 @@ const handleFilterChange = () => {
 const getBaseInfoName = (row) => {
   // 最优先：如果用户已确认选择，显示确认的数据
   if (row.confirmResult === 1 && row.confirmedBaseName) {
-    console.log('【SupplierMaterialConfirmDialog 调试】显示确认的物资名称:', row.confirmedBaseName)
     return row.confirmedBaseName
   }
 
