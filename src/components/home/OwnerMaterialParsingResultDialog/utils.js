@@ -109,19 +109,23 @@ export const switchTab = (setCurrentPage) => {
  */
 export const viewTaskDetails = (task, setCurrentTaskId, setDialogVisible) => {
   // 获取任务ID，尝试不同的字段名
-  const taskId = task.id || task.taskId || task.ID || task.task_id
+  const rawTaskId = task.id || task.taskId || task.ID || task.task_id
   
   console.log('【调试】甲供物资查看详情 - 任务数据:', task)
-  console.log('【调试】甲供物资查看详情 - 提取的taskId:', taskId)
+  console.log('【调试】甲供物资查看详情 - 原始taskId:', rawTaskId, '类型:', typeof rawTaskId)
   
-  if (!taskId) {
+  if (!rawTaskId) {
     console.error('【错误】无法获取任务ID，任务数据:', task)
     return
   }
   
+  // 确保taskId是字符串类型
+  const taskId = String(rawTaskId)
+  console.log('【调试】甲供物资查看详情 - 转换后的taskId:', taskId)
+  
   setCurrentTaskId(taskId)
   setDialogVisible(true)
-  console.log('【调试】甲供物资查看详情 - 设置taskId:', taskId)
+  console.log('【调试】甲供物资查看详情 - 设置完成')
 }
 
 /**

@@ -43,9 +43,22 @@ class SmartBrainService {
    */
   async getTaskDetailsList(taskId, params = {}) {
     try {
-      const response = await request.get(`/smart-brain/agents/tasks/${taskId}/details`, {
+      console.log('【调试】SmartBrainService.getTaskDetailsList - 调用参数:', { taskId, params })
+      
+      // 验证taskId
+      if (!taskId || taskId === 'null' || taskId === 'undefined') {
+        console.error('【错误】SmartBrainService - taskId无效:', taskId)
+        throw new Error('任务ID无效或为空')
+      }
+      
+      const url = `/smart-brain/agents/tasks/${taskId}/details`
+      console.log('【调试】SmartBrainService - 请求URL:', url)
+      
+      const response = await request.get(url, {
         params
       })
+      
+      console.log('【调试】SmartBrainService - API响应:', response)
       
       // 接口返回的是标准的Spring Data分页格式
       if (response && response.data) {
@@ -71,6 +84,17 @@ class SmartBrainService {
       }
     } catch (error) {
       console.error('获取任务详情列表失败:', error)
+      console.error('【调试】错误详情:', { 
+        taskId, 
+        params, 
+        message: error.message,
+        response: error.response?.data 
+      })
+      
+      // 检查是否是"没有携带taskid"的错误
+      if (error.response?.data?.message && error.response.data.message.includes('taskid')) {
+        console.error('【发现】后端返回taskid相关错误:', error.response.data.message)
+      }
       
       // 异常时返回空的分页结构
       return {

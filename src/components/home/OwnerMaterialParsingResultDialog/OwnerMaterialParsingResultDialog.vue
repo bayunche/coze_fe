@@ -79,6 +79,7 @@
 
   <!-- 甲供物资任务解析详情对话框 -->
   <OwnerMaterialTaskParsingDetailDialog
+    v-if="showTaskDetailDialog"
     v-model="showTaskDetailDialog"
     :taskId="currentTaskIdForDetail"
     @view-detail="handleViewDetail"
@@ -234,13 +235,27 @@ watch(currentPage, () => {
 // 业务方法
 const setCurrentTaskId = (taskId) => {
   console.log('【调试】OwnerMaterialParsingResultDialog - 设置currentTaskIdForDetail:', taskId)
+  console.log('【调试】OwnerMaterialParsingResultDialog - taskId类型:', typeof taskId)
+  
+  // 确保taskId不是undefined或null
+  if (!taskId) {
+    console.error('【错误】setCurrentTaskId - taskId为空或未定义!')
+    return
+  }
+  
   currentTaskIdForDetail.value = taskId
-  console.log('【调试】OwnerMaterialParsingResultDialog - currentTaskIdForDetail.value:', currentTaskIdForDetail.value)
+  console.log('【调试】OwnerMaterialParsingResultDialog - currentTaskIdForDetail.value设置后:', currentTaskIdForDetail.value)
 }
 
 const setDialogVisible = (visible) => {
   console.log('【调试】OwnerMaterialParsingResultDialog - 设置对话框显示:', visible)
   console.log('【调试】OwnerMaterialParsingResultDialog - 当前的currentTaskIdForDetail:', currentTaskIdForDetail.value)
+  
+  if (visible && !currentTaskIdForDetail.value) {
+    console.error('【错误】对话框即将显示，但currentTaskIdForDetail为空!')
+    return
+  }
+  
   showTaskDetailDialog.value = visible
 }
 

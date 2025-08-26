@@ -171,10 +171,17 @@ watch(
   ([newDialogVisible, newTaskId]) => {
     console.log('OwnerMaterialTaskParsingDetailDialog - watch trigger:', {
       newDialogVisible,
-      newTaskId
+      newTaskId,
+      propsTaskId: props.taskId
     })
     
+    if (newDialogVisible && !newTaskId) {
+      console.error('【错误】OwnerMaterialTaskParsingDetailDialog - 对话框显示时taskId为空！')
+      console.error('【错误】props内容:', { taskId: props.taskId, modelValue: props.modelValue })
+    }
+    
     if (shouldFetchData(newDialogVisible, newTaskId)) {
+      console.log('【调试】OwnerMaterialTaskParsingDetailDialog - 开始获取数据，taskId:', newTaskId)
       setCurrentPage(1) // 重置页码
       fetchDetailList()
     }

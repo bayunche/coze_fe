@@ -719,10 +719,6 @@ const getMatchTypeTagInfo = (matchedType) => {
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
-  console.log(
-    `【调试】getBaseInfoName - row.id: ${row.id}, confirmResult: ${row.confirmResult}, hasUserSelectedData: ${row.hasUserSelectedData}, confirmedBaseName: ${row.confirmedBaseName}`
-  )
-
   // 最优先：如果用户已确认选择，显示确认的数据
   if (row.confirmResult === 1 && row.confirmedBaseName) {
     console.log('【调试】getBaseInfoName - 返回已确认的数据:', row.confirmedBaseName)
@@ -782,25 +778,19 @@ const getBaseInfoSpec = (row) => {
 
 // 获取价格文本
 const getPriceText = (row) => {
-  console.log(
-    `【调试】getPriceText - row.id: ${row.id}, confirmResult: ${row.confirmResult}, hasUserSelectedData: ${row.hasUserSelectedData}, confirmedPrice: ${row.confirmedPrice}`
-  )
-
   // 最优先：如果用户已确认选择，显示确认的价格
   if (row.confirmResult === 1 && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
-    console.log('【调试】getPriceText - 返回已确认的价格:', row.confirmedPrice)
     return `¥${formatNumber(row.confirmedPrice)}`
   }
 
   // 如果用户已选择但未确认，显示选择的价格
   if (row.hasUserSelectedData && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
-    console.log('【调试】getPriceText - 返回用户选择的价格:', row.confirmedPrice)
+    console.log('【调试】getriceText - 返回用户选择的价格:', row.confirmedPrice)
     return `¥${formatNumber(row.confirmedPrice)}`
   }
 
   // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.taxPrice) {
-    console.log('【调试】getPriceText - 返回priceInfo价格:', row.priceInfo.taxPrice)
     return `¥${formatNumber(row.priceInfo.taxPrice)}`
   }
 
@@ -810,13 +800,11 @@ const getPriceText = (row) => {
     if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
       // 取最新的价格（通常是第一个）
       const latestPrice = matchOption.priceOptions[0]
-      console.log('【调试】getPriceText - 返回matchOptions价格:', latestPrice.taxPrice)
       return `¥${formatNumber(latestPrice.taxPrice)}`
     }
   }
 
   const fallback = row.recommendedPrice ? `¥${formatNumber(row.recommendedPrice)}` : '无价格'
-  console.log('【调试】getPriceText - 返回后备价格:', fallback)
   return fallback
 }
 
@@ -1147,11 +1135,13 @@ watch(
 // 新增：物资选择处理函数
 const handleMaterialSelectChange = async (row, selectedMaterialId) => {
   console.log('物资选择变化 ID:', selectedMaterialId)
-  
+
   // 根据 ID 找到对应的物资对象
-  const selectedMaterial = row.matchOptions?.find(option => option.matchedId === selectedMaterialId)
+  const selectedMaterial = row.matchOptions?.find(
+    (option) => option.matchedId === selectedMaterialId
+  )
   console.log('找到的物资对象:', selectedMaterial)
-  
+
   if (selectedMaterial) {
     row.selectedMaterial = selectedMaterial
     row.selectedMaterialId = selectedMaterialId
@@ -1174,11 +1164,13 @@ const handleMaterialSelectChange = async (row, selectedMaterialId) => {
 // 新增：价格季度选择处理函数
 const handlePriceQuarterChange = (row, selectedPriceId) => {
   console.log('价格季度选择变化 ID:', selectedPriceId)
-  
+
   // 根据 ID 找到对应的价格对象
-  const selectedPriceQuarter = row.selectedMaterial?.priceOptions?.find(price => price.priceId === selectedPriceId)
+  const selectedPriceQuarter = row.selectedMaterial?.priceOptions?.find(
+    (price) => price.priceId === selectedPriceId
+  )
   console.log('找到的价格对象:', selectedPriceQuarter)
-  
+
   if (selectedPriceQuarter) {
     row.selectedPriceQuarter = selectedPriceQuarter
     row.selectedPriceId = selectedPriceId
@@ -1305,7 +1297,7 @@ const initializeRowData = (row) => {
   if (reactiveRow.recommendedBaseDataId && reactiveRow.recommendedPriceId) {
     reactiveRow.hasUserSelectedData = true
   }
-  
+
   return reactiveRow
 }
 

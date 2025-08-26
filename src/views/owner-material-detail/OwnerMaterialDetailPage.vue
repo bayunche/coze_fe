@@ -132,10 +132,18 @@ const transformDataForTable = (data) => {
 const fetchOwnerMaterialDetail = async (page = currentPage.value, size = pageSize.value) => {
   loading.value = true
   try {
-    // 优先从store中获取taskId，如果获取不到则从URL中解析
-    const taskId = ownerMaterialStore.currentTask.taskId || route.query.taskId
+    // 优先从store中获取taskId，如果获取不到则从路由参数解析（不是查询参数）
+    const taskId = ownerMaterialStore.currentTask.taskId || route.params.taskId
+    
+    console.log('【调试】fetchOwnerMaterialDetail - 获取taskId:', {
+      'ownerMaterialStore.currentTask.taskId': ownerMaterialStore.currentTask.taskId,
+      'route.params.taskId': route.params.taskId,
+      '最终使用的taskId': taskId
+    })
+    
     if (!taskId) {
       ElMessage.error('缺少 taskId，无法加载数据。')
+      console.error('【错误】fetchOwnerMaterialDetail - taskId为空!')
       loading.value = false
       return
     }
@@ -227,8 +235,8 @@ const handleSizeChange = (newSize) => {
 
 const handleGenerateReport = () => {
   // 导航到甲供物资解析报告页面
-  // 统一使用与数据加载相同的 taskId 获取逻辑
-  const taskId = ownerMaterialStore.currentTask.taskId || route.params.taskId || route.query.taskId || route.query.taskDetailId || ownerMaterialStore.currentTaskId
+  // 统一使用与数据加载相同的 taskId 获取逻辑（优先使用路由参数）
+  const taskId = ownerMaterialStore.currentTask.taskId || route.params.taskId || ownerMaterialStore.currentTaskId
   
   console.log('【生成报告】尝试跳转，taskId:', taskId)
   console.log('【生成报告】路由参数:', {
@@ -267,12 +275,20 @@ const handleBack = () => {
 }
 
 onMounted(async () => {
-  // 优先从路由获取taskId
-  const taskId = route.query.taskId || ownerMaterialStore.currentTaskId
+  // 优先从路由参数获取taskId（路径参数，不是查询参数）
+  const taskId = route.params.taskId || ownerMaterialStore.currentTaskId
+
+  console.log('【调试】OwnerMaterialDetailPage - 获取taskId:', {
+    'route.params.taskId': route.params.taskId,
+    'ownerMaterialStore.currentTaskId': ownerMaterialStore.currentTaskId,
+    '最终使用的taskId': taskId
+  })
 
   // 先获取项目信息
   if (taskId) {
     await loadProjectInfo(taskId)
+  } else {
+    console.error('【错误】OwnerMaterialDetailPage - 无法获取taskId!')
   }
 
   // 再获取详情数据

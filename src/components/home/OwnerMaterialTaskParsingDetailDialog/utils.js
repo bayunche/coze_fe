@@ -67,11 +67,21 @@ export const formatErrorReason = (errorReason) => {
  */
 export const fetchDetailList = async (taskId, params) => {
   try {
+    console.log('【调试】fetchDetailList - 入参检查:', { taskId, params })
+    
+    // 验证taskId是否存在
+    if (!taskId) {
+      console.error('【错误】fetchDetailList - taskId为空或未定义!')
+      throw new Error('任务ID不能为空')
+    }
+    
     // 调用后端接口获取任务详情列表，页码从0开始
     const apiParams = {
       page: params.pageNumber - 1, // 前端页码从1开始，后端从0开始
       size: params.pageSize
     }
+    
+    console.log('【调试】fetchDetailList - 准备调用API:', { taskId, apiParams })
     
     const result = await smartBrainService.getTaskDetailsList(taskId, apiParams)
     
