@@ -154,6 +154,9 @@
         agent-id="ownerSuppliedMaterialParsing"
       />
     </div>
+    
+    <!-- 添加DialogManager组件，用于显示各种弹窗 -->
+    <DialogManager />
   </div>
 </template>
 
@@ -165,6 +168,7 @@ import { useWorkflowStore } from '@/stores/workflow'
 import TaskParsingResultDialog from '@/components/home/TaskParsingResultDialog'
 import MaterialParsingResultDialog from '@/components/home/MaterialParsingResultDialog'
 import OwnerMaterialParsingResultDialog from '@/components/home/OwnerMaterialParsingResultDialog'
+import DialogManager from '@/components/home/DialogManager'
 
 import {
   OVERVIEW_CARD_CONFIG,

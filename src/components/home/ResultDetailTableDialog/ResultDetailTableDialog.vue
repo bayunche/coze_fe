@@ -142,13 +142,14 @@ const {
 // 单行确认加载状态
 const savingRowConfirm = ref({})
 
-// 监听 showResultDetail 的变化，当它变为 true 时调用 handleViewResultDetail
+// 监听 showResultDetail 的变化，用于调试日志
 watch(
   showResultDetail,
-  async (newValue) => {
+  (newValue) => {
     if (newValue) {
-      await parsingResultStore.viewResultDetail()
-      // 在数据加载完成后添加诊断日志
+      // 不再重复调用 viewResultDetail，数据已经在外部准备好了
+      // 仅添加诊断日志
+      console.log('【诊断】ResultDetailTableDialog - 弹窗显示状态:', newValue)
       console.log('【诊断】ResultDetailTableDialog - tableColumns:', tableColumns.value)
       console.log('【诊断】ResultDetailTableDialog - tableData:', parsingResultStore.tableData)
     }

@@ -108,9 +108,20 @@ export const switchTab = (setCurrentPage) => {
  * @param {Function} setDialogVisible - 设置对话框可见性的函数
  */
 export const viewTaskDetails = (task, setCurrentTaskId, setDialogVisible) => {
-  setCurrentTaskId(task.id)
+  // 获取任务ID，尝试不同的字段名
+  const taskId = task.id || task.taskId || task.ID || task.task_id
+  
+  console.log('【调试】甲供物资查看详情 - 任务数据:', task)
+  console.log('【调试】甲供物资查看详情 - 提取的taskId:', taskId)
+  
+  if (!taskId) {
+    console.error('【错误】无法获取任务ID，任务数据:', task)
+    return
+  }
+  
+  setCurrentTaskId(taskId)
   setDialogVisible(true)
-  console.log('查看详情', task.id)
+  console.log('【调试】甲供物资查看详情 - 设置taskId:', taskId)
 }
 
 /**

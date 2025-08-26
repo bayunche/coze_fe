@@ -153,7 +153,9 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       return
     }
 
+    console.log('【诊断】parsingResultStore.viewResultDetail - 设置showResultDetail为true')
     showResultDetail.value = true
+    console.log('【诊断】parsingResultStore.viewResultDetail - showResultDetail.value:', showResultDetail.value)
     isFetchingDetails.value = true
     tableData.value = []
     tableColumns.value = []

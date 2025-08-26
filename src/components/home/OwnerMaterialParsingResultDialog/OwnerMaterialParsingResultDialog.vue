@@ -178,6 +178,27 @@ const fetchTasks = async () => {
     const result = await SmartBrainService.getAgentTasksList(domain, params)
     taskData.value = result.content || []
     total.value = result.totalElements || 0
+    
+    // 调试：检查任务数据结构
+    if (result.content && result.content.length > 0) {
+      console.log('【调试】甲供物资任务数据结构 - 第一条记录:', result.content[0])
+      console.log('【调试】甲供物资任务数据字段 - 可能的ID字段:', {
+        id: result.content[0].id,
+        taskId: result.content[0].taskId,
+        ID: result.content[0].ID,
+        task_id: result.content[0].task_id
+      })
+      // 检查所有记录的ID字段
+      result.content.forEach((item, index) => {
+        console.log(`【调试】任务记录[${index}] - ID字段:`, {
+          id: item.id,
+          taskId: item.taskId,
+          ID: item.ID,
+          状态: item.taskStatus,
+          文件数: item.fileCount
+        })
+      })
+    }
   } catch (error) {
     console.error('获取任务列表失败:', error)
     taskData.value = []
@@ -212,10 +233,14 @@ watch(currentPage, () => {
 
 // 业务方法
 const setCurrentTaskId = (taskId) => {
+  console.log('【调试】OwnerMaterialParsingResultDialog - 设置currentTaskIdForDetail:', taskId)
   currentTaskIdForDetail.value = taskId
+  console.log('【调试】OwnerMaterialParsingResultDialog - currentTaskIdForDetail.value:', currentTaskIdForDetail.value)
 }
 
 const setDialogVisible = (visible) => {
+  console.log('【调试】OwnerMaterialParsingResultDialog - 设置对话框显示:', visible)
+  console.log('【调试】OwnerMaterialParsingResultDialog - 当前的currentTaskIdForDetail:', currentTaskIdForDetail.value)
   showTaskDetailDialog.value = visible
 }
 
