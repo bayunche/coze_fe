@@ -211,11 +211,26 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="价格信息" width="200">
+          <el-table-column label="价格信息" width="240">
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <div class="price-info">
-                  <span class="price-text">{{ getPriceText(row) }}</span>
+                  <!-- 新的价格显示格式 -->
+                  <div v-if="typeof getPriceText(row) === 'object'" class="price-details">
+                    <div class="price-line">
+                      <span class="price-label">含税价:</span>
+                      <span class="price-text">{{ getPriceText(row).taxIncluded }}</span>
+                    </div>
+                    <div class="price-line">
+                      <span class="price-label">不含税价:</span>
+                      <span class="price-text">{{ getPriceText(row).taxExcluded }}</span>
+                      <span v-if="getPriceText(row).originalType" class="original-type-text">{{ getPriceText(row).originalType }}</span>
+                    </div>
+                  </div>
+                  <!-- 兼容旧格式 -->
+                  <div v-else>
+                    <span class="price-text">{{ getPriceText(row) }}</span>
+                  </div>
                   <div class="price-quarter">{{ getPriceQuarter(row) }}</div>
                 </div>
               </div>
@@ -238,7 +253,15 @@
                 </el-select>
                 <!-- 其他情况显示当前价格信息 -->
                 <div v-else class="text-sm text-gray-500">
-                  <span>{{ getPriceText(row) }}</span>
+                  <!-- 新的价格显示格式 -->
+                  <div v-if="typeof getPriceText(row) === 'object'" class="price-details-small">
+                    <div>{{ getPriceText(row).taxIncluded }}</div>
+                    <div>{{ getPriceText(row).taxExcluded }}</div>
+                  </div>
+                  <!-- 兼容旧格式 -->
+                  <div v-else>
+                    <span>{{ getPriceText(row) }}</span>
+                  </div>
                   <div>{{ getPriceQuarter(row) }}</div>
                 </div>
               </div>
@@ -601,6 +624,28 @@ const formatNumber = (value) => {
   return Number(value).toLocaleString()
 }
 
+// 格式化价格显示 - 显示含税价和不含税价
+const formatPriceDisplay = (unitPrice, taxExcludedPrice, priceType) => {
+  // 如果只有一个价格值，直接显示
+  if ((taxExcludedPrice === undefined || taxExcludedPrice === null) && unitPrice !== undefined && unitPrice !== null) {
+    return `¥${formatNumber(unitPrice)}`
+  }
+
+  // 如果有含税价和不含税价，都显示
+  if (unitPrice !== undefined && unitPrice !== null && taxExcludedPrice !== undefined && taxExcludedPrice !== null) {
+    // 获取原始价格类型文本
+    const originalPriceTypeText = priceType === 1 ? '(原含税)' : priceType === 0 ? '(原不含税)' : ''
+    
+    return {
+      taxIncluded: `¥${formatNumber(unitPrice)}`,
+      taxExcluded: `¥${formatNumber(taxExcludedPrice)}`,
+      originalType: originalPriceTypeText
+    }
+  }
+
+  return '无价格'
+}
+
 // 搜索处理（防抖）
 let searchTimeout = null
 const handleSearch = () => {
@@ -880,22 +925,27 @@ const getBaseInfoSpec = (row) => {
   return row.recommendedBaseSpec || ''
 }
 
-// 获取价格文本
+// 获取价格文本 - 支持新的价格字段
 const getPriceText = (row) => {
   // 最优先：如果用户已确认选择，显示确认的价格
   if (row.confirmResult === 1 && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
-    return `¥${formatNumber(row.confirmedPrice)}`
+    return formatPriceDisplay(row.confirmedPrice, row.taxExcludedPrice, row.priceType)
   }
 
   // 如果用户已选择但未确认，显示选择的价格
   if (row.hasUserSelectedData && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
-    console.log('【调试】getriceText - 返回用户选择的价格:', row.confirmedPrice)
-    return `¥${formatNumber(row.confirmedPrice)}`
+    console.log('【调试】getPriceText - 返回用户选择的价格:', row.confirmedPrice)
+    return formatPriceDisplay(row.confirmedPrice, row.taxExcludedPrice, row.priceType)
+  }
+
+  // 使用新的价格字段：unitPrice(含税价) 和 taxExcludedPrice(不含税价)
+  if (row.unitPrice !== undefined && row.unitPrice !== null) {
+    return formatPriceDisplay(row.unitPrice, row.taxExcludedPrice, row.priceType)
   }
 
   // 优先从直接的priceInfo获取
   if (row.priceInfo && row.priceInfo.taxPrice) {
-    return `¥${formatNumber(row.priceInfo.taxPrice)}`
+    return formatPriceDisplay(row.priceInfo.taxPrice, row.priceInfo.taxExcludedPrice, row.priceInfo.priceType)
   }
 
   // 从matchOptions中获取第一个匹配选项的最新价格信息
@@ -904,11 +954,11 @@ const getPriceText = (row) => {
     if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
       // 取最新的价格（通常是第一个）
       const latestPrice = matchOption.priceOptions[0]
-      return `¥${formatNumber(latestPrice.taxPrice)}`
+      return formatPriceDisplay(latestPrice.taxPrice, latestPrice.taxExcludedPrice, latestPrice.priceType)
     }
   }
 
-  const fallback = row.recommendedPrice ? `¥${formatNumber(row.recommendedPrice)}` : '无价格'
+  const fallback = row.recommendedPrice ? formatPriceDisplay(row.recommendedPrice) : '无价格'
   return fallback
 }
 
@@ -1114,19 +1164,29 @@ const handleMaterialSelection = (selectedMaterial) => {
       }
       const priceInfo = selectedMaterial.originalData?.priceInfo || {
         taxPrice: selectedMaterial.taxPrice,
+        unitPrice: selectedMaterial.unitPrice,
+        taxExcludedPrice: selectedMaterial.taxExcludedPrice,
+        originalPrice: selectedMaterial.originalPrice,
+        priceType: selectedMaterial.priceType,
         quarter: selectedMaterial.quarter,
         id: selectedMaterial.priceId
       }
 
       console.log('【调试】解析出的物资基础信息:', materialBaseInfo)
-      console.log('【调试】解析出的价格信息:', priceInfo)
+      console.log('【调试】解析出的价格信息(含新字段):', priceInfo)
 
-      // 更新物资信息 - 使用Vue的响应式赋值
+      // 更新物资信息 - 使用Vue的响应式赋值，支持新的价格字段
       const confirmBaseName = materialBaseInfo.materialName || selectedMaterial.materialName
       const confirmBaseSpec =
         materialBaseInfo.specificationModel || selectedMaterial.specificationModel
-      const confirmPrice = priceInfo.taxPrice || selectedMaterial.taxPrice
+      const confirmPrice = priceInfo.taxPrice || priceInfo.unitPrice || selectedMaterial.taxPrice || selectedMaterial.unitPrice
       const confirmPriceQuarter = priceInfo.quarter || selectedMaterial.quarter
+      
+      // 新增价格字段
+      const confirmUnitPrice = priceInfo.unitPrice || selectedMaterial.unitPrice
+      const confirmTaxExcludedPrice = priceInfo.taxExcludedPrice || selectedMaterial.taxExcludedPrice
+      const confirmOriginalPrice = priceInfo.originalPrice || selectedMaterial.originalPrice
+      const confirmPriceType = priceInfo.priceType !== undefined ? priceInfo.priceType : selectedMaterial.priceType
 
       // 确保响应式更新 - 先保存原始对象的索引
       const itemIndex = materialData.value.findIndex((dataItem) => {
@@ -1139,11 +1199,18 @@ const handleMaterialSelection = (selectedMaterial) => {
       })
 
       if (itemIndex !== -1) {
-        // 直接更新数组中的对象属性，确保Vue能检测到变化
+        // 直接更新数组中的对象属性，确保Vue能检测到变化，包括新的价格字段
         materialData.value[itemIndex].confirmedBaseName = confirmBaseName
         materialData.value[itemIndex].confirmedBaseSpec = confirmBaseSpec
         materialData.value[itemIndex].confirmedPrice = confirmPrice
         materialData.value[itemIndex].confirmedPriceQuarter = confirmPriceQuarter
+        
+        // 更新新的价格字段
+        materialData.value[itemIndex].unitPrice = confirmUnitPrice
+        materialData.value[itemIndex].taxExcludedPrice = confirmTaxExcludedPrice
+        materialData.value[itemIndex].originalPrice = confirmOriginalPrice
+        materialData.value[itemIndex].priceType = confirmPriceType
+        
         materialData.value[itemIndex].hasUserSelectedData = true
         materialData.value[itemIndex].selectedBaseDataId =
           materialBaseInfo.id || selectedMaterial.baseInfoId
@@ -1285,7 +1352,7 @@ const handleMaterialSelectChange = async (row, selectedMaterialId) => {
   row.isUserModified = true
 }
 
-// 新增：价格季度选择处理函数
+// 新增：价格季度选择处理函数 - 支持新的价格字段
 const handlePriceQuarterChange = (row, selectedPriceId) => {
   console.log('价格季度选择变化 ID:', selectedPriceId)
 
@@ -1299,12 +1366,19 @@ const handlePriceQuarterChange = (row, selectedPriceId) => {
     row.selectedPriceQuarter = selectedPriceQuarter
     row.selectedPriceId = selectedPriceId
 
-    // 更新显示的匹配信息
+    // 更新显示的匹配信息，支持新的价格字段
     if (row.selectedMaterial) {
       // 更新表格显示的数据
       row.matchedBaseName = row.selectedMaterial.baseInfo.materialName
       row.matchedBaseSpec = row.selectedMaterial.baseInfo.specifications
-      row.matchedPrice = selectedPriceQuarter.taxPrice
+      
+      // 更新价格信息 - 支持新字段
+      row.matchedPrice = selectedPriceQuarter.taxPrice || selectedPriceQuarter.unitPrice
+      row.unitPrice = selectedPriceQuarter.taxPrice || selectedPriceQuarter.unitPrice
+      row.taxExcludedPrice = selectedPriceQuarter.taxExcludedPrice
+      row.originalPrice = selectedPriceQuarter.originalPrice
+      row.priceType = selectedPriceQuarter.priceType
+      
       row.matchedPriceQuarter = selectedPriceQuarter.quarter
 
       // 标记为用户修改
@@ -2265,6 +2339,46 @@ const handleBack = () => {
 
 .action-cell .el-button {
   font-size: 12px;
+}
+
+/* 价格显示样式 */
+.price-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.price-label {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  min-width: 60px;
+}
+
+.price-text {
+  font-weight: 500;
+  color: var(--theme-price-color);
+}
+
+.original-type-text {
+  font-size: 11px;
+  color: var(--theme-text-tertiary);
+  margin-left: 4px;
+}
+
+.price-details-small {
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.price-details-small div {
+  margin-bottom: 1px;
 }
 
 /* 标签样式 - 优化主题适配 */
