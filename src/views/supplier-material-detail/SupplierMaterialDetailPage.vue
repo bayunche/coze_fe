@@ -128,28 +128,30 @@
                 {{ getBaseInfoName(row) }}
               </div>
               <div v-else class="action-cell">
-                <!-- 相似匹配：下拉选择推荐物资 -->
-                <el-select 
-                  v-if="row.matchedType === 2 && row.matchOptions && row.matchOptions.length > 0" 
-                  v-model="row.selectedMaterialId" 
-                  @change="handleMaterialSelectChange(row, $event)" 
-                  placeholder="选择推荐物资" 
-                  size="small"
-                  style="width:100%"
-                >
-                  <el-option 
-                    v-for="opt in row.matchOptions" 
-                    :key="opt.matchedId" 
-                    :label="opt.baseInfo?.materialName || '未知物资'" 
-                    :value="opt.matchedId" 
-                  />
-                </el-select>
-                <!-- 未匹配：显示提示 -->
-                <span v-else-if="row.matchedType === 0" class="text-gray-500 text-sm">待从数据库选择</span>
-                <!-- 精确匹配：显示已匹配 -->
-                <span v-else-if="row.matchedType === 1" class="text-green-600 text-sm">已精确匹配</span>
-                <!-- 其他情况：显示物资名 -->
-                <span v-else class="text-sm">{{ row.materialName }}</span>
+                <!-- 显示已选择的物资信息 -->
+                <div v-if="row.hasUserSelectedData && row.selectedMaterial" class="selected-material-info">
+                  <div class="material-name">{{ row.selectedMaterial.materialName }}</div>
+                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
+                    重新选择
+                  </el-button>
+                </div>
+                <!-- 相似匹配、未匹配或其他情况：统一显示选择按钮 -->
+                <div v-else class="material-selection-button">
+                  <el-button 
+                    type="primary" 
+                    size="small" 
+                    @click="openMaterialSelectionDialog(row)"
+                    :icon="row.matchedType === 2 ? Edit : Plus"
+                  >
+                    {{ getMaterialButtonText(row) }}
+                  </el-button>
+                  <!-- 显示当前状态提示 -->
+                  <div class="status-hint">
+                    <span v-if="row.matchedType === 0" class="text-gray-500 text-xs">未匹配</span>
+                    <span v-else-if="row.matchedType === 1" class="text-green-600 text-xs">已精确匹配</span>
+                    <span v-else-if="row.matchedType === 2" class="text-orange-500 text-xs">相似匹配</span>
+                  </div>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -244,34 +246,19 @@
                 </div>
               </div>
               <div v-else class="action-cell">
-                <!-- 相似匹配：价格季度下拉选择 -->
-                <el-select 
-                  v-if="row.matchedType === 2 && row.selectedMaterial && row.selectedMaterial.priceList && row.selectedMaterial.priceList.length > 0" 
-                  v-model="row.selectedPriceId" 
-                  @change="handlePriceQuarterChange(row, $event)" 
-                  placeholder="选择价格季度" 
-                  size="small"
-                  style="width:100%"
-                >
-                  <el-option 
-                    v-for="price in row.selectedMaterial.priceList" 
-                    :key="price.id" 
-                    :label="`${price.quarter || ''} ￥${price.price || 0}`" 
-                    :value="price.id" 
-                  />
-                </el-select>
-                <!-- 其他情况显示当前价格信息 -->
-                <div v-else class="text-sm text-gray-500">
-                  <!-- 新的价格显示格式 -->
-                  <div v-if="typeof getPriceText(row) === 'object'" class="price-details-small">
-                    <div>{{ getPriceText(row).taxIncluded }}</div>
-                    <div>{{ getPriceText(row).taxExcluded }}</div>
+                <!-- 显示已选择的价格信息或选择按钮 -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <div class="price-display">
+                    ¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice) }}
                   </div>
-                  <!-- 兼容旧格式 -->
-                  <div v-else>
-                    <span>{{ getPriceText(row) }}</span>
-                  </div>
-                  <div>{{ getPriceQuarter(row) }}</div>
+                  <div class="price-quarter">{{ row.selectedPriceQuarter.quarter }}</div>
+                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
+                    修改
+                  </el-button>
+                </div>
+                <!-- 通过物资选择弹窗统一处理价格选择 -->
+                <div v-else class="price-selection-hint">
+                  <span class="text-sm text-gray-500">通过物资选择确定价格</span>
                 </div>
               </div>
             </template>
@@ -407,6 +394,14 @@
     </div>
 
     <!-- 物资选择对话框 -->
+    <!-- 新的物资价格选择弹窗 -->
+    <MaterialPriceSelectionDialog
+      v-model="showMaterialPriceDialog"
+      :row-data="currentSelectionRow"
+      :show-recommend="true"
+      @confirm="handleMaterialPriceSelection"
+    />
+
     <MaterialSelectionDialog
       v-model="showOptionsDialog"
       :data-list="materialSelectionList"
@@ -439,6 +434,7 @@ const props = defineProps({
 import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog/MaterialSelectionDialog.vue'
+import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
 import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
@@ -478,6 +474,10 @@ const currentPage = ref(1)
 const pageSize = ref(20)
 const showOptionsDialog = ref(false)
 const currentMaterial = ref(null)
+
+// 新的物资价格选择弹窗状态
+const showMaterialPriceDialog = ref(false)
+const currentSelectionRow = ref(null)
 
 // 物资选择相关数据
 const materialSelectionList = ref([])
@@ -1418,7 +1418,74 @@ watch(
   { immediate: false }
 )
 
-// 新增：物资选择处理函数
+// 新增的方法：打开物资价格选择弹窗
+const openMaterialSelectionDialog = (row) => {
+  currentSelectionRow.value = row
+  showMaterialPriceDialog.value = true
+}
+
+// 处理物资价格选择结果
+const handleMaterialPriceSelection = (selection) => {
+  const row = currentSelectionRow.value
+  if (!row || !selection) return
+  
+  console.log('物资价格选择结果:', selection)
+  
+  // 更新行数据
+  row.selectedMaterial = selection.material
+  row.selectedPriceQuarter = selection.price
+  row.hasUserSelectedData = true
+  row.isUserModified = true
+  
+  // 更新相关ID
+  row.selectedMaterialId = selection.material.id
+  row.selectedPriceId = selection.price.id
+  row.selectedBaseDataId = selection.material.id
+  
+  // 更新显示的数据
+  if (selection.source === 'recommend') {
+    // 推荐选择的数据结构处理
+    row.matchedBaseName = selection.material.materialName
+    row.matchedBaseSpec = selection.material.specificationModel
+    row.matchedPriceQuarter = selection.price.quarter
+    row.unitPrice = selection.price.taxPrice || selection.price.unitPrice
+    row.taxExcludedPrice = selection.price.taxExcludedPrice
+    row.originalPrice = selection.price.originalPrice
+    row.priceType = selection.price.priceType
+  } else {
+    // 搜索或新增的数据结构处理
+    row.matchedBaseName = selection.material.materialName
+    row.matchedBaseSpec = selection.material.specificationModel
+    row.matchedPriceQuarter = selection.price.quarter
+    row.unitPrice = selection.price.taxPrice || selection.price.unitPrice
+    row.taxExcludedPrice = selection.price.taxExcludedPrice
+    row.originalPrice = selection.price.originalPrice
+    row.priceType = selection.price.priceType
+  }
+  
+  ElMessage.success('物资和价格选择成功')
+  currentSelectionRow.value = null
+}
+
+// 获取物资选择按钮文本
+const getMaterialButtonText = (row) => {
+  if (row.matchedType === 0) {
+    return '选择物资'
+  } else if (row.matchedType === 1) {
+    return '查看推荐'
+  } else if (row.matchedType === 2) {
+    return '选择推荐'
+  }
+  return '选择物资'
+}
+
+// 格式化价格显示
+const formatPrice = (price) => {
+  return typeof price === 'number' ? price.toFixed(2) : '0.00'
+}
+
+// 注释掉未使用的函数，保留以备后续使用
+/*
 const handleMaterialSelectChange = async (row, selectedMaterialId) => {
   console.log('物资选择变化 ID:', selectedMaterialId)
 
@@ -1446,8 +1513,10 @@ const handleMaterialSelectChange = async (row, selectedMaterialId) => {
 
   row.isUserModified = true
 }
+*/
 
-// 新增：价格季度选择处理函数 - 支持新的价格字段
+// 新增：价格季度选择处理函数 - 支持新的价格字段（暂时注释）
+/*
 const handlePriceQuarterChange = (row, selectedPriceId) => {
   console.log('价格季度选择变化 ID:', selectedPriceId)
 
@@ -1482,6 +1551,7 @@ const handlePriceQuarterChange = (row, selectedPriceId) => {
     }
   }
 }
+*/
 
 // 新增：快速确认（已有推荐数据的情况）
 const handleQuickConfirm = async (row) => {
@@ -2992,5 +3062,56 @@ const handleBack = () => {
   min-width: 100px;
   height: 36px;
   font-weight: 500;
+}
+
+/* 新增样式：物资选择相关 */
+.selected-material-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.selected-material-info .material-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--theme-text-primary);
+  word-break: break-all;
+}
+
+.material-selection-button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.status-hint {
+  font-size: 11px;
+  color: var(--theme-text-tertiary);
+}
+
+.selected-price-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selected-price-info .price-display {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-success);
+}
+
+.selected-price-info .price-quarter {
+  font-size: 12px;
+  color: var(--theme-text-secondary);
+}
+
+.price-selection-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 40px;
 }
 </style>
