@@ -220,16 +220,25 @@
                     <div class="price-line">
                       <span class="price-label">含税价:</span>
                       <span class="price-text">{{ getPriceText(row).taxIncluded }}</span>
+                      <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
+                        <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
+                      </el-icon>
                     </div>
                     <div class="price-line">
                       <span class="price-label">不含税价:</span>
                       <span class="price-text">{{ getPriceText(row).taxExcluded }}</span>
+                      <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
+                        <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
+                      </el-icon>
                       <span v-if="getPriceText(row).originalType" class="original-type-text">{{ getPriceText(row).originalType }}</span>
                     </div>
                   </div>
                   <!-- 兼容旧格式 -->
                   <div v-else>
                     <span class="price-text">{{ getPriceText(row) }}</span>
+                    <el-icon v-if="getPriceChangeIcon(row, 'single')" :style="getPriceChangeIconStyle(row, 'single')">
+                      <component :is="getPriceChangeIcon(row, 'single')" />
+                    </el-icon>
                   </div>
                   <div class="price-quarter">{{ getPriceQuarter(row) }}</div>
                 </div>
@@ -427,7 +436,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog/MaterialSelectionDialog.vue'
 import {
@@ -990,6 +999,92 @@ const getPriceQuarter = (row) => {
   }
 
   return row.recommendedPriceQuarter || ''
+}
+
+// 获取操作行对应的价格数值
+const getActionRowPrice = (dataRow, priceType) => {
+  // 在 materialData 中查找对应的操作行
+  const actionRowIndex = materialData.value.findIndex(item => 
+    item.rowType === 'action' && 
+    ((item.taskDataId && dataRow.taskDataId && item.taskDataId === dataRow.taskDataId) ||
+     (item.id && dataRow.id && item.id === dataRow.id))
+  )
+  
+  if (actionRowIndex === -1) return null
+  
+  const actionRow = materialData.value[actionRowIndex]
+  const actionPriceData = getPriceText(actionRow)
+  
+  if (typeof actionPriceData === 'object') {
+    if (priceType === 'taxIncluded') {
+      return parseFloat(actionPriceData.taxIncluded.replace(/[¥,]/g, '')) || null
+    } else if (priceType === 'taxExcluded') {
+      return parseFloat(actionPriceData.taxExcluded.replace(/[¥,]/g, '')) || null
+    }
+  } else if (priceType === 'single') {
+    return parseFloat((actionPriceData || '').replace(/[¥,]/g, '')) || null
+  }
+  
+  return null
+}
+
+// 获取数据行的价格数值
+const getDataRowPrice = (dataRow, priceType) => {
+  const dataPriceData = getPriceText(dataRow)
+  
+  if (typeof dataPriceData === 'object') {
+    if (priceType === 'taxIncluded') {
+      return parseFloat(dataPriceData.taxIncluded.replace(/[¥,]/g, '')) || null
+    } else if (priceType === 'taxExcluded') {
+      return parseFloat(dataPriceData.taxExcluded.replace(/[¥,]/g, '')) || null
+    }
+  } else if (priceType === 'single') {
+    return parseFloat((dataPriceData || '').replace(/[¥,]/g, '')) || null
+  }
+  
+  return null
+}
+
+// 获取价格变化箭头组件
+const getPriceChangeIcon = (row, priceType) => {
+  if (row.rowType !== 'data') return null
+  
+  const dataPrice = getDataRowPrice(row, priceType)
+  const actionPrice = getActionRowPrice(row, priceType)
+  
+  if (dataPrice === null || actionPrice === null) return null
+  
+  // 操作行价格大于数据行价格时，显示绿色向下箭头（下跌）
+  if (actionPrice > dataPrice) {
+    return ArrowDown
+  }
+  // 操作行价格小于数据行价格时，显示红色向上箭头（上涨）
+  else if (actionPrice < dataPrice) {
+    return ArrowUp
+  }
+  
+  return null
+}
+
+// 获取价格变化箭头样式
+const getPriceChangeIconStyle = (row, priceType) => {
+  if (row.rowType !== 'data') return {}
+  
+  const dataPrice = getDataRowPrice(row, priceType)
+  const actionPrice = getActionRowPrice(row, priceType)
+  
+  if (dataPrice === null || actionPrice === null) return {}
+  
+  // 操作行价格大于数据行价格时，显示绿色
+  if (actionPrice > dataPrice) {
+    return { color: '#67C23A', marginLeft: '4px', fontSize: '12px' }
+  }
+  // 操作行价格小于数据行价格时，显示红色
+  else if (actionPrice < dataPrice) {
+    return { color: '#F56C6C', marginLeft: '4px', fontSize: '12px' }
+  }
+  
+  return {}
 }
 
 // 查看更多选项 - 打开物资选择对话框

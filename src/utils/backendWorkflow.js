@@ -887,7 +887,7 @@ export async function updateContractAnalysisResult(updateData) {
     }
     
     const response = await request({
-      url: '/contract/analysis/update',  // V5版本接口路径
+      url: '/api/contract/analysis-results/update',  // V5版本接口路径 - 修正为正确的端点
       method: 'post',
       data: updateData
     })

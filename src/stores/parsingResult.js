@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useWorkflowStore } from './workflow'
 import { useChatStore } from './chat' // 引入 chat store
 import { translateHeader, formatCellValue } from '@/utils/helpers'
@@ -330,7 +330,34 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       return
     }
 
+    // 弹出输入框要求用户输入修改原因
     try {
+      const { value: modificationReason } = await ElMessageBox.prompt(
+        '请输入修改原因，这将有助于改进AI模型的识别准确性',
+        '确认修改', 
+        {
+          confirmButtonText: '确认',
+          cancelButtonText: '取消',
+          inputPlaceholder: '例如：修正AI识别错误、规范业务术语、补充缺失信息等',
+          inputType: 'textarea',
+          inputValidator: (value) => {
+            if (!value || !value.trim()) {
+              return '修改原因不能为空'
+            }
+            if (value.trim().length < 5) {
+              return '修改原因至少需要5个字符'
+            }
+            return true
+          },
+          customClass: 'modification-reason-dialog'
+        }
+      )
+
+      // 如果用户取消了输入，则不继续
+      if (!modificationReason) {
+        return
+      }
+
       // 构造字段数据
       const fieldData = []
       Object.keys(row).forEach((key) => {
@@ -347,7 +374,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         taskDetailId: row.taskDetailId,
         resultStatus: 1, // 设置为已确认
         fieldData: fieldData,
-        remark: '单行修改确认'
+        remark: '单行修改确认',
+        modificationReason: modificationReason.trim() // V5新增字段
       }
 
       console.log('【诊断】单行保存并确认数据:', updateData)
@@ -409,6 +437,34 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
         savingAllEdits.value = false
         return
       }
+
+      // 批量保存时要求用户输入修改原因
+      const { value: modificationReason } = await ElMessageBox.prompt(
+        `您即将批量保存 ${unconfirmedRecords.length} 条记录的修改，请输入修改原因`,
+        '批量保存确认',
+        {
+          confirmButtonText: '确认保存',
+          cancelButtonText: '取消',
+          inputPlaceholder: '例如：统一修正格式错误、批量规范术语等',
+          inputType: 'textarea',
+          inputValidator: (value) => {
+            if (!value || !value.trim()) {
+              return '修改原因不能为空'
+            }
+            if (value.trim().length < 5) {
+              return '修改原因至少需要5个字符'
+            }
+            return true
+          },
+          customClass: 'modification-reason-dialog'
+        }
+      )
+
+      // 如果用户取消了输入，则不继续
+      if (!modificationReason) {
+        savingAllEdits.value = false
+        return
+      }
       
       const payloads = unconfirmedRecords.map((item) => {
         const payload = { ...item }
@@ -443,7 +499,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
               taskDetailId: item.taskDetailId,
               resultStatus: item.resultStatus || 0, // 保持原有状态，不强制确认
               fieldData: fieldData,
-              remark: '批量保存合同解析结果编辑'
+              remark: '批量保存合同解析结果编辑',
+              modificationReason: modificationReason.trim() // V5新增字段
             }
             
             const result = await updateContractAnalysisResult(updateData)
@@ -555,6 +612,35 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
       return
     }
 
+    // 批量确认时要求用户输入修改原因
+    let modificationReason = ''
+    try {
+      const result = await ElMessageBox.prompt(
+        `您即将批量确认 ${tableData.value.length} 条解析结果，请输入确认原因`,
+        '批量确认',
+        {
+          confirmButtonText: '确认',
+          cancelButtonText: '取消',
+          inputPlaceholder: '例如：经人工审核无误、数据已核对完成等',
+          inputType: 'textarea',
+          inputValidator: (value) => {
+            if (!value || !value.trim()) {
+              return '确认原因不能为空'
+            }
+            if (value.trim().length < 5) {
+              return '确认原因至少需要5个字符'
+            }
+            return true
+          },
+          customClass: 'modification-reason-dialog'
+        }
+      )
+      modificationReason = result.value
+    } catch (error) {
+      // 用户取消了操作
+      return
+    }
+
     isConfirming.value = true
     // 定义统计变量在函数级别
     let successCount = 0
@@ -612,7 +698,8 @@ export const useParsingResultStore = defineStore('parsingResult', () => {
               taskDetailId: item.taskDetailId,
               resultStatus: 1, // 设置为已确认
               fieldData: fieldData,
-              remark: '批量确认合同解析结果'
+              remark: '批量确认合同解析结果',
+              modificationReason: modificationReason.trim() // V5新增字段
             }
             
             const result = await updateContractAnalysisResult(updateData)
