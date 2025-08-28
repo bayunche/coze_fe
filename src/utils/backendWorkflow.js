@@ -870,12 +870,14 @@ export async function confirmSupplierMaterialParsingResults(confirmData) {
 }
 
 /**
- * 修改确认合同解析结果 (单条记录)
+ * 修改确认合同解析结果 (V5版本接口)
  * @param {object} updateData - 要修改的数据
  * @param {string} updateData.taskDetailId - 任务详情ID
  * @param {number} updateData.resultStatus - 结果状态 (1表示已确认)
  * @param {Array<object>} updateData.fieldData - 字段数据数组
  * @param {string} [updateData.remark] - 修改备注
+ * @param {string} [updateData.operator] - 操作人姓名
+ * @param {string} [updateData.modificationReason] - 修改原因说明（V5新增）
  * @returns {Promise<object>} - 修改结果
  */
 export async function updateContractAnalysisResult(updateData) {
@@ -885,7 +887,7 @@ export async function updateContractAnalysisResult(updateData) {
     }
     
     const response = await request({
-      url: '/contract/analysis-results/update',
+      url: '/contract/analysis/update',  // V5版本接口路径
       method: 'post',
       data: updateData
     })

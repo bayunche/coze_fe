@@ -110,142 +110,236 @@
           v-loading="tableLoading"
           style="width: 100%"
           :row-class-name="getRowClassName"
+          :row-key="row => row.rowKey"
+          :span-method="tableSpanMethod"
           border
           stripe
           max-height="60vh"
         >
-          <el-table-column type="index" label="序号" width="80" />
+          <el-table-column label="序号" width="80">
+            <template #default="{ row, $index }">
+              <span v-if="row.rowType === 'data'">{{ Math.floor($index / 2) + 1 }}</span>
+            </template>
+          </el-table-column>
 
-          <el-table-column
-            prop="materialName"
-            label="物资名称"
-            min-width="140"
-            show-overflow-tooltip
-          />
+          <el-table-column prop="materialName" label="物资名称" min-width="140" show-overflow-tooltip>
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ getBaseInfoName(row) }}
+              </div>
+              <div v-else class="action-cell">
+                <!-- 相似匹配：下拉选择推荐物资 -->
+                <el-select 
+                  v-if="row.matchedType === 2 && row.matchOptions && row.matchOptions.length > 0" 
+                  v-model="row.selectedMaterialId" 
+                  @change="handleMaterialSelectChange(row, $event)" 
+                  placeholder="选择推荐物资" 
+                  size="small"
+                  style="width:100%"
+                >
+                  <el-option 
+                    v-for="opt in row.matchOptions" 
+                    :key="opt.matchedId" 
+                    :label="opt.baseInfo?.materialName || '未知物资'" 
+                    :value="opt.matchedId" 
+                  />
+                </el-select>
+                <!-- 未匹配：显示提示 -->
+                <span v-else-if="row.matchedType === 0" class="text-gray-500 text-sm">待从数据库选择</span>
+                <!-- 精确匹配：显示已匹配 -->
+                <span v-else-if="row.matchedType === 1" class="text-green-600 text-sm">已精确匹配</span>
+                <!-- 其他情况：显示物资名 -->
+                <span v-else class="text-sm">{{ row.materialName }}</span>
+              </div>
+            </template>
+          </el-table-column>
 
-          <el-table-column
-            prop="specifications"
-            label="规格型号"
-            min-width="140"
-            show-overflow-tooltip
-          />
+          <el-table-column prop="specifications" label="规格型号" min-width="140" show-overflow-tooltip>
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ getBaseInfoSpec(row) }}
+              </div>
+              <div v-else class="action-cell">
+                <!-- 相似匹配：显示选中物资的规格型号 -->
+                <span v-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
+                  {{ row.selectedMaterial.baseInfo?.specifications || '-' }}
+                </span>
+                <!-- 其他情况显示原始规格 -->
+                <span v-else class="text-sm text-gray-500">{{ row.specifications || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
 
-          <el-table-column prop="unit" label="单位" width="80" />
+          <el-table-column prop="unit" label="单位" width="80">
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ row.unit || '-' }}
+              </div>
+              <div v-else class="action-cell">
+                <span class="text-sm text-gray-500">{{ row.unit || '-' }}</span>
+              </div>
+            </template>
+          </el-table-column>
 
           <el-table-column prop="quantity" label="数量" width="100">
             <template #default="{ row }">
-              <span>{{ formatNumber(row.quantity) }}</span>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ formatNumber(row.quantity) }}
+              </div>
+              <div v-else class="action-cell">
+                <span class="text-sm text-gray-500">{{ formatNumber(row.quantity) }}</span>
+              </div>
             </template>
           </el-table-column>
 
           <el-table-column label="匹配基础数据" min-width="160" show-overflow-tooltip>
             <template #default="{ row }">
-              <div class="recommend-info">
-                <p class="material-name">{{ getBaseInfoName(row) }}</p>
-                <p class="material-spec">{{ getBaseInfoSpec(row) }}</p>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <div class="recommend-info">
+                  <p class="material-name">{{ getBaseInfoName(row) }}</p>
+                  <p class="material-spec">{{ getBaseInfoSpec(row) }}</p>
+                </div>
+              </div>
+              <div v-else class="action-cell">
+                <!-- 显示当前选择的基础数据信息 -->
+                <div v-if="row.selectedMaterial && row.selectedMaterial.baseInfo" class="text-sm">
+                  <p class="text-blue-600">{{ row.selectedMaterial.baseInfo.materialName || '-' }}</p>
+                  <p class="text-gray-500">{{ row.selectedMaterial.baseInfo.specifications || '-' }}</p>
+                </div>
+                <span v-else class="text-sm text-gray-400">请选择物资</span>
               </div>
             </template>
           </el-table-column>
 
           <el-table-column label="价格信息" width="200">
             <template #default="{ row }">
-              <div class="price-info">
-                <span class="price-text">{{ getPriceText(row) }}</span>
-                <div class="price-quarter">{{ getPriceQuarter(row) }}</div>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <div class="price-info">
+                  <span class="price-text">{{ getPriceText(row) }}</span>
+                  <div class="price-quarter">{{ getPriceQuarter(row) }}</div>
+                </div>
+              </div>
+              <div v-else class="action-cell">
+                <!-- 相似匹配：价格季度下拉选择 -->
+                <el-select 
+                  v-if="row.matchedType === 2 && row.selectedMaterial && row.selectedMaterial.priceList && row.selectedMaterial.priceList.length > 0" 
+                  v-model="row.selectedPriceId" 
+                  @change="handlePriceQuarterChange(row, $event)" 
+                  placeholder="选择价格季度" 
+                  size="small"
+                  style="width:100%"
+                >
+                  <el-option 
+                    v-for="price in row.selectedMaterial.priceList" 
+                    :key="price.id" 
+                    :label="`${price.quarter || ''} ￥${price.price || 0}`" 
+                    :value="price.id" 
+                  />
+                </el-select>
+                <!-- 其他情况显示当前价格信息 -->
+                <div v-else class="text-sm text-gray-500">
+                  <span>{{ getPriceText(row) }}</span>
+                  <div>{{ getPriceQuarter(row) }}</div>
+                </div>
               </div>
             </template>
           </el-table-column>
 
           <el-table-column label="匹配类型" width="140" align="center">
             <template #default="{ row }">
-              <el-tag :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
-                {{ getMatchTypeTagInfo(row.matchedType).text }}
-              </el-tag>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <el-tag :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </el-tag>
+              </div>
+              <div v-else class="action-cell">
+                <!-- 在操作行显示额外的状态信息 -->
+                <span class="text-xs text-gray-400">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </span>
+              </div>
             </template>
           </el-table-column>
 
           <el-table-column label="确认状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="getConfirmStatusType(row.confirmResult)" size="small">
-                {{ getConfirmStatusText(row.confirmResult) }}
-              </el-tag>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <el-tag :type="getConfirmStatusType(row.confirmResult)" size="small">
+                  {{ getConfirmStatusText(row.confirmResult) }}
+                </el-tag>
+              </div>
+              <div v-else class="action-cell">
+                <!-- 在操作行显示简化状态 -->
+                <span class="text-xs text-gray-400">
+                  {{ getConfirmStatusText(row.confirmResult) }}
+                </span>
+              </div>
             </template>
           </el-table-column>
 
           <el-table-column label="操作" width="200" align="center">
             <template #default="{ row }">
-              <!-- 已确认状态 -->
-              <div v-if="row.confirmResult === 1">
-                <el-button type="success" size="small" disabled>已确认</el-button>
-              </div>
-
-              <!-- 精确匹配：无需操作 -->
-              <div v-else-if="getMatchTypeTagInfo(row.matchedType).text === '精确匹配'">
-                <el-button type="info" size="small" disabled>已精确匹配</el-button>
-              </div>
-
-              <!-- 相似匹配、历史匹配：显示选择下拉框 -->
-              <div
-                v-else-if="
-                  ['相似匹配', '历史匹配'].includes(getMatchTypeTagInfo(row.matchedType).text) &&
-                  row.matchOptions &&
-                  row.matchOptions.length > 0
-                "
-              >
-                <el-select
-                  v-model="row.selectedMaterialId"
-                  placeholder="选择物资"
-                  size="small"
-                  style="width: 100%; margin-bottom: 5px"
-                  @change="handleMaterialSelectChange(row, $event)"
-                >
-                  <el-option
-                    v-for="option in row.matchOptions"
-                    :key="option.matchedId"
-                    :label="`${option.baseInfo?.materialName || '未知'} ${
-                      option.baseInfo?.specifications || ''
-                    }`"
-                    :value="option.matchedId"
-                  />
-                </el-select>
-                <el-select
-                  v-model="row.selectedPriceId"
-                  placeholder="选择价格和季度"
-                  size="small"
-                  style="width: 100%"
-                  @change="handlePriceQuarterChange(row, $event)"
-                >
-                  <el-option
-                    v-for="priceOption in row.selectedMaterial?.priceOptions || []"
-                    :key="priceOption.priceId"
-                    :label="`¥${formatNumber(priceOption.taxPrice)} (${priceOption.quarter})`"
-                    :value="priceOption.priceId"
-                  />
-                </el-select>
-              </div>
-
-              <!-- 无匹配或其他情况：显示从数据库选择按钮和条件性确认按钮 -->
-              <div v-else>
-                <!-- 当有用户已选择的数据时才显示确认按钮 -->
-                <el-button
-                  v-if="row.hasUserSelectedData && row.confirmResult !== 1"
-                  type="primary"
-                  size="small"
-                  @click="handleQuickConfirm(row)"
-                  style="margin-bottom: 5px; width: 100%"
-                >
+              <!-- 数据行：显示状态和确认按钮 -->
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <!-- 已确认状态 -->
+                <el-button v-if="row.confirmResult === 1" type="success" size="small" disabled>
+                  已确认
+                </el-button>
+                <!-- 未确认但可以确认的状态 -->
+                <el-button v-else-if="row.hasUserSelectedData || row.matchedType === 1" 
+                  type="primary" size="small" @click="handleQuickConfirm(row)">
                   确认
                 </el-button>
-                <!-- 从数据库中选择已有数据按钮 -->
-                <el-button
-                  type="text"
-                  size="small"
-                  @click="handleViewOptions(row)"
-                  style="width: 100%"
-                  :icon="row.hasUserSelectedData ? Edit : Plus"
-                >
-                  {{ row.hasUserSelectedData ? '重新选择数据' : '从数据库中选择已有数据' }}
-                </el-button>
+                <!-- 其他状态显示标签 -->
+                <el-tag v-else :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </el-tag>
+              </div>
+              
+              <!-- 操作行：根据匹配类型显示不同控件 -->
+              <div v-else class="action-cell">
+                <!-- 相似匹配：显示确认和重新选择操作 -->
+                <div v-if="row.matchedType === 2">
+                  <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
+                    @click="handleQuickConfirm(row)" style="width: 48%; margin-right: 4%">
+                    确认
+                  </el-button>
+                  <el-button type="text" size="small" @click="handleViewOptions(row)" 
+                    :style="row.confirmResult !== 1 ? 'width: 48%' : 'width: 100%'">
+                    重新选择
+                  </el-button>
+                </div>
+                
+                <!-- 未匹配：显示从数据库选择按钮 -->
+                <div v-else-if="row.matchedType === 0">
+                  <el-button v-if="row.hasUserSelectedData && row.confirmResult !== 1" 
+                    type="primary" size="small" @click="handleQuickConfirm(row)" 
+                    style="width: 100%; margin-bottom: 4px">
+                    确认
+                  </el-button>
+                  <el-button type="text" size="small" @click="handleViewOptions(row)" 
+                    :icon="row.hasUserSelectedData ? Edit : Plus" style="width: 100%">
+                    {{ row.hasUserSelectedData ? '重新选择数据' : '从数据库中选择已有数据' }}
+                  </el-button>
+                </div>
+                
+                <!-- 精确匹配：显示已匹配状态和重新选择 -->
+                <div v-else-if="row.matchedType === 1">
+                  <span class="text-green-600 text-sm">已精确匹配</span>
+                  <el-button type="text" size="small" @click="handleViewOptions(row)" 
+                    style="margin-left: 8px">
+                    重新选择
+                  </el-button>
+                </div>
+                
+                <!-- 其他匹配类型：显示确认按钮 -->
+                <div v-else>
+                  <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
+                    @click="handleQuickConfirm(row)">
+                    确认
+                  </el-button>
+                  <span v-else class="text-green-600 text-sm">已确认</span>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -427,9 +521,14 @@ const fetchData = async () => {
       response = await querySupplierMaterialsComplex(params)
 
       if (response && response.data) {
-        // 获取数据并初始化每行数据
+        // 获取数据并初始化每行数据，转换为双行结构
         const rawData = response.data.content || []
-        materialData.value = rawData.map((item) => initializeRowData(item))
+        materialData.value = rawData.flatMap((item) => {
+          const initialized = initializeRowData(item)
+          const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
+          const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
+          return [dataRow, actionRow]
+        })
         statistics.value = response.data.statistics || {}
         total.value = response.data.page?.totalElements || 0
       }
@@ -441,8 +540,13 @@ const fetchData = async () => {
       })
 
       if (response && response.content) {
-        // 初始化简单查询接口的数据
-        materialData.value = response.content.map((item) => initializeRowData(item))
+        // 初始化简单查询接口的数据，转换为双行结构
+        materialData.value = response.content.flatMap((item) => {
+          const initialized = initializeRowData(item)
+          const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
+          const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
+          return [dataRow, actionRow]
+        })
         total.value = response.totalElements || 0
         statistics.value = null
       }
@@ -1092,10 +1196,30 @@ const handleSelectionSearch = (keyword) => {
 
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
+  let className = ''
   if (row.confirmResult === 1) {
-    return 'confirmed-row'
+    className += 'confirmed-row'
+  } else {
+    className += 'pending-row'
   }
-  return 'pending-row'
+  
+  // 为操作行添加特殊样式类名
+  if (row.rowType === 'action') {
+    className += ' action-row'
+  }
+  
+  return className
+}
+
+// 表格合并方法
+const tableSpanMethod = ({ row, columnIndex }) => {
+  // 将第一列（序号）在 data 行合并两行
+  if (columnIndex === 0) {
+    if (row.rowType === 'data') return { rowspan: 2, colspan: 1 }
+    return { rowspan: 0, colspan: 0 }
+  }
+  // 默认不合并其它列
+  return null
 }
 
 // 页面初始化时加载数据
@@ -2102,6 +2226,45 @@ const handleBack = () => {
 :deep(.pending-row:hover > td.el-table__cell) {
   background-color: rgba(var(--theme-warning-rgb), 0.1) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
+}
+
+/* 操作行样式 */
+:deep(.action-row) {
+  background-color: var(--el-background-color-2) !important;
+}
+
+:deep(.action-row td.el-table__cell) {
+  background-color: var(--el-background-color-2) !important;
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+:deep(.action-row:hover > td.el-table__cell) {
+  background-color: var(--el-background-color-3) !important;
+}
+
+/* 数据行和操作行内容样式 */
+.data-cell {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-cell {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.action-cell .el-select {
+  width: 100% !important;
+}
+
+.action-cell .el-button {
+  font-size: 12px;
 }
 
 /* 标签样式 - 优化主题适配 */

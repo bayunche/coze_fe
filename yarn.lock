@@ -2125,7 +2125,7 @@ postcss-nested@^6.0.1:
 
 postcss-nesting@^13.0.2:
   version "13.0.2"
-  resolved "https://registry.yarnpkg.com/postcss-nesting/-/postcss-nesting-13.0.2.tgz#fde0d4df772b76d03b52eccc84372e8d1ca1402e"
+  resolved "https://registry.npmmirror.com/postcss-nesting/-/postcss-nesting-13.0.2.tgz#fde0d4df772b76d03b52eccc84372e8d1ca1402e"
   integrity sha512-1YCI290TX+VP0U/K/aFxzHzQWHWURL+CtHMSbex1lCdpXD1SoR2sYuxDu5aNI9lPoXpKTCggFZiDJbwylU0LEQ==
   dependencies:
     "@csstools/selector-resolve-nested" "^3.1.0"
