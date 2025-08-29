@@ -217,10 +217,10 @@
         <div class="selected-info" v-if="finalSelection.material">
           <span class="info-label">已选择：</span>
           <span class="material-info">
-            {{ finalSelection.material.materialName }} - {{ finalSelection.material.specificationModel }}
+            {{ (finalSelection.material.materialName || '未知') }} - {{ (finalSelection.material.specificationModel || '未知') }}
           </span>
           <span class="price-info" v-if="finalSelection.price">
-            ¥{{ formatPrice(finalSelection.price.taxPrice || finalSelection.price.unitPrice) }} ({{ finalSelection.price.quarter }})
+            ¥{{ formatPrice(finalSelection.price.taxPrice || finalSelection.price.unitPrice || 0) }} ({{ finalSelection.price.quarter || '未知' }})
           </span>
         </div>
         <div class="action-buttons">
@@ -569,7 +569,10 @@ const closeDialog = () => {
 
 // 工具函数
 const formatPrice = (price) => {
-  return typeof price === 'number' ? price.toFixed(2) : '0.00'
+  if (typeof price === 'number' && !isNaN(price)) {
+    return price.toFixed(2)
+  }
+  return '0.00'
 }
 
 const getPriceTypeText = (priceType) => {

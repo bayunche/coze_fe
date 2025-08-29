@@ -1375,13 +1375,18 @@ const getRowClassName = ({ row }) => {
 
 // 表格合并方法
 const tableSpanMethod = ({ row, columnIndex }) => {
+  // 安全检查：确保 row 存在
+  if (!row) {
+    return { rowspan: 1, colspan: 1 }
+  }
+  
   // 将第一列（序号）在 data 行合并两行
   if (columnIndex === 0) {
     if (row.rowType === 'data') return { rowspan: 2, colspan: 1 }
     return { rowspan: 0, colspan: 0 }
   }
-  // 默认不合并其它列
-  return null
+  // 默认不合并其它列，返回默认值而不是 null
+  return { rowspan: 1, colspan: 1 }
 }
 
 // 页面初始化时加载数据
@@ -1427,7 +1432,10 @@ const openMaterialSelectionDialog = (row) => {
 // 处理物资价格选择结果
 const handleMaterialPriceSelection = (selection) => {
   const row = currentSelectionRow.value
-  if (!row || !selection) return
+  if (!row || !selection || !selection.material || !selection.price) {
+    ElMessage.warning('选择数据不完整，请重新选择')
+    return
+  }
   
   console.log('物资价格选择结果:', selection)
   
