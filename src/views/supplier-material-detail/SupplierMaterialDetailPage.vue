@@ -128,29 +128,37 @@
                 {{ getBaseInfoName(row) }}
               </div>
               <div v-else class="action-cell">
-                <!-- 显示已选择的物资信息 -->
-                <div v-if="row.hasUserSelectedData && row.selectedMaterial" class="selected-material-info">
-                  <div class="material-name">{{ row.selectedMaterial.materialName }}</div>
-                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
-                    重新选择
-                  </el-button>
-                </div>
-                <!-- 相似匹配、未匹配或其他情况：统一显示选择按钮 -->
-                <div v-else class="material-selection-button">
-                  <el-button 
-                    type="primary" 
-                    size="small" 
-                    @click="openMaterialSelectionDialog(row)"
-                    :icon="row.matchedType === 2 ? Edit : Plus"
-                  >
-                    {{ getMaterialButtonText(row) }}
-                  </el-button>
-                  <!-- 显示当前状态提示 -->
-                  <div class="status-hint">
-                    <span v-if="row.matchedType === 0" class="text-gray-500 text-xs">未匹配</span>
-                    <span v-else-if="row.matchedType === 1" class="text-green-600 text-xs">已精确匹配</span>
-                    <span v-else-if="row.matchedType === 2" class="text-orange-500 text-xs">相似匹配</span>
+                <div class="material-cell">
+                  <div class="material-content">
+                    <!-- 显示已选择的物资信息 -->
+                    <div v-if="row.hasUserSelectedData && row.selectedMaterial" class="selected-material-info">
+                      <span class="material-name">{{ row.selectedMaterial.materialName }}</span>
+                      <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
+                        重新选择
+                      </el-button>
+                    </div>
+                    <!-- 相似匹配、未匹配或其他情况：统一显示选择按钮 -->
+                    <div v-else class="material-selection-button">
+                      <el-button 
+                        type="primary" 
+                        size="small" 
+                        @click="openMaterialSelectionDialog(row)"
+                        :icon="row.matchedType === 2 ? Edit : Plus"
+                      >
+                        {{ getMaterialButtonText(row) }}
+                      </el-button>
+                      <!-- 显示当前状态提示 -->
+                      <div class="status-hint">
+                        <span v-if="row.matchedType === 0" class="text-gray-500 text-xs">未匹配</span>
+                        <span v-else-if="row.matchedType === 1" class="text-green-600 text-xs">已精确匹配</span>
+                        <span v-else-if="row.matchedType === 2" class="text-orange-500 text-xs">相似匹配</span>
+                      </div>
+                    </div>
                   </div>
+                  <!-- 数据差异标记 -->
+                  <el-icon v-if="hasMaterialNameDifference(row)" class="difference-marker">
+                    <Close />
+                  </el-icon>
                 </div>
               </div>
             </template>
@@ -162,12 +170,20 @@
                 {{ getBaseInfoSpec(row) }}
               </div>
               <div v-else class="action-cell">
-                <!-- 相似匹配：显示选中物资的规格型号 -->
-                <span v-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
-                  {{ row.selectedMaterial.baseInfo?.specifications || '-' }}
-                </span>
-                <!-- 其他情况显示原始规格 -->
-                <span v-else class="text-sm text-gray-500">{{ row.specifications || '-' }}</span>
+                <div class="material-cell">
+                  <div class="material-content">
+                    <!-- 相似匹配：显示选中物资的规格型号 -->
+                    <span v-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.baseInfo?.specifications || '-' }}
+                    </span>
+                    <!-- 其他情况显示原始规格 -->
+                    <span v-else class="text-sm text-gray-500">{{ row.specifications || '-' }}</span>
+                  </div>
+                  <!-- 数据差异标记 -->
+                  <el-icon v-if="hasSpecificationDifference(row)" class="difference-marker">
+                    <Close />
+                  </el-icon>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -178,7 +194,15 @@
                 {{ row.unit || '-' }}
               </div>
               <div v-else class="action-cell">
-                <span class="text-sm text-gray-500">{{ row.unit || '-' }}</span>
+                <div class="material-cell">
+                  <div class="material-content">
+                    <span class="text-sm text-gray-500">{{ row.unit || '-' }}</span>
+                  </div>
+                  <!-- 数据差异标记 -->
+                  <el-icon v-if="hasUnitDifference(row)" class="difference-marker">
+                    <Close />
+                  </el-icon>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -843,6 +867,84 @@ const getConfirmStatusText = (status) => {
       return '待确认'
     default:
       return '未知'
+  }
+}
+
+// 获取对应的数据行和操作行
+const getCorrespondingRows = (currentRow) => {
+  if (!currentRow) return { dataRow: null, actionRow: null }
+  
+  const identifier = currentRow.taskDataId || currentRow.id
+  if (!identifier) return { dataRow: null, actionRow: null }
+  
+  const dataRow = materialData.value.find(item => 
+    item.rowType === 'data' && (item.taskDataId === identifier || item.id === identifier)
+  )
+  const actionRow = materialData.value.find(item => 
+    item.rowType === 'action' && (item.taskDataId === identifier || item.id === identifier)
+  )
+  
+  return { dataRow, actionRow }
+}
+
+// 检查单位是否有差异
+const hasUnitDifference = (actionRow) => {
+  const { dataRow } = getCorrespondingRows(actionRow)
+  if (!dataRow || !actionRow) return false
+  
+  const dataUnit = (dataRow.unit || '').trim()
+  const actionUnit = (actionRow.unit || '').trim()
+  
+  return dataUnit !== actionUnit && actionUnit !== '-' && dataUnit !== '-'
+}
+
+// 检查物资名称是否有差异
+const hasMaterialNameDifference = (actionRow) => {
+  const { dataRow } = getCorrespondingRows(actionRow)
+  if (!dataRow || !actionRow) return false
+  
+  const dataName = getDisplayMaterialName(dataRow)
+  const actionName = getDisplayMaterialName(actionRow)
+  
+  return dataName !== actionName && actionName !== '-' && dataName !== '-'
+}
+
+// 检查规格型号是否有差异
+const hasSpecificationDifference = (actionRow) => {
+  const { dataRow } = getCorrespondingRows(actionRow)
+  if (!dataRow || !actionRow) return false
+  
+  const dataSpec = getDisplaySpecification(dataRow)
+  const actionSpec = getDisplaySpecification(actionRow)
+  
+  return dataSpec !== actionSpec && actionSpec !== '-' && dataSpec !== '-'
+}
+
+// 获取显示用的物资名称
+const getDisplayMaterialName = (row) => {
+  if (row.rowType === 'data') {
+    return getBaseInfoName(row)
+  } else {
+    // 操作行
+    if (row.hasUserSelectedData && row.selectedMaterial) {
+      return row.selectedMaterial.materialName || '-'
+    } else if (row.matchedType === 2 && row.selectedMaterial) {
+      return row.selectedMaterial.materialName || '-'
+    }
+    return row.materialName || '-'
+  }
+}
+
+// 获取显示用的规格型号
+const getDisplaySpecification = (row) => {
+  if (row.rowType === 'data') {
+    return getBaseInfoSpec(row)
+  } else {
+    // 操作行
+    if (row.matchedType === 2 && row.selectedMaterial) {
+      return row.selectedMaterial.baseInfo?.specifications || '-'
+    }
+    return row.specifications || '-'
   }
 }
 
@@ -3166,6 +3268,14 @@ const handleBack = () => {
 .status-hint {
   font-size: 11px;
   color: var(--theme-text-tertiary);
+}
+
+/* 数据差异标记样式 */
+.difference-marker {
+  color: #F56C6C;
+  font-size: 12px;
+  margin-left: 4px;
+  flex-shrink: 0;
 }
 
 .selected-price-info {
