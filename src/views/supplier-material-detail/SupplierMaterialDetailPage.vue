@@ -276,8 +276,8 @@
             </template>
           </el-table-column>
 
-          <!-- 物资价格季度列 -->
-          <el-table-column label="物资价格季度" width="100" align="center">
+          <!-- 物资价格所属季度列 -->
+          <el-table-column label="物资价格所属季度" width="100" align="center">
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <span class="quarter-text">{{ getPriceQuarter(row) }}</span>
@@ -294,7 +294,7 @@
           </el-table-column>
 
 
-          <el-table-column label="操作" width="200" align="center">
+          <el-table-column label="操作" width="180" align="center">
             <template #default="{ row }">
               <!-- 数据行：显示状态和确认按钮 -->
               <div v-if="row.rowType === 'data'" class="data-cell">
@@ -316,43 +316,48 @@
               <!-- 操作行：根据匹配类型显示不同控件 -->
               <div v-else class="action-cell">
                 <!-- 相似匹配：显示确认和重新选择操作 -->
-                <div v-if="row.matchedType === 2">
+                <div v-if="row.matchedType === 2" class="flex flex-wrap justify-center gap-2">
                   <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
-                    @click="handleQuickConfirm(row)" style="width: 48%; margin-right: 4%">
+                    @click="handleQuickConfirm(row)" class="flex-1 min-w-[70px] max-w-[80px]">
                     确认
                   </el-button>
-                  <el-button type="text" size="small" @click="handleViewOptions(row)" 
-                    :style="row.confirmResult !== 1 ? 'width: 48%' : 'width: 100%'">
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
+                    class="flex-1 min-w-[70px] max-w-[80px]">
                     重新选择
                   </el-button>
                 </div>
                 
                 <!-- 未匹配：显示从数据库选择按钮 -->
-                <div v-else-if="row.matchedType === 0">
-                  <el-button v-if="row.hasUserSelectedData && row.confirmResult !== 1" 
-                    type="primary" size="small" @click="handleQuickConfirm(row)" 
-                    style="width: 100%; margin-bottom: 4px">
-                    确认
-                  </el-button>
-                  <el-button type="text" size="small" @click="handleViewOptions(row)" 
-                    :icon="row.hasUserSelectedData ? Edit : Plus" style="width: 100%">
-                    {{ row.hasUserSelectedData ? '重新选择数据' : '从数据库中选择已有数据' }}
+                <div v-else-if="row.matchedType === 0" class="flex flex-col gap-2">
+                  <div v-if="row.hasUserSelectedData" class="flex flex-wrap justify-center gap-2">
+                    <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
+                      @click="handleQuickConfirm(row)" class="flex-1 min-w-[70px] max-w-[80px]">
+                      确认
+                    </el-button>
+                    <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
+                      :icon="Edit" class="flex-1 min-w-[70px] max-w-[80px]">
+                      重选
+                    </el-button>
+                  </div>
+                  <el-button v-else type="primary" plain size="small" @click="handleViewOptions(row)" 
+                    :icon="Plus" class="w-full">
+                    从库选择
                   </el-button>
                 </div>
                 
                 <!-- 精确匹配：显示已匹配状态和重新选择 -->
-                <div v-else-if="row.matchedType === 1">
-                  <span class="text-green-600 text-sm">已精确匹配</span>
-                  <el-button type="text" size="small" @click="handleViewOptions(row)" 
-                    style="margin-left: 8px">
-                    重新选择
+                <div v-else-if="row.matchedType === 1" class="flex flex-wrap items-center justify-center gap-2">
+                  <span class="text-green-600 text-sm">已匹配</span>
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
+                    class="min-w-[70px] max-w-[80px]">
+                    重选
                   </el-button>
                 </div>
                 
                 <!-- 其他匹配类型：显示确认按钮 -->
-                <div v-else>
+                <div v-else class="flex justify-center">
                   <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
-                    @click="handleQuickConfirm(row)">
+                    @click="handleQuickConfirm(row)" class="min-w-[70px] max-w-[80px]">
                     确认
                   </el-button>
                   <span v-else class="text-green-600 text-sm">已确认</span>
