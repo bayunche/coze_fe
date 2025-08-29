@@ -188,40 +188,25 @@
               <div v-if="row.rowType === 'data'" class="data-cell">
                 {{ formatNumber(row.quantity) }}
               </div>
+              <!-- 操作行不显示数量 -->
               <div v-else class="action-cell">
-                <span class="text-sm text-gray-500">{{ formatNumber(row.quantity) }}</span>
+                <span class="text-sm text-gray-500">-</span>
               </div>
             </template>
           </el-table-column>
 
 
-          <!-- 确认状态列 -->
-          <el-table-column label="确认状态" width="100" align="center">
+          <!-- 数据来源列 -->
+          <el-table-column label="数据来源" width="100" align="center">
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
-                <el-tag :type="getConfirmStatusType(row.confirmResult)" size="small">
-                  {{ getConfirmStatusText(row.confirmResult) }}
+                <el-tag :type="getDataSourceType(row).type" size="small">
+                  {{ getDataSourceType(row).text }}
                 </el-tag>
               </div>
               <div v-else class="action-cell">
                 <span class="text-xs text-gray-400">
-                  {{ getConfirmStatusText(row.confirmResult) }}
-                </span>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 匹配类型列 -->
-          <el-table-column label="匹配类型" width="100" align="center">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <el-tag :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
-                  {{ getMatchTypeTagInfo(row.matchedType).text }}
-                </el-tag>
-              </div>
-              <div v-else class="action-cell">
-                <span class="text-xs text-gray-400">
-                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                  {{ getDataSourceType(row).text }}
                 </span>
               </div>
             </template>
@@ -232,7 +217,7 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <div class="price-value">
-                  <span class="price-text">¥{{ getTaxIncludedPrice(row) }}</span>
+                  <span class="price-text" :style="getPriceTextStyle(row, 'taxIncluded')">¥{{ getTaxIncludedPrice(row) }}</span>
                   <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
                     <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
                   </el-icon>
@@ -241,14 +226,9 @@
               <div v-else class="action-cell">
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
-                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
-                    修改
-                  </el-button>
                 </div>
                 <div v-else class="price-selection-hint">
-                  <el-button type="primary" size="small" @click="openMaterialSelectionDialog(row)">
-                    选择价格
-                  </el-button>
+                  <span class="text-sm text-gray-500">-</span>
                 </div>
               </div>
             </template>
@@ -259,7 +239,7 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <div class="price-value">
-                  <span class="price-text">¥{{ getTaxExcludedPrice(row) }}</span>
+                  <span class="price-text" :style="getPriceTextStyle(row, 'taxExcluded')">¥{{ getTaxExcludedPrice(row) }}</span>
                   <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
                     <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
                   </el-icon>
@@ -866,6 +846,27 @@ const getConfirmStatusText = (status) => {
   }
 }
 
+// 获取数据来源类型
+const getDataSourceType = (row) => {
+  // 如果已确认且有用户选择数据，就是用户选择
+  if (row.confirmResult === 1) {
+    if (row.hasUserSelectedData) {
+      return { text: '用户选择', type: 'success' }
+    } else {
+      return { text: '系统推荐', type: 'success' }
+    }
+  }
+  // 根据匹配类型返回数据来源
+  const sourceMap = {
+    0: { text: '原始数据', type: 'info' },
+    1: { text: '精确匹配', type: 'success' },
+    2: { text: '相似匹配', type: 'warning' },
+    3: { text: '历史匹配', type: 'primary' },
+    4: { text: '人工匹配', type: 'primary' }
+  }
+  return sourceMap[row.matchedType] || { text: '未知', type: 'info' }
+}
+
 // 获取匹配类型标签
 const getMatchTypeTagInfo = (matchedType) => {
   const typeMap = {
@@ -1083,6 +1084,27 @@ const getPriceChangeIcon = (row, priceType) => {
   }
   
   return null
+}
+
+// 获取价格文本样式（为数据行价格添加颜色）
+const getPriceTextStyle = (row, priceType) => {
+  if (row.rowType !== 'data') return {}
+  
+  const dataPrice = getDataRowPrice(row, priceType)
+  const actionPrice = getActionRowPrice(row, priceType)
+  
+  if (dataPrice === null || actionPrice === null) return {}
+  
+  // 操作行价格大于数据行价格时，数据行价格显示绿色
+  if (actionPrice > dataPrice) {
+    return { color: '#67C23A', fontWeight: '600' }
+  }
+  // 操作行价格小于数据行价格时，数据行价格显示红色
+  else if (actionPrice < dataPrice) {
+    return { color: '#F56C6C', fontWeight: '600' }
+  }
+  
+  return {}
 }
 
 // 获取价格变化箭头样式
@@ -1704,6 +1726,11 @@ const initializeRowData = (row) => {
       reactiveRow.selectedPriceQuarter = firstPrice
       reactiveRow.selectedPriceId = firstPrice.priceId
       reactiveRow.selectedBaseDataId = firstMatch.matchedId
+      
+      // 相似匹配时自动标记为已选择数据
+      if (reactiveRow.matchedType === 2) {
+        reactiveRow.hasUserSelectedData = true
+      }
     }
   }
 
