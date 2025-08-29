@@ -20,13 +20,7 @@
         <el-button @click="handleRefresh" :icon="Refresh" type="default" :loading="refreshLoading">
           刷新数据
         </el-button>
-        <el-button 
-          v-if="shouldShowExport" 
-          @click="handleExport" 
-          :icon="Download" 
-          type="default" 
-          :loading="exportLoading"
-        >
+        <el-button @click="handleExport" :icon="Download" type="default" :loading="exportLoading">
           导出数据
         </el-button>
         <el-button
@@ -122,117 +116,162 @@
           stripe
           max-height="60vh"
         >
-          <el-table-column type="index" label="序号" width="60" />
+          <el-table-column label="序号" width="80">
+            <template #default="{ row, $index }">
+              <span v-if="row.rowType === 'data'">{{ Math.floor($index / 2) + 1 }}</span>
+            </template>
+          </el-table-column>
 
-          <el-table-column prop="materialName" label="物资名称" min-width="200" show-overflow-tooltip>
+          <el-table-column prop="materialName" label="物资名称" min-width="140" show-overflow-tooltip>
             <template #default="{ row }">
-              <div class="material-cell">
-                <div class="material-content">
-                  <span class="material-name">{{ getDisplayMaterialName(row) }}</span>
-                  <!-- 数据行显示匹配标签 -->
-                  <template v-if="row.rowType === 'data'">
-                    <el-tag v-if="row.matchedType === 0" type="info" size="small" class="ml-2">未匹配</el-tag>
-                    <el-tag v-else-if="row.matchedType === 1" type="success" size="small" class="ml-2">精确匹配</el-tag>
-                    <el-tag v-else-if="row.matchedType === 2" type="warning" size="small" class="ml-2">相似匹配</el-tag>
-                  </template>
-                  <!-- 操作行显示差异标记 -->
-                  <el-icon v-if="row.rowType === 'action' && hasMaterialNameDifference(row)" 
-                           class="difference-mark" color="#F56C6C">
-                    <Close />
-                  </el-icon>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ getBaseInfoName(row) }}
+              </div>
+              <div v-else class="action-cell">
+                <!-- 显示已选择的物资信息 -->
+                <div v-if="row.hasUserSelectedData && row.selectedMaterial" class="selected-material-info">
+                  <div class="material-name">{{ row.selectedMaterial.materialName }}</div>
+                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
+                    重新选择
+                  </el-button>
                 </div>
-                <el-button 
-                  v-if="row.rowType === 'data' && (row.matchedType === 0 || row.hasUserSelectedData)" 
-                  type="primary" 
-                  link 
-                  size="small" 
-                  @click="openMaterialSelectionDialog(row)"
-                  :icon="Edit"
-                >
-                  {{ row.hasUserSelectedData ? '修改' : '选择' }}
-                </el-button>
+                <!-- 相似匹配、未匹配或其他情况：统一显示选择按钮 -->
+                <div v-else class="material-selection-button">
+                  <el-button 
+                    type="primary" 
+                    size="small" 
+                    @click="openMaterialSelectionDialog(row)"
+                    :icon="row.matchedType === 2 ? Edit : Plus"
+                  >
+                    {{ getMaterialButtonText(row) }}
+                  </el-button>
+                  <!-- 显示当前状态提示 -->
+                  <div class="status-hint">
+                    <span v-if="row.matchedType === 0" class="text-gray-500 text-xs">未匹配</span>
+                    <span v-else-if="row.matchedType === 1" class="text-green-600 text-xs">已精确匹配</span>
+                    <span v-else-if="row.matchedType === 2" class="text-orange-500 text-xs">相似匹配</span>
+                  </div>
+                </div>
               </div>
             </template>
           </el-table-column>
 
           <el-table-column prop="specifications" label="规格型号" min-width="140" show-overflow-tooltip>
             <template #default="{ row }">
-              <div class="flex items-center">
-                <span>{{ getDisplaySpecifications(row) }}</span>
-                <el-icon v-if="row.rowType === 'action' && hasSpecificationDifference(row)" 
-                         class="difference-mark ml-2" color="#F56C6C">
-                  <Close />
-                </el-icon>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ getBaseInfoSpec(row) }}
+              </div>
+              <div v-else class="action-cell">
+                <!-- 相似匹配：显示选中物资的规格型号 -->
+                <span v-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
+                  {{ row.selectedMaterial.baseInfo?.specifications || '-' }}
+                </span>
+                <!-- 其他情况显示原始规格 -->
+                <span v-else class="text-sm text-gray-500">{{ row.specifications || '-' }}</span>
               </div>
             </template>
           </el-table-column>
 
-          <el-table-column prop="unit" label="单位" width="100">
+          <el-table-column prop="unit" label="单位" width="80">
             <template #default="{ row }">
-              <div class="flex items-center">
-                <span>{{ row.unit || '-' }}</span>
-                <el-icon v-if="row.rowType === 'action' && hasUnitDifference(row)" 
-                         class="difference-mark ml-2" color="#F56C6C">
-                  <Close />
-                </el-icon>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ row.unit || '-' }}
+              </div>
+              <div v-else class="action-cell">
+                <span class="text-sm text-gray-500">{{ row.unit || '-' }}</span>
               </div>
             </template>
           </el-table-column>
 
           <el-table-column prop="quantity" label="数量" width="100">
             <template #default="{ row }">
-              <span v-if="row.rowType === 'data'">{{ formatNumber(row.quantity) }}</span>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                {{ formatNumber(row.quantity) }}
+              </div>
+              <div v-else class="action-cell">
+                <span class="text-sm text-gray-500">{{ formatNumber(row.quantity) }}</span>
+              </div>
             </template>
           </el-table-column>
 
 
           <!-- 确认状态列 -->
-          <el-table-column label="数据来源" width="120" align="center">
+          <el-table-column label="确认状态" width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="getDataSourceType(row).type" size="small">
-                {{ getDataSourceType(row).text }}
-              </el-tag>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <el-tag :type="getConfirmStatusType(row.confirmResult)" size="small">
+                  {{ getConfirmStatusText(row.confirmResult) }}
+                </el-tag>
+              </div>
+              <div v-else class="action-cell">
+                <span class="text-xs text-gray-400">
+                  {{ getConfirmStatusText(row.confirmResult) }}
+                </span>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- 匹配类型列 -->
+          <el-table-column label="匹配类型" width="100" align="center">
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <el-tag :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </el-tag>
+              </div>
+              <div v-else class="action-cell">
+                <span class="text-xs text-gray-400">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </span>
+              </div>
             </template>
           </el-table-column>
 
           <!-- 物资价格（含税）列 -->
-          <el-table-column label="物资价格（含税）" width="140" align="right">
+          <el-table-column label="物资价格（含税）" width="130" align="right">
             <template #default="{ row }">
-              <div class="price-value">
-                <span 
-                  class="price-text" 
-                  :style="getPriceTextStyle(row, 'taxIncluded')"
-                >
-                  ¥{{ getTaxIncludedPrice(row) }}
-                </span>
-                <el-icon 
-                  v-if="getPriceChangeIcon(row, 'taxIncluded')" 
-                  :style="getPriceChangeIconStyle(row, 'taxIncluded')"
-                  class="ml-1"
-                >
-                  <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
-                </el-icon>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <div class="price-value">
+                  <span class="price-text">¥{{ getTaxIncludedPrice(row) }}</span>
+                  <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
+                    <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
+                  </el-icon>
+                </div>
+              </div>
+              <div v-else class="action-cell">
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
+                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
+                    修改
+                  </el-button>
+                </div>
+                <div v-else class="price-selection-hint">
+                  <el-button type="primary" size="small" @click="openMaterialSelectionDialog(row)">
+                    选择价格
+                  </el-button>
+                </div>
               </div>
             </template>
           </el-table-column>
 
           <!-- 物资价格（不含税）列 -->
-          <el-table-column label="物资价格（不含税）" width="140" align="right">
+          <el-table-column label="物资价格（不含税）" width="130" align="right">
             <template #default="{ row }">
-              <div class="price-value">
-                <span 
-                  class="price-text" 
-                  :style="getPriceTextStyle(row, 'taxExcluded')"
-                >
-                  ¥{{ getTaxExcludedPrice(row) }}
-                </span>
-                <el-icon 
-                  v-if="getPriceChangeIcon(row, 'taxExcluded')" 
-                  :style="getPriceChangeIconStyle(row, 'taxExcluded')"
-                  class="ml-1"
-                >
-                  <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
-                </el-icon>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <div class="price-value">
+                  <span class="price-text">¥{{ getTaxExcludedPrice(row) }}</span>
+                  <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
+                    <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
+                  </el-icon>
+                </div>
+              </div>
+              <div v-else class="action-cell">
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
+                </div>
+                <div v-else class="price-selection-hint">
+                  <span class="text-sm text-gray-500">-</span>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -240,46 +279,89 @@
           <!-- 物资价格所属季度列 -->
           <el-table-column label="物资价格所属季度" width="100" align="center">
             <template #default="{ row }">
-              <span class="quarter-text">{{ getPriceQuarter(row) }}</span>
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <span class="quarter-text">{{ getPriceQuarter(row) }}</span>
+              </div>
+              <div v-else class="action-cell">
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
+                </div>
+                <div v-else class="price-selection-hint">
+                  <span class="text-sm text-gray-500">-</span>
+                </div>
+              </div>
             </template>
           </el-table-column>
 
 
-          <el-table-column label="操作" width="160" align="center" fixed="right">
+          <el-table-column label="操作" width="180" align="center">
             <template #default="{ row }">
-              <div class="flex flex-wrap justify-center gap-1">
+              <!-- 数据行：显示状态和确认按钮 -->
+              <div v-if="row.rowType === 'data'" class="data-cell">
                 <!-- 已确认状态 -->
-                <template v-if="row.confirmResult === 1">
-                  <el-button type="success" size="small" disabled>
-                    已确认
-                  </el-button>
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)">
-                    重选
-                  </el-button>
-                </template>
-                
-                <!-- 未确认状态 -->
-                <template v-else>
-                  <!-- 有可用数据时显示确认按钮 -->
-                  <el-button 
-                    v-if="row.hasUserSelectedData || row.matchedType === 1 || row.matchedType === 2"
-                    type="primary" 
-                    size="small" 
-                    @click="handleQuickConfirm(row)"
-                  >
+                <el-button v-if="row.confirmResult === 1" type="success" size="small" disabled>
+                  已确认
+                </el-button>
+                <!-- 未确认但可以确认的状态 -->
+                <el-button v-else-if="row.hasUserSelectedData || row.matchedType === 1" 
+                  type="primary" size="small" @click="handleQuickConfirm(row)">
+                  确认
+                </el-button>
+                <!-- 其他状态显示标签 -->
+                <el-tag v-else :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </el-tag>
+              </div>
+              
+              <!-- 操作行：根据匹配类型显示不同控件 -->
+              <div v-else class="action-cell">
+                <!-- 相似匹配：显示确认和重新选择操作 -->
+                <div v-if="row.matchedType === 2" class="flex flex-wrap justify-center gap-2">
+                  <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
+                    @click="handleQuickConfirm(row)" class="flex-1 min-w-[70px] max-w-[80px]">
                     确认
                   </el-button>
-                  
-                  <!-- 显示选择/重选按钮 -->
-                  <el-button 
-                    type="warning" 
-                    plain 
-                    size="small" 
-                    @click="handleViewOptions(row)"
-                  >
-                    {{ row.matchedType === 0 ? '选择' : '重选' }}
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
+                    class="flex-1 min-w-[70px] max-w-[80px]">
+                    重新选择
                   </el-button>
-                </template>
+                </div>
+                
+                <!-- 未匹配：显示从数据库选择按钮 -->
+                <div v-else-if="row.matchedType === 0" class="flex flex-col gap-2">
+                  <div v-if="row.hasUserSelectedData" class="flex flex-wrap justify-center gap-2">
+                    <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
+                      @click="handleQuickConfirm(row)" class="flex-1 min-w-[70px] max-w-[80px]">
+                      确认
+                    </el-button>
+                    <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
+                      :icon="Edit" class="flex-1 min-w-[70px] max-w-[80px]">
+                      重选
+                    </el-button>
+                  </div>
+                  <el-button v-else type="primary" plain size="small" @click="handleViewOptions(row)" 
+                    :icon="Plus" class="w-full">
+                    从库选择
+                  </el-button>
+                </div>
+                
+                <!-- 精确匹配：显示已匹配状态和重新选择 -->
+                <div v-else-if="row.matchedType === 1" class="flex flex-wrap items-center justify-center gap-2">
+                  <span class="text-green-600 text-sm">已匹配</span>
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
+                    class="min-w-[70px] max-w-[80px]">
+                    重选
+                  </el-button>
+                </div>
+                
+                <!-- 其他匹配类型：显示确认按钮 -->
+                <div v-else class="flex justify-center">
+                  <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
+                    @click="handleQuickConfirm(row)" class="min-w-[70px] max-w-[80px]">
+                    确认
+                  </el-button>
+                  <span v-else class="text-green-600 text-sm">已确认</span>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -352,7 +434,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, ArrowDown, ArrowUp, Close } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog/MaterialSelectionDialog.vue'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
@@ -438,16 +520,6 @@ const pendingCount = computed(() => {
   return materialData.value.filter((item) => item.confirmResult !== 1).length
 })
 
-// 计算是否所有数据都已确认
-const isAllConfirmed = computed(() => {
-  return materialData.value.length > 0 && pendingCount.value === 0
-})
-
-// 计算是否应该显示导出按钮
-const shouldShowExport = computed(() => {
-  return isAllConfirmed.value
-})
-
 /**
  * 获取解析结果数据
  */
@@ -484,11 +556,13 @@ const fetchData = async () => {
       response = await querySupplierMaterialsComplex(params)
 
       if (response && response.data) {
-        // 获取数据并初始化每行数据
+        // 获取数据并初始化每行数据，转换为双行结构
         const rawData = response.data.content || []
-        materialData.value = rawData.map((item) => {
+        materialData.value = rawData.flatMap((item) => {
           const initialized = initializeRowData(item)
-          return { ...initialized, rowKey: `${initialized.taskDataId || initialized.id}` }
+          const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
+          const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
+          return [dataRow, actionRow]
         })
         statistics.value = response.data.statistics || {}
         total.value = response.data.page?.totalElements || 0
@@ -501,10 +575,12 @@ const fetchData = async () => {
       })
 
       if (response && response.content) {
-        // 初始化简单查询接口的数据
-        materialData.value = response.content.map((item) => {
+        // 初始化简单查询接口的数据，转换为双行结构
+        materialData.value = response.content.flatMap((item) => {
           const initialized = initializeRowData(item)
-          return { ...initialized, rowKey: `${initialized.taskDataId || initialized.id}` }
+          const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
+          const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
+          return [dataRow, actionRow]
         })
         total.value = response.totalElements || 0
         statistics.value = null
@@ -766,26 +842,40 @@ const handleBatchConfirm = async () => {
   }
 }
 
-// 获取数据来源类型
-const getDataSourceType = (row) => {
-  // 已确认的数据
-  if (row.confirmResult === 1) {
-    if (row.hasUserSelectedData) {
-      return { text: '用户选择', type: 'success' }
-    } else {
-      return { text: '系统推荐', type: 'success' }
-    }
+// 获取确认状态类型
+const getConfirmStatusType = (status) => {
+  switch (Number(status)) {
+    case 1:
+      return 'success'
+    case 0:
+      return 'warning'
+    default:
+      return 'info'
   }
-  
-  // 根据匹配类型返回数据来源
-  const sourceMap = {
-    0: { text: '原始数据', type: 'info' },
+}
+
+// 获取确认状态文本
+const getConfirmStatusText = (status) => {
+  switch (Number(status)) {
+    case 1:
+      return '已确认'
+    case 0:
+      return '待确认'
+    default:
+      return '未知'
+  }
+}
+
+// 获取匹配类型标签
+const getMatchTypeTagInfo = (matchedType) => {
+  const typeMap = {
+    0: { text: '无匹配', type: 'info' },
     1: { text: '精确匹配', type: 'success' },
     2: { text: '相似匹配', type: 'warning' },
     3: { text: '历史匹配', type: 'primary' },
-    4: { text: '人工匹配', type: 'primary' }
+    4: { text: '人工匹配', type: '' }
   }
-  return sourceMap[row.matchedType] || { text: '未知', type: 'info' }
+  return typeMap[matchedType] || { text: '未知', type: 'info' }
 }
 
 // 获取基础信息名称
@@ -930,6 +1020,91 @@ const getPriceQuarter = (row) => {
   return row.recommendedPriceQuarter || '-'
 }
 
+// 获取操作行对应的价格数值
+const getActionRowPrice = (dataRow, priceType) => {
+  // 在 materialData 中查找对应的操作行
+  const actionRowIndex = materialData.value.findIndex(item => 
+    item.rowType === 'action' && 
+    ((item.taskDataId && dataRow.taskDataId && item.taskDataId === dataRow.taskDataId) ||
+     (item.id && dataRow.id && item.id === dataRow.id))
+  )
+  
+  if (actionRowIndex === -1) return null
+  
+  const actionRow = materialData.value[actionRowIndex]
+  const actionPriceData = getPriceText(actionRow)
+  
+  if (typeof actionPriceData === 'object') {
+    if (priceType === 'taxIncluded') {
+      return parseFloat(actionPriceData.taxIncluded.replace(/[¥,]/g, '')) || null
+    } else if (priceType === 'taxExcluded') {
+      return parseFloat(actionPriceData.taxExcluded.replace(/[¥,]/g, '')) || null
+    }
+  } else if (priceType === 'single') {
+    return parseFloat((actionPriceData || '').replace(/[¥,]/g, '')) || null
+  }
+  
+  return null
+}
+
+// 获取数据行的价格数值
+const getDataRowPrice = (dataRow, priceType) => {
+  const dataPriceData = getPriceText(dataRow)
+  
+  if (typeof dataPriceData === 'object') {
+    if (priceType === 'taxIncluded') {
+      return parseFloat(dataPriceData.taxIncluded.replace(/[¥,]/g, '')) || null
+    } else if (priceType === 'taxExcluded') {
+      return parseFloat(dataPriceData.taxExcluded.replace(/[¥,]/g, '')) || null
+    }
+  } else if (priceType === 'single') {
+    return parseFloat((dataPriceData || '').replace(/[¥,]/g, '')) || null
+  }
+  
+  return null
+}
+
+// 获取价格变化箭头组件
+const getPriceChangeIcon = (row, priceType) => {
+  if (row.rowType !== 'data') return null
+  
+  const dataPrice = getDataRowPrice(row, priceType)
+  const actionPrice = getActionRowPrice(row, priceType)
+  
+  if (dataPrice === null || actionPrice === null) return null
+  
+  // 操作行价格大于数据行价格时，显示绿色向下箭头（下跌）
+  if (actionPrice > dataPrice) {
+    return ArrowDown
+  }
+  // 操作行价格小于数据行价格时，显示红色向上箭头（上涨）
+  else if (actionPrice < dataPrice) {
+    return ArrowUp
+  }
+  
+  return null
+}
+
+// 获取价格变化箭头样式
+const getPriceChangeIconStyle = (row, priceType) => {
+  if (row.rowType !== 'data') return {}
+  
+  const dataPrice = getDataRowPrice(row, priceType)
+  const actionPrice = getActionRowPrice(row, priceType)
+  
+  if (dataPrice === null || actionPrice === null) return {}
+  
+  // 操作行价格大于数据行价格时，显示绿色
+  if (actionPrice > dataPrice) {
+    return { color: '#67C23A', marginLeft: '4px', fontSize: '12px' }
+  }
+  // 操作行价格小于数据行价格时，显示红色
+  else if (actionPrice < dataPrice) {
+    return { color: '#F56C6C', marginLeft: '4px', fontSize: '12px' }
+  }
+  
+  return {}
+}
 
 // 查看更多选项 - 打开物资选择对话框
 const handleViewOptions = async (row) => {
@@ -1331,210 +1506,6 @@ const getMaterialButtonText = (row) => {
   return '选择物资'
 }
 
-// 获取显示的物资名称
-const getDisplayMaterialName = (row) => {
-  // 优先显示用户选择的物资
-  if (row.hasUserSelectedData && row.selectedMaterial) {
-    return row.selectedMaterial.materialName || row.selectedMaterial.baseInfo?.materialName
-  }
-  
-  // 显示已确认的物资
-  if (row.confirmedBaseName) {
-    return row.confirmedBaseName
-  }
-  
-  // 显示匹配的物资
-  if (row.matchOptions && row.matchOptions.length > 0) {
-    const firstMatch = row.matchOptions[0]
-    if (firstMatch.baseInfo) {
-      return firstMatch.baseInfo.materialName
-    }
-  }
-  
-  // 显示原始物资名称
-  return row.materialName || row.baseName || '-'
-}
-
-// 获取显示的规格型号
-const getDisplaySpecifications = (row) => {
-  // 优先显示用户选择的规格
-  if (row.hasUserSelectedData && row.selectedMaterial) {
-    return row.selectedMaterial.specifications || row.selectedMaterial.baseInfo?.specifications || '-'
-  }
-  
-  // 显示已确认的规格
-  if (row.confirmedBaseSpec) {
-    return row.confirmedBaseSpec
-  }
-  
-  // 显示匹配的规格
-  if (row.matchOptions && row.matchOptions.length > 0) {
-    const firstMatch = row.matchOptions[0]
-    if (firstMatch.baseInfo) {
-      return firstMatch.baseInfo.specifications || '-'
-    }
-  }
-  
-  // 显示原始规格
-  return row.specifications || row.baseSpecifications || '-'
-}
-
-// 获取价格数值（用于对比计算）
-const getPriceValue = (row, priceType) => {
-  const priceStr = priceType === 'taxIncluded' ? getTaxIncludedPrice(row) : getTaxExcludedPrice(row)
-  return parseFloat(priceStr.replace(/[¥,]/g, '')) || 0
-}
-
-// 获取对应的数据行和操作行
-const getCorrespondingRows = (currentRow) => {
-  const baseId = currentRow.taskDataId || currentRow.id
-  const dataRow = materialData.value.find(item => 
-    item.rowType === 'data' && (item.taskDataId === baseId || item.id === baseId)
-  )
-  const actionRow = materialData.value.find(item => 
-    item.rowType === 'action' && (item.taskDataId === baseId || item.id === baseId)
-  )
-  return { dataRow, actionRow }
-}
-
-// 获取价格文本样式
-const getPriceTextStyle = (row, priceType) => {
-  // 只在数据行显示价格对比效果
-  if (row.rowType !== 'data') {
-    return {}
-  }
-  
-  const { dataRow, actionRow } = getCorrespondingRows(row)
-  if (!dataRow || !actionRow) {
-    return {}
-  }
-  
-  const dataPrice = getPriceValue(dataRow, priceType)
-  const actionPrice = getPriceValue(actionRow, priceType)
-  
-  // 价格相等或操作行无价格时，不显示特殊样式
-  if (actionPrice === 0 || dataPrice === actionPrice) {
-    return {}
-  }
-  
-  // 操作行价格 > 数据行价格：显示绿色
-  if (actionPrice > dataPrice) {
-    return {
-      color: '#67C23A',
-      fontWeight: '600'
-    }
-  }
-  
-  // 操作行价格 < 数据行价格：显示红色
-  if (actionPrice < dataPrice) {
-    return {
-      color: '#F56C6C',
-      fontWeight: '600'
-    }
-  }
-  
-  return {}
-}
-
-// 获取价格变化图标
-const getPriceChangeIcon = (row, priceType) => {
-  // 只在数据行显示图标
-  if (row.rowType !== 'data') {
-    return null
-  }
-  
-  const { dataRow, actionRow } = getCorrespondingRows(row)
-  if (!dataRow || !actionRow) {
-    return null
-  }
-  
-  const dataPrice = getPriceValue(dataRow, priceType)
-  const actionPrice = getPriceValue(actionRow, priceType)
-  
-  // 价格相等或操作行无价格时，不显示图标
-  if (actionPrice === 0 || dataPrice === actionPrice) {
-    return null
-  }
-  
-  // 操作行价格 > 数据行价格：显示向下箭头
-  if (actionPrice > dataPrice) {
-    return ArrowDown
-  }
-  
-  // 操作行价格 < 数据行价格：显示向上箭头
-  if (actionPrice < dataPrice) {
-    return ArrowUp
-  }
-  
-  return null
-}
-
-// 获取价格变化图标样式
-const getPriceChangeIconStyle = (row, priceType) => {
-  const { dataRow, actionRow } = getCorrespondingRows(row)
-  if (!dataRow || !actionRow) {
-    return {}
-  }
-  
-  const dataPrice = getPriceValue(dataRow, priceType)
-  const actionPrice = getPriceValue(actionRow, priceType)
-  
-  if (actionPrice > dataPrice) {
-    return {
-      color: '#67C23A',
-      fontSize: '14px'
-    }
-  }
-  
-  if (actionPrice < dataPrice) {
-    return {
-      color: '#F56C6C',
-      fontSize: '14px'
-    }
-  }
-  
-  return {}
-}
-
-// 检查物资名称是否有差异
-const hasMaterialNameDifference = (actionRow) => {
-  const { dataRow } = getCorrespondingRows(actionRow)
-  if (!dataRow || !actionRow) {
-    return false
-  }
-  
-  const dataName = getDisplayMaterialName(dataRow)
-  const actionName = getDisplayMaterialName(actionRow)
-  
-  return dataName !== actionName && actionName !== '-' && dataName !== '-'
-}
-
-// 检查规格型号是否有差异
-const hasSpecificationDifference = (actionRow) => {
-  const { dataRow } = getCorrespondingRows(actionRow)
-  if (!dataRow || !actionRow) {
-    return false
-  }
-  
-  const dataSpec = getDisplaySpecifications(dataRow)
-  const actionSpec = getDisplaySpecifications(actionRow)
-  
-  return dataSpec !== actionSpec && actionSpec !== '-' && dataSpec !== '-'
-}
-
-// 检查单位是否有差异
-const hasUnitDifference = (actionRow) => {
-  const { dataRow } = getCorrespondingRows(actionRow)
-  if (!dataRow || !actionRow) {
-    return false
-  }
-  
-  const dataUnit = dataRow.unit || '-'
-  const actionUnit = actionRow.unit || '-'
-  
-  return dataUnit !== actionUnit && actionUnit !== '-' && dataUnit !== '-'
-}
-
 // 格式化价格显示
 const formatPrice = (price) => {
   return typeof price === 'number' ? price.toFixed(2) : '0.00'
@@ -1542,66 +1513,26 @@ const formatPrice = (price) => {
 
 // 获取含税价格
 const getTaxIncludedPrice = (row) => {
-  // 数据行：优先使用用户选择的价格，其次使用原始价格
-  if (row.rowType === 'data') {
-    if (row.hasUserSelectedData && row.selectedPriceQuarter) {
-      return formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0)
-    }
-    // 使用确认后的价格或原始价格
-    const price = row.confirmedPrice || row.unitPrice || row.taxPrice || row.matchedPrice
-    return formatPrice(price || 0)
+  // 优先使用用户选择的价格
+  if (row.hasUserSelectedData && row.selectedPriceQuarter) {
+    return formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0)
   }
   
-  // 操作行：显示匹配或选择的价格
-  if (row.rowType === 'action') {
-    // 相似匹配时，自动使用第一个匹配价格
-    if (row.matchedType === 2 && row.matchOptions && row.matchOptions.length > 0) {
-      const firstMatch = row.matchOptions[0]
-      if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
-        const firstPrice = firstMatch.priceOptions[0]
-        return formatPrice(firstPrice.taxPrice || firstPrice.unitPrice || 0)
-      }
-    }
-    
-    // 用户选择的价格
-    if (row.hasUserSelectedData && row.selectedPriceQuarter) {
-      return formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0)
-    }
-  }
-  
-  return formatPrice(0)
+  // 使用确认后的价格或原始价格
+  const price = row.confirmedPrice || row.unitPrice || row.taxPrice || row.matchedPrice
+  return formatPrice(price || 0)
 }
 
 // 获取不含税价格
 const getTaxExcludedPrice = (row) => {
-  // 数据行：优先使用用户选择的价格，其次使用原始价格
-  if (row.rowType === 'data') {
-    if (row.hasUserSelectedData && row.selectedPriceQuarter) {
-      return formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0)
-    }
-    // 使用确认后的不含税价格
-    const price = row.taxExcludedPrice || 0
-    return formatPrice(price)
+  // 优先使用用户选择的价格
+  if (row.hasUserSelectedData && row.selectedPriceQuarter) {
+    return formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0)
   }
   
-  // 操作行：显示匹配或选择的价格
-  if (row.rowType === 'action') {
-    // 相似匹配时，自动使用第一个匹配价格
-    if (row.matchedType === 2 && row.matchOptions && row.matchOptions.length > 0) {
-      const firstMatch = row.matchOptions[0]
-      if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
-        const firstPrice = firstMatch.priceOptions[0]
-        return formatPrice(firstPrice.taxExcludedPrice || 0)
-      }
-    }
-    
-    // 用户选择的价格
-    if (row.hasUserSelectedData && row.selectedPriceQuarter) {
-      return formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0)
-    }
-  }
-  
-  return formatPrice(0)
+  // 使用确认后的不含税价格
+  const price = row.taxExcludedPrice || 0
+  return formatPrice(price)
 }
 
 // 注释掉未使用的函数，保留以备后续使用
@@ -2567,154 +2498,63 @@ const handleBack = () => {
 }
 
 /* 行状态样式 - 使用主题变量 */
-/* 已确认数据行样式 - 增强视觉分组效果 */
-:deep(.confirmed-row[class*="data"]) {
-  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%) !important;
-  border-left: 6px solid #22c55e;
-  box-shadow: 0 1px 3px rgba(34, 197, 94, 0.12);
-  position: relative;
+:deep(.confirmed-row) {
+  background-color: rgba(var(--theme-success-rgb), 0.1) !important;
+
+  backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-:deep(.confirmed-row[class*="data"]:hover > td.el-table__cell) {
-  background: linear-gradient(135deg, #dcfce7 0%, #d1fae5 100%) !important;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
+:deep(.confirmed-row:hover > td.el-table__cell) {
+  background-color: rgba(var(--theme-success-rgb), 0.15) !important;
+  backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-/* 已确认数据行添加顶部分隔线 */
-:deep(.confirmed-row[class*="data"]:first-child) {
-  border-top: 2px solid #22c55e;
+:deep(.pending-row) {
+  background-color: transparent;
 }
 
-:deep(.confirmed-row.action-row) {
-  background: linear-gradient(135deg, #f8fffe 0%, #f0fdfa 100%) !important;
-  border-left: 6px solid #22c55e;
-  border-top: 1px solid #d1fae5 !important;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 6px rgba(34, 197, 94, 0.08);
+:deep(.pending-row:hover > td.el-table__cell) {
+  background-color: rgba(var(--theme-warning-rgb), 0.1) !important;
+  backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-:deep(.confirmed-row.action-row td.el-table__cell) {
-  background: transparent !important;
-  border-bottom: 4px solid #ffffff !important;
-}
-
-/* 未确认数据行样式 - 增强视觉分组效果 */
-:deep(.pending-row[class*="data"]) {
-  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
-  border-left: 6px solid #f59e0b;
-  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.12);
-  position: relative;
-}
-
-:deep(.pending-row[class*="data"]:hover > td.el-table__cell) {
-  background: linear-gradient(135deg, #fefce8 0%, #fde68a 100%) !important;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
-}
-
-/* 未确认数据行添加顶部分隔线 */
-:deep(.pending-row[class*="data"]:first-child) {
-  border-top: 2px solid #f59e0b;
-}
-
-:deep(.pending-row.action-row) {
-  background: linear-gradient(135deg, #fffffe 0%, #fefbf3 100%) !important;
-  border-left: 6px solid #f59e0b;
-  border-top: 1px solid #fed7aa !important;
-  margin-bottom: 12px;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.08);
-}
-
-:deep(.pending-row.action-row td.el-table__cell) {
-  background: transparent !important;
-  border-bottom: 4px solid #ffffff !important;
-}
-
-/* 操作行通用样式 - 增强分组视觉效果 */
+/* 操作行样式 */
 :deep(.action-row) {
-  position: relative;
+  background-color: var(--el-background-color-2) !important;
 }
 
 :deep(.action-row td.el-table__cell) {
+  background-color: var(--el-background-color-2) !important;
   font-size: 13px;
-  padding: 10px 12px;
-  color: #64748b;
-  font-style: italic;
-  border-color: #e2e8f0 !important;
+  padding: 8px 12px;
 }
 
 :deep(.action-row:hover > td.el-table__cell) {
-  transform: translateY(-1px);
-  transition: all 0.2s ease;
-}
-
-/* 数据行样式 - 增加底部边框 */
-:deep(.el-table__row[class*="data"]) {
-  border-bottom: 1px solid #d1d5db;
-}
-
-/* 分组间距 - 增强分组分离效果 */
-:deep(.action-row) {
-  margin-bottom: 16px;
-}
-
-:deep(.action-row td.el-table__cell) {
-  border-bottom: 6px solid #ffffff !important;
-  box-shadow: 0 3px 0 #f1f5f9;
-}
-
-/* 为分组添加更明显的视觉分隔 */
-:deep(.action-row::after) {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -8px;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #e2e8f0 20%, #e2e8f0 80%, transparent);
-  opacity: 0.6;
-}
-
-/* 增强每组数据的整体视觉效果 */
-:deep(.el-table__body tr[class*="confirmed-row"]:not(.action-row) + .action-row),
-:deep(.el-table__body tr[class*="pending-row"]:not(.action-row) + .action-row) {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  border-radius: 0 0 8px 8px;
+  background-color: var(--el-background-color-3) !important;
 }
 
 /* 数据行和操作行内容样式 */
-/* 物资单元格样式 */
-.material-cell {
+.data-cell {
+  min-height: 40px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  min-height: 32px;
+  justify-content: center;
 }
 
-.material-content {
-  flex: 1;
+.action-cell {
+  min-height: 40px;
   display: flex;
   align-items: center;
-  overflow: hidden;
+  justify-content: center;
+  gap: 4px;
 }
 
-.material-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 200px;
+.action-cell .el-select {
+  width: 100% !important;
 }
 
-/* 差异标记样式 */
-.difference-mark {
+.action-cell .el-button {
   font-size: 12px;
-  margin-left: 4px;
-  color: #F56C6C !important;
-  opacity: 0.8;
-  transition: opacity 0.3s ease;
-}
-
-.difference-mark:hover {
-  opacity: 1;
 }
 
 /* 价格显示样式 */
