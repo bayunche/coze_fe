@@ -887,7 +887,7 @@ const getBaseInfoName = (row) => {
     return row.confirmedBaseName
   }
 
-  // 优先从直接的baseInfo获取
+  // 优先从直接的baseInfo获取（匹配后的数据）
   if (row.baseInfo && row.baseInfo.materialName) {
     console.log('【调试】getBaseInfoName - 返回baseInfo数据:', row.baseInfo.materialName)
     return row.baseInfo.materialName
@@ -902,7 +902,13 @@ const getBaseInfoName = (row) => {
     return row.matchOptions[0].baseInfo.materialName
   }
 
-  const fallback = row.recommendedBaseName || '无匹配'
+  // 无匹配时，显示原始物资名称（这是关键修改）
+  if (row.materialName) {
+    console.log('【调试】getBaseInfoName - 返回原始物资名称:', row.materialName)
+    return row.materialName
+  }
+
+  const fallback = row.recommendedBaseName || '-'
   console.log('【调试】getBaseInfoName - 返回后备数据:', fallback)
   return fallback
 }
@@ -919,7 +925,7 @@ const getBaseInfoSpec = (row) => {
     return row.confirmedBaseSpec
   }
 
-  // 优先从直接的baseInfo获取
+  // 优先从直接的baseInfo获取（匹配后的数据）
   if (row.baseInfo && row.baseInfo.specifications) {
     return row.baseInfo.specifications
   }
@@ -929,7 +935,12 @@ const getBaseInfoSpec = (row) => {
     return row.matchOptions[0].baseInfo.specifications || ''
   }
 
-  return row.recommendedBaseSpec || ''
+  // 无匹配时，显示原始规格型号（这是关键修改）
+  if (row.specifications) {
+    return row.specifications
+  }
+
+  return row.recommendedBaseSpec || '-'
 }
 
 // 获取价格文本 - 支持新的价格字段
@@ -996,7 +1007,12 @@ const getPriceQuarter = (row) => {
     }
   }
 
-  return row.recommendedPriceQuarter || ''
+  // 无匹配时，显示原始季度信息（如果有的话）
+  if (row.quarter) {
+    return row.quarter
+  }
+
+  return row.recommendedPriceQuarter || '-'
 }
 
 // 获取操作行对应的价格数值
