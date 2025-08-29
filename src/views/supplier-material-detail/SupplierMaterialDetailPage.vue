@@ -414,7 +414,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog/MaterialSelectionDialog.vue'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
