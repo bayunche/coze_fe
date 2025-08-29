@@ -194,92 +194,8 @@
             </template>
           </el-table-column>
 
-          <el-table-column label="匹配基础数据" min-width="160" show-overflow-tooltip>
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <div class="recommend-info">
-                  <p class="material-name">{{ getBaseInfoName(row) }}</p>
-                  <p class="material-spec">{{ getBaseInfoSpec(row) }}</p>
-                </div>
-              </div>
-              <div v-else class="action-cell">
-                <!-- 显示当前选择的基础数据信息 -->
-                <div v-if="row.selectedMaterial && row.selectedMaterial.baseInfo" class="text-sm">
-                  <p class="text-blue-600">{{ row.selectedMaterial.baseInfo.materialName || '-' }}</p>
-                  <p class="text-gray-500">{{ row.selectedMaterial.baseInfo.specifications || '-' }}</p>
-                </div>
-                <span v-else class="text-sm text-gray-400">请选择物资</span>
-              </div>
-            </template>
-          </el-table-column>
 
-          <el-table-column label="价格信息" width="240">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <div class="price-info">
-                  <!-- 新的价格显示格式 -->
-                  <div v-if="typeof getPriceText(row) === 'object'" class="price-details">
-                    <div class="price-line">
-                      <span class="price-label">含税价:</span>
-                      <span class="price-text">{{ getPriceText(row).taxIncluded }}</span>
-                      <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
-                        <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
-                      </el-icon>
-                    </div>
-                    <div class="price-line">
-                      <span class="price-label">不含税价:</span>
-                      <span class="price-text">{{ getPriceText(row).taxExcluded }}</span>
-                      <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
-                        <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
-                      </el-icon>
-                      <span v-if="getPriceText(row).originalType" class="original-type-text">{{ getPriceText(row).originalType }}</span>
-                    </div>
-                  </div>
-                  <!-- 兼容旧格式 -->
-                  <div v-else>
-                    <span class="price-text">{{ getPriceText(row) }}</span>
-                    <el-icon v-if="getPriceChangeIcon(row, 'single')" :style="getPriceChangeIconStyle(row, 'single')">
-                      <component :is="getPriceChangeIcon(row, 'single')" />
-                    </el-icon>
-                  </div>
-                  <div class="price-quarter">{{ getPriceQuarter(row) }}</div>
-                </div>
-              </div>
-              <div v-else class="action-cell">
-                <!-- 显示已选择的价格信息或选择按钮 -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
-                  <div class="price-display">
-                    ¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice) }}
-                  </div>
-                  <div class="price-quarter">{{ row.selectedPriceQuarter.quarter }}</div>
-                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
-                    修改
-                  </el-button>
-                </div>
-                <!-- 通过物资选择弹窗统一处理价格选择 -->
-                <div v-else class="price-selection-hint">
-                  <span class="text-sm text-gray-500">通过物资选择确定价格</span>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column label="匹配类型" width="140" align="center">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <el-tag :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
-                  {{ getMatchTypeTagInfo(row.matchedType).text }}
-                </el-tag>
-              </div>
-              <div v-else class="action-cell">
-                <!-- 在操作行显示额外的状态信息 -->
-                <span class="text-xs text-gray-400">
-                  {{ getMatchTypeTagInfo(row.matchedType).text }}
-                </span>
-              </div>
-            </template>
-          </el-table-column>
-
+          <!-- 确认状态列 -->
           <el-table-column label="确认状态" width="100" align="center">
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
@@ -288,13 +204,95 @@
                 </el-tag>
               </div>
               <div v-else class="action-cell">
-                <!-- 在操作行显示简化状态 -->
                 <span class="text-xs text-gray-400">
                   {{ getConfirmStatusText(row.confirmResult) }}
                 </span>
               </div>
             </template>
           </el-table-column>
+
+          <!-- 匹配类型列 -->
+          <el-table-column label="匹配类型" width="100" align="center">
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <el-tag :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </el-tag>
+              </div>
+              <div v-else class="action-cell">
+                <span class="text-xs text-gray-400">
+                  {{ getMatchTypeTagInfo(row.matchedType).text }}
+                </span>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- 物资价格（含税）列 -->
+          <el-table-column label="物资价格（含税）" width="130" align="right">
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <div class="price-value">
+                  <span class="price-text">¥{{ getTaxIncludedPrice(row) }}</span>
+                  <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
+                    <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
+                  </el-icon>
+                </div>
+              </div>
+              <div v-else class="action-cell">
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
+                  <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
+                    修改
+                  </el-button>
+                </div>
+                <div v-else class="price-selection-hint">
+                  <el-button type="primary" size="small" @click="openMaterialSelectionDialog(row)">
+                    选择价格
+                  </el-button>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- 物资价格（不含税）列 -->
+          <el-table-column label="物资价格（不含税）" width="130" align="right">
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <div class="price-value">
+                  <span class="price-text">¥{{ getTaxExcludedPrice(row) }}</span>
+                  <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
+                    <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
+                  </el-icon>
+                </div>
+              </div>
+              <div v-else class="action-cell">
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
+                </div>
+                <div v-else class="price-selection-hint">
+                  <span class="text-sm text-gray-500">-</span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
+          <!-- 物资价格季度列 -->
+          <el-table-column label="物资价格季度" width="100" align="center">
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <span class="quarter-text">{{ getPriceQuarter(row) }}</span>
+              </div>
+              <div v-else class="action-cell">
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
+                </div>
+                <div v-else class="price-selection-hint">
+                  <span class="text-sm text-gray-500">-</span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
 
           <el-table-column label="操作" width="200" align="center">
             <template #default="{ row }">
@@ -1490,6 +1488,30 @@ const getMaterialButtonText = (row) => {
 // 格式化价格显示
 const formatPrice = (price) => {
   return typeof price === 'number' ? price.toFixed(2) : '0.00'
+}
+
+// 获取含税价格
+const getTaxIncludedPrice = (row) => {
+  // 优先使用用户选择的价格
+  if (row.hasUserSelectedData && row.selectedPriceQuarter) {
+    return formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0)
+  }
+  
+  // 使用确认后的价格或原始价格
+  const price = row.confirmedPrice || row.unitPrice || row.taxPrice || row.matchedPrice
+  return formatPrice(price || 0)
+}
+
+// 获取不含税价格
+const getTaxExcludedPrice = (row) => {
+  // 优先使用用户选择的价格
+  if (row.hasUserSelectedData && row.selectedPriceQuarter) {
+    return formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0)
+  }
+  
+  // 使用确认后的不含税价格
+  const price = row.taxExcludedPrice || 0
+  return formatPrice(price)
 }
 
 // 注释掉未使用的函数，保留以备后续使用
@@ -3121,5 +3143,23 @@ const handleBack = () => {
   justify-content: center;
   height: 100%;
   min-height: 40px;
+}
+
+/* 新增样式：价格列相关 */
+.price-value {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.price-text {
+  font-weight: 600;
+  color: var(--theme-success);
+}
+
+.quarter-text {
+  font-weight: 500;
+  color: var(--theme-text-primary);
 }
 </style>
