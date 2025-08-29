@@ -300,16 +300,28 @@ const getRowClassName = ({ row }) => {
 }
 
 :deep(.el-table .selectable-row:hover td.el-table__cell) {
-  background: var(--theme-table-hover-bg) !important;
+  background-color: #f0f9ff !important;
 }
 
 :deep(.el-table .selected-row td.el-table__cell) {
-  background: var(--theme-primary-light) !important;
-  color: var(--theme-primary) !important;
+  background-color: #ecf5ff !important;
+  color: #409eff !important;
+  font-weight: 600;
+  position: relative;
+}
+
+:deep(.el-table .selected-row td.el-table__cell:first-child::before) {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #409eff;
 }
 
 :deep(.el-table .el-table__row.current-row > td.el-table__cell) {
-  background: var(--theme-primary-light) !important;
+  background: #ecf5ff !important;
 }
 
 /* 标签样式 */

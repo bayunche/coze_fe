@@ -5,7 +5,7 @@
     :task="materialParsingResultTask"
   />
 
-  <!-- 乙供物资任务解析详情弹窗组件 -->
+  <!-- 甲供物资任务解析详情弹窗组件 -->
   <OwnerMaterialTaskParsingDetailDialog
     v-model="showOwnerMaterialTaskParsingDetailDialog"
     :taskId="ownerMaterialTaskParsingDetailTaskId"
@@ -13,7 +13,7 @@
     style="z-index: 2000"
   />
 
-  <!-- 甲供物资任务解析详情弹窗组件 -->
+  <!-- 乙供物资任务解析详情弹窗组件 -->
   <SupplierMaterialTaskParsingDetailDialog
     v-model="showSupplierMaterialTaskParsingDetailDialog"
     :taskId="supplierMaterialTaskParsingDetailTaskId"
