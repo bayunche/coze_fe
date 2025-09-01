@@ -304,73 +304,87 @@
           </el-table-column>
 
 
-          <el-table-column label="操作" width="180" align="center">
+          <el-table-column label="操作" min-width="200" align="center" class-name="operation-column">
             <template #default="{ row }">
               <!-- 数据行：显示状态和确认按钮 -->
-              <div v-if="row.rowType === 'data'" class="data-cell">
+              <div v-if="row.rowType === 'data'" class="data-cell operation-data-cell">
                 <!-- 已确认状态 -->
-                <el-button v-if="row.confirmResult === 1" type="success" size="small" disabled>
-                  已确认
+                <el-button v-if="row.confirmResult === 1" type="success" size="small" disabled class="status-button">
+                  <el-icon><Check /></el-icon>
+                  <span>已确认</span>
                 </el-button>
                 <!-- 未确认但可以确认的状态 -->
                 <el-button v-else-if="row.hasUserSelectedData || row.matchedType === 1" 
-                  type="primary" size="small" @click="handleQuickConfirm(row)">
-                  确认
+                  type="primary" size="small" @click="handleQuickConfirm(row)" class="action-button">
+                  <el-icon><Check /></el-icon>
+                  <span>确认</span>
                 </el-button>
                 <!-- 其他状态显示标签 -->
-                <el-tag v-else :type="getMatchTypeTagInfo(row.matchedType).type" size="small">
+                <el-tag v-else :type="getMatchTypeTagInfo(row.matchedType).type" size="small" class="status-tag">
                   {{ getMatchTypeTagInfo(row.matchedType).text }}
                 </el-tag>
               </div>
               
               <!-- 操作行：根据匹配类型显示不同控件 -->
-              <div v-else class="action-cell">
+              <div v-else class="action-cell operation-action-cell">
+                <!-- 已确认状态：只显示状态 -->
+                <div v-if="row.confirmResult === 1" class="operation-group confirmed-state">
+                  <el-tag type="success" size="small" class="status-tag">
+                    <el-icon><Check /></el-icon>
+                    <span>已确认</span>
+                  </el-tag>
+                </div>
+                
                 <!-- 相似匹配：显示确认和重新选择操作 -->
-                <div v-if="row.matchedType === 2" class="flex flex-wrap justify-center gap-2">
-                  <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
-                    @click="handleQuickConfirm(row)" class="flex-1 min-w-[70px] max-w-[80px]">
-                    确认
+                <div v-else-if="row.matchedType === 2" class="operation-group similar-match">
+                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="primary-action">
+                    <el-icon><Check /></el-icon>
+                    <span class="button-text">确认</span>
                   </el-button>
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
-                    class="flex-1 min-w-[70px] max-w-[80px]">
-                    重新选择
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
+                    <el-icon><Edit /></el-icon>
+                    <span class="button-text">重选</span>
                   </el-button>
                 </div>
                 
-                <!-- 未匹配：显示从数据库选择按钮 -->
-                <div v-else-if="row.matchedType === 0" class="flex flex-col gap-2">
-                  <div v-if="row.hasUserSelectedData" class="flex flex-wrap justify-center gap-2">
-                    <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
-                      @click="handleQuickConfirm(row)" class="flex-1 min-w-[70px] max-w-[80px]">
-                      确认
-                    </el-button>
-                    <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
-                      :icon="Edit" class="flex-1 min-w-[70px] max-w-[80px]">
-                      重选
-                    </el-button>
-                  </div>
-                  <el-button v-else type="primary" plain size="small" @click="handleViewOptions(row)" 
-                    :icon="Plus" class="w-full">
-                    从库选择
+                <!-- 未匹配且已选择：显示确认和重新选择操作 -->
+                <div v-else-if="row.matchedType === 0 && row.hasUserSelectedData" class="operation-group no-match-selected">
+                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="primary-action">
+                    <el-icon><Check /></el-icon>
+                    <span class="button-text">确认</span>
+                  </el-button>
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
+                    <el-icon><Edit /></el-icon>
+                    <span class="button-text">重选</span>
+                  </el-button>
+                </div>
+                
+                <!-- 未匹配且未选择：显示选择按钮 -->
+                <div v-else-if="row.matchedType === 0" class="operation-group no-match-unselected">
+                  <el-button type="primary" plain size="small" @click="handleViewOptions(row)" class="single-action">
+                    <el-icon><Plus /></el-icon>
+                    <span class="button-text">从库选择</span>
                   </el-button>
                 </div>
                 
                 <!-- 精确匹配：显示已匹配状态和重新选择 -->
-                <div v-else-if="row.matchedType === 1" class="flex flex-wrap items-center justify-center gap-2">
-                  <span class="text-green-600 text-sm">已匹配</span>
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" 
-                    class="min-w-[70px] max-w-[80px]">
-                    重选
+                <div v-else-if="row.matchedType === 1" class="operation-group exact-match">
+                  <el-tag type="success" size="small" class="status-tag">
+                    <el-icon><CircleCheck /></el-icon>
+                    <span>已匹配</span>
+                  </el-tag>
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
+                    <el-icon><Edit /></el-icon>
+                    <span class="button-text">重选</span>
                   </el-button>
                 </div>
                 
                 <!-- 其他匹配类型：显示确认按钮 -->
-                <div v-else class="flex justify-center">
-                  <el-button v-if="row.confirmResult !== 1" type="primary" size="small" 
-                    @click="handleQuickConfirm(row)" class="min-w-[70px] max-w-[80px]">
-                    确认
+                <div v-else class="operation-group other-match">
+                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="single-action">
+                    <el-icon><Check /></el-icon>
+                    <span class="button-text">确认</span>
                   </el-button>
-                  <span v-else class="text-green-600 text-sm">已确认</span>
                 </div>
               </div>
             </template>
@@ -444,7 +458,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog/MaterialSelectionDialog.vue'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
@@ -2740,6 +2754,178 @@ const handleBack = () => {
 
 .action-cell .el-button {
   font-size: 12px;
+}
+
+/* 操作列专用样式 - 响应式设计 */
+.operation-data-cell {
+  padding: 8px 4px;
+}
+
+.operation-action-cell {
+  padding: 8px 4px;
+}
+
+.operation-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  width: 100%;
+  min-height: 32px;
+}
+
+/* 操作按钮样式 */
+.operation-group .el-button {
+  font-size: 12px;
+  height: 28px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.operation-group .el-button .el-icon {
+  margin-right: 4px;
+  font-size: 14px;
+}
+
+/* 主要操作按钮 */
+.primary-action {
+  min-width: 68px;
+  flex: 1;
+  max-width: 80px;
+}
+
+/* 次要操作按钮 */
+.secondary-action {
+  min-width: 56px;
+  flex: 1;
+  max-width: 70px;
+}
+
+/* 单一操作按钮 */
+.single-action {
+  min-width: 88px;
+  max-width: 120px;
+}
+
+/* 状态按钮 */
+.status-button {
+  min-width: 80px;
+  cursor: not-allowed;
+}
+
+.action-button {
+  min-width: 68px;
+}
+
+/* 状态标签 */
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+}
+
+.status-tag .el-icon {
+  font-size: 14px;
+}
+
+/* 按钮文字在小屏幕上的响应式处理 */
+@media (max-width: 1200px) {
+  .button-text {
+    font-size: 11px;
+  }
+  
+  .operation-group .el-button {
+    height: 26px;
+    font-size: 11px;
+    padding: 0 8px;
+  }
+  
+  .primary-action,
+  .secondary-action {
+    min-width: 52px;
+    max-width: 68px;
+  }
+  
+  .single-action {
+    min-width: 76px;
+    max-width: 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .operation-group {
+    gap: 4px;
+  }
+  
+  .operation-group .el-button {
+    height: 24px;
+    font-size: 10px;
+    padding: 0 6px;
+  }
+  
+  .operation-group .el-button .el-icon {
+    margin-right: 2px;
+    font-size: 12px;
+  }
+  
+  .primary-action,
+  .secondary-action {
+    min-width: 48px;
+    max-width: 60px;
+  }
+  
+  .single-action {
+    min-width: 68px;
+    max-width: 88px;
+  }
+  
+  .status-tag {
+    font-size: 10px;
+    height: 20px;
+    padding: 0 6px;
+  }
+  
+  .status-tag .el-icon {
+    font-size: 12px;
+  }
+}
+
+/* 操作组的特定样式 */
+.confirmed-state {
+  justify-content: center;
+}
+
+.similar-match,
+.no-match-selected {
+  justify-content: center;
+}
+
+.no-match-unselected {
+  justify-content: center;
+}
+
+.exact-match {
+  justify-content: center;
+  gap: 8px;
+}
+
+.other-match {
+  justify-content: center;
+}
+
+/* 悬停效果 */
+.operation-group .el-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.operation-group .el-button:active {
+  transform: translateY(0);
 }
 
 /* 价格显示样式 */
