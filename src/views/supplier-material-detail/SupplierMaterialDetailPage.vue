@@ -288,9 +288,9 @@
                 <div v-else-if="row.matchedType === 0" class="price-selection-hint">
                   <span class="text-sm text-gray-400 italic">等待选择价格</span>
                 </div>
-                <!-- 其他状态：显示横线 -->
-                <div v-else class="price-selection-hint">
-                  <span class="text-sm text-gray-500">-</span>
+                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <div v-else class="empty-price-display">
+                  <span class="empty-price-text">¥--</span>
                 </div>
               </div>
             </template>
@@ -319,9 +319,9 @@
                 <div v-else-if="row.matchedType === 0" class="price-selection-hint">
                   <span class="text-sm text-gray-400 italic">等待选择价格</span>
                 </div>
-                <!-- 其他状态：显示横线 -->
-                <div v-else class="price-selection-hint">
-                  <span class="text-sm text-gray-500">-</span>
+                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <div v-else class="empty-price-display">
+                  <span class="empty-price-text">¥--</span>
                 </div>
               </div>
             </template>
@@ -345,9 +345,9 @@
                 <div v-else-if="row.matchedType === 0" class="tax-rate-hint">
                   <span class="text-sm text-gray-400 italic">等待选择</span>
                 </div>
-                <!-- 其他状态：显示横线 -->
-                <div v-else class="tax-rate-hint">
-                  <span class="text-sm text-gray-500">-</span>
+                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <div v-else class="empty-data-display">
+                  <span class="empty-data-text">--</span>
                 </div>
               </div>
             </template>
@@ -372,9 +372,9 @@
                 <div v-else-if="row.matchedType === 0" class="price-selection-hint">
                   <span class="text-sm text-gray-400 italic">等待选择</span>
                 </div>
-                <!-- 其他状态：显示横线 -->
-                <div v-else class="price-selection-hint">
-                  <span class="text-sm text-gray-500">-</span>
+                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <div v-else class="empty-data-display">
+                  <span class="empty-data-text">--</span>
                 </div>
               </div>
             </template>
@@ -1207,8 +1207,8 @@ const getActionRowPrice = (dataRow, priceType) => {
   
   const actionRow = materialData.value[actionRowIndex]
   
-  // 直接从操作行获取价格数据，避免重复调用 getPriceText
-  if (actionRow.hasUserSelectedData && actionRow.selectedPriceQuarter) {
+  // 检查是否有价格数据（用户选择的或相似匹配的）
+  if ((actionRow.hasUserSelectedData || actionRow.matchedType === 2) && actionRow.selectedPriceQuarter) {
     if (priceType === 'taxIncluded') {
       return parseFloat(actionRow.selectedPriceQuarter.taxPrice || actionRow.selectedPriceQuarter.unitPrice || 0) || null
     } else if (priceType === 'taxExcluded') {
@@ -1216,7 +1216,7 @@ const getActionRowPrice = (dataRow, priceType) => {
     }
   }
   
-  // 如果没有用户选择数据，返回null（表示没有操作行价格进行比较）
+  // 如果没有价格数据，返回null（表示没有操作行价格进行比较）
   return null
 }
 
@@ -1244,18 +1244,29 @@ const getPriceChangeIcon = (row, priceType) => {
   const dataPrice = getDataRowPrice(row, priceType)
   const actionPrice = getActionRowPrice(row, priceType)
   
+  // 调试信息
+  if (row.taskDataId) {
+    console.log(`【箭头调试】taskId: ${row.taskDataId}, priceType: ${priceType}, dataPrice: ${dataPrice}, actionPrice: ${actionPrice}`)
+  }
+  
   // 当操作行没有价格数据时，不显示箭头
-  if (dataPrice === null || actionPrice === null) return null
+  if (dataPrice === null || actionPrice === null) {
+    console.log(`【箭头调试】价格为null，不显示箭头`)
+    return null
+  }
   
   // 操作行价格大于数据行价格时，显示向下箭头（表示相对便宜）
   if (actionPrice > dataPrice) {
+    console.log(`【箭头调试】显示向下箭头（绿色）`)
     return ArrowDown
   }
   // 操作行价格小于数据行价格时，显示向上箭头（表示相对昂贵）
   else if (actionPrice < dataPrice) {
+    console.log(`【箭头调试】显示向上箭头（红色）`)
     return ArrowUp
   }
   
+  console.log(`【箭头调试】价格相等，不显示箭头`)
   return null
 }
 
@@ -3448,5 +3459,28 @@ const handleBack = () => {
   margin-left: 4px;
   color: var(--theme-warning);
   font-style: normal;
+}
+
+/* 空数据显示样式（类似股票） */
+.empty-price-display,
+.empty-data-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+}
+
+.empty-price-text,
+.empty-data-text {
+  color: #999999 !important;
+  font-size: 14px;
+  font-weight: normal;
+  opacity: 0.8;
+  user-select: none;
+  font-family: 'Courier New', monospace;
+}
+
+.empty-price-text {
+  font-weight: 500;
 }
 </style>
