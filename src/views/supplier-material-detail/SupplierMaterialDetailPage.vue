@@ -1244,29 +1244,18 @@ const getPriceChangeIcon = (row, priceType) => {
   const dataPrice = getDataRowPrice(row, priceType)
   const actionPrice = getActionRowPrice(row, priceType)
   
-  // 调试信息
-  if (row.taskDataId) {
-    console.log(`【箭头调试】taskId: ${row.taskDataId}, priceType: ${priceType}, dataPrice: ${dataPrice}, actionPrice: ${actionPrice}`)
-  }
-  
   // 当操作行没有价格数据时，不显示箭头
-  if (dataPrice === null || actionPrice === null) {
-    console.log(`【箭头调试】价格为null，不显示箭头`)
-    return null
-  }
+  if (dataPrice === null || actionPrice === null) return null
   
   // 操作行价格大于数据行价格时，显示向下箭头（表示相对便宜）
   if (actionPrice > dataPrice) {
-    console.log(`【箭头调试】显示向下箭头（绿色）`)
     return ArrowDown
   }
   // 操作行价格小于数据行价格时，显示向上箭头（表示相对昂贵）
   else if (actionPrice < dataPrice) {
-    console.log(`【箭头调试】显示向上箭头（红色）`)
     return ArrowUp
   }
   
-  console.log(`【箭头调试】价格相等，不显示箭头`)
   return null
 }
 
