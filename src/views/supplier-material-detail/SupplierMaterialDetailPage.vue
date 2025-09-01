@@ -641,6 +641,20 @@ const fetchData = async () => {
           const initialized = initializeRowData(item)
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
+          
+          // 【调试】打印初始化后的数据
+          console.log('【数据初始化调试】物资:', initialized.materialName, {
+            matchedType: initialized.matchedType,
+            hasUserSelectedData: initialized.hasUserSelectedData,
+            selectedPriceQuarter: initialized.selectedPriceQuarter,
+            原始含税价: initialized.unitPrice || initialized.taxPrice,
+            原始不含税价: initialized.taxExcludedPrice,
+            操作行价格数据: initialized.selectedPriceQuarter ? {
+              含税价: initialized.selectedPriceQuarter.taxPrice || initialized.selectedPriceQuarter.unitPrice,
+              不含税价: initialized.selectedPriceQuarter.taxExcludedPrice
+            } : '无'
+          })
+          
           return [dataRow, actionRow]
         })
         statistics.value = response.data.statistics || {}
@@ -1060,39 +1074,31 @@ const getMatchTypeTagInfo = (matchedType) => {
 const getBaseInfoName = (row) => {
   // 最优先：如果用户已确认选择，显示确认的数据
   if (row.confirmResult === 1 && row.confirmedBaseName) {
-    console.log('【调试】getBaseInfoName - 返回已确认的数据:', row.confirmedBaseName)
     return row.confirmedBaseName
   }
 
   // 如果用户已选择但未确认，显示选择的数据
   if (row.hasUserSelectedData && row.confirmedBaseName) {
-    console.log('【调试】getBaseInfoName - 返回用户选择的数据:', row.confirmedBaseName)
     return row.confirmedBaseName
   }
 
   // 优先从直接的baseInfo获取（匹配后的数据）
   if (row.baseInfo && row.baseInfo.materialName) {
-    console.log('【调试】getBaseInfoName - 返回baseInfo数据:', row.baseInfo.materialName)
     return row.baseInfo.materialName
   }
 
   // 从matchOptions中获取第一个匹配的基础数据
   if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
-    console.log(
-      '【调试】getBaseInfoName - 返回matchOptions数据:',
-      row.matchOptions[0].baseInfo.materialName
-    )
+   
     return row.matchOptions[0].baseInfo.materialName
   }
 
   // 无匹配时，显示原始物资名称（这是关键修改）
   if (row.materialName) {
-    console.log('【调试】getBaseInfoName - 返回原始物资名称:', row.materialName)
     return row.materialName
   }
 
   const fallback = row.recommendedBaseName || '-'
-  console.log('【调试】getBaseInfoName - 返回后备数据:', fallback)
   return fallback
 }
 
@@ -1263,9 +1269,50 @@ const getPriceChangeIcon = (row, priceType) => {
   return null
 }
 
+// 【调试函数】打印价格对比结果
+const debugPriceComparison = (row, priceType) => {
+  if (row.rowType !== 'data') return
+  
+  const dataPrice = getDataRowPrice(row, priceType)
+  const actionPrice = getActionRowPrice(row, priceType)
+  
+  // 找到对应的操作行获取更多信息
+  const actionRow = materialData.value.find(item => 
+    item.rowType === 'action' && 
+    ((item.taskDataId && row.taskDataId && item.taskDataId === row.taskDataId) ||
+     (item.id && row.id && item.id === row.id))
+  )
+  
+  const debugInfo = {
+    物资名称: row.materialName || '未知',
+    匹配类型: row.matchedType === 0 ? '未匹配' : 
+             row.matchedType === 1 ? '精确匹配' : 
+             row.matchedType === 2 ? '相似匹配' : '其他',
+    价格类型: priceType === 'taxIncluded' ? '含税价' : 
+             priceType === 'taxExcluded' ? '不含税价' : '单价',
+    数据行价格: dataPrice !== null ? `¥${dataPrice.toFixed(2)}` : '无数据',
+    操作行价格: actionPrice !== null ? `¥${actionPrice.toFixed(2)}` : '无数据',
+    价格差异: dataPrice !== null && actionPrice !== null ? 
+      `${((actionPrice - dataPrice) / dataPrice * 100).toFixed(2)}%` : '无法计算',
+    对比结果: dataPrice !== null && actionPrice !== null ? 
+      (actionPrice > dataPrice ? '操作行更高(绿色↓)' : 
+       actionPrice < dataPrice ? '操作行更低(红色↑)' : 
+       '价格相同') : '无法对比',
+    是否有用户选择: actionRow?.hasUserSelectedData ? '是' : '否',
+    taskDataId: row.taskDataId || row.id || '未知'
+  }
+  
+  console.log(`【价格对比调试】${debugInfo.物资名称} - ${debugInfo.价格类型}:`, debugInfo)
+  
+  return debugInfo
+}
+
 // 获取价格文本样式（为数据行价格添加颜色）- 实时计算渲染
 const getPriceTextStyle = (row, priceType) => {
   if (row.rowType !== 'data') return {}
+  
+  // 调试：打印价格对比结果
+  debugPriceComparison(row, priceType)
   
   // 未匹配状态：显示灰色
   if (row.matchedType === 0) {
@@ -1358,6 +1405,73 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   return { rowspan: 1, colspan: 1 }
 }
 
+// 【调试函数】打印所有物资的价格对比情况汇总
+const debugAllPriceComparisons = () => {
+  console.log('========== 【价格对比汇总调试】开始 ==========')
+  
+  const dataRows = materialData.value.filter(row => row.rowType === 'data')
+  console.log(`共有 ${dataRows.length} 个物资需要分析`)
+  
+  const summary = {
+    总计: dataRows.length,
+    未匹配: 0,
+    精确匹配: 0,
+    相似匹配: 0,
+    用户选择: 0,
+    价格更高: 0,
+    价格更低: 0,
+    价格相同: 0,
+    无法对比: 0
+  }
+  
+  dataRows.forEach((dataRow, index) => {
+    console.log(`\n[${index + 1}] 物资: ${dataRow.materialName}`)
+    
+    // 统计匹配类型
+    if (dataRow.matchedType === 0) summary.未匹配++
+    else if (dataRow.matchedType === 1) summary.精确匹配++
+    else if (dataRow.matchedType === 2) summary.相似匹配++
+    
+    // 找对应操作行
+    const actionRow = materialData.value.find(item => 
+      item.rowType === 'action' && 
+      ((item.taskDataId && dataRow.taskDataId && item.taskDataId === dataRow.taskDataId) ||
+       (item.id && dataRow.id && item.id === dataRow.id))
+    )
+    
+    if (actionRow?.hasUserSelectedData) summary.用户选择++
+    
+    // 价格对比（含税价）
+    const dataPrice = getDataRowPrice(dataRow, 'taxIncluded')
+    const actionPrice = getActionRowPrice(dataRow, 'taxIncluded')
+    
+    console.log(`  含税价 - 数据行: ${dataPrice ? '¥' + dataPrice.toFixed(2) : '无'}, 操作行: ${actionPrice ? '¥' + actionPrice.toFixed(2) : '无'}`)
+    
+    if (dataPrice !== null && actionPrice !== null) {
+      const diff = ((actionPrice - dataPrice) / dataPrice * 100).toFixed(2)
+      if (actionPrice > dataPrice) {
+        console.log(`  → 操作行更高 ${diff}% (应显示绿色↓)`)
+        summary.价格更高++
+      } else if (actionPrice < dataPrice) {
+        console.log(`  → 操作行更低 ${Math.abs(diff)}% (应显示红色↑)`)
+        summary.价格更低++
+      } else {
+        console.log(`  → 价格相同`)
+        summary.价格相同++
+      }
+    } else {
+      console.log(`  → 无法对比`)
+      summary.无法对比++
+    }
+  })
+  
+  console.log('\n========== 【汇总统计】 ==========')
+  console.log(summary)
+  console.log('========== 【价格对比汇总调试】结束 ==========\n')
+  
+  return summary
+}
+
 // 页面初始化时加载数据
 onMounted(() => {
   if (taskId.value) {
@@ -1369,7 +1483,13 @@ onMounted(() => {
     }
     currentPage.value = 1
     useComplexQuery.value = true
-    fetchData()
+    fetchData().then(() => {
+      // 数据加载完成后，延迟执行调试输出，确保渲染完成
+      setTimeout(() => {
+        console.log('【页面加载完成】开始执行价格对比调试...')
+        debugAllPriceComparisons()
+      }, 1000)
+    })
   }
 })
 
@@ -1499,6 +1619,44 @@ const handleMaterialPriceSelection = (selection) => {
       confirmedPrice: confirmPrice,
       source: selection.source
     })
+    
+    // 【调试】打印选择后的价格对比情况
+    console.log('【选择后价格对比调试】开始分析所有受影响的物资行...')
+    items.forEach((item) => {
+      if (item.rowType === 'data') {
+        console.log(`【选择后对比】物资: ${item.materialName}`)
+        console.log('  数据行原始价格:', {
+          含税价: item.unitPrice || item.taxPrice || '无',
+          不含税价: item.taxExcludedPrice || '无'
+        })
+        console.log('  操作行新选择价格:', {
+          含税价: confirmPrice || '无',
+          不含税价: confirmTaxExcludedPrice || '无'
+        })
+        
+        // 计算价格差异
+        const originalTaxIncluded = item.unitPrice || item.taxPrice || 0
+        const newTaxIncluded = confirmPrice || 0
+        if (originalTaxIncluded > 0 && newTaxIncluded > 0) {
+          const diff = ((newTaxIncluded - originalTaxIncluded) / originalTaxIncluded * 100).toFixed(2)
+          console.log(`  含税价差异: ${diff}%`, 
+            newTaxIncluded > originalTaxIncluded ? '(操作行更高，应显示绿色↓)' : 
+            newTaxIncluded < originalTaxIncluded ? '(操作行更低，应显示红色↑)' : 
+            '(价格相同)')
+        }
+        
+        const originalTaxExcluded = item.taxExcludedPrice || 0
+        const newTaxExcluded = confirmTaxExcludedPrice || 0
+        if (originalTaxExcluded > 0 && newTaxExcluded > 0) {
+          const diff = ((newTaxExcluded - originalTaxExcluded) / originalTaxExcluded * 100).toFixed(2)
+          console.log(`  不含税价差异: ${diff}%`,
+            newTaxExcluded > originalTaxExcluded ? '(操作行更高，应显示绿色↓)' : 
+            newTaxExcluded < originalTaxExcluded ? '(操作行更低，应显示红色↑)' : 
+            '(价格相同)')
+        }
+      }
+    })
+    console.log('【选择后价格对比调试】分析完成')
 
     ElMessage.success('数据选择成功，请点击确认按钮完成确认')
     currentSelectionRow.value = null
