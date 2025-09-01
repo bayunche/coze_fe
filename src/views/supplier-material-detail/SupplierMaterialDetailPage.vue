@@ -1336,7 +1336,7 @@ const debugPriceComparison = (row, priceType) => {
     价格差异: dataPrice !== null && actionPrice !== null ? 
       `${((actionPrice - dataPrice) / dataPrice * 100).toFixed(2)}%` : '无法计算',
     对比结果: dataPrice !== null && actionPrice !== null ? 
-      (pricesEqual ? '价格相同(无颜色无箭头)' :
+      (pricesEqual ? '价格相同(灰黑色显示"-")' :
        actionPrice > dataPrice ? '操作行更高(原价绿色↓)' : 
        '操作行更低(原价红色↑)') : '无法对比',
     是否有用户选择: actionRow?.hasUserSelectedData ? '是' : '否',
@@ -1370,10 +1370,10 @@ const getPriceTextStyle = (row, priceType) => {
   const priceDiff = Math.abs(actionPrice - dataPrice)
   const tolerance = 0.01 // 价格差异小于0.01元认为相等
   
-  // 如果价格差异小于容差，认为价格相同，不改变颜色
+  // 如果价格差异小于容差，认为价格相同，显示灰黑色
   if (priceDiff < tolerance) {
-    console.log(`【价格对比】${row.materialName} 价格相同，不改变颜色`)
-    return {}
+    console.log(`【价格对比】${row.materialName} 价格相同，显示灰黑色`)
+    return { color: '#666666', fontWeight: 'normal' }
   }
   
   // 操作行价格大于数据行价格时，数据行价格显示绿色（表示原价更便宜）
@@ -1786,6 +1786,21 @@ const getTaxIncludedPrice = (row) => {
   
   console.log('【调试】getTaxIncludedPrice - 最终使用价格:', price)
   
+  // 检查是否与操作行价格相同
+  const dataPrice = parseFloat(price || 0)
+  const actionPrice = getActionRowPrice(row, 'taxIncluded')
+  
+  if (dataPrice > 0 && actionPrice !== null) {
+    const priceDiff = Math.abs(actionPrice - dataPrice)
+    const tolerance = 0.01
+    
+    // 如果价格相同，显示"--"
+    if (priceDiff < tolerance) {
+      console.log(`【调试】getTaxIncludedPrice - 价格相同，显示"--"`)
+      return '--'
+    }
+  }
+  
   return formatPrice(price || 0)
 }
 
@@ -1807,6 +1822,21 @@ const getTaxExcludedPrice = (row) => {
   const price = row.taxExcludedPrice || row.notaxPrice || 0
   
   console.log('【调试】getTaxExcludedPrice - 最终使用价格:', price)
+  
+  // 检查是否与操作行价格相同
+  const dataPrice = parseFloat(price || 0)
+  const actionPrice = getActionRowPrice(row, 'taxExcluded')
+  
+  if (dataPrice > 0 && actionPrice !== null) {
+    const priceDiff = Math.abs(actionPrice - dataPrice)
+    const tolerance = 0.01
+    
+    // 如果价格相同，显示"--"
+    if (priceDiff < tolerance) {
+      console.log(`【调试】getTaxExcludedPrice - 价格相同，显示"--"`)
+      return '--'
+    }
+  }
   
   return formatPrice(price)
 }
