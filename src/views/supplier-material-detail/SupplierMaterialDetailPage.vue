@@ -138,13 +138,21 @@
                     <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
                       {{ row.selectedMaterial.materialName || row.materialName || '-' }}
                     </span>
+                    <!-- 精确匹配显示匹配的物资名称 -->
+                    <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
+                      {{ row.materialName || '-' }}
+                    </span>
+                    <!-- 未匹配状态：显示等待选择 -->
+                    <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
+                      等待选择物资
+                    </span>
                     <!-- 其他情况显示原始物资名称 -->
                     <span v-else class="text-sm text-gray-500">
                       {{ row.materialName || '-' }}
                     </span>
                   </div>
-                  <!-- 数据差异标记 -->
-                  <el-icon v-if="hasMaterialNameDifference(row)" class="difference-marker">
+                  <!-- 数据差异标记（未匹配状态不显示） -->
+                  <el-icon v-if="hasMaterialNameDifference(row) && row.matchedType !== 0" class="difference-marker">
                     <Close />
                   </el-icon>
                 </div>
@@ -160,15 +168,27 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
+                    <!-- 显示已选择的物资规格 -->
+                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.baseInfo?.specifications || row.selectedMaterial.specificationModel || '-' }}
+                    </span>
                     <!-- 相似匹配：显示选中物资的规格型号 -->
-                    <span v-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
+                    <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
                       {{ row.selectedMaterial.baseInfo?.specifications || '-' }}
+                    </span>
+                    <!-- 精确匹配显示匹配的规格型号 -->
+                    <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
+                      {{ row.specifications || '-' }}
+                    </span>
+                    <!-- 未匹配状态：显示等待选择 -->
+                    <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
+                      等待选择规格
                     </span>
                     <!-- 其他情况显示原始规格 -->
                     <span v-else class="text-sm text-gray-500">{{ row.specifications || '-' }}</span>
                   </div>
-                  <!-- 数据差异标记 -->
-                  <el-icon v-if="hasSpecificationDifference(row)" class="difference-marker">
+                  <!-- 数据差异标记（未匹配状态不显示） -->
+                  <el-icon v-if="hasSpecificationDifference(row) && row.matchedType !== 0" class="difference-marker">
                     <Close />
                   </el-icon>
                 </div>
@@ -184,10 +204,27 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
-                    <span class="text-sm text-gray-500">{{ row.unit || '-' }}</span>
+                    <!-- 显示已选择的物资单位 -->
+                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.unit || '-' }}
+                    </span>
+                    <!-- 相似匹配状态显示选中物资的单位 -->
+                    <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.unit || row.unit || '-' }}
+                    </span>
+                    <!-- 精确匹配状态显示单位 -->
+                    <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
+                      {{ row.unit || '-' }}
+                    </span>
+                    <!-- 未匹配状态：显示等待选择 -->
+                    <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
+                      等待选择
+                    </span>
+                    <!-- 其他情况 -->
+                    <span v-else class="text-sm text-gray-500">{{ row.unit || '-' }}</span>
                   </div>
-                  <!-- 数据差异标记 -->
-                  <el-icon v-if="hasUnitDifference(row)" class="difference-marker">
+                  <!-- 数据差异标记（未匹配状态不显示） -->
+                  <el-icon v-if="hasUnitDifference(row) && row.matchedType !== 0" class="difference-marker">
                     <Close />
                   </el-icon>
                 </div>
@@ -217,7 +254,11 @@
                 </el-tag>
               </div>
               <div v-else class="action-cell">
-                <span class="text-xs text-gray-400">
+                <!-- 未匹配状态不显示数据来源 -->
+                <span v-if="row.matchedType === 0" class="text-xs text-gray-400 italic">
+                  等待选择
+                </span>
+                <span v-else class="text-xs text-gray-400">
                   {{ getDataSourceType(row).text }}
                 </span>
               </div>
@@ -239,6 +280,15 @@
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
+                <!-- 相似匹配：显示匹配的价格信息 -->
+                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
+                </div>
+                <!-- 未匹配状态：显示等待选择 -->
+                <div v-else-if="row.matchedType === 0" class="price-selection-hint">
+                  <span class="text-sm text-gray-400 italic">等待选择价格</span>
+                </div>
+                <!-- 其他状态：显示横线 -->
                 <div v-else class="price-selection-hint">
                   <span class="text-sm text-gray-500">-</span>
                 </div>
@@ -261,6 +311,15 @@
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
                 </div>
+                <!-- 相似匹配：显示匹配的不含税价格信息 -->
+                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
+                </div>
+                <!-- 未匹配状态：显示等待选择 -->
+                <div v-else-if="row.matchedType === 0" class="price-selection-hint">
+                  <span class="text-sm text-gray-400 italic">等待选择价格</span>
+                </div>
+                <!-- 其他状态：显示横线 -->
                 <div v-else class="price-selection-hint">
                   <span class="text-sm text-gray-500">-</span>
                 </div>
@@ -278,6 +337,15 @@
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-tax-rate">
                   <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
                 </div>
+                <!-- 相似匹配：显示匹配的税率信息 -->
+                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-tax-rate">
+                  <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
+                </div>
+                <!-- 未匹配状态：显示等待选择 -->
+                <div v-else-if="row.matchedType === 0" class="tax-rate-hint">
+                  <span class="text-sm text-gray-400 italic">等待选择</span>
+                </div>
+                <!-- 其他状态：显示横线 -->
                 <div v-else class="tax-rate-hint">
                   <span class="text-sm text-gray-500">-</span>
                 </div>
@@ -296,6 +364,15 @@
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
                   <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
                 </div>
+                <!-- 相似匹配：显示匹配的季度信息 -->
+                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-quarter">
+                  <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
+                </div>
+                <!-- 未匹配状态：显示等待选择 -->
+                <div v-else-if="row.matchedType === 0" class="price-selection-hint">
+                  <span class="text-sm text-gray-400 italic">等待选择</span>
+                </div>
+                <!-- 其他状态：显示横线 -->
                 <div v-else class="price-selection-hint">
                   <span class="text-sm text-gray-500">-</span>
                 </div>
@@ -3344,5 +3421,32 @@ const handleBack = () => {
 .quarter-text {
   font-weight: 500;
   color: var(--theme-text-primary);
+}
+
+/* 相似匹配显示样式 */
+.similar-match-price,
+.similar-match-tax-rate,
+.similar-match-quarter {
+  color: var(--theme-warning) !important;
+  font-style: italic;
+  position: relative;
+}
+
+.similar-match-price .price-text,
+.similar-match-tax-rate .tax-rate-text,
+.similar-match-quarter .quarter-text {
+  color: var(--theme-warning) !important;
+  font-weight: 500;
+}
+
+.similar-match-price::after,
+.similar-match-tax-rate::after,
+.similar-match-quarter::after {
+  content: ' (相似)';
+  font-size: 10px;
+  opacity: 0.7;
+  margin-left: 4px;
+  color: var(--theme-warning);
+  font-style: normal;
 }
 </style>
