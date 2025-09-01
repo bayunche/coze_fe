@@ -270,7 +270,10 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <div class="price-value">
-                  <span class="price-text" :style="getPriceTextStyle(row, 'taxIncluded')">¥{{ getTaxIncludedPrice(row) }}</span>
+                  <!-- 未匹配状态的价格显示 -->
+                  <span v-if="row.matchedType === 0" class="empty-price-text">¥{{ getTaxIncludedPrice(row) }}</span>
+                  <!-- 正常状态的价格显示 -->
+                  <span v-else class="price-text" :style="getPriceTextStyle(row, 'taxIncluded')">¥{{ getTaxIncludedPrice(row) }}</span>
                   <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
                     <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
                   </el-icon>
@@ -278,6 +281,10 @@
               </div>
               <div v-else class="action-cell">
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
+                </div>
+                <!-- 精确匹配：显示匹配的价格信息 -->
+                <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-price">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
                 <!-- 相似匹配：显示匹配的价格信息 -->
@@ -301,7 +308,10 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <div class="price-value">
-                  <span class="price-text" :style="getPriceTextStyle(row, 'taxExcluded')">¥{{ getTaxExcludedPrice(row) }}</span>
+                  <!-- 未匹配状态的价格显示 -->
+                  <span v-if="row.matchedType === 0" class="empty-price-text">¥{{ getTaxExcludedPrice(row) }}</span>
+                  <!-- 正常状态的价格显示 -->
+                  <span v-else class="price-text" :style="getPriceTextStyle(row, 'taxExcluded')">¥{{ getTaxExcludedPrice(row) }}</span>
                   <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
                     <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
                   </el-icon>
@@ -309,6 +319,10 @@
               </div>
               <div v-else class="action-cell">
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
+                </div>
+                <!-- 精确匹配：显示匹配的不含税价格信息 -->
+                <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-price">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
                 </div>
                 <!-- 相似匹配：显示匹配的不含税价格信息 -->
@@ -337,6 +351,10 @@
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-tax-rate">
                   <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
                 </div>
+                <!-- 精确匹配：显示匹配的税率信息 -->
+                <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-tax-rate">
+                  <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
+                </div>
                 <!-- 相似匹配：显示匹配的税率信息 -->
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-tax-rate">
                   <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
@@ -362,6 +380,10 @@
               </div>
               <div v-else class="action-cell">
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                  <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
+                </div>
+                <!-- 精确匹配：显示匹配的季度信息 -->
+                <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-quarter">
                   <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
                 </div>
                 <!-- 相似匹配：显示匹配的季度信息 -->
@@ -1207,8 +1229,8 @@ const getActionRowPrice = (dataRow, priceType) => {
   
   const actionRow = materialData.value[actionRowIndex]
   
-  // 检查是否有价格数据（用户选择的或相似匹配的）
-  if ((actionRow.hasUserSelectedData || actionRow.matchedType === 2) && actionRow.selectedPriceQuarter) {
+  // 检查是否有价格数据（用户选择的、精确匹配或相似匹配的）
+  if ((actionRow.hasUserSelectedData || actionRow.matchedType === 1 || actionRow.matchedType === 2) && actionRow.selectedPriceQuarter) {
     if (priceType === 'taxIncluded') {
       return parseFloat(actionRow.selectedPriceQuarter.taxPrice || actionRow.selectedPriceQuarter.unitPrice || 0) || null
     } else if (priceType === 'taxExcluded') {
@@ -1518,6 +1540,11 @@ const formatPrice = (price) => {
 
 // 获取含税价格
 const getTaxIncludedPrice = (row) => {
+  // 未匹配状态：显示类似股票的灰色"--"
+  if (row.matchedType === 0) {
+    return '--'
+  }
+  
   // 优先使用用户选择的价格
   if (row.hasUserSelectedData && row.selectedPriceQuarter) {
     return formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0)
@@ -1530,6 +1557,11 @@ const getTaxIncludedPrice = (row) => {
 
 // 获取不含税价格
 const getTaxExcludedPrice = (row) => {
+  // 未匹配状态：显示类似股票的灰色"--"
+  if (row.matchedType === 0) {
+    return '--'
+  }
+  
   // 优先使用用户选择的价格
   if (row.hasUserSelectedData && row.selectedPriceQuarter) {
     return formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0)
@@ -3421,6 +3453,33 @@ const handleBack = () => {
 .quarter-text {
   font-weight: 500;
   color: var(--theme-text-primary);
+}
+
+/* 精确匹配显示样式 */
+.exact-match-price,
+.exact-match-tax-rate,
+.exact-match-quarter {
+  color: var(--theme-success) !important;
+  font-weight: 500;
+  position: relative;
+}
+
+.exact-match-price .price-text,
+.exact-match-tax-rate .tax-rate-text,
+.exact-match-quarter .quarter-text {
+  color: var(--theme-success) !important;
+  font-weight: 600;
+}
+
+.exact-match-price::after,
+.exact-match-tax-rate::after,
+.exact-match-quarter::after {
+  content: ' (精确)';
+  font-size: 10px;
+  opacity: 0.8;
+  margin-left: 4px;
+  color: var(--theme-success);
+  font-style: normal;
 }
 
 /* 相似匹配显示样式 */
