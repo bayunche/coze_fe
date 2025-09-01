@@ -311,15 +311,15 @@
               <div v-else class="action-cell">
                 <!-- 用户手动选择的不含税价格（不包括相似匹配） -->
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
-                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
+                  <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
                 </div>
                 <!-- 精确匹配：显示匹配的不含税价格信息 -->
                 <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-price">
-                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
+                  <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
                 </div>
                 <!-- 相似匹配：显示匹配的不含税价格信息 -->
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
-                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
+                  <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
                 </div>
                 <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
                 <div v-else class="empty-price-display">
@@ -638,35 +638,23 @@ const fetchData = async () => {
         // 获取数据并初始化每行数据，转换为双行结构
         const rawData = response.data.content || []
         materialData.value = rawData.flatMap((item) => {
-          // 【关键调试】先检查原始后端数据结构
-          console.log('【后端原始数据】物资:', item.materialName, {
-            所有字段: Object.keys(item).filter(key => 
-              key.toLowerCase().includes('price') || key.toLowerCase().includes('tax')
-            ).reduce((acc, key) => {
-              acc[key] = item[key]
-              return acc
-            }, {})
-          })
-          
           const initialized = initializeRowData(item)
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
           
-          // 【调试】检查数据在各个阶段的变化
+          // 【数据流转调试】重点关注数据到模板的渲染过程
           console.log('【数据流转调试】物资:', initialized.materialName, {
-            '1_原始数据不含税价': item.taxExcludedPrice,
-            '2_初始化后不含税价': initialized.taxExcludedPrice,  
-            '3_数据行不含税价': dataRow.taxExcludedPrice,
-            '4_所有价格相关字段': Object.keys(dataRow).filter(key => 
-              key.toLowerCase().includes('price') || key.toLowerCase().includes('tax')
-            ).reduce((acc, key) => {
-              acc[key] = dataRow[key]
-              return acc
-            }, {}),
-            操作行价格数据: initialized.selectedPriceQuarter ? {
-              含税价: initialized.selectedPriceQuarter.taxPrice || initialized.selectedPriceQuarter.unitPrice,
-              不含税价: initialized.selectedPriceQuarter.taxExcludedPrice
-            } : '无'
+            matchedType: initialized.matchedType,
+            taxExcludedPrice: initialized.taxExcludedPrice,
+            '数据行taxExcludedPrice': dataRow.taxExcludedPrice,
+            '数据行类型': dataRow.rowType,
+            '立即调用getTaxExcludedPrice结果': (() => {
+              try {
+                return getTaxExcludedPrice(dataRow)
+              } catch (e) {
+                return '调用出错: ' + e.message
+              }
+            })()
           })
           
           return [dataRow, actionRow]
@@ -1236,7 +1224,9 @@ const getActionRowPrice = (dataRow, priceType) => {
     if (priceType === 'taxIncluded') {
       return parseFloat(actionRow.selectedPriceQuarter.taxPrice || actionRow.selectedPriceQuarter.unitPrice || 0) || null
     } else if (priceType === 'taxExcluded') {
-      return parseFloat(actionRow.selectedPriceQuarter.taxExcludedPrice || 0) || null
+      // 使用新的函数来获取不含税价格
+      const taxExcludedPrice = getActionRowTaxExcludedPrice(actionRow)
+      return taxExcludedPrice > 0 ? taxExcludedPrice : null
     }
   }
   
@@ -1745,7 +1735,10 @@ const handleMaterialPriceSelection = (selection) => {
 
 // 格式化价格显示
 const formatPrice = (price) => {
-  return typeof price === 'number' ? price.toFixed(2) : '0.00'
+  console.log('【formatPrice调试】输入价格:', price, '类型:', typeof price)
+  const result = typeof price === 'number' ? price.toFixed(2) : '0.00'
+  console.log('【formatPrice调试】输出结果:', result)
+  return result
 }
 
 // 获取含税价格（数据行始终显示原始数据）
@@ -1811,22 +1804,25 @@ const getTaxIncludedPrice = (row) => {
 
 // 获取不含税价格（数据行始终显示原始数据）
 const getTaxExcludedPrice = (row) => {
+  console.log('【渲染调试】getTaxExcludedPrice 被调用:', {
+    物资名称: row.materialName,
+    matchedType: row.matchedType,
+    rowType: row.rowType,
+    taxExcludedPrice: row.taxExcludedPrice,
+    taxExcludedPrice类型: typeof row.taxExcludedPrice,
+    taxExcludedPrice值: JSON.stringify(row.taxExcludedPrice)
+  })
+  
   // 未匹配状态显示"--"
   if (row.matchedType === 0) {
+    console.log('【渲染调试】返回 "--" 因为未匹配')
     return '--'
   }
-  
-  // 【调试】打印原始数据
-  console.log('【调试】getTaxExcludedPrice - 原始数据:', {
-    物资名称: row.materialName,
-    taxExcludedPrice: row.taxExcludedPrice,
-    notaxPrice: row.notaxPrice
-  })
   
   // 使用不含税价格字段
   const price = row.taxExcludedPrice || row.notaxPrice || 0
   
-  console.log('【调试】getTaxExcludedPrice - 最终使用价格:', price)
+  console.log('【渲染调试】getTaxExcludedPrice - 计算的价格:', price, '类型:', typeof price)
   
   // 检查是否与操作行价格相同
   const dataPrice = parseFloat(price || 0)
@@ -1844,6 +1840,28 @@ const getTaxExcludedPrice = (row) => {
   }
   
   return formatPrice(price)
+}
+
+// 获取操作行的不含税价格
+const getActionRowTaxExcludedPrice = (row) => {
+  if (!row.selectedPriceQuarter) {
+    return 0
+  }
+  
+  // 优先使用 selectedPriceQuarter 中的不含税价格字段
+  if (row.selectedPriceQuarter.taxExcludedPrice !== undefined && 
+      row.selectedPriceQuarter.taxExcludedPrice !== null &&
+      row.selectedPriceQuarter.taxExcludedPrice !== 0) {
+    return parseFloat(row.selectedPriceQuarter.taxExcludedPrice)
+  }
+  
+  // 如果没有不含税价格，从含税价格计算（使用13%税率）
+  const taxIncludedPrice = parseFloat(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0)
+  if (taxIncludedPrice > 0) {
+    return taxIncludedPrice / 1.13
+  }
+  
+  return 0
 }
 
 // 获取税率（数据行）
@@ -1895,74 +1913,6 @@ const getSelectedTaxRate = (row) => {
   return '13%'
 }
 
-// 注释掉未使用的函数，保留以备后续使用
-/*
-const handleMaterialSelectChange = async (row, selectedMaterialId) => {
-  console.log('物资选择变化 ID:', selectedMaterialId)
-
-  // 根据 ID 找到对应的物资对象
-  const selectedMaterial = row.matchOptions?.find(
-    (option) => option.matchedId === selectedMaterialId
-  )
-  console.log('找到的物资对象:', selectedMaterial)
-
-  if (selectedMaterial) {
-    row.selectedMaterial = selectedMaterial
-    row.selectedMaterialId = selectedMaterialId
-    row.selectedPriceQuarter = null
-    row.selectedPriceId = null
-
-    // 如果有价格选项，默认选择第一个
-    if (selectedMaterial.priceOptions && selectedMaterial.priceOptions.length > 0) {
-      const firstPrice = selectedMaterial.priceOptions[0]
-      row.selectedPriceQuarter = firstPrice
-      row.selectedPriceId = firstPrice.priceId
-      // 自动触发价格选择变化
-      handlePriceQuarterChange(row, firstPrice.priceId)
-    }
-  }
-
-  row.isUserModified = true
-}
-*/
-
-// 新增：价格季度选择处理函数 - 支持新的价格字段（暂时注释）
-/*
-const handlePriceQuarterChange = (row, selectedPriceId) => {
-  console.log('价格季度选择变化 ID:', selectedPriceId)
-
-  // 根据 ID 找到对应的价格对象
-  const selectedPriceQuarter = row.selectedMaterial?.priceOptions?.find(
-    (price) => price.priceId === selectedPriceId
-  )
-  console.log('找到的价格对象:', selectedPriceQuarter)
-
-  if (selectedPriceQuarter) {
-    row.selectedPriceQuarter = selectedPriceQuarter
-    row.selectedPriceId = selectedPriceId
-
-    // 更新显示的匹配信息，支持新的价格字段
-    if (row.selectedMaterial) {
-      // 更新表格显示的数据
-      row.matchedBaseName = row.selectedMaterial.baseInfo.materialName
-      row.matchedBaseSpec = row.selectedMaterial.baseInfo.specifications
-      
-      // 更新价格信息 - 支持新字段
-      row.matchedPrice = selectedPriceQuarter.taxPrice || selectedPriceQuarter.unitPrice
-      row.unitPrice = selectedPriceQuarter.taxPrice || selectedPriceQuarter.unitPrice
-      row.taxExcludedPrice = selectedPriceQuarter.taxExcludedPrice
-      row.originalPrice = selectedPriceQuarter.originalPrice
-      row.priceType = selectedPriceQuarter.priceType
-      
-      row.matchedPriceQuarter = selectedPriceQuarter.quarter
-
-      // 标记为用户修改
-      row.isUserModified = true
-      row.selectedBaseDataId = row.selectedMaterial.matchedId
-    }
-  }
-}
-*/
 
 // 新增：快速确认（已有推荐数据的情况）
 const handleQuickConfirm = async (row) => {
