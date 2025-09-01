@@ -329,7 +329,7 @@ const materialFormRules = {
 // 计算属性
 const hasRecommendations = computed(() => {
   return props.showRecommend && (recommendMaterials.value.length > 0 || 
-         (props.rowData.matchOptions && props.rowData.matchOptions.length > 0))
+         (props.rowData?.matchOptions && props.rowData.matchOptions.length > 0))
 })
 
 const isSelectionComplete = computed(() => {
@@ -341,7 +341,7 @@ const initRecommendData = () => {
   if (!props.rowData) return
   
   // 从 matchOptions 获取推荐物资
-  if (props.rowData.matchOptions && props.rowData.matchOptions.length > 0) {
+  if (props.rowData?.matchOptions && props.rowData.matchOptions.length > 0) {
     recommendMaterials.value = props.rowData.matchOptions.map(option => ({
       ...option.baseInfo,
       originalOption: option,

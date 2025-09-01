@@ -130,9 +130,9 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
-                    <!-- 用户选择的物资信息（不包括相似匹配） -->
-                    <span v-if="row.hasUserSelectedData && row.selectedMaterial && row.matchedType !== 2" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.materialName || row.selectedMaterial.baseInfo?.materialName || '-' }}
+                    <!-- 用户选择的物资信息（显示确认后的物资名称） -->
+                    <span v-if="row.hasUserSelectedData && row.confirmedBaseName" class="text-sm text-gray-600">
+                      {{ row.confirmedBaseName }}
                     </span>
                     <!-- 相似匹配显示选中的物资名称 -->
                     <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
@@ -168,9 +168,9 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
-                    <!-- 用户选择的物资规格（不包括相似匹配） -->
-                    <span v-if="row.hasUserSelectedData && row.selectedMaterial && row.matchedType !== 2" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.baseInfo?.specifications || row.selectedMaterial.specificationModel || '-' }}
+                    <!-- 用户选择的物资规格（显示确认后的规格型号） -->
+                    <span v-if="row.hasUserSelectedData && row.confirmedBaseSpec" class="text-sm text-gray-600">
+                      {{ row.confirmedBaseSpec }}
                     </span>
                     <!-- 相似匹配：显示选中物资的规格型号 -->
                     <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
@@ -248,19 +248,20 @@
           <!-- 数据来源列 -->
           <el-table-column label="数据来源" width="100" align="center">
             <template #default="{ row }">
+              <!-- 数据行不显示数据来源标签 -->
               <div v-if="row.rowType === 'data'" class="data-cell">
-                <el-tag :type="getDataSourceType(row).type" size="small">
-                  {{ getDataSourceType(row).text }}
-                </el-tag>
+                <span class="text-xs text-gray-400">-</span>
               </div>
+              <!-- 操作行显示数据来源标签 -->
               <div v-else class="action-cell">
-                <!-- 未匹配状态不显示数据来源 -->
-                <span v-if="row.matchedType === 0" class="text-xs text-gray-400 italic">
+                <!-- 未匹配状态显示等待选择 -->
+                <span v-if="row.matchedType === 0 && !row.hasUserSelectedData" class="text-xs text-gray-400 italic">
                   等待选择
                 </span>
-                <span v-else class="text-xs text-gray-400">
+                <!-- 其他状态显示数据来源标签 -->
+                <el-tag v-else :type="getDataSourceType(row).type" size="small">
                   {{ getDataSourceType(row).text }}
-                </span>
+                </el-tag>
               </div>
             </template>
           </el-table-column>
@@ -387,56 +388,38 @@
 
           <el-table-column label="操作" min-width="200" align="center" class-name="operation-column">
             <template #default="{ row }">
-              <!-- 数据行：显示状态和确认按钮 -->
+              <!-- 数据行：不显示任何操作内容 -->
               <div v-if="row.rowType === 'data'" class="data-cell operation-data-cell">
-                <!-- 已确认状态 -->
-                <el-button v-if="row.confirmResult === 1" type="success" size="small" disabled class="status-button">
-                  <el-icon><Check /></el-icon>
-                  <span>已确认</span>
-                </el-button>
-                <!-- 未确认但可以确认的状态 -->
-                <el-button v-else-if="row.hasUserSelectedData || row.matchedType === 1" 
-                  type="primary" size="small" @click="handleQuickConfirm(row)" class="action-button">
-                  <el-icon><Check /></el-icon>
-                  <span>确认</span>
-                </el-button>
-                <!-- 其他状态显示标签 -->
-                <el-tag v-else :type="getMatchTypeTagInfo(row.matchedType).type" size="small" class="status-tag">
-                  {{ getMatchTypeTagInfo(row.matchedType).text }}
-                </el-tag>
+                <span class="text-xs text-gray-400">-</span>
               </div>
               
               <!-- 操作行：根据匹配类型显示不同控件 -->
               <div v-else class="action-cell operation-action-cell">
-                <!-- 已确认状态：只显示状态 -->
+                <!-- 已确认状态：显示状态和重选按钮 -->
                 <div v-if="row.confirmResult === 1" class="operation-group confirmed-state">
                   <el-tag type="success" size="small" class="status-tag">
                     <el-icon><Check /></el-icon>
                     <span>已确认</span>
                   </el-tag>
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
+                    <el-icon><Edit /></el-icon>
+                    <span class="button-text">重选</span>
+                  </el-button>
                 </div>
                 
-                <!-- 相似匹配：显示确认和重新选择操作 -->
+                <!-- 相似匹配：显示重新选择按钮 -->
                 <div v-else-if="row.matchedType === 2" class="operation-group similar-match">
-                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="primary-action">
-                    <el-icon><Check /></el-icon>
-                    <span class="button-text">确认</span>
-                  </el-button>
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
+                  <el-button type="primary" size="small" @click="handleViewOptions(row)" class="single-action">
                     <el-icon><Edit /></el-icon>
-                    <span class="button-text">重选</span>
+                    <span class="button-text">选择确认</span>
                   </el-button>
                 </div>
                 
-                <!-- 未匹配且已选择：显示确认和重新选择操作 -->
+                <!-- 未匹配且已选择：显示重新选择操作 -->
                 <div v-else-if="row.matchedType === 0 && row.hasUserSelectedData" class="operation-group no-match-selected">
-                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="primary-action">
-                    <el-icon><Check /></el-icon>
-                    <span class="button-text">确认</span>
-                  </el-button>
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="single-action">
                     <el-icon><Edit /></el-icon>
-                    <span class="button-text">重选</span>
+                    <span class="button-text">重新选择</span>
                   </el-button>
                 </div>
                 
@@ -448,23 +431,23 @@
                   </el-button>
                 </div>
                 
-                <!-- 精确匹配：显示已匹配状态和重新选择 -->
+                <!-- 精确匹配：显示快速确认和重新选择按钮 -->
                 <div v-else-if="row.matchedType === 1" class="operation-group exact-match">
-                  <el-tag type="success" size="small" class="status-tag">
-                    <el-icon><CircleCheck /></el-icon>
-                    <span>已匹配</span>
-                  </el-tag>
+                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="primary-action">
+                    <el-icon><Check /></el-icon>
+                    <span class="button-text">确认</span>
+                  </el-button>
                   <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
                     <el-icon><Edit /></el-icon>
                     <span class="button-text">重选</span>
                   </el-button>
                 </div>
                 
-                <!-- 其他匹配类型：显示确认按钮 -->
+                <!-- 其他匹配类型：显示重选按钮 -->
                 <div v-else class="operation-group other-match">
-                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="single-action">
-                    <el-icon><Check /></el-icon>
-                    <span class="button-text">确认</span>
+                  <el-button type="primary" size="small" @click="handleViewOptions(row)" class="single-action">
+                    <el-icon><Edit /></el-icon>
+                    <span class="button-text">选择确认</span>
                   </el-button>
                 </div>
               </div>
@@ -642,20 +625,7 @@ const fetchData = async () => {
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
           
-          // 【数据流转调试】重点关注数据到模板的渲染过程
-          console.log('【数据流转调试】物资:', initialized.materialName, {
-            matchedType: initialized.matchedType,
-            taxExcludedPrice: initialized.taxExcludedPrice,
-            '数据行taxExcludedPrice': dataRow.taxExcludedPrice,
-            '数据行类型': dataRow.rowType,
-            '立即调用getTaxExcludedPrice结果': (() => {
-              try {
-                return getTaxExcludedPrice(dataRow)
-              } catch (e) {
-                return '调用出错: ' + e.message
-              }
-            })()
-          })
+          // 数据初始化完成
           
           return [dataRow, actionRow]
         })
@@ -731,7 +701,8 @@ const formatNumber = (value) => {
   return Number(value).toLocaleString()
 }
 
-// 格式化价格显示 - 显示含税价和不含税价
+// 格式化价格显示 - 显示含税价和不含税价（暂时未使用，保留备用）
+/*
 const formatPriceDisplay = (unitPrice, taxExcludedPrice, priceType) => {
   // 如果只有一个价格值，直接显示
   if ((taxExcludedPrice === undefined || taxExcludedPrice === null) && unitPrice !== undefined && unitPrice !== null) {
@@ -752,6 +723,7 @@ const formatPriceDisplay = (unitPrice, taxExcludedPrice, priceType) => {
 
   return '无价格'
 }
+*/
 
 // 搜索处理（防抖）
 let searchTimeout = null
@@ -1134,7 +1106,8 @@ const getBaseInfoSpec = (row) => {
   return row.recommendedBaseSpec || '-'
 }
 
-// 获取价格文本 - 支持新的价格字段
+// 获取价格文本 - 支持新的价格字段（暂时未使用，保留备用）
+/*
 const getPriceText = (row) => {
   // 最优先：如果用户已确认选择，显示确认的价格
   if (row.confirmResult === 1 && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
@@ -1170,6 +1143,7 @@ const getPriceText = (row) => {
   const fallback = row.recommendedPrice ? formatPriceDisplay(row.recommendedPrice) : '无价格'
   return fallback
 }
+*/
 
 // // 获取价格季度
 // const getPriceQuarter = (row) => {
@@ -1574,7 +1548,7 @@ watch(
 // }
 
 // 处理物资价格选择结果 - 匹配之前的数据选择逻辑
-const handleMaterialPriceSelection = (selection) => {
+const handleMaterialPriceSelection = async (selection) => {
   console.log('【调试】handleMaterialPriceSelection 开始，接收参数:', selection)
   console.log('【调试】currentSelectionRow.value:', currentSelectionRow.value)
   
@@ -1713,7 +1687,9 @@ const handleMaterialPriceSelection = (selection) => {
     })
     console.log('【选择后价格对比调试】分析完成')
 
-    ElMessage.success('数据选择成功，请点击确认按钮完成确认')
+    // 直接调用确认接口，不需要用户再手动确认
+    await handleAutoConfirm(items[0]) // 使用第一个item作为代表进行确认
+    
     currentSelectionRow.value = null
   } catch (error) {
     console.error('保存选择失败:', error)
@@ -1735,28 +1711,27 @@ const handleMaterialPriceSelection = (selection) => {
 
 // 格式化价格显示
 const formatPrice = (price) => {
-  console.log('【formatPrice调试】输入价格:', price, '类型:', typeof price)
-  const result = typeof price === 'number' ? price.toFixed(2) : '0.00'
-  console.log('【formatPrice调试】输出结果:', result)
-  return result
+  // 处理数字类型
+  if (typeof price === 'number') {
+    return price.toFixed(2)
+  }
+  // 处理字符串类型 - 尝试转换为数字
+  if (typeof price === 'string' && price !== '') {
+    const numPrice = parseFloat(price)
+    if (!isNaN(numPrice)) {
+      return numPrice.toFixed(2)
+    }
+  }
+  // 默认返回
+  return '0.00'
 }
 
 // 获取含税价格（数据行始终显示原始数据）
 const getTaxIncludedPrice = (row) => {
-  // 未匹配状态显示"--"
-  if (row.matchedType === 0) {
-    return '--'
-  }
-  
-  // 【调试】打印原始数据
-  console.log('【调试】getTaxIncludedPrice - 原始数据:', {
-    物资名称: row.materialName,
-    confirmedPrice: row.confirmedPrice,
-    unitPrice: row.unitPrice,
-    taxPrice: row.taxPrice,
-    matchedPrice: row.matchedPrice,
-    originalPrice: row.originalPrice
-  })
+  // 未匹配状态也显示价格，不再返回"--"
+  // if (row.matchedType === 0) {
+  //   return '--'
+  // }
   
   // 按优先级获取价格
   let price = null
@@ -1782,9 +1757,7 @@ const getTaxIncludedPrice = (row) => {
     price = row.confirmedPrice
   }
   
-  console.log('【调试】getTaxIncludedPrice - 最终使用价格:', price)
-  
-  // 检查是否与操作行价格相同
+  // 检查是否与操作行价格相同 - 价格相同时显示"价格--"
   const dataPrice = parseFloat(price || 0)
   const actionPrice = getActionRowPrice(row, 'taxIncluded')
   
@@ -1792,10 +1765,9 @@ const getTaxIncludedPrice = (row) => {
     const priceDiff = Math.abs(actionPrice - dataPrice)
     const tolerance = 0.01
     
-    // 如果价格相同，显示"--"
+    // 如果价格相同，显示"价格--"（股票样式）
     if (priceDiff < tolerance) {
-      console.log(`【调试】getTaxIncludedPrice - 价格相同，显示"--"`)
-      return '--'
+      return formatPrice(price) + '--'
     }
   }
   
@@ -1804,27 +1776,18 @@ const getTaxIncludedPrice = (row) => {
 
 // 获取不含税价格（数据行始终显示原始数据）
 const getTaxExcludedPrice = (row) => {
-  console.log('【渲染调试】getTaxExcludedPrice 被调用:', {
-    物资名称: row.materialName,
-    matchedType: row.matchedType,
-    rowType: row.rowType,
-    taxExcludedPrice: row.taxExcludedPrice,
-    taxExcludedPrice类型: typeof row.taxExcludedPrice,
-    taxExcludedPrice值: JSON.stringify(row.taxExcludedPrice)
-  })
+  // 调试已移除
   
-  // 未匹配状态显示"--"
-  if (row.matchedType === 0) {
-    console.log('【渲染调试】返回 "--" 因为未匹配')
-    return '--'
-  }
+  // 未匹配状态也显示价格，不再返回"--"
+  // if (row.matchedType === 0) {
+  //   console.log('【渲染调试】返回 "--" 因为未匹配')
+  //   return '--'
+  // }
   
   // 使用不含税价格字段
   const price = row.taxExcludedPrice || row.notaxPrice || 0
   
-  console.log('【渲染调试】getTaxExcludedPrice - 计算的价格:', price, '类型:', typeof price)
-  
-  // 检查是否与操作行价格相同
+  // 检查是否与操作行价格相同 - 价格相同时显示"价格--"
   const dataPrice = parseFloat(price || 0)
   const actionPrice = getActionRowPrice(row, 'taxExcluded')
   
@@ -1832,10 +1795,9 @@ const getTaxExcludedPrice = (row) => {
     const priceDiff = Math.abs(actionPrice - dataPrice)
     const tolerance = 0.01
     
-    // 如果价格相同，显示"--"
+    // 如果价格相同，显示"价格--"（股票样式）
     if (priceDiff < tolerance) {
-      console.log(`【调试】getTaxExcludedPrice - 价格相同，显示"--"`)
-      return '--'
+      return formatPrice(price) + '--'
     }
   }
   
@@ -1913,6 +1875,46 @@ const getSelectedTaxRate = (row) => {
   return '13%'
 }
 
+
+// 自动确认（弹窗选择完成后自动调用）
+const handleAutoConfirm = async (row) => {
+  try {
+    // 使用用户选择的数据进行确认
+    const confirmData = {
+      id: row.taskDataId || row.id,
+      confirmBaseDataId: row.selectedBaseDataId,
+      confirmPriceId: row.selectedPriceId,
+      confirmType: 2 // 人工确认
+    }
+
+    console.log('【自动确认】调用确认接口:', confirmData)
+    const result = await confirmSupplierMaterialData(confirmData)
+
+    if (result && result.code === 200) {
+      // 更新所有相关行的确认状态
+      const items = materialData.value.filter((item) => {
+        const matchByTaskDataId = item.taskDataId === row.taskDataId
+        const matchById = row.id && item.id === row.id
+        return matchByTaskDataId || matchById
+      })
+      
+      items.forEach((item) => {
+        item.confirmResult = 1
+        item.confirmType = result.data?.confirmType || 2
+      })
+
+      ElMessage.success('物资选择并确认成功')
+      
+      // 刷新数据以获取最新状态
+      await fetchData()
+    } else {
+      ElMessage.error(result?.message || '确认失败')
+    }
+  } catch (error) {
+    console.error('自动确认失败:', error)
+    ElMessage.error('确认失败')
+  }
+}
 
 // 新增：快速确认（已有推荐数据的情况）
 const handleQuickConfirm = async (row) => {
