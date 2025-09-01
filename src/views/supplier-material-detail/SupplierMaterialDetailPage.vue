@@ -131,29 +131,17 @@
                 <div class="material-cell">
                   <div class="material-content">
                     <!-- 显示已选择的物资信息 -->
-                    <div v-if="row.hasUserSelectedData && row.selectedMaterial" class="selected-material-info">
-                      <span class="material-name">{{ row.selectedMaterial.materialName }}</span>
-                      <el-button type="primary" link size="small" @click="openMaterialSelectionDialog(row)">
-                        重新选择
-                      </el-button>
-                    </div>
-                    <!-- 相似匹配、未匹配或其他情况：统一显示选择按钮 -->
-                    <div v-else class="material-selection-button">
-                      <el-button 
-                        type="primary" 
-                        size="small" 
-                        @click="openMaterialSelectionDialog(row)"
-                        :icon="row.matchedType === 2 ? Edit : Plus"
-                      >
-                        {{ getMaterialButtonText(row) }}
-                      </el-button>
-                      <!-- 显示当前状态提示 -->
-                      <div class="status-hint">
-                        <span v-if="row.matchedType === 0" class="text-gray-500 text-xs">未匹配</span>
-                        <span v-else-if="row.matchedType === 1" class="text-green-600 text-xs">已精确匹配</span>
-                        <span v-else-if="row.matchedType === 2" class="text-orange-500 text-xs">相似匹配</span>
-                      </div>
-                    </div>
+                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.materialName }}
+                    </span>
+                    <!-- 相似匹配显示选中的物资名称 -->
+                    <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.materialName || row.materialName || '-' }}
+                    </span>
+                    <!-- 其他情况显示原始物资名称 -->
+                    <span v-else class="text-sm text-gray-500">
+                      {{ row.materialName || '-' }}
+                    </span>
                   </div>
                   <!-- 数据差异标记 -->
                   <el-icon v-if="hasMaterialNameDifference(row)" class="difference-marker">
@@ -284,7 +272,8 @@
           <el-table-column label="物资价格所属季度" width="100" align="center">
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
-                <span class="quarter-text">{{ getPriceQuarter(row) }}</span>
+                <!-- 数据行不显示季度信息 -->
+                <span class="text-sm text-gray-400">-</span>
               </div>
               <div v-else class="action-cell">
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
