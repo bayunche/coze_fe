@@ -649,6 +649,15 @@ const fetchData = async () => {
             selectedPriceQuarter: initialized.selectedPriceQuarter,
             原始含税价: initialized.unitPrice || initialized.taxPrice,
             原始不含税价: initialized.taxExcludedPrice,
+            所有价格字段: {
+              unitPrice: initialized.unitPrice,
+              taxPrice: initialized.taxPrice,
+              originalPrice: initialized.originalPrice,
+              matchedPrice: initialized.matchedPrice,
+              confirmedPrice: initialized.confirmedPrice,
+              taxExcludedPrice: initialized.taxExcludedPrice,
+              notaxPrice: initialized.notaxPrice
+            },
             操作行价格数据: initialized.selectedPriceQuarter ? {
               含税价: initialized.selectedPriceQuarter.taxPrice || initialized.selectedPriceQuarter.unitPrice,
               不含税价: initialized.selectedPriceQuarter.taxExcludedPrice
@@ -1232,16 +1241,32 @@ const getActionRowPrice = (dataRow, priceType) => {
 
 // 获取数据行的价格数值
 const getDataRowPrice = (dataRow, priceType) => {
-  const dataPriceData = getPriceText(dataRow)
-  
-  if (typeof dataPriceData === 'object') {
-    if (priceType === 'taxIncluded') {
-      return parseFloat(dataPriceData.taxIncluded.replace(/[¥,]/g, '')) || null
-    } else if (priceType === 'taxExcluded') {
-      return parseFloat(dataPriceData.taxExcluded.replace(/[¥,]/g, '')) || null
+  // 直接获取原始价格数值，不要通过 getPriceText
+  if (priceType === 'taxIncluded') {
+    // 按优先级获取含税价
+    if (dataRow.unitPrice !== undefined && dataRow.unitPrice !== null && dataRow.unitPrice !== 0) {
+      return parseFloat(dataRow.unitPrice)
     }
-  } else if (priceType === 'single') {
-    return parseFloat((dataPriceData || '').replace(/[¥,]/g, '')) || null
+    if (dataRow.taxPrice !== undefined && dataRow.taxPrice !== null && dataRow.taxPrice !== 0) {
+      return parseFloat(dataRow.taxPrice)
+    }
+    if (dataRow.originalPrice !== undefined && dataRow.originalPrice !== null && dataRow.originalPrice !== 0) {
+      return parseFloat(dataRow.originalPrice)
+    }
+    if (dataRow.matchedPrice !== undefined && dataRow.matchedPrice !== null && dataRow.matchedPrice !== 0) {
+      return parseFloat(dataRow.matchedPrice)
+    }
+    // 注意：数据行不应该使用 confirmedPrice，那是用户选择后的价格
+    return null
+  } else if (priceType === 'taxExcluded') {
+    // 获取不含税价
+    if (dataRow.taxExcludedPrice !== undefined && dataRow.taxExcludedPrice !== null && dataRow.taxExcludedPrice !== 0) {
+      return parseFloat(dataRow.taxExcludedPrice)
+    }
+    if (dataRow.notaxPrice !== undefined && dataRow.notaxPrice !== null && dataRow.notaxPrice !== 0) {
+      return parseFloat(dataRow.notaxPrice)
+    }
+    return null
   }
   
   return null
@@ -1257,11 +1282,21 @@ const getPriceChangeIcon = (row, priceType) => {
   // 当操作行没有价格数据时，不显示箭头
   if (dataPrice === null || actionPrice === null) return null
   
-  // 操作行价格大于数据行价格时，显示向下箭头（表示相对便宜）
+  // 添加容差处理，避免浮点数精度问题
+  const priceDiff = Math.abs(actionPrice - dataPrice)
+  const tolerance = 0.01 // 价格差异小于0.01元认为相等
+  
+  // 如果价格差异小于容差，认为价格相同，不显示箭头
+  if (priceDiff < tolerance) {
+    console.log(`【价格对比】${row.materialName} 价格相同，不显示箭头`)
+    return null
+  }
+  
+  // 操作行价格大于数据行价格时，显示绿色向下箭头（表示操作行更贵）
   if (actionPrice > dataPrice) {
     return ArrowDown
   }
-  // 操作行价格小于数据行价格时，显示向上箭头（表示相对昂贵）
+  // 操作行价格小于数据行价格时，显示红色向上箭头（表示操作行更便宜）
   else if (actionPrice < dataPrice) {
     return ArrowUp
   }
@@ -1283,6 +1318,11 @@ const debugPriceComparison = (row, priceType) => {
      (item.id && row.id && item.id === row.id))
   )
   
+  // 添加价格相等判断
+  const priceDiff = dataPrice !== null && actionPrice !== null ? Math.abs(actionPrice - dataPrice) : null
+  const tolerance = 0.01
+  const pricesEqual = priceDiff !== null && priceDiff < tolerance
+
   const debugInfo = {
     物资名称: row.materialName || '未知',
     匹配类型: row.matchedType === 0 ? '未匹配' : 
@@ -1292,12 +1332,13 @@ const debugPriceComparison = (row, priceType) => {
              priceType === 'taxExcluded' ? '不含税价' : '单价',
     数据行价格: dataPrice !== null ? `¥${dataPrice.toFixed(2)}` : '无数据',
     操作行价格: actionPrice !== null ? `¥${actionPrice.toFixed(2)}` : '无数据',
+    价格差额: priceDiff !== null ? `¥${priceDiff.toFixed(2)}` : '无法计算',
     价格差异: dataPrice !== null && actionPrice !== null ? 
       `${((actionPrice - dataPrice) / dataPrice * 100).toFixed(2)}%` : '无法计算',
     对比结果: dataPrice !== null && actionPrice !== null ? 
-      (actionPrice > dataPrice ? '操作行更高(绿色↓)' : 
-       actionPrice < dataPrice ? '操作行更低(红色↑)' : 
-       '价格相同') : '无法对比',
+      (pricesEqual ? '价格相同(无颜色无箭头)' :
+       actionPrice > dataPrice ? '操作行更高(原价绿色↓)' : 
+       '操作行更低(原价红色↑)') : '无法对比',
     是否有用户选择: actionRow?.hasUserSelectedData ? '是' : '否',
     taskDataId: row.taskDataId || row.id || '未知'
   }
@@ -1325,11 +1366,21 @@ const getPriceTextStyle = (row, priceType) => {
   // 当操作行没有价格数据时，不显示颜色
   if (dataPrice === null || actionPrice === null) return {}
   
-  // 操作行价格大于数据行价格时，数据行价格显示绿色（表示选择了更优的价格）
+  // 添加容差处理，避免浮点数精度问题
+  const priceDiff = Math.abs(actionPrice - dataPrice)
+  const tolerance = 0.01 // 价格差异小于0.01元认为相等
+  
+  // 如果价格差异小于容差，认为价格相同，不改变颜色
+  if (priceDiff < tolerance) {
+    console.log(`【价格对比】${row.materialName} 价格相同，不改变颜色`)
+    return {}
+  }
+  
+  // 操作行价格大于数据行价格时，数据行价格显示绿色（表示原价更便宜）
   if (actionPrice > dataPrice) {
     return { color: '#67C23A', fontWeight: '600' }
   }
-  // 操作行价格小于数据行价格时，数据行价格显示红色（表示选择了更高的价格）
+  // 操作行价格小于数据行价格时，数据行价格显示红色（表示原价更贵）
   else if (actionPrice < dataPrice) {
     return { color: '#F56C6C', fontWeight: '600' }
   }
@@ -1345,6 +1396,15 @@ const getPriceChangeIconStyle = (row, priceType) => {
   const actionPrice = getActionRowPrice(row, priceType)
   
   if (dataPrice === null || actionPrice === null) return {}
+  
+  // 添加容差处理，避免浮点数精度问题
+  const priceDiff = Math.abs(actionPrice - dataPrice)
+  const tolerance = 0.01 // 价格差异小于0.01元认为相等
+  
+  // 如果价格差异小于容差，认为价格相同，不显示箭头样式
+  if (priceDiff < tolerance) {
+    return {}
+  }
   
   // 操作行价格大于数据行价格时，显示绿色向下箭头
   if (actionPrice > dataPrice) {
@@ -1689,8 +1749,43 @@ const getTaxIncludedPrice = (row) => {
   if (row.matchedType === 0) {
     return '--'
   }
-  // 使用确认后的价格或原始价格
-  const price = row.confirmedPrice || row.unitPrice || row.taxPrice || row.matchedPrice
+  
+  // 【调试】打印原始数据
+  console.log('【调试】getTaxIncludedPrice - 原始数据:', {
+    物资名称: row.materialName,
+    confirmedPrice: row.confirmedPrice,
+    unitPrice: row.unitPrice,
+    taxPrice: row.taxPrice,
+    matchedPrice: row.matchedPrice,
+    originalPrice: row.originalPrice
+  })
+  
+  // 按优先级获取价格
+  let price = null
+  
+  // 1. 优先使用 unitPrice（含税价）
+  if (row.unitPrice !== undefined && row.unitPrice !== null && row.unitPrice !== 0) {
+    price = row.unitPrice
+  }
+  // 2. 其次使用 taxPrice
+  else if (row.taxPrice !== undefined && row.taxPrice !== null && row.taxPrice !== 0) {
+    price = row.taxPrice
+  }
+  // 3. 再次使用 originalPrice
+  else if (row.originalPrice !== undefined && row.originalPrice !== null && row.originalPrice !== 0) {
+    price = row.originalPrice
+  }
+  // 4. 使用 matchedPrice
+  else if (row.matchedPrice !== undefined && row.matchedPrice !== null && row.matchedPrice !== 0) {
+    price = row.matchedPrice
+  }
+  // 5. 最后使用 confirmedPrice（这个可能是用户选择后的价格）
+  else if (row.confirmedPrice !== undefined && row.confirmedPrice !== null && row.confirmedPrice !== 0) {
+    price = row.confirmedPrice
+  }
+  
+  console.log('【调试】getTaxIncludedPrice - 最终使用价格:', price)
+  
   return formatPrice(price || 0)
 }
 
@@ -1700,8 +1795,19 @@ const getTaxExcludedPrice = (row) => {
   if (row.matchedType === 0) {
     return '--'
   }
-  // 使用确认后的不含税价格
-  const price = row.taxExcludedPrice || 0
+  
+  // 【调试】打印原始数据
+  console.log('【调试】getTaxExcludedPrice - 原始数据:', {
+    物资名称: row.materialName,
+    taxExcludedPrice: row.taxExcludedPrice,
+    notaxPrice: row.notaxPrice
+  })
+  
+  // 使用不含税价格字段
+  const price = row.taxExcludedPrice || row.notaxPrice || 0
+  
+  console.log('【调试】getTaxExcludedPrice - 最终使用价格:', price)
+  
   return formatPrice(price)
 }
 
