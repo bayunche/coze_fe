@@ -88,9 +88,7 @@
       <div :class="CSS_CLASSES.TABLE_SECTION">
         <div class="table-toolbar">
           <div class="toolbar-left">
-            <span class="total-info">
-              共 {{ total }} 条记录，已确认 {{ confirmedCount }} 条，待确认 {{ pendingCount }} 条
-            </span>
+          
           </div>
           <div class="toolbar-right">
             <el-button
