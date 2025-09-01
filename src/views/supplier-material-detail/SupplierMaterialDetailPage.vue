@@ -268,6 +268,23 @@
             </template>
           </el-table-column>
 
+          <!-- 税率列 -->
+          <el-table-column label="税率" width="80" align="center">
+            <template #default="{ row }">
+              <div v-if="row.rowType === 'data'" class="data-cell">
+                <span class="tax-rate-text">{{ getTaxRate(row) }}</span>
+              </div>
+              <div v-else class="action-cell">
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-tax-rate">
+                  <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
+                </div>
+                <div v-else class="tax-rate-hint">
+                  <span class="text-sm text-gray-500">-</span>
+                </div>
+              </div>
+            </template>
+          </el-table-column>
+
           <!-- 物资价格所属季度列 -->
           <el-table-column label="物资价格所属季度" width="100" align="center">
             <template #default="{ row }">
@@ -835,29 +852,29 @@ const handleBatchConfirm = async () => {
   }
 }
 
-// 获取确认状态类型
-const getConfirmStatusType = (status) => {
-  switch (Number(status)) {
-    case 1:
-      return 'success'
-    case 0:
-      return 'warning'
-    default:
-      return 'info'
-  }
-}
+// // 获取确认状态类型
+// const getConfirmStatusType = (status) => {
+//   switch (Number(status)) {
+//     case 1:
+//       return 'success'
+//     case 0:
+//       return 'warning'
+//     default:
+//       return 'info'
+//   }
+// }
 
-// 获取确认状态文本
-const getConfirmStatusText = (status) => {
-  switch (Number(status)) {
-    case 1:
-      return '已确认'
-    case 0:
-      return '待确认'
-    default:
-      return '未知'
-  }
-}
+// // 获取确认状态文本
+// const getConfirmStatusText = (status) => {
+//   switch (Number(status)) {
+//     case 1:
+//       return '已确认'
+//     case 0:
+//       return '待确认'
+//     default:
+//       return '未知'
+//   }
+// }
 
 // 获取对应的数据行和操作行
 const getCorrespondingRows = (currentRow) => {
@@ -1077,42 +1094,42 @@ const getPriceText = (row) => {
   return fallback
 }
 
-// 获取价格季度
-const getPriceQuarter = (row) => {
-  // 最优先：如果用户已确认选择，显示确认的季度信息
-  if (row.confirmResult === 1 && row.confirmedPriceQuarter) {
-    return row.confirmedPriceQuarter
-  }
+// // 获取价格季度
+// const getPriceQuarter = (row) => {
+//   // 最优先：如果用户已确认选择，显示确认的季度信息
+//   if (row.confirmResult === 1 && row.confirmedPriceQuarter) {
+//     return row.confirmedPriceQuarter
+//   }
 
-  // 如果用户已选择但未确认，显示选择的季度信息
-  if (row.hasUserSelectedData && row.confirmedPriceQuarter) {
-    return row.confirmedPriceQuarter
-  }
+//   // 如果用户已选择但未确认，显示选择的季度信息
+//   if (row.hasUserSelectedData && row.confirmedPriceQuarter) {
+//     return row.confirmedPriceQuarter
+//   }
 
-  // 优先从直接的priceInfo获取
-  if (row.priceInfo && row.priceInfo.quarter) {
-    return row.priceInfo.quarter
-  }
+//   // 优先从直接的priceInfo获取
+//   if (row.priceInfo && row.priceInfo.quarter) {
+//     return row.priceInfo.quarter
+//   }
 
-  // 从matchOptions中获取第一个匹配选项的最新价格季度信息
-  if (row.matchOptions && row.matchOptions.length > 0) {
-    const matchOption = row.matchOptions[0]
-    if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
-      // 取最新的价格季度（通常是第一个）
-      const latestPrice = matchOption.priceOptions[0]
-      return latestPrice.quarter || ''
-    }
-  }
+//   // 从matchOptions中获取第一个匹配选项的最新价格季度信息
+//   if (row.matchOptions && row.matchOptions.length > 0) {
+//     const matchOption = row.matchOptions[0]
+//     if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
+//       // 取最新的价格季度（通常是第一个）
+//       const latestPrice = matchOption.priceOptions[0]
+//       return latestPrice.quarter || ''
+//     }
+//   }
 
-  // 无匹配时，显示原始季度信息（如果有的话）
-  if (row.quarter) {
-    return row.quarter
-  }
+//   // 无匹配时，显示原始季度信息（如果有的话）
+//   if (row.quarter) {
+//     return row.quarter
+//   }
 
-  return row.recommendedPriceQuarter || '-'
-}
+//   return row.recommendedPriceQuarter || '-'
+// }
 
-// 获取操作行对应的价格数值
+// 获取操作行对应的价格数值（优化版本）
 const getActionRowPrice = (dataRow, priceType) => {
   // 在 materialData 中查找对应的操作行
   const actionRowIndex = materialData.value.findIndex(item => 
@@ -1124,18 +1141,17 @@ const getActionRowPrice = (dataRow, priceType) => {
   if (actionRowIndex === -1) return null
   
   const actionRow = materialData.value[actionRowIndex]
-  const actionPriceData = getPriceText(actionRow)
   
-  if (typeof actionPriceData === 'object') {
+  // 直接从操作行获取价格数据，避免重复调用 getPriceText
+  if (actionRow.hasUserSelectedData && actionRow.selectedPriceQuarter) {
     if (priceType === 'taxIncluded') {
-      return parseFloat(actionPriceData.taxIncluded.replace(/[¥,]/g, '')) || null
+      return parseFloat(actionRow.selectedPriceQuarter.taxPrice || actionRow.selectedPriceQuarter.unitPrice || 0) || null
     } else if (priceType === 'taxExcluded') {
-      return parseFloat(actionPriceData.taxExcluded.replace(/[¥,]/g, '')) || null
+      return parseFloat(actionRow.selectedPriceQuarter.taxExcludedPrice || 0) || null
     }
-  } else if (priceType === 'single') {
-    return parseFloat((actionPriceData || '').replace(/[¥,]/g, '')) || null
   }
   
+  // 如果没有用户选择数据，返回null（表示没有操作行价格进行比较）
   return null
 }
 
@@ -1156,20 +1172,21 @@ const getDataRowPrice = (dataRow, priceType) => {
   return null
 }
 
-// 获取价格变化箭头组件
+// 获取价格变化箭头组件 - 实时计算渲染
 const getPriceChangeIcon = (row, priceType) => {
   if (row.rowType !== 'data') return null
   
   const dataPrice = getDataRowPrice(row, priceType)
   const actionPrice = getActionRowPrice(row, priceType)
   
+  // 当操作行没有价格数据时，不显示箭头
   if (dataPrice === null || actionPrice === null) return null
   
-  // 操作行价格大于数据行价格时，显示绿色向下箭头（下跌）
+  // 操作行价格大于数据行价格时，显示向下箭头（表示相对便宜）
   if (actionPrice > dataPrice) {
     return ArrowDown
   }
-  // 操作行价格小于数据行价格时，显示红色向上箭头（上涨）
+  // 操作行价格小于数据行价格时，显示向上箭头（表示相对昂贵）
   else if (actionPrice < dataPrice) {
     return ArrowUp
   }
@@ -1177,20 +1194,21 @@ const getPriceChangeIcon = (row, priceType) => {
   return null
 }
 
-// 获取价格文本样式（为数据行价格添加颜色）
+// 获取价格文本样式（为数据行价格添加颜色）- 实时计算渲染
 const getPriceTextStyle = (row, priceType) => {
   if (row.rowType !== 'data') return {}
   
   const dataPrice = getDataRowPrice(row, priceType)
   const actionPrice = getActionRowPrice(row, priceType)
   
+  // 当操作行没有价格数据时，不显示颜色
   if (dataPrice === null || actionPrice === null) return {}
   
-  // 操作行价格大于数据行价格时，数据行价格显示绿色
+  // 操作行价格大于数据行价格时，数据行价格显示绿色（表示选择了更优的价格）
   if (actionPrice > dataPrice) {
     return { color: '#67C23A', fontWeight: '600' }
   }
-  // 操作行价格小于数据行价格时，数据行价格显示红色
+  // 操作行价格小于数据行价格时，数据行价格显示红色（表示选择了更高的价格）
   else if (actionPrice < dataPrice) {
     return { color: '#F56C6C', fontWeight: '600' }
   }
@@ -1207,11 +1225,11 @@ const getPriceChangeIconStyle = (row, priceType) => {
   
   if (dataPrice === null || actionPrice === null) return {}
   
-  // 操作行价格大于数据行价格时，显示绿色
+  // 操作行价格大于数据行价格时，显示绿色向下箭头
   if (actionPrice > dataPrice) {
     return { color: '#67C23A', marginLeft: '4px', fontSize: '12px' }
   }
-  // 操作行价格小于数据行价格时，显示红色
+  // 操作行价格小于数据行价格时，显示红色向上箭头
   else if (actionPrice < dataPrice) {
     return { color: '#F56C6C', marginLeft: '4px', fontSize: '12px' }
   }
@@ -1555,11 +1573,11 @@ watch(
   { immediate: false }
 )
 
-// 新增的方法：打开物资价格选择弹窗
-const openMaterialSelectionDialog = (row) => {
-  currentSelectionRow.value = row
-  showMaterialPriceDialog.value = true
-}
+// // 新增的方法：打开物资价格选择弹窗
+// const openMaterialSelectionDialog = (row) => {
+//   currentSelectionRow.value = row
+//   showMaterialPriceDialog.value = true
+// }
 
 // 处理物资价格选择结果
 const handleMaterialPriceSelection = (selection) => {
@@ -1607,17 +1625,17 @@ const handleMaterialPriceSelection = (selection) => {
   currentSelectionRow.value = null
 }
 
-// 获取物资选择按钮文本
-const getMaterialButtonText = (row) => {
-  if (row.matchedType === 0) {
-    return '选择物资'
-  } else if (row.matchedType === 1) {
-    return '查看推荐'
-  } else if (row.matchedType === 2) {
-    return '选择推荐'
-  }
-  return '选择物资'
-}
+// // 获取物资选择按钮文本
+// const getMaterialButtonText = (row) => {
+//   if (row.matchedType === 0) {
+//     return '选择物资'
+//   } else if (row.matchedType === 1) {
+//     return '查看推荐'
+//   } else if (row.matchedType === 2) {
+//     return '选择推荐'
+//   }
+//   return '选择物资'
+// }
 
 // 格式化价格显示
 const formatPrice = (price) => {
@@ -1646,6 +1664,55 @@ const getTaxExcludedPrice = (row) => {
   // 使用确认后的不含税价格
   const price = row.taxExcludedPrice || 0
   return formatPrice(price)
+}
+
+// 获取税率（数据行）
+const getTaxRate = (row) => {
+  // 如果有含税价和不含税价，计算税率
+  const taxIncluded = row.confirmedPrice || row.unitPrice || row.taxPrice || 0
+  const taxExcluded = row.taxExcludedPrice || 0
+  
+  if (taxIncluded > 0 && taxExcluded > 0) {
+    // 税率 = (含税价 - 不含税价) / 不含税价 * 100%
+    const rate = ((taxIncluded - taxExcluded) / taxExcluded * 100).toFixed(0)
+    return `${rate}%`
+  }
+  
+  // 如果有税率字段，直接使用
+  if (row.taxRate !== undefined && row.taxRate !== null) {
+    // 如果是小数形式（如0.13），转换为百分比
+    if (row.taxRate < 1) {
+      return `${(row.taxRate * 100).toFixed(0)}%`
+    }
+    // 如果已经是百分比形式（如13），直接显示
+    return `${row.taxRate}%`
+  }
+  
+  // 默认税率
+  return '13%'
+}
+
+// 获取选中的税率（操作行）
+const getSelectedTaxRate = (row) => {
+  if (row.hasUserSelectedData && row.selectedPriceQuarter) {
+    const taxIncluded = row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0
+    const taxExcluded = row.selectedPriceQuarter.taxExcludedPrice || 0
+    
+    if (taxIncluded > 0 && taxExcluded > 0) {
+      const rate = ((taxIncluded - taxExcluded) / taxExcluded * 100).toFixed(0)
+      return `${rate}%`
+    }
+    
+    // 如果选中的价格数据有税率字段
+    if (row.selectedPriceQuarter.taxRate !== undefined && row.selectedPriceQuarter.taxRate !== null) {
+      if (row.selectedPriceQuarter.taxRate < 1) {
+        return `${(row.selectedPriceQuarter.taxRate * 100).toFixed(0)}%`
+      }
+      return `${row.selectedPriceQuarter.taxRate}%`
+    }
+  }
+  
+  return '13%'
 }
 
 // 注释掉未使用的函数，保留以备后续使用
