@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // 甲供物资相关API转发到1207端口（去掉/api前缀） - 优先级最高
         '/api/materials/partya': {
-          target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           timeout: 300000, // 5分钟超时
           proxyTimeout: 300000,
@@ -59,7 +59,7 @@ export default defineConfig(({ mode }) => {
           }
         },
         '/api/materials/partyb': {
-          target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           timeout: 300000, // 5分钟超时
           proxyTimeout: 300000,
@@ -72,7 +72,7 @@ export default defineConfig(({ mode }) => {
         },
         // 价格相关API特殊处理 - 转发到专门的价格API服务器
         '/api/backend-api/materials/priceinfo': {
-          target: env.VITE_PRICE_API_TARGET || 'http://10.1.17.83:1207',
+          target: env.VITE_PRICE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           // 支持大文件上传的配置
           timeout: 300000, // 5分钟超时
@@ -85,7 +85,7 @@ export default defineConfig(({ mode }) => {
           }
         },
         '/backend-api/materials/priceinfo': {
-          target: env.VITE_PRICE_API_TARGET || 'http://10.1.17.83:1207',
+          target: env.VITE_PRICE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           timeout: 300000,
           proxyTimeout: 300000,
@@ -97,7 +97,7 @@ export default defineConfig(({ mode }) => {
         },
         // 后端API转发 - /api/backend-api 前缀
         '/api/backend-api': {
-          target: env.VITE_BACKEND_API_TARGET || 'http://10.1.17.83:1202',
+          target: env.VITE_BACKEND_API_TARGET || 'http://192.168.1.103:1202',
           changeOrigin: true,
           timeout: 300000,
           proxyTimeout: 300000,
@@ -110,7 +110,7 @@ export default defineConfig(({ mode }) => {
         },
         // 直接backend-api转发
         '/backend-api': {
-          target: env.VITE_BACKEND_API_TARGET || 'http://10.1.17.83:1202',
+          target: env.VITE_BACKEND_API_TARGET || 'http://192.168.1.103:1202',
           changeOrigin: true,
           timeout: 300000,
           proxyTimeout: 300000,
@@ -123,7 +123,7 @@ export default defineConfig(({ mode }) => {
         },
         // 乙供物资解析相关API转发到1207端口（不带/api前缀）
         '/materials/partyb': {
-          target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           timeout: 300000, // 5分钟超时
           proxyTimeout: 300000,
@@ -135,7 +135,7 @@ export default defineConfig(({ mode }) => {
         },
         // 物资基础信息查询API转发到1207端口（带/api前缀）
         '/api/materials/base-info': {
-          target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           timeout: 300000,
           proxyTimeout: 300000,
@@ -147,7 +147,7 @@ export default defineConfig(({ mode }) => {
         },
         // 通用API转发 - /api 前缀（文件上传主要使用此路径） - 优先级最低
         '/api': {
-          target: env.VITE_API_TARGET || 'http://10.1.17.83:1207',
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           // 专门为文件上传配置大文件支持
           timeout: 600000, // 10分钟超时，支持大文件上传

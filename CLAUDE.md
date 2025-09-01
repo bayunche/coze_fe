@@ -99,9 +99,9 @@ yarn format
 
 `vite.config.js` 中的开发代理配置：
 
-- `/api/backend-api` → `http://10.1.17.83:1202`
-- `/api` → `http://10.1.17.83:1207/`
-- `/backend-api` → `http://10.1.17.83:1202`
+- `/api/backend-api` → `http://192.168.1.103:1202`
+- `/api` → `http://192.168.1.103:1207/`
+- `/backend-api` → `http://192.168.1.103:1202`
 
 ## 重要实现细节
 
