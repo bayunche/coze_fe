@@ -130,13 +130,13 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
-                    <!-- 显示已选择的物资信息 -->
-                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.materialName }}
+                    <!-- 用户选择的物资信息（不包括相似匹配） -->
+                    <span v-if="row.hasUserSelectedData && row.selectedMaterial && row.matchedType !== 2" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.materialName || row.selectedMaterial.baseInfo?.materialName || '-' }}
                     </span>
                     <!-- 相似匹配显示选中的物资名称 -->
                     <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.materialName || row.materialName || '-' }}
+                      {{ row.selectedMaterial.materialName || row.selectedMaterial.baseInfo?.materialName || row.materialName || '-' }}
                     </span>
                     <!-- 精确匹配显示匹配的物资名称 -->
                     <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
@@ -168,13 +168,13 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
-                    <!-- 显示已选择的物资规格 -->
-                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
+                    <!-- 用户选择的物资规格（不包括相似匹配） -->
+                    <span v-if="row.hasUserSelectedData && row.selectedMaterial && row.matchedType !== 2" class="text-sm text-gray-600">
                       {{ row.selectedMaterial.baseInfo?.specifications || row.selectedMaterial.specificationModel || '-' }}
                     </span>
                     <!-- 相似匹配：显示选中物资的规格型号 -->
                     <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.baseInfo?.specifications || '-' }}
+                      {{ row.selectedMaterial.baseInfo?.specifications || row.selectedMaterial.specificationModel || row.specifications || '-' }}
                     </span>
                     <!-- 精确匹配显示匹配的规格型号 -->
                     <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
@@ -204,8 +204,8 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
-                    <!-- 显示已选择的物资单位 -->
-                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
+                    <!-- 用户选择的物资单位（不包括相似匹配） -->
+                    <span v-if="row.hasUserSelectedData && row.selectedMaterial && row.matchedType !== 2" class="text-sm text-gray-600">
                       {{ row.selectedMaterial.unit || '-' }}
                     </span>
                     <!-- 相似匹配状态显示选中物资的单位 -->
@@ -270,17 +270,15 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <div class="price-value">
-                  <!-- 未匹配状态的价格显示 -->
-                  <span v-if="row.matchedType === 0" class="empty-price-text">¥{{ getTaxIncludedPrice(row) }}</span>
-                  <!-- 正常状态的价格显示 -->
-                  <span v-else class="price-text" :style="getPriceTextStyle(row, 'taxIncluded')">¥{{ getTaxIncludedPrice(row) }}</span>
+                  <span class="price-text" :style="getPriceTextStyle(row, 'taxIncluded')">¥{{ getTaxIncludedPrice(row) }}</span>
                   <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
                     <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
                   </el-icon>
                 </div>
               </div>
               <div v-else class="action-cell">
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                <!-- 用户手动选择的价格信息（不包括相似匹配） -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
                 <!-- 精确匹配：显示匹配的价格信息 -->
@@ -291,11 +289,7 @@
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
-                <!-- 未匹配状态：显示等待选择 -->
-                <div v-else-if="row.matchedType === 0" class="price-selection-hint">
-                  <span class="text-sm text-gray-400 italic">等待选择价格</span>
-                </div>
-                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
                 <div v-else class="empty-price-display">
                   <span class="empty-price-text">¥--</span>
                 </div>
@@ -308,17 +302,15 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <div class="price-value">
-                  <!-- 未匹配状态的价格显示 -->
-                  <span v-if="row.matchedType === 0" class="empty-price-text">¥{{ getTaxExcludedPrice(row) }}</span>
-                  <!-- 正常状态的价格显示 -->
-                  <span v-else class="price-text" :style="getPriceTextStyle(row, 'taxExcluded')">¥{{ getTaxExcludedPrice(row) }}</span>
+                  <span class="price-text" :style="getPriceTextStyle(row, 'taxExcluded')">¥{{ getTaxExcludedPrice(row) }}</span>
                   <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
                     <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
                   </el-icon>
                 </div>
               </div>
               <div v-else class="action-cell">
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                <!-- 用户手动选择的不含税价格（不包括相似匹配） -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
                 </div>
                 <!-- 精确匹配：显示匹配的不含税价格信息 -->
@@ -329,11 +321,7 @@
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0) }}</span>
                 </div>
-                <!-- 未匹配状态：显示等待选择 -->
-                <div v-else-if="row.matchedType === 0" class="price-selection-hint">
-                  <span class="text-sm text-gray-400 italic">等待选择价格</span>
-                </div>
-                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
                 <div v-else class="empty-price-display">
                   <span class="empty-price-text">¥--</span>
                 </div>
@@ -348,7 +336,8 @@
                 <span class="tax-rate-text">{{ getTaxRate(row) }}</span>
               </div>
               <div v-else class="action-cell">
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-tax-rate">
+                <!-- 用户手动选择的税率（不包括相似匹配） -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-tax-rate">
                   <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
                 </div>
                 <!-- 精确匹配：显示匹配的税率信息 -->
@@ -359,11 +348,7 @@
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-tax-rate">
                   <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
                 </div>
-                <!-- 未匹配状态：显示等待选择 -->
-                <div v-else-if="row.matchedType === 0" class="tax-rate-hint">
-                  <span class="text-sm text-gray-400 italic">等待选择</span>
-                </div>
-                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
                 <div v-else class="empty-data-display">
                   <span class="empty-data-text">--</span>
                 </div>
@@ -379,7 +364,8 @@
                 <span class="text-sm text-gray-400">-</span>
               </div>
               <div v-else class="action-cell">
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
+                <!-- 用户手动选择的季度（不包括相似匹配） -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
                   <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
                 </div>
                 <!-- 精确匹配：显示匹配的季度信息 -->
@@ -390,11 +376,7 @@
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-quarter">
                   <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
                 </div>
-                <!-- 未匹配状态：显示等待选择 -->
-                <div v-else-if="row.matchedType === 0" class="price-selection-hint">
-                  <span class="text-sm text-gray-400 italic">等待选择</span>
-                </div>
-                <!-- 其他状态：显示类似股票的灰色显示 -->
+                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
                 <div v-else class="empty-data-display">
                   <span class="empty-data-text">--</span>
                 </div>
@@ -1229,8 +1211,8 @@ const getActionRowPrice = (dataRow, priceType) => {
   
   const actionRow = materialData.value[actionRowIndex]
   
-  // 检查是否有价格数据（用户选择的、精确匹配或相似匹配的）
-  if ((actionRow.hasUserSelectedData || actionRow.matchedType === 1 || actionRow.matchedType === 2) && actionRow.selectedPriceQuarter) {
+  // 检查是否有价格数据（用户手动选择、精确匹配或相似匹配）
+  if (((actionRow.hasUserSelectedData && actionRow.matchedType !== 2) || actionRow.matchedType === 1 || actionRow.matchedType === 2) && actionRow.selectedPriceQuarter) {
     if (priceType === 'taxIncluded') {
       return parseFloat(actionRow.selectedPriceQuarter.taxPrice || actionRow.selectedPriceQuarter.unitPrice || 0) || null
     } else if (priceType === 'taxExcluded') {
@@ -1284,6 +1266,11 @@ const getPriceChangeIcon = (row, priceType) => {
 // 获取价格文本样式（为数据行价格添加颜色）- 实时计算渲染
 const getPriceTextStyle = (row, priceType) => {
   if (row.rowType !== 'data') return {}
+  
+  // 未匹配状态：显示灰色
+  if (row.matchedType === 0) {
+    return { color: '#999999', fontWeight: 'normal', opacity: 0.8 }
+  }
   
   const dataPrice = getDataRowPrice(row, priceType)
   const actionPrice = getActionRowPrice(row, priceType)
@@ -1538,35 +1525,23 @@ const formatPrice = (price) => {
   return typeof price === 'number' ? price.toFixed(2) : '0.00'
 }
 
-// 获取含税价格
+// 获取含税价格（数据行始终显示原始数据）
 const getTaxIncludedPrice = (row) => {
-  // 未匹配状态：显示类似股票的灰色"--"
+  // 未匹配状态显示"--"
   if (row.matchedType === 0) {
     return '--'
   }
-  
-  // 优先使用用户选择的价格
-  if (row.hasUserSelectedData && row.selectedPriceQuarter) {
-    return formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0)
-  }
-  
   // 使用确认后的价格或原始价格
   const price = row.confirmedPrice || row.unitPrice || row.taxPrice || row.matchedPrice
   return formatPrice(price || 0)
 }
 
-// 获取不含税价格
+// 获取不含税价格（数据行始终显示原始数据）
 const getTaxExcludedPrice = (row) => {
-  // 未匹配状态：显示类似股票的灰色"--"
+  // 未匹配状态显示"--"
   if (row.matchedType === 0) {
     return '--'
   }
-  
-  // 优先使用用户选择的价格
-  if (row.hasUserSelectedData && row.selectedPriceQuarter) {
-    return formatPrice(row.selectedPriceQuarter.taxExcludedPrice || 0)
-  }
-  
   // 使用确认后的不含税价格
   const price = row.taxExcludedPrice || 0
   return formatPrice(price)
