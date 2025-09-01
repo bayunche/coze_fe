@@ -638,26 +638,31 @@ const fetchData = async () => {
         // 获取数据并初始化每行数据，转换为双行结构
         const rawData = response.data.content || []
         materialData.value = rawData.flatMap((item) => {
+          // 【关键调试】先检查原始后端数据结构
+          console.log('【后端原始数据】物资:', item.materialName, {
+            所有字段: Object.keys(item).filter(key => 
+              key.toLowerCase().includes('price') || key.toLowerCase().includes('tax')
+            ).reduce((acc, key) => {
+              acc[key] = item[key]
+              return acc
+            }, {})
+          })
+          
           const initialized = initializeRowData(item)
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
           
-          // 【调试】打印初始化后的数据
-          console.log('【数据初始化调试】物资:', initialized.materialName, {
-            matchedType: initialized.matchedType,
-            hasUserSelectedData: initialized.hasUserSelectedData,
-            selectedPriceQuarter: initialized.selectedPriceQuarter,
-            原始含税价: initialized.unitPrice || initialized.taxPrice,
-            原始不含税价: initialized.taxExcludedPrice,
-            所有价格字段: {
-              unitPrice: initialized.unitPrice,
-              taxPrice: initialized.taxPrice,
-              originalPrice: initialized.originalPrice,
-              matchedPrice: initialized.matchedPrice,
-              confirmedPrice: initialized.confirmedPrice,
-              taxExcludedPrice: initialized.taxExcludedPrice,
-              notaxPrice: initialized.notaxPrice
-            },
+          // 【调试】检查数据在各个阶段的变化
+          console.log('【数据流转调试】物资:', initialized.materialName, {
+            '1_原始数据不含税价': item.taxExcludedPrice,
+            '2_初始化后不含税价': initialized.taxExcludedPrice,  
+            '3_数据行不含税价': dataRow.taxExcludedPrice,
+            '4_所有价格相关字段': Object.keys(dataRow).filter(key => 
+              key.toLowerCase().includes('price') || key.toLowerCase().includes('tax')
+            ).reduce((acc, key) => {
+              acc[key] = dataRow[key]
+              return acc
+            }, {}),
             操作行价格数据: initialized.selectedPriceQuarter ? {
               含税价: initialized.selectedPriceQuarter.taxPrice || initialized.selectedPriceQuarter.unitPrice,
               不含税价: initialized.selectedPriceQuarter.taxExcludedPrice
