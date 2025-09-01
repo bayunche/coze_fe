@@ -420,26 +420,12 @@
       </div>
     </div>
 
-    <!-- 物资选择对话框 -->
-    <!-- 新的物资价格选择弹窗 -->
+    <!-- 物资价格选择弹窗 -->
     <MaterialPriceSelectionDialog
       v-model="showMaterialPriceDialog"
       :row-data="currentSelectionRow"
       :show-recommend="true"
       @confirm="handleMaterialPriceSelection"
-    />
-
-    <MaterialSelectionDialog
-      v-model="showOptionsDialog"
-      :data-list="materialSelectionList"
-      :total="selectionTotal"
-      :page-num="selectionPage"
-      :page-size="selectionPageSize"
-      :loading="selectionLoading"
-      @select="handleMaterialSelection"
-      @page-change="handleSelectionPageChange"
-      @size-change="handleSelectionSizeChange"
-      @search="handleSelectionSearch"
     />
   </div>
 </template>
@@ -460,13 +446,11 @@ const props = defineProps({
 })
 import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import MaterialSelectionDialog from '@/components/home/MaterialSelectionDialog/MaterialSelectionDialog.vue'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
 import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
-  confirmSupplierMaterialData,
-  queryMaterialBaseInfoWithPrices
+  confirmSupplierMaterialData
 } from '@/utils/backendWorkflow.js'
 
 // 导入常量和工具函数
@@ -499,20 +483,10 @@ const materialData = ref([])
 const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
-const showOptionsDialog = ref(false)
-const currentMaterial = ref(null)
 
-// 新的物资价格选择弹窗状态
+// 物资价格选择弹窗状态
 const showMaterialPriceDialog = ref(false)
 const currentSelectionRow = ref(null)
-
-// 物资选择相关数据
-const materialSelectionList = ref([])
-const selectionTotal = ref(0)
-const selectionPage = ref(1)
-const selectionPageSize = ref(10)
-const selectionLoading = ref(false)
-const selectionSearchKeyword = ref('')
 
 // 搜索和筛选参数
 const searchKeyword = ref('')
@@ -1251,274 +1225,19 @@ const getPriceChangeIconStyle = (row, priceType) => {
   return {}
 }
 
-// 查看更多选项 - 打开物资选择对话框
+// 查看更多选项 - 打开物资价格选择对话框
 const handleViewOptions = async (row) => {
-  console.log('【调试】handleViewOptions 被调用，设置 currentMaterial:', row)
+  console.log('【调试】handleViewOptions 被调用，设置 currentSelectionRow:', row)
   console.log('【调试】row.taskDataId:', row.taskDataId)
   console.log('【调试】row.materialName:', row.materialName)
 
-  currentMaterial.value = row
-  // 重置选择相关数据
-  selectionPage.value = 1
-  selectionSearchKeyword.value = ''
-
-  // 根据当前物资名称进行初始搜索
-  await loadMaterialSelectionData('')
-  showOptionsDialog.value = true
+  currentSelectionRow.value = row
+  showMaterialPriceDialog.value = true
 }
 
-// 加载物资选择数据
-const loadMaterialSelectionData = async (keyword = '') => {
-  selectionLoading.value = true
-  try {
-    // 构建请求参数，页码从0开始
-    const params = {
-      page: selectionPage.value - 1, // API 页码从0开始，UI从1开始
-      size: selectionPageSize.value
-    }
+// 旧的物资选择数据加载方法已移除，统一使用 MaterialPriceSelectionDialog
 
-    // 如果有搜索条件，添加到参数中
-    if (keyword && keyword.trim()) {
-      params.keyword = keyword.trim()
-    }
-
-    const response = await queryMaterialBaseInfoWithPrices(params)
-    console.log('【调试】加载物资选择数据:', response)
-    if (response && response.data && response.data.content) {
-      // 直接进行价格维度的扁平化，与MaterialSelectionDialog的formattedData逻辑一致
-      const flattenedData = []
-
-      response.data.content.forEach((item) => {
-        const materialBaseInfo = item.materialBaseInfo || {}
-        const priceList = item.priceList || []
-
-        // 如果有价格数据，每个价格创建一条记录
-        if (priceList.length > 0) {
-          priceList.forEach((price) => {
-            flattenedData.push({
-              // 原始数据，包含物资和价格信息
-              originalData: {
-                materialBaseInfo,
-                priceInfo: price,
-                fullItem: item
-              },
-
-              // 物资信息
-              materialName: materialBaseInfo.materialName || '-',
-              specificationModel: materialBaseInfo.specificationModel || '-',
-              unit: materialBaseInfo.unit || '-',
-              type: materialBaseInfo.type || '-',
-              materialCode: materialBaseInfo.materialCode || '-',
-
-              // 价格信息 - 确保价格正确显示，包括0价格
-              taxPrice:
-                price.taxPrice !== undefined && price.taxPrice !== null
-                  ? parseFloat(price.taxPrice).toFixed(2)
-                  : '0.00',
-              quarter: price.quarter || '-',
-              priceId: price.id,
-              baseInfoId: price.baseInfoId,
-
-              // 兼容旧格式的字段映射
-              material_name: materialBaseInfo.materialName,
-              specification_model: materialBaseInfo.specificationModel,
-              tax_price: price.taxPrice,
-              id: materialBaseInfo.id
-            })
-          })
-        } else {
-          // 如果没有价格数据，仍然创建一条记录但价格字段为空
-          flattenedData.push({
-            originalData: {
-              materialBaseInfo,
-              priceInfo: null,
-              fullItem: item
-            },
-
-            materialName: materialBaseInfo.materialName || '-',
-            specificationModel: materialBaseInfo.specificationModel || '-',
-            unit: materialBaseInfo.unit || '-',
-            type: materialBaseInfo.type || '-',
-            materialCode: materialBaseInfo.materialCode || '-',
-
-            taxPrice: '-',
-            quarter: '-',
-            priceId: null,
-            baseInfoId: materialBaseInfo.id,
-
-            material_name: materialBaseInfo.materialName,
-            specification_model: materialBaseInfo.specificationModel,
-            tax_price: null,
-            id: materialBaseInfo.id
-          })
-        }
-      })
-
-      materialSelectionList.value = flattenedData
-
-      selectionTotal.value = response.data.totalElements || 0
-    } else {
-      console.warn('API返回数据为空')
-      materialSelectionList.value = []
-      selectionTotal.value = 0
-    }
-  } catch (error) {
-    console.error('加载物资选择数据失败:', error)
-    ElMessage.error('加载数据失败，请重试')
-    materialSelectionList.value = []
-    selectionTotal.value = 0
-  } finally {
-    selectionLoading.value = false
-  }
-}
-
-// 处理物资选择
-const handleMaterialSelection = (selectedMaterial) => {
-  console.log('【调试】handleMaterialSelection 开始，接收参数:', selectedMaterial)
-  console.log('【调试】currentMaterial.value:', currentMaterial.value)
-  console.log('【调试】当前 materialData 总数:', materialData.value.length)
-  console.log(
-    '【调试】materialData 中所有的 taskDataId:',
-    materialData.value.map((item) => ({
-      taskDataId: item.taskDataId,
-      materialName: item.materialName
-    }))
-  )
-
-  if (!selectedMaterial || !currentMaterial.value) {
-    console.log('【调试】参数缺失，退出')
-    return
-  }
-
-  try {
-    // 精确匹配当前选择的物资
-    const item = materialData.value.find((item) => {
-      // 优先使用taskDataId进行精确匹配
-      const matchByTaskDataId = item.taskDataId === currentMaterial.value.taskDataId
-      // 如果taskDataId匹配失败，尝试使用id匹配（备用）
-      const matchById = currentMaterial.value.id && item.id === currentMaterial.value.id
-
-      console.log(
-        `【调试】匹配检查 - item.taskDataId: ${item.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, item.id: ${item.id}, current.id: ${currentMaterial.value.id}, taskDataId匹配: ${matchByTaskDataId}, id匹配: ${matchById}`
-      )
-
-      return matchByTaskDataId || matchById
-    })
-
-    console.log('【调试】找到的 item:', item)
-
-    if (!item) {
-      console.error('【错误】未找到匹配的物资项！currentMaterial:', currentMaterial.value)
-      ElMessage.error('未找到对应的物资项，无法更新数据')
-      return
-    }
-
-    if (item) {
-      // 现在 selectedMaterial 已经是价格维度的数据
-      // 获取物资基础信息和价格信息
-      const materialBaseInfo = selectedMaterial.originalData?.materialBaseInfo || {
-        materialName: selectedMaterial.materialName,
-        specificationModel: selectedMaterial.specificationModel,
-        id: selectedMaterial.baseInfoId
-      }
-      const priceInfo = selectedMaterial.originalData?.priceInfo || {
-        taxPrice: selectedMaterial.taxPrice,
-        unitPrice: selectedMaterial.unitPrice,
-        taxExcludedPrice: selectedMaterial.taxExcludedPrice,
-        originalPrice: selectedMaterial.originalPrice,
-        priceType: selectedMaterial.priceType,
-        quarter: selectedMaterial.quarter,
-        id: selectedMaterial.priceId
-      }
-
-      console.log('【调试】解析出的物资基础信息:', materialBaseInfo)
-      console.log('【调试】解析出的价格信息(含新字段):', priceInfo)
-
-      // 更新物资信息 - 使用Vue的响应式赋值，支持新的价格字段
-      const confirmBaseName = materialBaseInfo.materialName || selectedMaterial.materialName
-      const confirmBaseSpec =
-        materialBaseInfo.specificationModel || selectedMaterial.specificationModel
-      const confirmPrice = priceInfo.taxPrice || priceInfo.unitPrice || selectedMaterial.taxPrice || selectedMaterial.unitPrice
-      const confirmPriceQuarter = priceInfo.quarter || selectedMaterial.quarter
-      
-      // 新增价格字段
-      const confirmUnitPrice = priceInfo.unitPrice || selectedMaterial.unitPrice
-      const confirmTaxExcludedPrice = priceInfo.taxExcludedPrice || selectedMaterial.taxExcludedPrice
-      const confirmOriginalPrice = priceInfo.originalPrice || selectedMaterial.originalPrice
-      const confirmPriceType = priceInfo.priceType !== undefined ? priceInfo.priceType : selectedMaterial.priceType
-
-      // 确保响应式更新 - 先保存原始对象的索引
-      const itemIndex = materialData.value.findIndex((dataItem) => {
-        const matchByTaskDataId = dataItem.taskDataId === currentMaterial.value.taskDataId
-        const matchById = currentMaterial.value.id && dataItem.id === currentMaterial.value.id
-        console.log(
-          `【调试】索引匹配检查 - dataItem.taskDataId: ${dataItem.taskDataId}, current.taskDataId: ${currentMaterial.value.taskDataId}, dataItem.id: ${dataItem.id}, current.id: ${currentMaterial.value.id}, taskDataId匹配: ${matchByTaskDataId}, id匹配: ${matchById}`
-        )
-        return matchByTaskDataId || matchById
-      })
-
-      if (itemIndex !== -1) {
-        // 直接更新数组中的对象属性，确保Vue能检测到变化，包括新的价格字段
-        materialData.value[itemIndex].confirmedBaseName = confirmBaseName
-        materialData.value[itemIndex].confirmedBaseSpec = confirmBaseSpec
-        materialData.value[itemIndex].confirmedPrice = confirmPrice
-        materialData.value[itemIndex].confirmedPriceQuarter = confirmPriceQuarter
-        
-        // 更新新的价格字段
-        materialData.value[itemIndex].unitPrice = confirmUnitPrice
-        materialData.value[itemIndex].taxExcludedPrice = confirmTaxExcludedPrice
-        materialData.value[itemIndex].originalPrice = confirmOriginalPrice
-        materialData.value[itemIndex].priceType = confirmPriceType
-        
-        materialData.value[itemIndex].hasUserSelectedData = true
-        materialData.value[itemIndex].selectedBaseDataId =
-          materialBaseInfo.id || selectedMaterial.baseInfoId
-        materialData.value[itemIndex].selectedPriceId = priceInfo.id || selectedMaterial.priceId
-        materialData.value[itemIndex].isUserModified = true
-
-        console.log('【调试】更新后的 item:', materialData.value[itemIndex])
-        console.log('【调试】确认的物资名称:', confirmBaseName)
-        console.log('【调试】确认的规格:', confirmBaseSpec)
-        console.log('【调试】确认的价格:', confirmPrice)
-      }
-
-      console.log('物资选择完成:', {
-        materialName: item.materialName,
-        selectedMaterial: selectedMaterial,
-        selectedPrice: priceInfo,
-        confirmedBaseName: confirmBaseName,
-        confirmedBaseSpec: confirmBaseSpec,
-        confirmedPrice: confirmPrice
-      })
-    }
-
-    ElMessage.success('数据选择成功，请点击确认按钮完成确认')
-    showOptionsDialog.value = false
-  } catch (error) {
-    console.error('保存选择失败:', error)
-    ElMessage.error('保存选择失败')
-  }
-}
-
-// 处理分页变化
-const handleSelectionPageChange = (page) => {
-  selectionPage.value = page
-  loadMaterialSelectionData(selectionSearchKeyword.value)
-}
-
-// 处理页大小变化
-const handleSelectionSizeChange = (size) => {
-  selectionPageSize.value = size
-  selectionPage.value = 1
-  loadMaterialSelectionData(selectionSearchKeyword.value)
-}
-
-// 处理搜索
-const handleSelectionSearch = (keyword) => {
-  selectionSearchKeyword.value = keyword
-  selectionPage.value = 1
-  loadMaterialSelectionData(keyword)
-}
+// 旧的物资选择方法已移除，统一使用 MaterialPriceSelectionDialog
 
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
@@ -1593,50 +1312,114 @@ watch(
 //   showMaterialPriceDialog.value = true
 // }
 
-// 处理物资价格选择结果
+// 处理物资价格选择结果 - 匹配之前的数据选择逻辑
 const handleMaterialPriceSelection = (selection) => {
-  const row = currentSelectionRow.value
-  if (!row || !selection || !selection.material || !selection.price) {
+  console.log('【调试】handleMaterialPriceSelection 开始，接收参数:', selection)
+  console.log('【调试】currentSelectionRow.value:', currentSelectionRow.value)
+  
+  if (!selection || !selection.material || !selection.price || !currentSelectionRow.value) {
+    console.log('【调试】参数缺失，退出')
     ElMessage.warning('选择数据不完整，请重新选择')
     return
   }
-  
-  console.log('物资价格选择结果:', selection)
-  
-  // 更新行数据
-  row.selectedMaterial = selection.material
-  row.selectedPriceQuarter = selection.price
-  row.hasUserSelectedData = true
-  row.isUserModified = true
-  
-  // 更新相关ID
-  row.selectedMaterialId = selection.material.id
-  row.selectedPriceId = selection.price.id
-  row.selectedBaseDataId = selection.material.id
-  
-  // 更新显示的数据
-  if (selection.source === 'recommend') {
-    // 推荐选择的数据结构处理
-    row.matchedBaseName = selection.material.materialName
-    row.matchedBaseSpec = selection.material.specificationModel
-    row.matchedPriceQuarter = selection.price.quarter
-    row.unitPrice = selection.price.taxPrice || selection.price.unitPrice
-    row.taxExcludedPrice = selection.price.taxExcludedPrice
-    row.originalPrice = selection.price.originalPrice
-    row.priceType = selection.price.priceType
-  } else {
-    // 搜索或新增的数据结构处理
-    row.matchedBaseName = selection.material.materialName
-    row.matchedBaseSpec = selection.material.specificationModel
-    row.matchedPriceQuarter = selection.price.quarter
-    row.unitPrice = selection.price.taxPrice || selection.price.unitPrice
-    row.taxExcludedPrice = selection.price.taxExcludedPrice
-    row.originalPrice = selection.price.originalPrice
-    row.priceType = selection.price.priceType
+
+  try {
+    // 精确匹配当前选择的物资（查找数据行和操作行）
+    const items = materialData.value.filter((item) => {
+      const matchByTaskDataId = item.taskDataId === currentSelectionRow.value.taskDataId
+      const matchById = currentSelectionRow.value.id && item.id === currentSelectionRow.value.id
+      return matchByTaskDataId || matchById
+    })
+
+    if (items.length === 0) {
+      console.error('【错误】未找到匹配的物资项！')
+      ElMessage.error('未找到对应的物资项，无法更新数据')
+      return
+    }
+
+    // 获取物资基础信息和价格信息（兼容不同的数据结构）
+    const materialBaseInfo = {
+      materialName: selection.material.materialName,
+      specificationModel: selection.material.specificationModel || selection.material.specifications,
+      id: selection.material.baseInfoId || selection.material.id
+    }
+    
+    const priceInfo = {
+      taxPrice: selection.price.taxPrice || selection.price.unitPrice,
+      unitPrice: selection.price.unitPrice || selection.price.taxPrice,
+      taxExcludedPrice: selection.price.taxExcludedPrice,
+      originalPrice: selection.price.originalPrice,
+      priceType: selection.price.priceType,
+      quarter: selection.price.quarter,
+      id: selection.price.priceId || selection.price.id
+    }
+
+    console.log('【调试】解析出的物资基础信息:', materialBaseInfo)
+    console.log('【调试】解析出的价格信息:', priceInfo)
+
+    // 更新物资信息
+    const confirmBaseName = materialBaseInfo.materialName
+    const confirmBaseSpec = materialBaseInfo.specificationModel
+    const confirmPrice = priceInfo.taxPrice || priceInfo.unitPrice
+    const confirmPriceQuarter = priceInfo.quarter
+    
+    // 新增价格字段
+    const confirmUnitPrice = priceInfo.unitPrice
+    const confirmTaxExcludedPrice = priceInfo.taxExcludedPrice
+    const confirmOriginalPrice = priceInfo.originalPrice
+    const confirmPriceType = priceInfo.priceType
+
+    // 更新所有匹配的数据行和操作行
+    items.forEach((item) => {
+      const itemIndex = materialData.value.findIndex(dataItem => dataItem === item)
+      
+      if (itemIndex !== -1) {
+        // 直接更新数组中的对象属性，确保Vue能检测到变化
+        materialData.value[itemIndex].confirmedBaseName = confirmBaseName
+        materialData.value[itemIndex].confirmedBaseSpec = confirmBaseSpec
+        materialData.value[itemIndex].confirmedPrice = confirmPrice
+        materialData.value[itemIndex].confirmedPriceQuarter = confirmPriceQuarter
+        
+        // 更新新的价格字段
+        materialData.value[itemIndex].unitPrice = confirmUnitPrice
+        materialData.value[itemIndex].taxExcludedPrice = confirmTaxExcludedPrice
+        materialData.value[itemIndex].originalPrice = confirmOriginalPrice
+        materialData.value[itemIndex].priceType = confirmPriceType
+        
+        // 更新选择状态
+        materialData.value[itemIndex].hasUserSelectedData = true
+        materialData.value[itemIndex].selectedBaseDataId = materialBaseInfo.id
+        materialData.value[itemIndex].selectedPriceId = priceInfo.id
+        materialData.value[itemIndex].isUserModified = true
+        
+        // 更新选择的物资和价格数据（为了兼容其他组件的访问）
+        materialData.value[itemIndex].selectedPriceQuarter = {
+          taxPrice: confirmPrice,
+          unitPrice: confirmUnitPrice,
+          taxExcludedPrice: confirmTaxExcludedPrice,
+          originalPrice: confirmOriginalPrice,
+          priceType: confirmPriceType,
+          quarter: confirmPriceQuarter,
+          ...priceInfo
+        }
+
+        console.log('【调试】更新后的 item:', materialData.value[itemIndex])
+      }
+    })
+
+    console.log('【调试】物资选择完成:', {
+      confirmedBaseName: confirmBaseName,
+      confirmedBaseSpec: confirmBaseSpec,
+      confirmedPrice: confirmPrice,
+      source: selection.source
+    })
+
+    ElMessage.success('数据选择成功，请点击确认按钮完成确认')
+    currentSelectionRow.value = null
+  } catch (error) {
+    console.error('保存选择失败:', error)
+    ElMessage.error('保存选择失败')
   }
-  
-  ElMessage.success('物资和价格选择成功')
-  currentSelectionRow.value = null
 }
 
 // // 获取物资选择按钮文本
