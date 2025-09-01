@@ -84,6 +84,65 @@
         </div>
       </div>
 
+      <!-- 解析结果总览卡片 -->
+      <div class="overview-cards">
+        <div 
+          class="overview-card total-card" 
+          @click="handleOverviewCardClick('total')"
+          :class="{ active: activeOverviewType === 'total' }"
+        >
+          <div class="card-icon">
+            <el-icon><DataAnalysis /></el-icon>
+          </div>
+          <div class="card-content">
+            <div class="card-number">{{ total }}</div>
+            <div class="card-label">总解析条数</div>
+          </div>
+        </div>
+
+        <div 
+          class="overview-card matched-card" 
+          @click="handleOverviewCardClick('matched')"
+          :class="{ active: activeOverviewType === 'matched' }"
+        >
+          <div class="card-icon">
+            <el-icon><SuccessFilled /></el-icon>
+          </div>
+          <div class="card-content">
+            <div class="card-number">{{ matchedCount }}</div>
+            <div class="card-label">已匹配物资数</div>
+          </div>
+        </div>
+
+        <div 
+          class="overview-card unmatched-card" 
+          @click="handleOverviewCardClick('unmatched')"
+          :class="{ active: activeOverviewType === 'unmatched' }"
+        >
+          <div class="card-icon">
+            <el-icon><CircleCloseFilled /></el-icon>
+          </div>
+          <div class="card-content">
+            <div class="card-number">{{ unmatchedCount }}</div>
+            <div class="card-label">未找到物资数</div>
+          </div>
+        </div>
+
+        <div 
+          class="overview-card price-mismatch-card" 
+          @click="handleOverviewCardClick('priceMismatch')"
+          :class="{ active: activeOverviewType === 'priceMismatch' }"
+        >
+          <div class="card-icon">
+            <el-icon><WarnTriangleFilled /></el-icon>
+          </div>
+          <div class="card-content">
+            <div class="card-number">{{ priceMismatchCount }}</div>
+            <div class="card-label">价格不匹配条数</div>
+          </div>
+        </div>
+      </div>
+
       <!-- 物资详情表格区块 -->
       <div :class="CSS_CLASSES.TABLE_SECTION">
         <div class="table-toolbar">
@@ -506,7 +565,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, CircleCheck } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
 import {
@@ -560,9 +619,6 @@ const statistics = ref(null)
 const useComplexQuery = ref(true) // 是否使用复杂查询接口
 
 // 计算确认统计
-const confirmedCount = computed(() => {
-  return materialData.value.filter((item) => item.confirmResult === 1).length
-})
 
 // 计算是否有修改过的数据
 const hasModifiedData = computed(() => {
@@ -578,6 +634,31 @@ const shouldShowSaveButton = computed(() => {
 
 const pendingCount = computed(() => {
   return materialData.value.filter((item) => item.confirmResult !== 1).length
+})
+
+// 总览卡片相关状态
+const activeOverviewType = ref(null)
+
+// 计算各类型数据统计
+const matchedCount = computed(() => {
+  return materialData.value.filter((item) => item.matchedType === 1 || item.matchedType === 2).length
+})
+
+const unmatchedCount = computed(() => {
+  return materialData.value.filter((item) => item.matchedType === 0).length
+})
+
+const priceMismatchCount = computed(() => {
+  return materialData.value.filter((item) => {
+    // 检查价格不匹配：原始价格与匹配价格不一致
+    if (item.matchedType === 0) return false
+    
+    const originalPrice = parseFloat(item.materialPrice || 0)
+    const matchedPrice = item.selectedPriceQuarter ? 
+      parseFloat(item.selectedPriceQuarter.taxPrice || item.selectedPriceQuarter.unitPrice || 0) : 0
+    
+    return Math.abs(originalPrice - matchedPrice) > 0.01
+  }).length
 })
 
 /**
@@ -744,6 +825,50 @@ const handleSearchClear = () => {
 
 // 筛选变化处理
 const handleFilterChange = () => {
+  currentPage.value = 1
+  fetchData()
+}
+
+// 处理总览卡片点击
+const handleOverviewCardClick = (type) => {
+  // 如果点击的是当前激活的卡片，则取消筛选
+  if (activeOverviewType.value === type) {
+    activeOverviewType.value = null
+    queryParams.value = {
+      ...queryParams.value,
+      confirmResult: undefined,
+      matchedType: undefined
+    }
+  } else {
+    activeOverviewType.value = type
+    
+    // 重置查询参数
+    queryParams.value = {
+      ...queryParams.value,
+      confirmResult: undefined,
+      matchedType: undefined
+    }
+    
+    // 根据卡片类型设置筛选条件
+    switch (type) {
+      case 'total':
+        // 显示全部，不设置筛选条件
+        break
+      case 'matched':
+        // 显示已匹配，先显示精确匹配（单个值）
+        queryParams.value.matchedType = 1
+        break
+      case 'unmatched':
+        // 显示未找到物资
+        queryParams.value.matchedType = 0
+        break
+      case 'priceMismatch':
+        // 显示价格不匹配（暂时显示已匹配的，需要后端支持）
+        queryParams.value.matchedType = 1
+        break
+    }
+  }
+  
   currentPage.value = 1
   fetchData()
 }
@@ -1030,17 +1155,6 @@ const getDataSourceType = (row) => {
   return sourceMap[row.matchedType] || { text: '未知', type: 'info' }
 }
 
-// 获取匹配类型标签
-const getMatchTypeTagInfo = (matchedType) => {
-  const typeMap = {
-    0: { text: '无匹配', type: 'info' },
-    1: { text: '精确匹配', type: 'success' },
-    2: { text: '相似匹配', type: 'warning' },
-    3: { text: '历史匹配', type: 'primary' },
-    4: { text: '人工匹配', type: '' }
-  }
-  return typeMap[matchedType] || { text: '未知', type: 'info' }
-}
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
@@ -2513,6 +2627,122 @@ const handleBack = () => {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 总览卡片样式 */
+.overview-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.overview-card {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  background: var(--theme-card-bg);
+  border-radius: 12px;
+  border: 1px solid var(--theme-card-border);
+  box-shadow: var(--theme-card-shadow);
+  backdrop-filter: var(--theme-backdrop-blur, none);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.overview-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--theme-primary), var(--theme-primary-light));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.overview-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--theme-card-hover-shadow);
+  border-color: var(--theme-primary-light);
+}
+
+.overview-card:hover::before {
+  opacity: 1;
+}
+
+.overview-card.active {
+  border-color: var(--theme-primary);
+  background: linear-gradient(135deg, 
+    rgba(var(--theme-primary-rgb), 0.05),
+    rgba(var(--theme-primary-light-rgb), 0.03)
+  );
+}
+
+.overview-card.active::before {
+  opacity: 1;
+}
+
+.card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  margin-right: 16px;
+  font-size: 24px;
+  color: var(--theme-primary);
+  background: linear-gradient(135deg, 
+    rgba(var(--theme-primary-rgb), 0.1),
+    rgba(var(--theme-primary-light-rgb), 0.05)
+  );
+}
+
+.card-content {
+  flex: 1;
+}
+
+.card-number {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--theme-text-primary);
+  line-height: 1;
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-light));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.card-label {
+  font-size: 14px;
+  color: var(--theme-text-secondary);
+  font-weight: 500;
+}
+
+/* 不同类型卡片的特色样式 */
+.total-card .card-icon {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 197, 253, 0.05));
+  color: #3b82f6;
+}
+
+.matched-card .card-icon {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(134, 239, 172, 0.05));
+  color: #22c55e;
+}
+
+.unmatched-card .card-icon {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(252, 165, 165, 0.05));
+  color: #ef4444;
+}
+
+.price-mismatch-card .card-icon {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(253, 230, 138, 0.05));
+  color: #f59e0b;
+}
+
 .search-section {
   flex: 1;
   max-width: 320px;
@@ -2816,78 +3046,212 @@ const handleBack = () => {
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
 }
 
-/* 表格行间距优化 - 创造明显的分组效果 */
-:deep(.el-table__body tr:not(:last-child) .el-table__cell) {
-  border-bottom: 8px solid var(--theme-bg-primary) !important;
+/* 表格分组间距优化 - 只在组间增加间距 */
+:deep(.el-table__body tr .el-table__cell) {
+  border-bottom: 1px solid var(--theme-table-border) !important;
 }
 
-/* 行状态样式 - 使用主题变量 */
+/* 操作行底部增加分组间距 */
+:deep(.el-table .action-row .el-table__cell) {
+  border-bottom: 20px solid var(--theme-bg-primary) !important;
+  position: relative;
+}
+
+/* 操作行添加分组分隔线 */
+:deep(.el-table .action-row .el-table__cell)::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    var(--theme-primary-light) 20%, 
+    var(--theme-primary) 50%, 
+    var(--theme-primary-light) 80%, 
+    transparent 100%
+  );
+  opacity: 0.3;
+}
+
+/* 最后一个操作行不需要分组间距和分隔线 */
+:deep(.el-table__body tr:last-child.action-row .el-table__cell) {
+  border-bottom: 1px solid var(--theme-table-border) !important;
+}
+
+:deep(.el-table__body tr:last-child.action-row .el-table__cell)::after {
+  display: none;
+}
+
+/* 行状态样式增强 - 更明显的分组区分度 */
 :deep(.el-table .confirmed-row .el-table__cell) {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.04) 100%) !important;
-  border-left: 4px solid #22c55e !important;
+  background: linear-gradient(135deg, 
+    rgba(34, 197, 94, 0.12) 0%, 
+    rgba(34, 197, 94, 0.06) 50%,
+    rgba(34, 197, 94, 0.03) 100%) !important;
+  border-left: 6px solid #22c55e !important;
+  border-right: 2px solid rgba(34, 197, 94, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 
+              0 1px 3px rgba(34, 197, 94, 0.1) !important;
 }
 
 :deep(.el-table .confirmed-row:hover .el-table__cell) {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.06) 100%) !important;
-  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15) !important;
+  background: linear-gradient(135deg, 
+    rgba(34, 197, 94, 0.18) 0%, 
+    rgba(34, 197, 94, 0.10) 50%,
+    rgba(34, 197, 94, 0.05) 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 
+              0 4px 12px rgba(34, 197, 94, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   transition: all 0.3s ease !important;
+  transform: scale(1.001) !important;
 }
 
 :deep(.el-table .pending-row .el-table__cell) {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(245, 158, 11, 0.02) 100%) !important;
-  border-left: 4px solid #f59e0b !important;
+  background: linear-gradient(135deg, 
+    rgba(245, 158, 11, 0.10) 0%, 
+    rgba(245, 158, 11, 0.05) 50%,
+    rgba(245, 158, 11, 0.02) 100%) !important;
+  border-left: 6px solid #f59e0b !important;
+  border-right: 2px solid rgba(245, 158, 11, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 
+              0 1px 3px rgba(245, 158, 11, 0.1) !important;
 }
 
 :deep(.el-table .pending-row:hover .el-table__cell) {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.10) 0%, rgba(245, 158, 11, 0.04) 100%) !important;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12) !important;
+  background: linear-gradient(135deg, 
+    rgba(245, 158, 11, 0.15) 0%, 
+    rgba(245, 158, 11, 0.08) 50%,
+    rgba(245, 158, 11, 0.04) 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 
+              0 4px 12px rgba(245, 158, 11, 0.15) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   transition: all 0.3s ease !important;
+  transform: scale(1.001) !important;
 }
 
-/* 无匹配行样式 */
+/* 无匹配行样式增强 */
 :deep(.el-table .no-match-row .el-table__cell) {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.04) 100%) !important;
-  border-left: 4px solid #ef4444 !important;
+  background: linear-gradient(135deg, 
+    rgba(239, 68, 68, 0.12) 0%, 
+    rgba(239, 68, 68, 0.06) 50%,
+    rgba(239, 68, 68, 0.03) 100%) !important;
+  border-left: 6px solid #ef4444 !important;
+  border-right: 2px solid rgba(239, 68, 68, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
-  animation: pulse-glow 2s infinite;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 
+              0 1px 3px rgba(239, 68, 68, 0.1) !important;
+  animation: pulse-glow 3s infinite ease-in-out;
 }
 
 :deep(.el-table .no-match-row:hover .el-table__cell) {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.06) 100%) !important;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.18) !important;
+  background: linear-gradient(135deg, 
+    rgba(239, 68, 68, 0.18) 0%, 
+    rgba(239, 68, 68, 0.10) 50%,
+    rgba(239, 68, 68, 0.05) 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 
+              0 4px 12px rgba(239, 68, 68, 0.25) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   transition: all 0.3s ease !important;
+  transform: scale(1.001) !important;
 }
 
-/* 无匹配行的脉冲动画 */
+/* 无匹配行的脉冲动画增强 */
 @keyframes pulse-glow {
   0%, 100% {
     border-left-color: #ef4444;
-    box-shadow: 0 0 0 rgba(239, 68, 68, 0);
+    border-right-color: rgba(239, 68, 68, 0.2);
+    box-shadow: 0 1px 3px rgba(239, 68, 68, 0.1);
   }
   50% {
     border-left-color: #dc2626;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+    border-right-color: rgba(220, 38, 38, 0.4);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2), 
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 }
 
-/* 操作行样式 */
+/* 操作行样式增强 */
 :deep(.action-row) {
-  background-color: var(--el-background-color-2) !important;
+  background: var(--theme-card-bg) !important;
 }
 
 :deep(.action-row td.el-table__cell) {
-  background-color: var(--el-background-color-2) !important;
+  background: var(--theme-card-bg) !important;
   font-size: 13px;
-  padding: 8px 12px;
+  padding: 12px;
+  border-top: 1px solid rgba(var(--theme-primary-rgb), 0.1) !important;
+  position: relative;
+}
+
+/* 操作行继承对应data行的状态样式 */
+:deep(.confirmed-row + .action-row td.el-table__cell) {
+  background: linear-gradient(135deg, 
+    rgba(34, 197, 94, 0.06) 0%, 
+    rgba(34, 197, 94, 0.02) 100%) !important;
+  border-left: 6px solid #22c55e !important;
+  border-right: 2px solid rgba(34, 197, 94, 0.15) !important;
+}
+
+:deep(.pending-row + .action-row td.el-table__cell) {
+  background: linear-gradient(135deg, 
+    rgba(245, 158, 11, 0.06) 0%, 
+    rgba(245, 158, 11, 0.02) 100%) !important;
+  border-left: 6px solid #f59e0b !important;
+  border-right: 2px solid rgba(245, 158, 11, 0.15) !important;
+}
+
+:deep(.no-match-row + .action-row td.el-table__cell) {
+  background: linear-gradient(135deg, 
+    rgba(239, 68, 68, 0.06) 0%, 
+    rgba(239, 68, 68, 0.02) 100%) !important;
+  border-left: 6px solid #ef4444 !important;
+  border-right: 2px solid rgba(239, 68, 68, 0.15) !important;
 }
 
 :deep(.action-row:hover > td.el-table__cell) {
-  background-color: var(--el-background-color-3) !important;
+  background: var(--theme-table-hover-bg) !important;
+  transform: scale(1.001);
+  transition: all 0.3s ease !important;
+}
+
+/* 增强分组整体视觉效果 */
+:deep(.el-table__body tr) {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 分组悬停效果 - 当悬停在某一行时，高亮整个分组 */
+:deep(.el-table__body tr:hover) {
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+/* 数据行和对应操作行的联动悬停效果 */
+:deep(.el-table__body tr.confirmed-row:hover + tr.action-row td.el-table__cell),
+:deep(.el-table__body tr.action-row:hover td.el-table__cell) {
+  background: linear-gradient(135deg, 
+    rgba(34, 197, 94, 0.08) 0%, 
+    rgba(34, 197, 94, 0.04) 100%) !important;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15) !important;
+}
+
+:deep(.el-table__body tr.pending-row:hover + tr.action-row td.el-table__cell),
+:deep(.el-table__body tr.pending-row + tr.action-row:hover td.el-table__cell) {
+  background: linear-gradient(135deg, 
+    rgba(245, 158, 11, 0.08) 0%, 
+    rgba(245, 158, 11, 0.04) 100%) !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12) !important;
+}
+
+:deep(.el-table__body tr.no-match-row:hover + tr.action-row td.el-table__cell),
+:deep(.el-table__body tr.no-match-row + tr.action-row:hover td.el-table__cell) {
+  background: linear-gradient(135deg, 
+    rgba(239, 68, 68, 0.08) 0%, 
+    rgba(239, 68, 68, 0.04) 100%) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15) !important;
 }
 
 /* 数据行和操作行内容样式 */
@@ -3323,6 +3687,31 @@ const handleBack = () => {
     background-attachment: scroll;
   }
 
+  .overview-cards {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .overview-card {
+    padding: 16px;
+  }
+
+  .card-icon {
+    width: 40px;
+    height: 40px;
+    margin-right: 12px;
+    font-size: 20px;
+  }
+
+  .card-number {
+    font-size: 24px;
+  }
+
+  .card-label {
+    font-size: 12px;
+  }
+
   .page-header {
     flex-direction: column;
     gap: 16px;
@@ -3486,6 +3875,15 @@ const handleBack = () => {
 
   .table-section {
     padding: 12px;
+  }
+
+  /* 移动端分组间距调整 */
+  :deep(.el-table .action-row .el-table__cell) {
+    border-bottom: 12px solid var(--theme-bg-primary) !important;
+  }
+
+  :deep(.el-table .action-row .el-table__cell)::after {
+    height: 1px;
   }
 
   :deep(.el-table th.el-table__cell),
