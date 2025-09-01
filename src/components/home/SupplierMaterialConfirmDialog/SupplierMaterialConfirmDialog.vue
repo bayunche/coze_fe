@@ -108,6 +108,8 @@
         border
         stripe
         max-height="60vh"
+        :row-style="{ height: '72px' }"
+        :cell-style="{ padding: '20px 16px' }"
       >
         <el-table-column type="index" label="序号" width="60" />
 
@@ -561,11 +563,29 @@ const getConfirmStatusText = (status) => {
 }
 
 // 获取行样式类名
-const getRowClassName = ({ row }) => {
-  if (row.confirmResult === 1) {
-    return 'confirmed-row'
+const getRowClassName = ({ row, rowIndex }) => {
+  console.log('getRowClassName called with:', { row, rowIndex })
+  console.log('Row data:', {
+    confirmResult: row.confirmResult,
+    matchedType: row.matchedType,
+    confirmResultType: typeof row.confirmResult,
+    matchedTypeType: typeof row.matchedType
+  })
+  
+  let className = ''
+  if (Number(row.confirmResult) === 1) {
+    className = 'confirmed-row'
+    console.log('Applying confirmed-row class')
+  } else if (Number(row.matchedType) === 0) {
+    className = 'no-match-row'
+    console.log('Applying no-match-row class')
+  } else {
+    className = 'pending-row'
+    console.log('Applying pending-row class')
   }
-  return 'pending-row'
+  
+  console.log('Final className:', className)
+  return className
 }
 
 // 处理物资选择变化
@@ -1278,26 +1298,117 @@ watch(
   background: var(--theme-bg-primary) !important;
   color: var(--theme-text-primary) !important;
   border-color: var(--theme-table-border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: none;
+}
+
+/* 移除表格默认边框，让卡片效果更突出 */
+:deep(.el-table__inner-wrapper) {
+  border: none;
+}
+
+:deep(.el-table--border) {
+  border: none;
+}
+
+:deep(.el-table--border td:first-child) {
+  border-left: none;
+}
+
+:deep(.el-table--border th:first-child) {
+  border-left: none;
 }
 
 :deep(.el-table th.el-table__cell) {
   background: var(--theme-table-header-bg) !important;
   color: var(--theme-text-primary) !important;
   border-color: var(--theme-table-border) !important;
+  font-weight: 600;
+  height: 48px;
 }
 
 :deep(.el-table td.el-table__cell) {
   border-color: var(--theme-table-border) !important;
   color: var(--theme-text-primary) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* 行状态样式 */
-:deep(.confirmed-row) {
-  background-color: var(--theme-success-light) !important;
+/* 表格行间距优化 - 创造超强分组效果 */
+:deep(.el-table__body) {
+  background: transparent;
 }
 
-:deep(.pending-row) {
-  background-color: var(--theme-bg-primary);
+/* 为每一行添加明显的间距和背景 */
+:deep(.el-table__body tr) {
+  position: relative;
+}
+
+/* 使用after伪元素为每行之间创建明显的间距 */
+:deep(.el-table__body tr:not(:last-child) td) {
+  border-bottom: 12px solid var(--theme-bg-primary) !important;
+}
+
+/* 行状态样式 - 强化卡片分组效果 */
+:deep(.el-table .confirmed-row) {
+  position: relative !important;
+}
+
+:deep(.el-table .confirmed-row .el-table__cell) {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.04) 100%) !important;
+  border-left: 6px solid #22c55e !important;
+  box-shadow: 
+    0 2px 8px rgba(34, 197, 94, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.el-table .confirmed-row:hover .el-table__cell) {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.06) 100%) !important;
+  box-shadow: 
+    0 4px 12px rgba(34, 197, 94, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  transition: all 0.3s ease !important;
+}
+
+:deep(.el-table .pending-row) {
+  position: relative !important;
+}
+
+:deep(.el-table .pending-row .el-table__cell) {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(245, 158, 11, 0.04) 100%) !important;
+  border-left: 6px solid #f59e0b !important;
+  box-shadow: 
+    0 2px 8px rgba(245, 158, 11, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.el-table .pending-row:hover .el-table__cell) {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(245, 158, 11, 0.06) 100%) !important;
+  box-shadow: 
+    0 4px 12px rgba(245, 158, 11, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  transition: all 0.3s ease !important;
+}
+
+:deep(.el-table .no-match-row) {
+  position: relative !important;
+}
+
+:deep(.el-table .no-match-row .el-table__cell) {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.04) 100%) !important;
+  border-left: 6px solid #ef4444 !important;
+  box-shadow: 
+    0 2px 8px rgba(239, 68, 68, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.el-table .no-match-row:hover .el-table__cell) {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.06) 100%) !important;
+  box-shadow: 
+    0 4px 12px rgba(239, 68, 68, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
+  transition: all 0.3s ease !important;
 }
 
 /* 内容显示样式 */
@@ -1396,6 +1507,35 @@ watch(
   color: var(--theme-text-secondary);
 }
 
+/* 添加简单的测试样式来验证类名是否生效 */
+:deep(.el-table .confirmed-row) {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+}
+
+:deep(.el-table .pending-row) {
+  background-color: rgba(245, 158, 11, 0.1) !important;
+}
+
+:deep(.el-table .no-match-row) {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* 为无匹配行添加脉冲动画 */
+@keyframes pulse-bar {
+  0% {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: translateY(-50%) scaleY(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
+  }
+}
+
 /* 响应式设计 */
 @media (max-width: 1200px) {
   .table-toolbar {
@@ -1444,6 +1584,11 @@ watch(
     text-align: center;
     font-size: 12px;
   }
+
+  /* 移动端行间距调整 */
+  :deep(.el-table__body tr:not(:last-child) td) {
+    border-bottom: 8px solid var(--theme-bg-primary) !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1454,6 +1599,11 @@ watch(
 
   .statistics-cards {
     grid-template-columns: 1fr;
+  }
+
+  /* 超小屏幕行间距优化 */
+  :deep(.el-table__body tr:not(:last-child) td) {
+    border-bottom: 6px solid var(--theme-bg-primary) !important;
   }
 }
 </style>

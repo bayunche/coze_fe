@@ -1402,8 +1402,12 @@ const handleViewOptions = async (row) => {
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
   let className = ''
-  if (row.confirmResult === 1) {
+  
+  // 根据确认状态和匹配类型确定主要样式类
+  if (Number(row.confirmResult) === 1) {
     className += 'confirmed-row'
+  } else if (Number(row.matchedType) === 0) {
+    className += 'no-match-row'
   } else {
     className += 'pending-row'
   }
@@ -1413,7 +1417,7 @@ const getRowClassName = ({ row }) => {
     className += ' action-row'
   }
   
-  return className
+  return className.trim()
 }
 
 // 表格合并方法
@@ -2812,25 +2816,63 @@ const handleBack = () => {
   box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
 }
 
+/* 表格行间距优化 - 创造明显的分组效果 */
+:deep(.el-table__body tr:not(:last-child) .el-table__cell) {
+  border-bottom: 8px solid var(--theme-bg-primary) !important;
+}
+
 /* 行状态样式 - 使用主题变量 */
-:deep(.confirmed-row) {
-  background-color: rgba(var(--theme-success-rgb), 0.1) !important;
-
+:deep(.el-table .confirmed-row .el-table__cell) {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.04) 100%) !important;
+  border-left: 4px solid #22c55e !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-:deep(.confirmed-row:hover > td.el-table__cell) {
-  background-color: rgba(var(--theme-success-rgb), 0.15) !important;
+:deep(.el-table .confirmed-row:hover .el-table__cell) {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.12) 0%, rgba(34, 197, 94, 0.06) 100%) !important;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15) !important;
+  backdrop-filter: var(--theme-backdrop-blur, none);
+  transition: all 0.3s ease !important;
+}
+
+:deep(.el-table .pending-row .el-table__cell) {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(245, 158, 11, 0.02) 100%) !important;
+  border-left: 4px solid #f59e0b !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-:deep(.pending-row) {
-  background-color: transparent;
+:deep(.el-table .pending-row:hover .el-table__cell) {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.10) 0%, rgba(245, 158, 11, 0.04) 100%) !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12) !important;
+  backdrop-filter: var(--theme-backdrop-blur, none);
+  transition: all 0.3s ease !important;
 }
 
-:deep(.pending-row:hover > td.el-table__cell) {
-  background-color: rgba(var(--theme-warning-rgb), 0.1) !important;
+/* 无匹配行样式 */
+:deep(.el-table .no-match-row .el-table__cell) {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.04) 100%) !important;
+  border-left: 4px solid #ef4444 !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
+  animation: pulse-glow 2s infinite;
+}
+
+:deep(.el-table .no-match-row:hover .el-table__cell) {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(239, 68, 68, 0.06) 100%) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.18) !important;
+  backdrop-filter: var(--theme-backdrop-blur, none);
+  transition: all 0.3s ease !important;
+}
+
+/* 无匹配行的脉冲动画 */
+@keyframes pulse-glow {
+  0%, 100% {
+    border-left-color: #ef4444;
+    box-shadow: 0 0 0 rgba(239, 68, 68, 0);
+  }
+  50% {
+    border-left-color: #dc2626;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+  }
 }
 
 /* 操作行样式 */
