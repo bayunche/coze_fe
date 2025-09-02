@@ -175,7 +175,10 @@
         >
           <el-table-column label="序号" width="80">
             <template #default="{ row, $index }">
-              <span v-if="row.rowType === 'data'">{{ Math.floor($index / 2) + 1 }}</span>
+              <div v-if="row.rowType === 'data'" class="sequence-number-container">
+                <div :class="getSequenceBarClass(row)" class="sequence-bar"></div>
+                <span class="sequence-number">{{ Math.floor($index / 2) + 1 }}</span>
+              </div>
             </template>
           </el-table-column>
 
@@ -1532,6 +1535,17 @@ const getRowClassName = ({ row }) => {
   }
   
   return className.trim()
+}
+
+// 获取序号条的样式类
+const getSequenceBarClass = (row) => {
+  if (Number(row.confirmResult) === 1) {
+    return 'sequence-bar-green'  // 已确认 - 绿色
+  } else if (Number(row.matchedType) === 0) {
+    return 'sequence-bar-red'    // 未匹配 - 红色
+  } else {
+    return 'sequence-bar-yellow' // 待确认 - 黄色
+  }
 }
 
 // 表格合并方法
@@ -3090,7 +3104,6 @@ const handleBack = () => {
     rgba(34, 197, 94, 0.12) 0%, 
     rgba(34, 197, 94, 0.06) 50%,
     rgba(34, 197, 94, 0.03) 100%) !important;
-  border-left: 6px solid #22c55e !important;
   border-right: 2px solid rgba(34, 197, 94, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 
@@ -3114,7 +3127,6 @@ const handleBack = () => {
     rgba(245, 158, 11, 0.10) 0%, 
     rgba(245, 158, 11, 0.05) 50%,
     rgba(245, 158, 11, 0.02) 100%) !important;
-  border-left: 6px solid #f59e0b !important;
   border-right: 2px solid rgba(245, 158, 11, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 
@@ -3139,7 +3151,6 @@ const handleBack = () => {
     rgba(239, 68, 68, 0.12) 0%, 
     rgba(239, 68, 68, 0.06) 50%,
     rgba(239, 68, 68, 0.03) 100%) !important;
-  border-left: 6px solid #ef4444 !important;
   border-right: 2px solid rgba(239, 68, 68, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 
@@ -3192,7 +3203,6 @@ const handleBack = () => {
   background: linear-gradient(135deg, 
     rgba(34, 197, 94, 0.06) 0%, 
     rgba(34, 197, 94, 0.02) 100%) !important;
-  border-left: 6px solid #22c55e !important;
   border-right: 2px solid rgba(34, 197, 94, 0.15) !important;
 }
 
@@ -3200,7 +3210,6 @@ const handleBack = () => {
   background: linear-gradient(135deg, 
     rgba(245, 158, 11, 0.06) 0%, 
     rgba(245, 158, 11, 0.02) 100%) !important;
-  border-left: 6px solid #f59e0b !important;
   border-right: 2px solid rgba(245, 158, 11, 0.15) !important;
 }
 
@@ -3208,7 +3217,6 @@ const handleBack = () => {
   background: linear-gradient(135deg, 
     rgba(239, 68, 68, 0.06) 0%, 
     rgba(239, 68, 68, 0.02) 100%) !important;
-  border-left: 6px solid #ef4444 !important;
   border-right: 2px solid rgba(239, 68, 68, 0.15) !important;
 }
 
@@ -4194,5 +4202,43 @@ const handleBack = () => {
 
 .empty-price-text {
   font-weight: 500;
+}
+
+/* 序号列容器样式 */
+.sequence-number-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* 序号条基础样式 */
+.sequence-bar {
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* 不同状态的序号条颜色 */
+.sequence-bar-green {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.3);
+}
+
+.sequence-bar-yellow {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+.sequence-bar-red {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+}
+
+/* 序号文字样式 */
+.sequence-number {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
 }
 </style>
