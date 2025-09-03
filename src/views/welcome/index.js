@@ -1,4 +1,4 @@
-import WelcomeView from './WelcomeView.vue'
+import WelcomePage from './WelcomePage.vue'
 
-export default WelcomeView
-export { WelcomeView }
+export default WelcomePage
+export { WelcomePage }

@@ -1,4 +1,4 @@
-import HomeView from './HomeView.vue'
+import HomePage from './HomePage.vue'
 
-export default HomeView
-export { HomeView }
+export default HomePage
+export { HomePage }

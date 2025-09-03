@@ -90,27 +90,6 @@
         </div>
       </div>
 
-      <!-- 数据管理区（所有用户可见） -->
-      <div class="data-management-section">
-        <h2 class="section-title">数据管理</h2>
-        <div class="data-management-grid">
-          <el-card
-            v-for="(feature, key) in availableDataFeatures"
-            :key="key"
-            class="data-management-card"
-            shadow="hover"
-            @click="navigateToFeature(feature.route)"
-          >
-            <div class="data-management-content">
-              <div class="data-management-icon">{{ feature.icon }}</div>
-              <div class="data-management-info">
-                <div class="data-management-title">{{ feature.title }}</div>
-                <div class="data-management-desc">{{ feature.description }}</div>
-              </div>
-            </div>
-          </el-card>
-        </div>
-      </div>
 
       <!-- 历史操作记录区 -->
       <!-- <div class="history-section">
@@ -210,12 +189,6 @@ const availableFeatures = computed(() => {
   )
 })
 
-// 数据管理功能列表（仅显示可用功能）
-const availableDataFeatures = computed(() => {
-  return Object.fromEntries(
-    Object.entries(DATA_MANAGEMENT_FEATURES).filter(([, feature]) => isFeatureAvailable(feature))
-  )
-})
 
 // 历史记录数据（可以后续替换为从API获取）
 const executionHistory = ref(MOCK_EXECUTION_HISTORY)
@@ -492,62 +465,6 @@ onMounted(() => {
   color: var(--theme-text-secondary);
 }
 
-.data-management-section {
-  margin-bottom: 40px;
-}
-
-.data-management-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.data-management-card {
-  border: 1px solid var(--theme-card-border);
-  border-radius: 12px;
-  background: var(--theme-card-bg);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.data-management-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--theme-card-hover-shadow);
-  border-color: var(--theme-primary);
-}
-
-.data-management-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.data-management-icon {
-  font-size: 32px;
-  width: 60px;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--theme-bg-tertiary);
-  border-radius: 12px;
-}
-
-.data-management-info {
-  flex: 1;
-}
-
-.data-management-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--theme-text-primary);
-  margin-bottom: 4px;
-}
-
-.data-management-desc {
-  font-size: 14px;
-  color: var(--theme-text-secondary);
-}
 
 .history-section {
   margin-bottom: 40px;
@@ -622,8 +539,5 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .data-management-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>

@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/home'
-import WelcomeView from '../views/welcome'
+import HomePage from '../views/home'
+import WelcomePage from '../views/welcome'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -8,12 +8,12 @@ const router = createRouter({
     {
       path: '/',
       name: 'welcome',
-      component: WelcomeView
+      component: WelcomePage
     },
     {
       path: '/home',
       name: 'home',
-      component: HomeView
+      component: HomePage
     },
 
     {
@@ -60,6 +60,20 @@ const router = createRouter({
       name: 'owner-material-report',
       component: () => import('../views/owner-material-report'),
       props: (route) => ({ taskId: route.params.taskId })
+    },
+    {
+      path: '/temporary-data-management',
+      name: 'temporary-data-management',
+      component: () => import('../views/temporary-data-management'),
+      meta: { 
+        title: '临时数据管理',
+        breadcrumb: ['智能大脑', '数据管理', '临时数据']
+      }
+    },
+    // 保持向后兼容的重定向
+    {
+      path: '/supplier-material-approval',
+      redirect: '/temporary-data-management'
     }
   ]
 })

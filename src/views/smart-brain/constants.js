@@ -16,6 +16,7 @@ export const MANAGEMENT_ICONS = {
   MATERIAL_MANAGEMENT: '📦',
   VECTOR_DATABASE: '🗄️',
   DATA_MANAGEMENT: '📊',
+  APPROVAL_MANAGEMENT: '✅',
   BACKUP_RESTORE: '💾',
   SYSTEM_CONFIG: '⚙️',
   LOG_ANALYSIS: '📋'
@@ -47,6 +48,20 @@ export const MANAGEMENT_FEATURES = {
     route: '/smart-brain/material-management',
     available: true
   },
+  PROJECT_DATA: {
+    icon: MANAGEMENT_ICONS.DATA_MANAGEMENT,
+    title: '项目数据管理',
+    description: '管理项目相关的数据信息',
+    route: '/project-data-management',
+    available: true
+  },
+  TEMPORARY_DATA_MANAGEMENT: {
+    icon: MANAGEMENT_ICONS.APPROVAL_MANAGEMENT,
+    title: '临时数据管理',
+    description: '管理和审批所有临时数据信息',
+    route: '/temporary-data-management',
+    available: true
+  },
   VECTOR_DB: {
     icon: MANAGEMENT_ICONS.VECTOR_DATABASE,
     title: '向量库数据管理',
@@ -57,13 +72,7 @@ export const MANAGEMENT_FEATURES = {
 }
 
 export const DATA_MANAGEMENT_FEATURES = {
-  PROJECT_DATA: {
-    icon: MANAGEMENT_ICONS.DATA_MANAGEMENT,
-    title: '项目数据管理',
-    description: '管理项目相关的数据信息',
-    route: '/project-data-management',
-    available: true
-  }
+  // 数据管理功能已移至管理功能区
 }
 
 export const TABLE_CONFIG = {

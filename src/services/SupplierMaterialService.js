@@ -164,6 +164,192 @@ class SupplierMaterialService {
   }
 
   /**
+   * 获取审批列表
+   * @param {Object} params - 查询参数
+   * @param {Number} params.page - 页码（从0开始）
+   * @param {Number} params.size - 每页大小
+   * @param {String} params.keyword - 搜索关键词
+   * @param {Number} params.approvalStatus - 审批状态（0：待审批，1：已通过，2：已拒绝）
+   * @param {Number} params.matchedType - 匹配类型
+   * @returns {Promise<Object>} 审批列表数据
+   */
+  async getApprovalList(params) {
+    try {
+      console.log('【调用】获取审批列表，参数:', params)
+      
+      const response = await this.http.get('/v2/materials/party-b/approval-list', {
+        params: {
+          page: params.page || 0,
+          size: params.size || 20,
+          keyword: params.keyword,
+          approvalStatus: params.approvalStatus,
+          matchedType: params.matchedType
+        }
+      })
+      
+      console.log('【响应】审批列表数据:', response)
+      return response
+    } catch (error) {
+      console.error('【错误】获取审批列表失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 审批通过单条记录
+   * @param {Object} params - 审批参数
+   * @param {String} params.id - 记录ID
+   * @param {String} params.remark - 审批意见（可选）
+   * @returns {Promise<Object>} 审批结果
+   */
+  async approveItem(params) {
+    try {
+      console.log('【调用】审批通过，参数:', params)
+      
+      const response = await this.http.post('/v2/materials/party-b/approve', {
+        id: params.id,
+        remark: params.remark || ''
+      })
+      
+      console.log('【响应】审批通过结果:', response)
+      
+      if (response.code === 200) {
+        ElMessage.success(response.message || '审批通过成功')
+        return response.data
+      } else {
+        throw new Error(response.message || '审批失败')
+      }
+    } catch (error) {
+      console.error('【错误】审批通过失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 拒绝单条记录
+   * @param {Object} params - 拒绝参数
+   * @param {String} params.id - 记录ID
+   * @param {String} params.reason - 拒绝理由（必填）
+   * @returns {Promise<Object>} 拒绝结果
+   */
+  async rejectItem(params) {
+    try {
+      console.log('【调用】审批拒绝，参数:', params)
+      
+      if (!params.reason || !params.reason.trim()) {
+        throw new Error('拒绝理由不能为空')
+      }
+      
+      const response = await this.http.post('/v2/materials/party-b/reject', {
+        id: params.id,
+        reason: params.reason
+      })
+      
+      console.log('【响应】审批拒绝结果:', response)
+      
+      if (response.code === 200) {
+        ElMessage.success(response.message || '拒绝成功')
+        return response.data
+      } else {
+        throw new Error(response.message || '拒绝失败')
+      }
+    } catch (error) {
+      console.error('【错误】审批拒绝失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 批量审批通过
+   * @param {Object} params - 批量审批参数
+   * @param {Array<String>} params.ids - 记录ID列表
+   * @param {String} params.remark - 审批意见（可选）
+   * @returns {Promise<Object>} 批量审批结果
+   */
+  async batchApprove(params) {
+    try {
+      console.log('【调用】批量审批通过，参数:', params)
+      
+      if (!params.ids || params.ids.length === 0) {
+        throw new Error('请选择要审批的记录')
+      }
+      
+      const response = await this.http.post('/v2/materials/party-b/batch-approve', {
+        ids: params.ids,
+        remark: params.remark || ''
+      })
+      
+      console.log('【响应】批量审批结果:', response)
+      
+      if (response.code === 200) {
+        ElMessage.success(response.message || `成功审批 ${params.ids.length} 条记录`)
+        return response.data
+      } else {
+        throw new Error(response.message || '批量审批失败')
+      }
+    } catch (error) {
+      console.error('【错误】批量审批失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 批量拒绝
+   * @param {Object} params - 批量拒绝参数
+   * @param {Array<String>} params.ids - 记录ID列表
+   * @param {String} params.reason - 拒绝理由（必填）
+   * @returns {Promise<Object>} 批量拒绝结果
+   */
+  async batchReject(params) {
+    try {
+      console.log('【调用】批量拒绝，参数:', params)
+      
+      if (!params.ids || params.ids.length === 0) {
+        throw new Error('请选择要拒绝的记录')
+      }
+      
+      if (!params.reason || !params.reason.trim()) {
+        throw new Error('拒绝理由不能为空')
+      }
+      
+      const response = await this.http.post('/v2/materials/party-b/batch-reject', {
+        ids: params.ids,
+        reason: params.reason
+      })
+      
+      console.log('【响应】批量拒绝结果:', response)
+      
+      if (response.code === 200) {
+        ElMessage.success(response.message || `成功拒绝 ${params.ids.length} 条记录`)
+        return response.data
+      } else {
+        throw new Error(response.message || '批量拒绝失败')
+      }
+    } catch (error) {
+      console.error('【错误】批量拒绝失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 获取审批统计数据
+   * @returns {Promise<Object>} 统计数据
+   */
+  async getApprovalStatistics() {
+    try {
+      console.log('【调用】获取审批统计数据')
+      
+      const response = await this.http.get('/v2/materials/party-b/approval-statistics')
+      
+      console.log('【响应】审批统计数据:', response)
+      return response
+    } catch (error) {
+      console.error('【错误】获取审批统计失败:', error)
+      throw error
+    }
+  }
+
+  /**
    * 批量确认乙供物资
    * @param {Array} items - 需要确认的物资列表
    * @returns {Promise<Object>} 批量确认结果
