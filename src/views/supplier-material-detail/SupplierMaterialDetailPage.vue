@@ -576,6 +576,7 @@ import {
   querySupplierMaterialsComplex,
   confirmSupplierMaterialData
 } from '@/utils/backendWorkflow.js'
+import supplierMaterialService from '@/services/SupplierMaterialService.js'
 
 // 导入常量和工具函数
 import { BUTTON_CONFIG, PAGINATION_CONFIG, CSS_CLASSES } from './constants.js'
@@ -604,7 +605,6 @@ const exportLoading = ref(false)
 const saving = ref(false)
 
 const materialData = ref([])
-const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
 
@@ -620,6 +620,14 @@ const queryParams = ref({
 })
 const statistics = ref(null)
 const useComplexQuery = ref(true) // 是否使用复杂查询接口
+
+// 总览卡片统计数据 - 来自后端接口
+const matchingStats = ref({
+  totalMaterials: 0,
+  exactMatchCount: 0,
+  unmatchedPriceCount: 0,
+  pendingMatchCount: 0
+})
 
 // 计算确认统计
 
@@ -642,27 +650,57 @@ const pendingCount = computed(() => {
 // 总览卡片相关状态
 const activeOverviewType = ref(null)
 
-// 计算各类型数据统计
+// 基于后端统计接口的计算属性
 const matchedCount = computed(() => {
-  return materialData.value.filter((item) => item.matchedType === 1 || item.matchedType === 2).length
+  // 精确匹配且价格匹配的数量
+  return matchingStats.value.exactMatchCount
 })
 
 const unmatchedCount = computed(() => {
-  return materialData.value.filter((item) => item.matchedType === 0).length
+  // 待匹配的数量（包含相似匹配、历史匹配、人工匹配、无匹配）
+  return matchingStats.value.pendingMatchCount
 })
 
 const priceMismatchCount = computed(() => {
-  return materialData.value.filter((item) => {
-    // 检查价格不匹配：原始价格与匹配价格不一致
-    if (item.matchedType === 0) return false
-    
-    const originalPrice = parseFloat(item.materialPrice || 0)
-    const matchedPrice = item.selectedPriceQuarter ? 
-      parseFloat(item.selectedPriceQuarter.taxPrice || item.selectedPriceQuarter.unitPrice || 0) : 0
-    
-    return Math.abs(originalPrice - matchedPrice) > 0.01
-  }).length
+  // 精确匹配但价格未匹配的数量
+  return matchingStats.value.unmatchedPriceCount
 })
+
+// 物资总数计算属性
+const total = computed(() => {
+  return matchingStats.value.totalMaterials
+})
+
+/**
+ * 获取乙供物资匹配统计数据
+ */
+const fetchMatchingStats = async () => {
+  if (!taskId.value) return
+
+  try {
+    console.log('【调用】获取乙供物资匹配统计，taskId:', taskId.value)
+    const response = await supplierMaterialService.getMaterialMatchingStats(taskId.value)
+    
+    // 更新统计数据
+    matchingStats.value = {
+      totalMaterials: response.totalMaterials || 0,
+      exactMatchCount: response.exactMatchCount || 0,
+      unmatchedPriceCount: response.unmatchedPriceCount || 0,
+      pendingMatchCount: response.pendingMatchCount || 0
+    }
+    
+    console.log('【响应】统计数据已更新:', matchingStats.value)
+  } catch (error) {
+    console.error('【错误】获取匹配统计失败:', error)
+    // 失败时保持默认值，不影响页面其他功能
+    matchingStats.value = {
+      totalMaterials: 0,
+      exactMatchCount: 0,
+      unmatchedPriceCount: 0,
+      pendingMatchCount: 0
+    }
+  }
+}
 
 /**
  * 获取解析结果数据
@@ -712,7 +750,7 @@ const fetchData = async () => {
           return [dataRow, actionRow]
         })
         statistics.value = response.data.statistics || {}
-        total.value = response.data.page?.totalElements || 0
+        // 注意：total现在从matchingStats计算而来，不再从response设置
       }
     } else {
       // 使用简单查询接口（后备方案）
@@ -729,14 +767,13 @@ const fetchData = async () => {
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
           return [dataRow, actionRow]
         })
-        total.value = response.totalElements || 0
+        // 注意：total现在从matchingStats计算而来，不再从response设置
         statistics.value = null
       }
     }
 
     if (!response) {
       materialData.value = []
-      total.value = 0
       statistics.value = null
     }
   } catch (error) {
@@ -753,7 +790,6 @@ const fetchData = async () => {
       error?.response?.data?.message || error?.message || '获取解析结果失败，请稍后重试'
     ElMessage.error(errorMsg)
     materialData.value = []
-    total.value = 0
     statistics.value = null
   } finally {
     tableLoading.value = false
@@ -853,21 +889,30 @@ const handleOverviewCardClick = (type) => {
     }
     
     // 根据卡片类型设置筛选条件
+    // 注意：这里的筛选逻辑应该与后端统计接口的业务逻辑保持一致
     switch (type) {
       case 'total':
         // 显示全部，不设置筛选条件
         break
       case 'matched':
-        // 显示已匹配，先显示精确匹配（单个值）
+        // 显示精确匹配且价格匹配的物资
+        // 由于API不支持直接筛选价格匹配状态，这里只能先筛选精确匹配
+        // 理想情况下应该是：matchedType = 1 AND priceMatchedStatus = 1
         queryParams.value.matchedType = 1
+        queryParams.value.confirmResult = 1  // 已确认的通常都有价格匹配
         break
       case 'unmatched':
-        // 显示未找到物资
+        // 显示待匹配物资（包含无匹配、相似匹配、历史匹配、人工匹配）
+        // 由于API只支持单个matchedType值，这里先显示无匹配的
+        // 理想情况下应该是：matchedType IN (0, 2, 3, 4)
         queryParams.value.matchedType = 0
         break
       case 'priceMismatch':
-        // 显示价格不匹配（暂时显示已匹配的，需要后端支持）
+        // 显示精确匹配但价格未匹配的物资
+        // 由于API不支持直接筛选价格匹配状态，这里通过精确匹配且未确认来近似
+        // 理想情况下应该是：matchedType = 1 AND priceMatchedStatus = 0
         queryParams.value.matchedType = 1
+        queryParams.value.confirmResult = 0  // 未确认的精确匹配通常是价格不匹配
         break
     }
   }
@@ -886,9 +931,13 @@ const handleGoBack = () => {
 /**
  * 刷新数据
  */
-const handleRefresh = () => {
+const handleRefresh = async () => {
   currentPage.value = 1
-  fetchData()
+  // 同时获取数据和统计信息
+  await Promise.all([
+    fetchData(),
+    fetchMatchingStats()
+  ])
 }
 
 /**
@@ -1642,7 +1691,11 @@ onMounted(() => {
     }
     currentPage.value = 1
     useComplexQuery.value = true
-    fetchData().then(() => {
+    // 同时加载数据和统计信息
+    Promise.all([
+      fetchData(),
+      fetchMatchingStats()
+    ]).then(() => {
       // 数据加载完成后，延迟执行调试输出，确保渲染完成
       setTimeout(() => {
         console.log('【页面加载完成】开始执行价格对比调试...')

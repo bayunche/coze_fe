@@ -140,6 +140,30 @@ class SupplierMaterialService {
   }
 
   /**
+   * 获取乙供物资匹配统计信息
+   * @param {String} taskId - 任务ID（必填）
+   * @returns {Promise<Object>} 统计结果
+   */
+  async getMaterialMatchingStats(taskId) {
+    try {
+      console.log('【调用】乙供物资匹配统计接口，taskId:', taskId)
+      
+      // 参数验证
+      if (!taskId) {
+        throw new Error('taskId参数不能为空')
+      }
+
+      const response = await this.http.get(`/v2/materials/party-b/getMaterialMatchingStats?taskId=${taskId}`)
+
+      console.log('【响应】乙供物资匹配统计结果:', response)
+      return response
+    } catch (error) {
+      console.error('【错误】获取乙供物资匹配统计失败:', error)
+      throw error
+    }
+  }
+
+  /**
    * 批量确认乙供物资
    * @param {Array} items - 需要确认的物资列表
    * @returns {Promise<Object>} 批量确认结果

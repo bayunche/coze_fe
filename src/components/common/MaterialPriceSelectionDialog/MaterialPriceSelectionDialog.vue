@@ -345,16 +345,25 @@ const initRecommendData = () => {
     recommendMaterials.value = props.rowData.matchOptions.map(option => ({
       ...option.baseInfo,
       originalOption: option,
-      priceOptions: option.priceList || []
+      // 根据接口文档，价格数据在 priceOptions 字段中
+      priceOptions: option.priceOptions || option.priceList || []
     }))
+    
+    // 如果有推荐物资，自动选择第一个物资，并加载其价格列表
+    if (recommendMaterials.value.length > 0) {
+      const firstMaterial = recommendMaterials.value[0]
+      selectRecommendMaterial(firstMaterial)
+    }
   } else {
     recommendMaterials.value = []
   }
   
-  // 重置选择状态
-  selectedRecommendMaterial.value = null
-  selectedRecommendPrice.value = null
-  recommendPrices.value = []
+  // 重置选择状态（如果没有自动选择第一个）
+  if (recommendMaterials.value.length === 0) {
+    selectedRecommendMaterial.value = null
+    selectedRecommendPrice.value = null
+    recommendPrices.value = []
+  }
   
   // 如果没有推荐数据，默认切换到搜索标签页
   if (!hasRecommendations.value) {
