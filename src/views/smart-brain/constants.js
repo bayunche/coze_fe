@@ -2,13 +2,14 @@
 
 export const DIALOG_TYPES = {
   CONTRACT_PARSING: 'contractParsing',
-  SUPPLIER_MATERIAL_PARSING: 'supplierMaterialParsing', 
+  SUPPLIER_MATERIAL_PARSING: 'supplierMaterialParsing',
   OWNER_MATERIAL_PARSING: 'ownerSuppliedMaterialParsing'
 }
 
 export const CARD_ICONS = {
   TOTAL_TASKS: '📊',
   IN_PROGRESS: '⏳',
+  FAILED: '❌',
   COMPLETED: '✅'
 }
 
@@ -26,17 +27,26 @@ export const OVERVIEW_CARD_CONFIG = {
   TOTAL_TASKS: {
     icon: CARD_ICONS.TOTAL_TASKS,
     title: '总任务数',
-    key: 'totalTasks'
+    key: 'totalTasks',
+    dialogType: 'total'
   },
   IN_PROGRESS: {
     icon: CARD_ICONS.IN_PROGRESS,
     title: '进行中',
-    key: 'inProgressTasks'
+    key: 'inProgressTasks',
+    dialogType: 'inProgress'
+  },
+  FAILED: {
+    icon: CARD_ICONS.FAILED,
+    title: '执行失败',
+    key: 'failedTasks',
+    dialogType: 'failed'
   },
   COMPLETED: {
     icon: CARD_ICONS.COMPLETED,
     title: '已完成',
-    key: 'completedTasks'
+    key: 'completedTasks',
+    dialogType: 'completed'
   }
 }
 
@@ -116,3 +126,118 @@ export const MOCK_EXECUTION_HISTORY = [
     timestamp: '2024-01-15 14:25:10'
   }
 ]
+
+// TODO: 以下为各统计弹窗的 mock 数据，后续需要替换为真实 API 数据
+export const MOCK_TASK_DETAILS = {
+  total: [
+    {
+      id: 1,
+      taskName: '合同001解析任务',
+      agentName: '合同解析智能体',
+      status: STATUS_TYPES.SUCCESS,
+      createTime: '2024-01-15 14:30:25',
+      finishTime: '2024-01-15 14:32:55',
+      duration: '2m 30s',
+      description: '解析建筑工程合同，提取关键信息'
+    },
+    {
+      id: 2,
+      taskName: '物资清单002解析',
+      agentName: '乙供物资解析智能体',
+      status: STATUS_TYPES.PENDING,
+      createTime: '2024-01-15 14:35:10',
+      finishTime: null,
+      duration: '进行中...',
+      description: '解析电气设备物资清单'
+    },
+    {
+      id: 3,
+      taskName: '甲供物资003处理',
+      agentName: '甲供物资解析智能体',
+      status: STATUS_TYPES.ERROR,
+      createTime: '2024-01-15 14:20:15',
+      finishTime: '2024-01-15 14:21:30',
+      duration: '1m 15s',
+      description: '处理钢材类甲供物资信息',
+      errorMessage: '文档格式不支持'
+    },
+    {
+      id: 4,
+      taskName: '合同004解析任务',
+      agentName: '合同解析智能体',
+      status: STATUS_TYPES.SUCCESS,
+      createTime: '2024-01-15 14:10:20',
+      finishTime: '2024-01-15 14:13:45',
+      duration: '3m 25s',
+      description: '解析装修工程合同'
+    },
+    {
+      id: 5,
+      taskName: '物资清单005解析',
+      agentName: '乙供物资解析智能体',
+      status: STATUS_TYPES.SUCCESS,
+      createTime: '2024-01-15 14:00:30',
+      finishTime: '2024-01-15 14:02:10',
+      duration: '1m 40s',
+      description: '解析机械设备物资清单'
+    }
+  ],
+  completed: [
+    {
+      id: 1,
+      taskName: '合同001解析任务',
+      agentName: '合同解析智能体',
+      status: STATUS_TYPES.SUCCESS,
+      createTime: '2024-01-15 14:30:25',
+      finishTime: '2024-01-15 14:32:55',
+      duration: '2m 30s',
+      description: '解析建筑工程合同，提取关键信息'
+    },
+    {
+      id: 4,
+      taskName: '合同004解析任务',
+      agentName: '合同解析智能体',
+      status: STATUS_TYPES.SUCCESS,
+      createTime: '2024-01-15 14:10:20',
+      finishTime: '2024-01-15 14:13:45',
+      duration: '3m 25s',
+      description: '解析装修工程合同'
+    },
+    {
+      id: 5,
+      taskName: '物资清单005解析',
+      agentName: '乙供物资解析智能体',
+      status: STATUS_TYPES.SUCCESS,
+      createTime: '2024-01-15 14:00:30',
+      finishTime: '2024-01-15 14:02:10',
+      duration: '1m 40s',
+      description: '解析机械设备物资清单'
+    }
+  ],
+  inProgress: [
+    {
+      id: 2,
+      taskName: '物资清单002解析',
+      agentName: '乙供物资解析智能体',
+      status: STATUS_TYPES.PENDING,
+      createTime: '2024-01-15 14:35:10',
+      finishTime: null,
+      duration: '进行中...',
+      description: '解析电气设备物资清单',
+      progress: 65
+    }
+  ],
+  failed: [
+    {
+      id: 3,
+      taskName: '甲供物资003处理',
+      agentName: '甲供物资解析智能体',
+      status: STATUS_TYPES.ERROR,
+      createTime: '2024-01-15 14:20:15',
+      finishTime: '2024-01-15 14:21:30',
+      duration: '1m 15s',
+      description: '处理钢材类甲供物资信息',
+      errorMessage: '文档格式不支持，请检查上传文件是否为支持的格式(.pdf, .docx, .xlsx)'
+    }
+  ]
+}

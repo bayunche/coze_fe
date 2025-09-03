@@ -1,4 +1,4 @@
-import { DIALOG_TYPES, STATUS_TYPES, STATUS_LABELS } from './constants.js'
+import { DIALOG_TYPES, STATUS_TYPES, STATUS_LABELS, MOCK_TASK_DETAILS } from './constants.js'
 
 /**
  * 计算总览数据
@@ -9,17 +9,26 @@ export const calculateOverviewData = (smartAgents) => {
   let totalTasks = 0
   let inProgressTasks = 0
   let completedTasks = 0
+  let failedTasks = 0 // TODO: 后续需要从真实 API 获取失败任务数
 
   smartAgents.forEach(agent => {
     totalTasks += agent.tasks.total || 0
     inProgressTasks += agent.tasks.inProgress || 0
     completedTasks += agent.tasks.completed || 0
+    // TODO: 暂时使用 mock 数据，后续需要添加真实的失败任务统计
+    failedTasks += agent.tasks.failed || 0
   })
+
+  // TODO: 暂时使用 mock 数据，后续需要替换为真实数据
+  if (failedTasks === 0) {
+    failedTasks = 1 // 暂时显示 1 个失败任务作为示例
+  }
 
   return {
     totalTasks,
     inProgressTasks,
-    completedTasks
+    completedTasks,
+    failedTasks
   }
 }
 
@@ -112,6 +121,56 @@ export const resetDialogStates = () => {
     isOwnerMaterialParsing: false,
     taskParsingResultDialogVisible: false,
     supplierMaterialParsingResultDialogVisible: false,
-    ownerMaterialParsingResultDialogVisible: false
+    ownerMaterialParsingResultDialogVisible: false,
+    // 新增统计弹窗状态
+    overviewStatsDialogVisible: false
+  }
+}
+
+/**
+ * 获取统计弹窗的 mock 数据
+ * @param {string} dialogType - 弹窗类型 (total, completed, inProgress, failed)
+ * @returns {Array} 统计数据列表
+ */
+export const getStatsDialogMockData = (dialogType) => {
+  // TODO: 后续需要替换为真实 API 数据
+  return MOCK_TASK_DETAILS[dialogType] || []
+}
+
+/**
+ * 获取统计弹窗的标题
+ * @param {string} dialogType - 弹窗类型
+ * @returns {string} 弹窗标题
+ */
+export const getStatsDialogTitle = (dialogType) => {
+  const titleMap = {
+    total: '总任务数详情',
+    completed: '已完成任务详情',
+    inProgress: '进行中任务详情',
+    failed: '执行失败任务详情'
+  }
+  return titleMap[dialogType] || '任务详情'
+}
+
+/**
+ * 格式化持续时间显示
+ * @param {string} createTime - 创建时间
+ * @returns {string} 格式化后的持续时间
+ */
+export const formatDurationFromCreate = (createTime) => {
+  if (!createTime) return '-'
+  
+  const now = new Date()
+  const create = new Date(createTime)
+  const diffMs = now.getTime() - create.getTime()
+  
+  if (diffMs < 60000) {
+    return `${Math.floor(diffMs / 1000)}s`
+  } else if (diffMs < 3600000) {
+    return `${Math.floor(diffMs / 60000)}m ${Math.floor((diffMs % 60000) / 1000)}s`
+  } else {
+    const hours = Math.floor(diffMs / 3600000)
+    const minutes = Math.floor((diffMs % 3600000) / 60000)
+    return `${hours}h ${minutes}m`
   }
 }

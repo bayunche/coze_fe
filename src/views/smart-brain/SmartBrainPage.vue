@@ -21,7 +21,12 @@
 
       <!-- 总览数据卡片区 -->
       <div class="overview-cards">
-        <el-card v-for="(config, key) in OVERVIEW_CARD_CONFIG" :key="key" class="overview-card">
+        <el-card 
+          v-for="(config, key) in OVERVIEW_CARD_CONFIG" 
+          :key="key" 
+          class="overview-card clickable-card"
+          @click="openStatsDialog(config.dialogType)"
+        >
           <div class="card-content">
             <div class="card-icon">{{ config.icon }}</div>
             <div class="card-info">
@@ -132,6 +137,14 @@
         v-model:show="dialogStates.ownerMaterialParsingResultDialogVisible"
         agent-id="ownerSuppliedMaterialParsing"
       />
+      
+      <!-- 统计弹窗 -->
+      <OverviewStatsDialog
+        v-model:show="statsDialogVisible"
+        :dialog-type="currentStatsDialogType"
+        :data="currentStatsData"
+        @refresh="handleStatsRefresh"
+      />
     </div>
     
     <!-- 添加DialogManager组件，用于显示各种弹窗 -->
@@ -148,23 +161,20 @@ import TaskParsingResultDialog from '@/components/home/TaskParsingResultDialog'
 import MaterialParsingResultDialog from '@/components/home/MaterialParsingResultDialog'
 import OwnerMaterialParsingResultDialog from '@/components/home/OwnerMaterialParsingResultDialog'
 import DialogManager from '@/components/home/DialogManager'
+import OverviewStatsDialog from '@/components/home/OverviewStatsDialog'
 
 import {
   OVERVIEW_CARD_CONFIG,
-  MANAGEMENT_FEATURES,
-  DATA_MANAGEMENT_FEATURES,
-  TABLE_CONFIG,
-  MOCK_EXECUTION_HISTORY
+  MANAGEMENT_FEATURES
 } from './constants.js'
 import {
   calculateOverviewData,
   getDialogTypeByAgentId,
-  getStatusLabel,
-  getStatusType,
   isFeatureAvailable,
   getUserRoleTag,
   createRouteNavigator,
-  resetDialogStates
+  resetDialogStates,
+  getStatsDialogMockData
 } from './utils.js'
 
 const router = useRouter()
@@ -176,6 +186,11 @@ const navigateToFeature = createRouteNavigator(router)
 
 // 对话框状态管理
 const dialogStates = reactive(resetDialogStates())
+
+// 统计弹窗相关状态
+const statsDialogVisible = ref(false)
+const currentStatsDialogType = ref('total')
+const currentStatsData = ref([])
 
 // 计算属性
 const smartAgents = computed(() => workflowStore.smartAgents)
@@ -190,8 +205,7 @@ const availableFeatures = computed(() => {
 })
 
 
-// 历史记录数据（可以后续替换为从API获取）
-const executionHistory = ref(MOCK_EXECUTION_HISTORY)
+// TODO: 后续需要从真实 API 获取各类统计数据，替换 mock 数据
 
 // 事件处理方法
 const toggleUserRole = () => {
@@ -241,9 +255,31 @@ const openAgentDialog = async (agent) => {
   }
 }
 
-const viewHistoryDetail = (row) => {
-  // TODO: 实现历史详情查看逻辑
-  console.log('查看历史详情:', row)
+/**
+ * 打开统计弹窗
+ * @param {string} dialogType - 弹窗类型 (total, completed, inProgress, failed)
+ */
+const openStatsDialog = (dialogType) => {
+  // TODO: 后续需要替换为真实 API 数据获取
+  currentStatsDialogType.value = dialogType
+  currentStatsData.value = getStatsDialogMockData(dialogType)
+  statsDialogVisible.value = true
+  
+  console.log(`打开${dialogType}类型的统计弹窗, 数据条数:`, currentStatsData.value.length)
+}
+
+/**
+ * 处理统计数据刷新
+ * @param {string} dialogType - 需要刷新的弹窗类型
+ */
+const handleStatsRefresh = (dialogType) => {
+  // TODO: 后续需要调用真实 API 刷新数据
+  console.log(`刷新${dialogType}类型的统计数据`)
+  
+  // 暂时重新获取 mock 数据
+  if (dialogType === currentStatsDialogType.value) {
+    currentStatsData.value = getStatsDialogMockData(dialogType)
+  }
 }
 
 // 页面初始化
@@ -307,6 +343,23 @@ onMounted(() => {
 .overview-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--theme-card-hover-shadow);
+}
+
+/* 可点击卡片样式 */
+.clickable-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.clickable-card:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: var(--theme-card-hover-shadow);
+  border-color: var(--theme-primary);
+}
+
+.clickable-card:active {
+  transform: translateY(-1px) scale(1.01);
+  transition-duration: 0.1s;
 }
 
 .card-content {
