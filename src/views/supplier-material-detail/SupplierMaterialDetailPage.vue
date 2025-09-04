@@ -616,7 +616,8 @@ const currentSelectionRow = ref(null)
 const searchKeyword = ref('')
 const queryParams = ref({
   confirmResult: undefined,
-  matchedType: undefined
+  matchedType: undefined,
+  matchingStatus: undefined
 })
 const statistics = ref(null)
 const useComplexQuery = ref(true) // 是否使用复杂查询接口
@@ -732,6 +733,10 @@ const fetchData = async () => {
 
       if (queryParams.value.matchedType !== undefined) {
         params.matchedType = queryParams.value.matchedType
+      }
+
+      if (queryParams.value.matchingStatus !== undefined) {
+        params.matchingStatus = queryParams.value.matchingStatus
       }
 
       console.log('使用复杂查询参数:', params)
@@ -873,46 +878,39 @@ const handleOverviewCardClick = (type) => {
   // 如果点击的是当前激活的卡片，则取消筛选
   if (activeOverviewType.value === type) {
     activeOverviewType.value = null
+    // 清空所有筛选参数
     queryParams.value = {
-      ...queryParams.value,
       confirmResult: undefined,
-      matchedType: undefined
+      matchedType: undefined,
+      matchingStatus: undefined
     }
   } else {
     activeOverviewType.value = type
     
-    // 重置查询参数
+    // 清空所有筛选参数，只保留 matchingStatus
     queryParams.value = {
-      ...queryParams.value,
       confirmResult: undefined,
-      matchedType: undefined
+      matchedType: undefined,
+      matchingStatus: undefined
     }
     
     // 根据卡片类型设置筛选条件
-    // 注意：这里的筛选逻辑应该与后端统计接口的业务逻辑保持一致
+    // 仅使用新的 matchingStatus 参数进行筛选
     switch (type) {
       case 'total':
         // 显示全部，不设置筛选条件
         break
       case 'matched':
-        // 显示精确匹配且价格匹配的物资
-        // 由于API不支持直接筛选价格匹配状态，这里只能先筛选精确匹配
-        // 理想情况下应该是：matchedType = 1 AND priceMatchedStatus = 1
-        queryParams.value.matchedType = 1
-        queryParams.value.confirmResult = 1  // 已确认的通常都有价格匹配
+        // 使用 matchingStatus = 1: 精确匹配且价格匹配
+        queryParams.value.matchingStatus = 1
         break
       case 'unmatched':
-        // 显示待匹配物资（包含无匹配、相似匹配、历史匹配、人工匹配）
-        // 由于API只支持单个matchedType值，这里先显示无匹配的
-        // 理想情况下应该是：matchedType IN (0, 2, 3, 4)
-        queryParams.value.matchedType = 0
+        // 使用 matchingStatus = 3: 待处理匹配（包括相似匹配、历史匹配、人工匹配、无匹配）
+        queryParams.value.matchingStatus = 3
         break
       case 'priceMismatch':
-        // 显示精确匹配但价格未匹配的物资
-        // 由于API不支持直接筛选价格匹配状态，这里通过精确匹配且未确认来近似
-        // 理想情况下应该是：matchedType = 1 AND priceMatchedStatus = 0
-        queryParams.value.matchedType = 1
-        queryParams.value.confirmResult = 0  // 未确认的精确匹配通常是价格不匹配
+        // 使用 matchingStatus = 2: 精确匹配但价格未匹配
+        queryParams.value.matchingStatus = 2
         break
     }
   }

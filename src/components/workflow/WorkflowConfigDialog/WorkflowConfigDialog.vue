@@ -35,6 +35,66 @@
           </el-upload>
         </el-form-item>
 
+        <!-- 乙供物资专用参数配置 -->
+        <div v-if="needsFileUpload && isSupplierMaterial" class="supplier-material-config">
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="指定季度" required>
+                <el-select 
+                  v-model="config.quarter" 
+                  placeholder="请选择季度"
+                  style="width: 100%"
+                  allow-create
+                  filterable
+                  @visible-change="handleQuarterDropdownToggle"
+                >
+                  <el-option
+                    v-for="option in quarterOptions"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
+                  <template #empty>
+                    <div class="custom-empty">
+                      <el-button type="text" @click="showAddQuarterDialog = true">
+                        <el-icon><Plus /></el-icon>
+                        添加自定义季度
+                      </el-button>
+                    </div>
+                  </template>
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="指定税率" required>
+                <el-select 
+                  v-model="config.taxRate" 
+                  placeholder="请选择税率"
+                  style="width: 100%"
+                  allow-create
+                  filterable
+                  @visible-change="handleTaxRateDropdownToggle"
+                >
+                  <el-option
+                    v-for="option in taxRateOptions"
+                    :key="option.value"
+                    :label="option.label"
+                    :value="option.value"
+                  />
+                  <template #empty>
+                    <div class="custom-empty">
+                      <el-button type="text" @click="showAddTaxRateDialog = true">
+                        <el-icon><Plus /></el-icon>
+                        添加自定义税率
+                      </el-button>
+                    </div>
+                  </template>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
         <!-- 甲供物资专用上传组件 -->
         <div v-if="needsFileUpload && isOwnerMaterial" class="owner-material-upload-grid">
           <!-- 综合申领文件 -->
@@ -160,17 +220,85 @@
       </div>
     </template>
   </el-dialog>
+
+  <!-- 添加自定义季度对话框 -->
+  <el-dialog
+    v-model="showAddQuarterDialog"
+    title="添加自定义季度"
+    width="400px"
+    @close="resetCustomQuarter"
+  >
+    <el-form :model="customQuarter" label-width="80px">
+      <el-form-item label="季度标签">
+        <el-input 
+          v-model="customQuarter.label" 
+          placeholder="例如：2024年第一季度"
+        />
+      </el-form-item>
+      <el-form-item label="季度值">
+        <el-input 
+          v-model="customQuarter.value" 
+          placeholder="例如：2024-Q1"
+        />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="showAddQuarterDialog = false">取消</el-button>
+      <el-button 
+        type="primary" 
+        @click="addCustomQuarter"
+        :disabled="!customQuarter.label || !customQuarter.value"
+      >
+        确定
+      </el-button>
+    </template>
+  </el-dialog>
+
+  <!-- 添加自定义税率对话框 -->
+  <el-dialog
+    v-model="showAddTaxRateDialog"
+    title="添加自定义税率"
+    width="400px"
+    @close="resetCustomTaxRate"
+  >
+    <el-form :model="customTaxRate" label-width="80px">
+      <el-form-item label="税率标签">
+        <el-input 
+          v-model="customTaxRate.label" 
+          placeholder="例如：15%"
+        />
+      </el-form-item>
+      <el-form-item label="税率值">
+        <el-input 
+          v-model="customTaxRate.value" 
+          placeholder="例如：15%"
+        />
+      </el-form-item>
+    </el-form>
+    <template #footer>
+      <el-button @click="showAddTaxRateDialog = false">取消</el-button>
+      <el-button 
+        type="primary" 
+        @click="addCustomTaxRate"
+        :disabled="!customTaxRate.label || !customTaxRate.value"
+      >
+        确定
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { ref, computed, watch } from 'vue'
+import { UploadFilled, Plus } from '@element-plus/icons-vue'
 import { 
   FILE_UPLOAD_CONFIG,
   FILE_TYPES,
   UPLOAD_LABELS,
   PARAM_TYPES,
-  EMIT_EVENTS
+  EMIT_EVENTS,
+  SUPPLIER_MATERIAL_CONFIG,
+  WORKFLOW_NAMES
 } from './constants.js'
 import { 
   isOwnerMaterialWorkflow,
@@ -211,9 +339,30 @@ const actualUsageFiles1 = ref([])
 const actualUsageFiles2 = ref([])
 const otherFiles = ref([])
 
+// 乙供物资相关状态
+const showAddQuarterDialog = ref(false)
+const showAddTaxRateDialog = ref(false)
+const customQuarter = ref({ label: '', value: '' })
+const customTaxRate = ref({ label: '', value: '' })
+const quarterOptions = ref([...SUPPLIER_MATERIAL_CONFIG.QUARTER_OPTIONS])
+const taxRateOptions = ref([...SUPPLIER_MATERIAL_CONFIG.TAX_RATE_OPTIONS])
+
 // 计算属性
 const isOwnerMaterial = computed(() => isOwnerMaterialWorkflow(props.currentFunctionName))
+const isSupplierMaterial = computed(() => props.currentFunctionName === WORKFLOW_NAMES.SUPPLIER_MATERIAL)
 const acceptFileTypes = computed(() => formatAcceptFileTypes(props.allowedFileTypes))
+
+// 初始化乙供物资默认值
+watch(() => props.show, (newVal) => {
+  if (newVal && isSupplierMaterial.value) {
+    if (!props.config.quarter) {
+      props.config.quarter = SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER
+    }
+    if (!props.config.taxRate) {
+      props.config.taxRate = SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE
+    }
+  }
+}, { immediate: true })
 
 // 文件变更处理方法
 const updateComprehensiveClaimFiles = (file, fileList) => {
@@ -267,6 +416,61 @@ const closeDialog = () => {
   emit(EMIT_EVENTS.CLOSE)
 }
 
+// 自定义选项相关方法
+const handleQuarterDropdownToggle = (visible) => {
+  // 下拉框打开时的处理逻辑（如果需要）
+}
+
+const handleTaxRateDropdownToggle = (visible) => {
+  // 下拉框打开时的处理逻辑（如果需要）
+}
+
+const addCustomQuarter = () => {
+  if (customQuarter.value.label && customQuarter.value.value) {
+    const newOption = {
+      label: customQuarter.value.label,
+      value: customQuarter.value.value
+    }
+    
+    // 检查是否已存在
+    const exists = quarterOptions.value.some(option => option.value === newOption.value)
+    if (!exists) {
+      quarterOptions.value.push(newOption)
+      props.config.quarter = newOption.value
+    }
+    
+    showAddQuarterDialog.value = false
+    resetCustomQuarter()
+  }
+}
+
+const addCustomTaxRate = () => {
+  if (customTaxRate.value.label && customTaxRate.value.value) {
+    const newOption = {
+      label: customTaxRate.value.label,
+      value: customTaxRate.value.value
+    }
+    
+    // 检查是否已存在
+    const exists = taxRateOptions.value.some(option => option.value === newOption.value)
+    if (!exists) {
+      taxRateOptions.value.push(newOption)
+      props.config.taxRate = newOption.value
+    }
+    
+    showAddTaxRateDialog.value = false
+    resetCustomTaxRate()
+  }
+}
+
+const resetCustomQuarter = () => {
+  customQuarter.value = { label: '', value: '' }
+}
+
+const resetCustomTaxRate = () => {
+  customTaxRate.value = { label: '', value: '' }
+}
+
 const submitWorkflow = () => {
   if (isOwnerMaterial.value) {
     // 验证甲供物资必需文件
@@ -295,6 +499,23 @@ const submitWorkflow = () => {
 .workflow-config {
   max-height: 60vh;
   overflow-y: auto;
+}
+
+.supplier-material-config {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  background-color: var(--el-fill-color-blank);
+}
+
+.custom-empty {
+  padding: 8px;
+  text-align: center;
+}
+
+.custom-empty .el-button {
+  color: var(--el-color-primary);
 }
 
 .owner-material-upload-grid {

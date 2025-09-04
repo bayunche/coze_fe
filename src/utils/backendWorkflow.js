@@ -770,6 +770,7 @@ export async function getSupplierMaterialParsingResults(taskId, params = {}) {
  * @param {string} [queryParams.keyword] - 搜索关键词，支持物资名称、规格型号、单位的模糊搜索
  * @param {number} [queryParams.confirmResult] - 确认结果筛选（0：未确认，1：已确认，不传则查询全部）
  * @param {number} [queryParams.matchedType] - 匹配类型筛选（0：无匹配，1：精确匹配，2：相似匹配，3：历史匹配，4：人工匹配，不传则查询全部）
+ * @param {number} [queryParams.matchingStatus] - 匹配状态筛选（1：精确匹配且价格匹配，2：精确匹配但价格未匹配，3：待处理匹配）
  * @returns {Promise<object>} - 复杂查询结果，包含content、page、statistics
  */
 export async function querySupplierMaterialsComplex(queryParams) {
@@ -787,7 +788,8 @@ export async function querySupplierMaterialsComplex(queryParams) {
         size: queryParams.size || 10,
         keyword: queryParams.keyword || undefined,
         confirmResult: queryParams.confirmResult !== undefined ? queryParams.confirmResult : undefined,
-        matchedType: queryParams.matchedType !== undefined ? queryParams.matchedType : undefined
+        matchedType: queryParams.matchedType !== undefined ? queryParams.matchedType : undefined,
+        matchingStatus: queryParams.matchingStatus !== undefined ? queryParams.matchingStatus : undefined
       }
     })
     return response

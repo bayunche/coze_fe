@@ -52,3 +52,29 @@ export const VALIDATION_MESSAGES = {
   FILE_SIZE_EXCEEDED: '文件大小不能超过 50MB!',
   FILE_TYPE_ERROR: '文件类型不符合要求，只支持 {types} 格式!'
 }
+
+// 乙供物资解析专用配置
+export const SUPPLIER_MATERIAL_CONFIG = {
+  // 季度选项
+  QUARTER_OPTIONS: [
+    { label: '2024年第一季度', value: '2024-Q1' },
+    { label: '2024年第二季度', value: '2024-Q2' },
+    { label: '2024年第三季度', value: '2024-Q3' },
+    { label: '2024年第四季度', value: '2024-Q4' },
+    { label: '2025年第一季度', value: '2025-Q1' },
+    { label: '2025年第二季度', value: '2025-Q2' },
+    { label: '2025年第三季度', value: '2025-Q3' },
+    { label: '2025年第四季度', value: '2025-Q4' }
+  ],
+  // 税率选项
+  TAX_RATE_OPTIONS: [
+    { label: '13%', value: '13%' },
+    { label: '9%', value: '9%' },
+    { label: '6%', value: '6%' },
+    { label: '3%', value: '3%' },
+    { label: '0%', value: '0%' }
+  ],
+  // 默认值
+  DEFAULT_QUARTER: '2024-Q3',
+  DEFAULT_TAX_RATE: '13%'
+}

@@ -4,6 +4,7 @@
  */
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import request from '@/utils/request.js'
 
 class SupplierMaterialService {
   constructor() {
@@ -50,20 +51,22 @@ class SupplierMaterialService {
    * @param {String} params.keyword - 搜索关键词
    * @param {Number} params.confirmResult - 确认结果筛选（0：未确认，1：已确认）
    * @param {Number} params.matchedType - 匹配类型筛选（0：无匹配，1：精确匹配，2：相似匹配，3：历史匹配，4：人工匹配）
+   * @param {Number} params.matchingStatus - 匹配状态筛选（1：精确匹配且价格匹配，2：精确匹配但价格未匹配，3：待处理匹配）
    * @returns {Promise<Object>} 查询结果
    */
   async queryMaterials(params) {
     try {
       console.log('【调用】乙供物资复杂查询接口，参数:', params)
       
-      const response = await this.http.post('/materials/partyb/query', {
+      const response = await request.post('/materials/partyb/query', {
         taskId: params.taskId,
         taskDetailId: params.taskDetailId,
         page: params.page || 0,
         size: params.size || 10,
         keyword: params.keyword || '',
         confirmResult: params.confirmResult,
-        matchedType: params.matchedType
+        matchedType: params.matchedType,
+        matchingStatus: params.matchingStatus
       })
 
       console.log('【响应】乙供物资复杂查询结果:', response)
@@ -91,7 +94,7 @@ class SupplierMaterialService {
         throw new Error('缺少必要参数：id、confirmBaseDataId 和 confirmPriceId 均为必填')
       }
 
-      const response = await this.http.post('/materials/partyb/manual-confirm', {
+      const response = await request.post('/materials/partyb/manual-confirm', {
         id: params.id,
         confirmBaseDataId: params.confirmBaseDataId,
         confirmPriceId: params.confirmPriceId
@@ -129,7 +132,7 @@ class SupplierMaterialService {
         size: params.size || 10
       })
 
-      const response = await this.http.get(`/api/materials/base-info/search-with-prices?${queryParams}`)
+      const response = await request.get(`/api/materials/base-info/search-with-prices?${queryParams}`)
 
       console.log('【响应】物资基础信息查询结果:', response)
       return response
@@ -153,10 +156,10 @@ class SupplierMaterialService {
         throw new Error('taskId参数不能为空')
       }
 
-      const response = await this.http.get(`/v2/materials/party-b/getMaterialMatchingStats?taskId=${taskId}`)
+      const response = await request.get(`/materials/partyb/getMaterialMatchingStats?taskId=${taskId}`)
 
       console.log('【响应】乙供物资匹配统计结果:', response)
-      return response
+      return response.data || response
     } catch (error) {
       console.error('【错误】获取乙供物资匹配统计失败:', error)
       throw error
@@ -177,7 +180,7 @@ class SupplierMaterialService {
     try {
       console.log('【调用】获取审批列表，参数:', params)
       
-      const response = await this.http.get('/v2/materials/party-b/approval-list', {
+      const response = await request.get('/api/v2/materials/party-b/approval-list', {
         params: {
           page: params.page || 0,
           size: params.size || 20,
@@ -206,7 +209,7 @@ class SupplierMaterialService {
     try {
       console.log('【调用】审批通过，参数:', params)
       
-      const response = await this.http.post('/v2/materials/party-b/approve', {
+      const response = await request.post('/api/v2/materials/party-b/approve', {
         id: params.id,
         remark: params.remark || ''
       })
@@ -240,7 +243,7 @@ class SupplierMaterialService {
         throw new Error('拒绝理由不能为空')
       }
       
-      const response = await this.http.post('/v2/materials/party-b/reject', {
+      const response = await request.post('/v2/materials/party-b/reject', {
         id: params.id,
         reason: params.reason
       })
@@ -274,7 +277,7 @@ class SupplierMaterialService {
         throw new Error('请选择要审批的记录')
       }
       
-      const response = await this.http.post('/v2/materials/party-b/batch-approve', {
+      const response = await request.post('/v2/materials/party-b/batch-approve', {
         ids: params.ids,
         remark: params.remark || ''
       })
@@ -312,7 +315,7 @@ class SupplierMaterialService {
         throw new Error('拒绝理由不能为空')
       }
       
-      const response = await this.http.post('/v2/materials/party-b/batch-reject', {
+      const response = await request.post('/v2/materials/party-b/batch-reject', {
         ids: params.ids,
         reason: params.reason
       })
@@ -339,7 +342,7 @@ class SupplierMaterialService {
     try {
       console.log('【调用】获取审批统计数据')
       
-      const response = await this.http.get('/v2/materials/party-b/approval-statistics')
+      const response = await request.get('/api/v2/materials/party-b/approval-statistics')
       
       console.log('【响应】审批统计数据:', response)
       return response

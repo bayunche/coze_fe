@@ -58,6 +58,19 @@ export default defineConfig(({ mode }) => {
             return newPath
           }
         },
+        // 乙供物资v2 API转发到1207端口
+        '/api/v2/materials/party-b': {
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
+          changeOrigin: true,
+          timeout: 300000, // 5分钟超时
+          proxyTimeout: 300000,
+          rewrite: (path) => {
+            const newPath = path.replace(/^\/api/, '')
+            console.log(`[SupplierMaterialV2] 路径转换: ${path} -> ${newPath}`)
+            console.log(`[SupplierMaterialV2] 最终请求: ${env.VITE_API_TARGET}${newPath}`)
+            return newPath
+          }
+        },
         '/api/materials/partyb': {
           target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,

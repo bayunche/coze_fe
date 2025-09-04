@@ -971,6 +971,14 @@ export const useWorkflowStore = defineStore('workflow', () => {
         inputs = {
           fileList: fileIdsOrPaths.map((file) => file.filePath)
         }
+        
+        // 乙供物资解析需要额外的 inputs 参数
+        if (func.id === 'supplierMaterialParsing') {
+          inputs.inputs = {
+            taxRate: workflowConfig.taxRate || '13%',
+            quarter: workflowConfig.quarter || '2024-Q3'
+          }
+        }
       }
       const context = { workflow, loadingMessage, addMessageCallback }
 
