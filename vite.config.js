@@ -59,7 +59,7 @@ export default defineConfig(({ mode }) => {
           }
         },
         // 乙供物资v2 API转发到1207端口
-        '/api/v2/materials/party-b': {
+        '/api/materials/priceinfo': {
           target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
           changeOrigin: true,
           timeout: 300000, // 5分钟超时
@@ -155,6 +155,18 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => {
             console.log(`[MaterialBaseInfo] 路径保持: ${path}`)
             console.log(`[MaterialBaseInfo] 最终请求: ${env.VITE_API_TARGET}${path}`)
+            return path
+          }
+        },
+        // 临时价格信息相关API转发到1207端口（不带/api前缀）
+        '/materials/priceinfo/temporary': {
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
+          changeOrigin: true,
+          timeout: 300000,
+          proxyTimeout: 300000,
+          rewrite: (path) => {
+            console.log(`[TemporaryPriceInfo] 路径保持: ${path}`)
+            console.log(`[TemporaryPriceInfo] 最终请求: ${env.VITE_API_TARGET}${path}`)
             return path
           }
         },

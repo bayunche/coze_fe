@@ -195,20 +195,37 @@
                   :step="0.01"
                   style="width: 100%"
                   placeholder="请输入含税价"
+                  @change="calculateTaxExcludedPrice"
                 />
                 <div class="form-item-tip">单位：元</div>
               </el-form-item>
 
-              <el-form-item label="不含税价" prop="taxExcludedPrice">
+              <el-form-item label="税率" prop="taxRate" required>
+                <el-input
+                  v-model="priceForm.taxRate"
+                  placeholder="请输入税率数值"
+                  style="width: 100%"
+                  @input="handleTaxRateInput"
+                  @blur="calculateTaxExcludedPrice"
+                >
+                  <template #suffix>
+                    <span style="color: var(--el-text-color-regular)">%</span>
+                  </template>
+                </el-input>
+                <div class="form-item-tip">请输入税率数值，如：13、9、6、3、0</div>
+              </el-form-item>
+
+              <el-form-item label="不含税价">
                 <el-input-number
                   v-model="priceForm.taxExcludedPrice"
                   :min="0"
                   :precision="2"
                   :step="0.01"
                   style="width: 100%"
-                  placeholder="请输入不含税价（选填）"
+                  placeholder="系统自动计算"
+                  :disabled="true"
                 />
-                <div class="form-item-tip">单位：元，选填项</div>
+                <div class="form-item-tip">单位：元，根据含税价和税率自动计算</div>
               </el-form-item>
 
               <el-form-item label="价格单位" prop="unit">
@@ -234,12 +251,9 @@
                 <span class="calc-label">不含税价：</span>
                 <span class="calc-value">{{ formatPrice(priceForm.taxExcludedPrice) }}</span>
               </div>
-              <div
-                class="calc-item"
-                v-if="priceForm.taxPrice > 0 && priceForm.taxExcludedPrice > 0"
-              >
+              <div class="calc-item" v-if="priceForm.taxRate">
                 <span class="calc-label">税率：</span>
-                <span class="calc-value">{{ calculatedTaxRate }}%</span>
+                <span class="calc-value">{{ calculatedTaxRate }}</span>
               </div>
             </div>
           </el-form>
@@ -423,6 +437,7 @@ const priceForm = reactive({
   baseInfoId: '',
   quarter: '',
   taxPrice: 0,
+  taxRate: '13', // 默认税率 13（不带%符号）
   taxExcludedPrice: 0,
   unit: ''
 })
@@ -450,7 +465,24 @@ const priceRules = {
     { required: true, message: '请输入含税价', trigger: 'blur' },
     { type: 'number', min: 0.01, message: '含税价必须大于0', trigger: 'blur' }
   ],
-  taxExcludedPrice: [{ type: 'number', min: 0, message: '不含税价不能为负数', trigger: 'blur' }],
+  taxRate: [
+    { required: true, message: '请输入税率', trigger: 'blur' },
+    { 
+      validator: (rule, value, callback) => {
+        if (!value) {
+          callback(new Error('请输入税率'))
+        } else {
+          const numValue = parseFloat(value)
+          if (isNaN(numValue) || numValue < 0 || numValue > 100) {
+            callback(new Error('税率必须在0-100之间'))
+          } else {
+            callback()
+          }
+        }
+      }, 
+      trigger: 'blur' 
+    }
+  ],
   unit: [{ max: 50, message: '价格单位长度不能超过 50 个字符', trigger: 'blur' }]
 }
 
@@ -460,14 +492,49 @@ const dialogVisible = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
-// 计算税率
-const calculatedTaxRate = computed(() => {
-  if (priceForm.taxPrice > 0 && priceForm.taxExcludedPrice > 0) {
-    const rate =
-      ((priceForm.taxPrice - priceForm.taxExcludedPrice) / priceForm.taxExcludedPrice) * 100
-    return rate.toFixed(2)
+// 处理税率输入
+const handleTaxRateInput = (value) => {
+  // 只允许输入数字和小数点
+  const numericValue = value.replace(/[^\d.]/g, '')
+  
+  // 限制只能有一个小数点，且小数点后最多两位
+  const parts = numericValue.split('.')
+  if (parts.length > 2) {
+    priceForm.taxRate = parts[0] + '.' + parts[1]
+  } else if (parts.length === 2 && parts[1].length > 2) {
+    priceForm.taxRate = parts[0] + '.' + parts[1].substring(0, 2)
+  } else {
+    priceForm.taxRate = numericValue
   }
-  return '0.00'
+  
+  // 限制最大值为100
+  const numValue = parseFloat(priceForm.taxRate)
+  if (numValue > 100) {
+    priceForm.taxRate = '100'
+  }
+  
+  // 实时计算不含税价
+  calculateTaxExcludedPrice()
+}
+
+// 计算不含税价
+const calculateTaxExcludedPrice = () => {
+  if (priceForm.taxPrice > 0 && priceForm.taxRate) {
+    const taxRateValue = parseFloat(priceForm.taxRate)
+    if (!isNaN(taxRateValue) && taxRateValue >= 0) {
+      const taxRateDecimal = taxRateValue / 100
+      priceForm.taxExcludedPrice = parseFloat((priceForm.taxPrice / (1 + taxRateDecimal)).toFixed(2))
+    } else {
+      priceForm.taxExcludedPrice = 0
+    }
+  } else {
+    priceForm.taxExcludedPrice = 0
+  }
+}
+
+// 计算税率显示（用于显示区域）
+const calculatedTaxRate = computed(() => {
+  return priceForm.taxRate ? priceForm.taxRate + '%' : '0%'
 })
 
 // props.taskId 现在由后端自动处理，前端无需维护
@@ -624,6 +691,8 @@ const handleClosed = () => {
   Object.keys(priceForm).forEach((key) => {
     if (key === 'taxPrice' || key === 'taxExcludedPrice') {
       priceForm[key] = 0
+    } else if (key === 'taxRate') {
+      priceForm[key] = '13' // 重置为默认税率
     } else {
       priceForm[key] = ''
     }

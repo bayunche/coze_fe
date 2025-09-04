@@ -2,47 +2,10 @@
  * 临时数据管理服务类
  * 处理临时物资基础信息和价格信息的所有API调用
  */
-import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import request from '@/utils/request.js'
 
 class TemporaryDataService {
-  constructor() {
-    // 使用统一的axios实例
-    this.http = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL || '',
-      timeout: 30000, // 30秒超时
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    })
-
-    // 请求拦截器
-    this.http.interceptors.request.use(
-      config => {
-        // 可以在这里添加认证token等
-        console.log('【请求】', config.method?.toUpperCase(), config.url, config.data || config.params)
-        return config
-      },
-      error => {
-        console.error('【请求错误】', error)
-        return Promise.reject(error)
-      }
-    )
-
-    // 响应拦截器
-    this.http.interceptors.response.use(
-      response => {
-        console.log('【响应】', response.config.url, response.data)
-        return response.data
-      },
-      error => {
-        console.error('【响应错误】', error.config?.url, error.response?.data || error.message)
-        const message = error.response?.data?.msg || error.response?.data?.message || error.message || '请求失败'
-        ElMessage.error(message)
-        return Promise.reject(error)
-      }
-    )
-  }
 
   /**
    * 查询临时数据
@@ -72,12 +35,20 @@ class TemporaryDataService {
         requestData.dataType = params.dataType
       }
 
-      const response = await this.http.post('/api/materials/temporary/query', requestData)
+      const response = await request.post('/materials/temporary/query', requestData)
 
       console.log('【响应】临时数据查询结果:', response)
-      return response
+      
+      if (response.code === 200) {
+        // 查询操作成功，不显示成功提示（避免频繁弹出）
+        return response
+      } else {
+        ElMessage.error('查询临时数据失败：' + (response.message || response.msg || '未知错误'))
+        throw new Error(response.message || response.msg || '查询失败')
+      }
     } catch (error) {
       console.error('【错误】查询临时数据失败:', error)
+      ElMessage.error('查询临时数据失败，请稍后重试')
       throw error
     }
   }
@@ -85,7 +56,7 @@ class TemporaryDataService {
   /**
    * 创建临时物资基础信息
    * @param {Object} params - 创建参数
-   * @param {String} params.associatedTaskId - 关联的任务ID（必填）
+   * @param {String} params.associatedTaskId - 关联的任务ID（选填）
    * @param {String} params.materialName - 物资名称（必填）
    * @param {String} params.specificationModel - 规格型号
    * @param {String} params.unit - 单位
@@ -103,12 +74,11 @@ class TemporaryDataService {
       console.log('【调用】创建临时物资基础信息，参数:', params)
       
       // 参数验证
-      if (!params.associatedTaskId || !params.materialName) {
-        throw new Error('associatedTaskId和materialName为必填参数')
+      if (!params.materialName) {
+        throw new Error('materialName为必填参数')
       }
 
-      const response = await this.http.post('/api/materials/base-info/temporary/create', {
-        associatedTaskId: params.associatedTaskId,
+      const requestData = {
         materialName: params.materialName,
         specificationModel: params.specificationModel || '',
         unit: params.unit || '',
@@ -119,18 +89,26 @@ class TemporaryDataService {
         mainDistributionNetwork: params.mainDistributionNetwork || '',
         mainDistributionType: params.mainDistributionType || 0,
         type: params.type || ''
-      })
+      }
+
+      // associatedTaskId 是可选参数
+      if (params.associatedTaskId) {
+        requestData.associatedTaskId = params.associatedTaskId
+      }
+
+      const response = await request.post('/materials/base-info/temporary/create', requestData)
 
       console.log('【响应】创建临时基础信息结果:', response)
       
-      if (response.code === 0) {
+      if (response.code === 200) {
         ElMessage.success('创建临时物资基础信息成功')
         return response.data
       } else {
-        throw new Error(response.msg || '创建失败')
+        throw new Error(response.message || response.msg || '创建失败')
       }
     } catch (error) {
       console.error('【错误】创建临时基础信息失败:', error)
+      ElMessage.error('创建临时物资基础信息失败：' + (error.message || '请稍后重试'))
       throw error
     }
   }
@@ -138,11 +116,12 @@ class TemporaryDataService {
   /**
    * 创建临时价格信息
    * @param {Object} params - 创建参数
-   * @param {String} params.associatedTaskId - 关联的任务ID（必填）
+   * @param {String} params.associatedTaskId - 关联的任务ID（选填）
    * @param {String} params.baseInfoId - 关联基础信息ID（必填）
    * @param {String} params.quarter - 季度（必填）
    * @param {Number} params.taxPrice - 含税价（必填）
-   * @param {Number} params.taxExcludedPrice - 不含税价
+   * @param {String} params.taxRate - 税率（必填）
+   * @param {Number} params.taxExcludedPrice - 不含税价（自动计算）
    * @param {String} params.unit - 价格单位
    * @returns {Promise<Object>} 创建结果
    */
@@ -151,29 +130,37 @@ class TemporaryDataService {
       console.log('【调用】创建临时价格信息，参数:', params)
       
       // 参数验证
-      if (!params.associatedTaskId || !params.baseInfoId || !params.quarter || params.taxPrice == null) {
-        throw new Error('associatedTaskId、baseInfoId、quarter和taxPrice为必填参数')
+      if (!params.baseInfoId || !params.quarter || params.taxPrice == null || !params.taxRate) {
+        throw new Error('baseInfoId、quarter、taxPrice和taxRate为必填参数')
       }
 
-      const response = await this.http.post('/materials/priceinfo/temporary/add', {
-        associatedTaskId: params.associatedTaskId,
+      const requestData = {
         baseInfoId: params.baseInfoId,
         quarter: params.quarter,
         taxPrice: params.taxPrice,
+        taxRate: params.taxRate,
         taxExcludedPrice: params.taxExcludedPrice || 0,
         unit: params.unit || ''
-      })
+      }
+
+      // associatedTaskId 是可选参数
+      if (params.associatedTaskId) {
+        requestData.associatedTaskId = params.associatedTaskId
+      }
+
+      const response = await request.post('/materials/priceinfo/temporary/add', requestData)
 
       console.log('【响应】创建临时价格信息结果:', response)
       
-      if (response.code === 0) {
+      if (response.code === 200) {
         ElMessage.success('创建临时价格信息成功')
         return response.data
       } else {
-        throw new Error(response.msg || '创建失败')
+        throw new Error(response.message || response.msg || '创建失败')
       }
     } catch (error) {
       console.error('【错误】创建临时价格信息失败:', error)
+      ElMessage.error('创建临时价格信息失败：' + (error.message || '请稍后重试'))
       throw error
     }
   }
@@ -195,22 +182,23 @@ class TemporaryDataService {
         throw new Error('至少需要选择一条数据进行转正')
       }
 
-      const response = await this.http.post('/api/materials/temporary/promote', {
+      const response = await request.post('/materials/temporary/promote', {
         baseInfoIdsToPromote: params.baseInfoIdsToPromote || [],
         priceIdsToPromote: params.priceIdsToPromote || []
       })
 
       console.log('【响应】临时数据转正结果:', response)
       
-      if (response.code === 0) {
+      if (response.code === 200) {
         const totalCount = (params.baseInfoIdsToPromote?.length || 0) + (params.priceIdsToPromote?.length || 0)
-        ElMessage.success(response.msg || `成功转正 ${totalCount} 条数据`)
+        ElMessage.success(response.message || response.msg || `成功转正 ${totalCount} 条数据`)
         return response.data
       } else {
-        throw new Error(response.msg || '转正失败')
+        throw new Error(response.message || response.msg || '转正失败')
       }
     } catch (error) {
       console.error('【错误】临时数据转正失败:', error)
+      ElMessage.error('临时数据转正失败：' + (error.message || '请稍后重试'))
       throw error
     }
   }
@@ -247,6 +235,7 @@ class TemporaryDataService {
       return statistics
     } catch (error) {
       console.error('【错误】获取临时数据统计失败:', error)
+      ElMessage.error('获取临时数据统计失败：' + (error.message || '请稍后重试'))
       throw error
     }
   }
@@ -270,24 +259,23 @@ class TemporaryDataService {
 
       // 注意：这个API在文档中没有提到，这里只是预留接口
       // 实际项目中可能需要根据实际的删除API进行调整
-      const response = await this.http.delete('/api/materials/temporary/delete', {
-        data: {
-          baseInfoIds: params.baseInfoIds || [],
-          priceIds: params.priceIds || []
-        }
+      const response = await request.delete('/materials/temporary/delete', {
+        baseInfoIds: params.baseInfoIds || [],
+        priceIds: params.priceIds || []
       })
 
       console.log('【响应】删除临时数据结果:', response)
       
-      if (response.code === 0) {
+      if (response.code === 200) {
         const totalCount = (params.baseInfoIds?.length || 0) + (params.priceIds?.length || 0)
         ElMessage.success(`成功删除 ${totalCount} 条数据`)
         return response.data
       } else {
-        throw new Error(response.msg || '删除失败')
+        throw new Error(response.message || response.msg || '删除失败')
       }
     } catch (error) {
       console.error('【错误】删除临时数据失败:', error)
+      ElMessage.error('删除临时数据失败：' + (error.message || '请稍后重试'))
       throw error
     }
   }
