@@ -162,7 +162,7 @@ export const formatTemporaryData = (item, type) => {
     id: item.id,
     associatedTaskId: item.associatedTaskId,
     dataType: type,
-    createTime: formatDateTime(item.createTime || item.createdAt)
+    createTime: formatDateTime(item.bstudioCreateTime)
   }
   
   if (type === 'baseInfo') {
@@ -182,8 +182,8 @@ export const formatTemporaryData = (item, type) => {
       ...baseFormat,
       baseInfoId: item.baseInfoId || '-',
       quarter: item.quarter || '-',
-      taxPrice: formatAmount(item.taxPrice),
-      taxExcludedPrice: formatAmount(item.taxExcludedPrice),
+      taxPrice: item.taxPrice,
+      taxExcludedPrice: item.taxExcludedPrice,
       priceUnit: item.unit || '-'
     }
   }

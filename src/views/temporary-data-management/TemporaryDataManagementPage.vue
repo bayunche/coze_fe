@@ -140,20 +140,31 @@
 
     <!-- 数据表格 -->
     <div :class="CSS_CLASSES.TABLE_SECTION">
-      <el-table
-        ref="tableRef"
-        :data="tableData"
-        v-loading="loading"
-        stripe
-        border
-        highlight-current-row
-        @selection-change="handleSelectionChange"
-        :row-class-name="getRowClassName"
-        height="calc(100vh - 420px)"
-        style="width: 100%"
-        class="approval-table"
-        header-row-class-name="table-header-row"
-      >
+      <!-- 标签页切换 -->
+      <el-tabs v-model="activeTab" @tab-click="handleTabChange" class="data-tabs">
+        <el-tab-pane label="基础信息管理" name="baseInfo">
+          <template #label>
+            <span>
+              <el-icon style="margin-right: 4px;"><Box /></el-icon>
+              基础信息管理
+            </span>
+          </template>
+          
+          <!-- 基础信息表格 -->
+          <el-table
+            ref="baseInfoTableRef"
+            :data="baseInfoTableData"
+            v-loading="loading"
+            stripe
+            border
+            highlight-current-row
+            @selection-change="handleBaseInfoSelectionChange"
+            :row-class-name="getRowClassName"
+            height="calc(100vh - 500px)"
+            style="width: 100%"
+            class="approval-table base-info-table"
+            header-row-class-name="table-header-row"
+          >
         <!-- 选择列 -->
         <el-table-column
           type="selection"
@@ -174,7 +185,11 @@
           label="关联任务ID"
           width="120"
           show-overflow-tooltip
-        />
+        >
+          <template #default="{ row }">
+            {{ row.associatedTaskId || '-' }}
+          </template>
+        </el-table-column>
         
         <el-table-column
           prop="dataType"
@@ -207,76 +222,45 @@
 
         <!-- 基础信息相关列 -->
         <el-table-column
-          v-if="showBaseInfoColumns"
           prop="materialName"
           label="物资名称"
           min-width="180"
           show-overflow-tooltip
-        />
+        >
+          <template #default="{ row }">
+            {{ row.materialName || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column
-          v-if="showBaseInfoColumns"
           prop="specificationModel"
           label="规格型号"
           min-width="150"
           show-overflow-tooltip
-        />
+        >
+          <template #default="{ row }">
+            {{ row.specificationModel || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column
-          v-if="showBaseInfoColumns"
           prop="unit"
           label="单位"
           width="80"
           align="center"
-        />
+        >
+          <template #default="{ row }">
+            {{ row.unit || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column
-          v-if="showBaseInfoColumns"
           prop="materialCode"
           label="物资编码"
           width="120"
           show-overflow-tooltip
-        />
-
-        <!-- 价格信息相关列 -->
-        <el-table-column
-          v-if="showPriceColumns"
-          prop="baseInfoId"
-          label="基础信息ID"
-          width="120"
-          show-overflow-tooltip
-        />
-        <el-table-column
-          v-if="showPriceColumns"
-          prop="quarter"
-          label="季度"
-          width="120"
-        />
-        <el-table-column
-          v-if="showPriceColumns"
-          prop="taxPrice"
-          label="含税价"
-          width="100"
-          align="right"
         >
           <template #default="{ row }">
-            {{ formatAmount(row.taxPrice) }}
+            {{ row.materialCode || '-' }}
           </template>
         </el-table-column>
-        <el-table-column
-          v-if="showPriceColumns"
-          prop="taxExcludedPrice"
-          label="不含税价"
-          width="100"
-          align="right"
-        >
-          <template #default="{ row }">
-            {{ formatAmount(row.taxExcludedPrice) }}
-          </template>
-        </el-table-column>
-        <el-table-column
-          v-if="showPriceColumns"
-          prop="priceUnit"
-          label="价格单位"
-          width="100"
-        />
 
         <!-- 操作列 -->
         <el-table-column
@@ -312,20 +296,222 @@
             </div>
           </template>
         </el-table-column>
-      </el-table>
+          </el-table>
 
-      <!-- 分页 -->
-      <el-pagination
-        v-model:current-page="pagination.currentPage"
-        v-model:page-size="pagination.pageSize"
-        :page-sizes="PAGINATION_CONFIG.pageSizes"
-        :layout="PAGINATION_CONFIG.layout"
-        :total="pagination.total"
-        :background="PAGINATION_CONFIG.background"
-        @size-change="handlePageSizeChange"
-        @current-change="handlePageChange"
-        class="pagination"
-      />
+          <!-- 基础信息分页 -->
+          <el-pagination
+            v-model:current-page="baseInfoPagination.currentPage"
+            v-model:page-size="baseInfoPagination.pageSize"
+            :page-sizes="PAGINATION_CONFIG.pageSizes"
+            :layout="PAGINATION_CONFIG.layout"
+            :total="baseInfoPagination.total"
+            :background="PAGINATION_CONFIG.background"
+            @size-change="handleBaseInfoPageSizeChange"
+            @current-change="handleBaseInfoPageChange"
+            class="pagination"
+          />
+        </el-tab-pane>
+
+        <el-tab-pane label="价格信息管理" name="price">
+          <template #label>
+            <span>
+              <el-icon style="margin-right: 4px;"><Money /></el-icon>
+              价格信息管理
+            </span>
+          </template>
+          
+          <!-- 价格信息表格 -->
+          <el-table
+            ref="priceTableRef"
+            :data="priceTableData"
+            v-loading="loading"
+            stripe
+            border
+            highlight-current-row
+            @selection-change="handlePriceSelectionChange"
+            :row-class-name="getRowClassName"
+            height="calc(100vh - 500px)"
+            style="width: 100%"
+            class="approval-table price-table"
+            header-row-class-name="table-header-row"
+          >
+            <!-- 选择列 -->
+            <el-table-column
+              type="selection"
+              width="55"
+            />
+
+            <!-- 序号列 -->
+            <el-table-column
+              type="index"
+              label="序号"
+              width="60"
+              :index="getPriceTableIndex"
+            />
+
+            <!-- 通用信息 -->
+            <el-table-column
+              prop="associatedTaskId"
+              label="关联任务ID"
+              width="120"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.associatedTaskId || '-' }}
+              </template>
+            </el-table-column>
+            
+            <el-table-column
+              prop="dataType"
+              label="数据类型"
+              width="100"
+              align="center"
+            >
+              <template #default="{ row }">
+                <el-tag 
+                  :type="DATA_TYPE_CONFIG[row.dataType]?.type || 'info'"
+                  size="small"
+                >
+                  <el-icon style="margin-right: 4px;">
+                    <component :is="DATA_TYPE_CONFIG[row.dataType]?.icon || 'Document'" />
+                  </el-icon>
+                  {{ DATA_TYPE_CONFIG[row.dataType]?.label || '未知' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            
+            <el-table-column
+              prop="createTime"
+              label="创建时间"
+              width="160"
+            >
+              <template #default="{ row }">
+                {{ formatDateTime(row.createTime) }}
+              </template>
+            </el-table-column>
+
+            <!-- 基础物资信息（从baseInfoId获取）-->
+            <el-table-column
+              prop="materialName"
+              label="物资名称"
+              min-width="180"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.materialName || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="specificationModel"
+              label="规格型号"
+              min-width="150"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.specificationModel || '-' }}
+              </template>
+            </el-table-column>
+
+            <!-- 价格信息相关列 -->
+            <el-table-column
+              prop="baseInfoId"
+              label="基础信息ID"
+              width="120"
+              show-overflow-tooltip
+            >
+              <template #default="{ row }">
+                {{ row.baseInfoId || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="quarter"
+              label="季度"
+              width="120"
+            >
+              <template #default="{ row }">
+                {{ row.quarter || '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="taxPrice"
+              label="含税价"
+              width="100"
+              align="right"
+            >
+              <template #default="{ row }">
+                {{ row.taxPrice != null ? formatAmount(row.taxPrice) : '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="taxExcludedPrice"
+              label="不含税价"
+              width="100"
+              align="right"
+            >
+              <template #default="{ row }">
+                {{ row.taxExcludedPrice != null ? formatAmount(row.taxExcludedPrice) : '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column
+              prop="priceUnit"
+              label="价格单位"
+              width="100"
+            >
+              <template #default="{ row }">
+                {{ row.priceUnit || '-' }}
+              </template>
+            </el-table-column>
+
+            <!-- 操作列 -->
+            <el-table-column
+              label="操作"
+              width="200"
+              fixed="right"
+              align="center"
+            >
+              <template #default="{ row }">
+                <div class="action-buttons">
+                  <el-button
+                    :type="BUTTON_CONFIG.PROMOTE.type"
+                    :size="BUTTON_CONFIG.PROMOTE.size"
+                    @click="handlePromote(row)"
+                  >
+                    {{ BUTTON_CONFIG.PROMOTE.text }}
+                  </el-button>
+                  <el-button
+                    :type="BUTTON_CONFIG.DELETE.type"
+                    :size="BUTTON_CONFIG.DELETE.size"
+                    @click="handleDelete(row)"
+                  >
+                    {{ BUTTON_CONFIG.DELETE.text }}
+                  </el-button>
+                  <el-button
+                    :type="BUTTON_CONFIG.DETAIL.type"
+                    :size="BUTTON_CONFIG.DETAIL.size"
+                    :link="BUTTON_CONFIG.DETAIL.link"
+                    @click="handleViewDetail(row)"
+                  >
+                    {{ BUTTON_CONFIG.DETAIL.text }}
+                  </el-button>
+                </div>
+              </template>
+            </el-table-column>
+          </el-table>
+
+          <!-- 价格信息分页 -->
+          <el-pagination
+            v-model:current-page="pricePagination.currentPage"
+            v-model:page-size="pricePagination.pageSize"
+            :page-sizes="PAGINATION_CONFIG.pageSizes"
+            :layout="PAGINATION_CONFIG.layout"
+            :total="pricePagination.total"
+            :background="PAGINATION_CONFIG.background"
+            @size-change="handlePricePageSizeChange"
+            @current-change="handlePricePageChange"
+            class="pagination"
+          />
+        </el-tab-pane>
+      </el-tabs>
     </div>
 
     <!-- 审批详情弹窗 -->
@@ -385,8 +571,7 @@ import {
   confirmDelete,
   exportToExcel,
   formatTemporaryData,
-  filterTemporaryData,
-  calculateTemporaryDataStatistics
+  filterTemporaryData
 } from './utils'
 
 // 导入子组件
@@ -395,16 +580,29 @@ import CreateDataDialog from './components/CreateDataDialog.vue'
 
 // 导入服务
 import temporaryDataService from '@/services/TemporaryDataService'
+import MaterialService from '@/services/MaterialService'
 
 // 路由实例
 const router = useRouter()
 
 // 响应式数据
 const loading = ref(false)
-const tableRef = ref()
-const tableData = ref([])
-const allData = ref([])
-const selectedRows = ref([])
+
+// 表格引用
+const baseInfoTableRef = ref()
+const priceTableRef = ref()
+
+// 数据存储 - 分离基础信息和价格信息
+const baseInfoList = ref([])
+const priceList = ref([])
+const allBaseInfoData = ref([])
+const allPriceData = ref([])
+
+// 选中行状态 - 分离两个表格的选中状态
+const selectedBaseInfoRows = ref([])
+const selectedPriceRows = ref([])
+
+// 统计数据
 const statistics = ref({
   total: 0,
   baseInfoCount: 0,
@@ -419,11 +617,20 @@ const filters = ref({
   dateRange: null
 })
 
-// 当前激活的筛选类型
+// 当前激活的标签页
+const activeTab = ref('baseInfo')
+
+// 当前激活的筛选类型（保留兼容性）
 const activeFilter = ref('')
 
-// 分页
-const pagination = ref({
+// 分页 - 为两个表格维护独立的分页状态
+const baseInfoPagination = ref({
+  currentPage: 1,
+  pageSize: PAGINATION_CONFIG.defaultPageSize,
+  total: 0
+})
+
+const pricePagination = ref({
   currentPage: 1,
   pageSize: PAGINATION_CONFIG.defaultPageSize,
   total: 0
@@ -446,76 +653,175 @@ const iconMap = {
   Clock
 }
 
-// 计算属性 - 根据筛选类型显示不同的列
-const showBaseInfoColumns = computed(() => {
-  return activeFilter.value === '' || activeFilter.value === DATA_TYPE.BASE_INFO
+// 计算属性 - 表格数据
+const baseInfoTableData = computed(() => baseInfoList.value)
+const priceTableData = computed(() => priceList.value)
+
+// 当前选中的行（根据活跃标签页）
+const selectedRows = computed(() => {
+  return activeTab.value === 'baseInfo' ? selectedBaseInfoRows.value : selectedPriceRows.value
 })
 
-const showPriceColumns = computed(() => {
-  return activeFilter.value === '' || activeFilter.value === DATA_TYPE.PRICE
-})
+// 当前分页状态（根据活跃标签页） - 暂时注释未使用
+// const currentPagination = computed(() => {
+//   return activeTab.value === 'baseInfo' ? baseInfoPagination.value : pricePagination.value
+// })
 
-// 获取数据
-const fetchData = async () => {
-  loading.value = true
+// 获取基础信息数据
+const fetchBaseInfoData = async (controlLoading = true) => {
+  if (controlLoading) loading.value = true
   try {
     const queryParams = {
-      page: pagination.value.currentPage - 1,
-      size: pagination.value.pageSize
+      page: baseInfoPagination.value.currentPage - 1,
+      size: baseInfoPagination.value.pageSize,
+      dataType: DATA_TYPE.BASE_INFO
     }
     
     // 如果有 taskId 则传入进行筛选
     if (filters.value.taskId && filters.value.taskId.trim()) {
       queryParams.taskId = filters.value.taskId.trim()
     }
-    
-    // 如果有筛选类型，添加到查询参数
-    if (activeFilter.value) {
-      queryParams.dataType = activeFilter.value
-    }
 
     const response = await temporaryDataService.queryTemporaryData(queryParams)
 
-    // 处理返回的数据
-    const allItems = []
+    // 处理返回的基础信息数据
+    const baseInfoItems = []
     
-    // 添加基础信息数据
     if (response.data?.temporaryBaseInfos) {
       response.data.temporaryBaseInfos.forEach(item => {
-        allItems.push(formatTemporaryData(item, DATA_TYPE.BASE_INFO))
-      })
-    }
-    
-    // 添加价格信息数据
-    if (response.data?.temporaryPrices) {
-      response.data.temporaryPrices.forEach(item => {
-        allItems.push(formatTemporaryData(item, DATA_TYPE.PRICE))
+        baseInfoItems.push(formatTemporaryData(item, DATA_TYPE.BASE_INFO))
       })
     }
 
     // 应用前端筛选（关键词搜索等）
-    const filteredData = filterTemporaryData(allItems, filters.value)
-    allData.value = filteredData
+    const filteredData = filterTemporaryData(baseInfoItems, filters.value)
+    allBaseInfoData.value = filteredData
     
-    // 计算统计数据
-    statistics.value = calculateTemporaryDataStatistics(filteredData)
+    // 使用后端返回的分页信息
+    if (response.data?.page) {
+      baseInfoPagination.value.total = response.data.page.totalElements
+      baseInfoPagination.value.currentPage = response.data.page.currentPage + 1
+      baseInfoPagination.value.pageSize = response.data.page.pageSize
+    }
     
-    // 分页处理
-    pagination.value.total = filteredData.length
-    const start = (pagination.value.currentPage - 1) * pagination.value.pageSize
-    const end = start + pagination.value.pageSize
-    tableData.value = filteredData.slice(start, end)
+    baseInfoList.value = filteredData
     
   } catch (error) {
-    console.error('获取数据失败:', error)
-    ElMessage.error(MESSAGE_CONFIG.LOAD_ERROR)
-    // 错误时清空数据
-    allData.value = []
-    tableData.value = []
-    statistics.value = { total: 0, baseInfoCount: 0, priceCount: 0, pendingCount: 0 }
+    console.error('获取基础信息数据失败:', error)
+    ElMessage.error('获取基础信息数据失败')
+    allBaseInfoData.value = []
+    baseInfoList.value = []
   } finally {
-    loading.value = false
+    if (controlLoading) loading.value = false
   }
+}
+
+// 获取价格信息数据
+const fetchPriceData = async (controlLoading = true) => {
+  if (controlLoading) loading.value = true
+  try {
+    const queryParams = {
+      page: pricePagination.value.currentPage - 1,
+      size: pricePagination.value.pageSize,
+      dataType: DATA_TYPE.PRICE
+    }
+    
+    // 如果有 taskId 则传入进行筛选
+    if (filters.value.taskId && filters.value.taskId.trim()) {
+      queryParams.taskId = filters.value.taskId.trim()
+    }
+
+    const response = await temporaryDataService.queryTemporaryData(queryParams)
+
+    // 处理返回的价格信息数据
+    const priceItems = []
+    
+    if (response.data?.temporaryPrices) {
+      // 为每个价格记录获取基础物资信息
+      const pricesWithMaterialInfo = await Promise.all(
+        response.data.temporaryPrices.map(async (item) => {
+          const formattedItem = formatTemporaryData(item, DATA_TYPE.PRICE)
+          
+          // 获取基础物资信息
+          let materialInfo = { materialName: '-', specificationModel: '-' }
+          
+          if (item.baseInfoId) {
+            try {
+              const materialResponse = await MaterialService.getMaterialById(item.baseInfoId)
+              if (materialResponse?.data) {
+                materialInfo = {
+                  materialName: materialResponse.data.materialName || '-',
+                  specificationModel: materialResponse.data.specificationModel || '-'
+                }
+              }
+            } catch (error) {
+              console.error('获取物资信息失败:', error)
+            }
+          }
+          
+          return {
+            ...formattedItem,
+            ...materialInfo
+          }
+        })
+      )
+      
+      priceItems.push(...pricesWithMaterialInfo)
+    }
+
+    // 应用前端筛选（关键词搜索等）
+    const filteredData = filterTemporaryData(priceItems, filters.value)
+    allPriceData.value = filteredData
+    
+    // 使用后端返回的分页信息
+    if (response.data?.page) {
+      pricePagination.value.total = response.data.page.totalElements
+      pricePagination.value.currentPage = response.data.page.currentPage + 1
+      pricePagination.value.pageSize = response.data.page.pageSize
+    }
+    
+    priceList.value = filteredData
+    
+  } catch (error) {
+    console.error('获取价格信息数据失败:', error)
+    ElMessage.error('获取价格信息数据失败')
+    allPriceData.value = []
+    priceList.value = []
+  } finally {
+    if (controlLoading) loading.value = false
+  }
+}
+
+// 获取当前标签页数据
+const fetchCurrentTabData = async () => {
+  if (activeTab.value === 'baseInfo') {
+    await fetchBaseInfoData()
+  } else {
+    await fetchPriceData()
+  }
+  
+  // 更新统计数据
+  updateStatistics()
+}
+
+// 更新统计数据
+const updateStatistics = () => {
+  const baseInfoCount = allBaseInfoData.value.length
+  const priceCount = allPriceData.value.length
+  const total = baseInfoCount + priceCount
+  
+  statistics.value = {
+    total,
+    baseInfoCount,
+    priceCount,
+    pendingCount: total // 临时数据都是待处理状态
+  }
+}
+
+// 处理标签页切换
+const handleTabChange = (tab) => {
+  activeTab.value = tab.name
+  fetchCurrentTabData()
 }
 
 // 返回智能大脑页面
@@ -525,12 +831,14 @@ const handleBackToSmartBrain = () => {
 
 // 刷新数据
 const handleRefresh = () => {
-  fetchData()
+  fetchCurrentTabData()
 }
 
 // 导出数据
 const handleExport = async () => {
-  await exportToExcel(allData.value, `临时数据记录_${formatDateTime(new Date())}`)
+  const currentData = activeTab.value === 'baseInfo' ? allBaseInfoData.value : allPriceData.value
+  const filename = `${activeTab.value === 'baseInfo' ? '临时基础信息' : '临时价格信息'}记录_${formatDateTime(new Date())}`
+  await exportToExcel(currentData, filename)
 }
 
 // 创建临时数据（统一入口）
@@ -548,16 +856,31 @@ const handleCardClick = (card) => {
     activeFilter.value = card.filterType
   }
   
+  // 根据筛选类型切换到对应的标签页
+  if (card.filterType === DATA_TYPE.BASE_INFO) {
+    activeTab.value = 'baseInfo'
+  } else if (card.filterType === DATA_TYPE.PRICE) {
+    activeTab.value = 'price'
+  }
+  
   // 重新获取数据
-  pagination.value.currentPage = 1
-  fetchData()
+  if (activeTab.value === 'baseInfo') {
+    baseInfoPagination.value.currentPage = 1
+  } else {
+    pricePagination.value.currentPage = 1
+  }
+  fetchCurrentTabData()
 }
 
 // 清除筛选
 const clearFilter = () => {
   activeFilter.value = ''
-  pagination.value.currentPage = 1
-  fetchData()
+  if (activeTab.value === 'baseInfo') {
+    baseInfoPagination.value.currentPage = 1
+  } else {
+    pricePagination.value.currentPage = 1
+  }
+  fetchCurrentTabData()
 }
 
 // 获取筛选标签
@@ -568,48 +891,81 @@ const getFilterLabel = (filterType) => {
 
 // 创建成功回调
 const handleCreateSuccess = () => {
-  fetchData() // 刷新数据
+  fetchCurrentTabData() // 刷新数据
 }
 
 // 搜索处理
 const handleSearch = () => {
   clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
-    pagination.value.currentPage = 1
-    fetchData()
+    if (activeTab.value === 'baseInfo') {
+      baseInfoPagination.value.currentPage = 1
+    } else {
+      pricePagination.value.currentPage = 1
+    }
+    fetchCurrentTabData()
   }, 300)
 }
 
 // 筛选变化
 const handleFilterChange = () => {
-  pagination.value.currentPage = 1
-  fetchData()
+  if (activeTab.value === 'baseInfo') {
+    baseInfoPagination.value.currentPage = 1
+  } else {
+    pricePagination.value.currentPage = 1
+  }
+  fetchCurrentTabData()
 }
 
-// 分页处理
-const handlePageChange = () => {
-  fetchData()
+// 基础信息分页处理
+const handleBaseInfoPageChange = () => {
+  fetchBaseInfoData()
 }
 
-const handlePageSizeChange = () => {
-  pagination.value.currentPage = 1
-  fetchData()
+const handleBaseInfoPageSizeChange = () => {
+  baseInfoPagination.value.currentPage = 1
+  fetchBaseInfoData()
 }
 
-// 表格选择变化
-const handleSelectionChange = (selection) => {
-  selectedRows.value = selection
+// 价格信息分页处理
+const handlePricePageChange = () => {
+  fetchPriceData()
+}
+
+const handlePricePageSizeChange = () => {
+  pricePagination.value.currentPage = 1
+  fetchPriceData()
+}
+
+// 基础信息表格选择变化
+const handleBaseInfoSelectionChange = (selection) => {
+  selectedBaseInfoRows.value = selection
+}
+
+// 价格信息表格选择变化
+const handlePriceSelectionChange = (selection) => {
+  selectedPriceRows.value = selection
 }
 
 // 清除选择
 const clearSelection = () => {
-  tableRef.value?.clearSelection()
-  selectedRows.value = []
+  if (activeTab.value === 'baseInfo') {
+    baseInfoTableRef.value?.clearSelection()
+    selectedBaseInfoRows.value = []
+  } else {
+    priceTableRef.value?.clearSelection()
+    selectedPriceRows.value = []
+  }
 }
 
-// 获取表格索引
+// 获取基础信息表格索引
 const getTableIndex = (index) => {
-  return (pagination.value.currentPage - 1) * pagination.value.pageSize + index + 1
+  return (baseInfoPagination.value.currentPage - 1) * baseInfoPagination.value.pageSize + index + 1
+}
+
+// 获取价格信息表格索引
+const getPriceTableIndex = (index) => {
+  return (pricePagination.value.currentPage - 1) * pricePagination.value.pageSize + index + 1
 }
 
 // 获取行样式类名
@@ -640,7 +996,7 @@ const handlePromote = async (row) => {
       await temporaryDataService.promoteTemporaryData(promoteParams)
       
       ElMessage.success(MESSAGE_CONFIG.PROMOTE_SUCCESS)
-      fetchData()
+      fetchCurrentTabData()
     } catch (error) {
       console.error('转正失败:', error)
     }
@@ -665,7 +1021,7 @@ const handleDelete = async (row) => {
       await temporaryDataService.deleteTemporaryData(deleteParams)
       
       ElMessage.success(MESSAGE_CONFIG.DELETE_SUCCESS)
-      fetchData()
+      fetchCurrentTabData()
     } catch (error) {
       console.error('删除失败:', error)
     }
@@ -674,13 +1030,14 @@ const handleDelete = async (row) => {
 
 // 批量转正
 const handleBatchPromote = async () => {
-  const result = await confirmPromote(selectedRows.value)
+  const currentSelectedRows = activeTab.value === 'baseInfo' ? selectedBaseInfoRows.value : selectedPriceRows.value
+  const result = await confirmPromote(currentSelectedRows)
   if (result.confirmed) {
     try {
       const baseInfoIds = []
       const priceIds = []
       
-      selectedRows.value.forEach(row => {
+      currentSelectedRows.forEach(row => {
         if (row.dataType === DATA_TYPE.BASE_INFO) {
           baseInfoIds.push(row.id)
         } else if (row.dataType === DATA_TYPE.PRICE) {
@@ -695,7 +1052,7 @@ const handleBatchPromote = async () => {
       
       ElMessage.success(MESSAGE_CONFIG.BATCH_PROMOTE_SUCCESS)
       clearSelection()
-      fetchData()
+      fetchCurrentTabData()
     } catch (error) {
       console.error('批量转正失败:', error)
     }
@@ -704,13 +1061,14 @@ const handleBatchPromote = async () => {
 
 // 批量删除
 const handleBatchDelete = async () => {
-  const result = await confirmDelete(selectedRows.value)
+  const currentSelectedRows = activeTab.value === 'baseInfo' ? selectedBaseInfoRows.value : selectedPriceRows.value
+  const result = await confirmDelete(currentSelectedRows)
   if (result.confirmed) {
     try {
       const baseInfoIds = []
       const priceIds = []
       
-      selectedRows.value.forEach(row => {
+      currentSelectedRows.forEach(row => {
         if (row.dataType === DATA_TYPE.BASE_INFO) {
           baseInfoIds.push(row.id)
         } else if (row.dataType === DATA_TYPE.PRICE) {
@@ -725,7 +1083,7 @@ const handleBatchDelete = async () => {
       
       ElMessage.success(MESSAGE_CONFIG.BATCH_DELETE_SUCCESS)
       clearSelection()
-      fetchData()
+      fetchCurrentTabData()
     } catch (error) {
       console.error('批量删除失败:', error)
     }
@@ -739,9 +1097,21 @@ const handleViewDetail = (row) => {
 }
 
 // 页面初始化
-onMounted(() => {
-  // 页面加载时自动查询所有临时数据
-  fetchData()
+onMounted(async () => {
+  // 页面加载时同时获取基础信息和价格数据，以正确计算统计卡片
+  try {
+    loading.value = true
+    await Promise.all([
+      fetchBaseInfoData(false), // 不让单个函数控制loading
+      fetchPriceData(false)     // 不让单个函数控制loading
+    ])
+    // 数据加载完成后更新统计信息
+    updateStatistics()
+  } catch (error) {
+    console.error('初始化数据加载失败:', error)
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 
@@ -1267,6 +1637,48 @@ onMounted(() => {
 
 :deep(.approval-table .el-tag .el-icon svg) {
   vertical-align: middle;
+}
+
+/* 标签页样式 */
+.data-tabs {
+  margin-bottom: 20px;
+}
+
+:deep(.data-tabs .el-tabs__header) {
+  margin-bottom: 20px;
+  background: var(--theme-card-bg);
+  border-radius: 8px;
+  padding: 8px;
+  border: 1px solid var(--theme-border-secondary);
+}
+
+:deep(.data-tabs .el-tabs__nav-wrap::after) {
+  display: none;
+}
+
+:deep(.data-tabs .el-tabs__item) {
+  border-radius: 6px;
+  margin: 0 4px;
+  padding: 0 20px;
+  transition: all 0.3s ease;
+  border: none;
+  background: transparent;
+}
+
+:deep(.data-tabs .el-tabs__item.is-active) {
+  background: var(--theme-primary);
+  color: white;
+  font-weight: 600;
+}
+
+:deep(.data-tabs .el-tabs__item:hover) {
+  background: rgba(var(--theme-primary-rgb), 0.1);
+  color: var(--theme-primary);
+}
+
+:deep(.data-tabs .el-tabs__item.is-active:hover) {
+  background: var(--theme-primary);
+  color: white;
 }
 
 /* 分页 */

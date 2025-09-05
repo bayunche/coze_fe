@@ -45,6 +45,18 @@ export default defineConfig(({ mode }) => {
       // 增加请求体大小限制，支持大文件上传（1000MB）
       maxRequestSize: '1000mb',
       proxy: {
+           '/api/materials/priceinfo/temporary': {
+          target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
+          changeOrigin: true,
+          timeout: 300000,
+          proxyTimeout: 300000,
+          rewrite: (path) => {
+            const newPath = path.replace(/^\/api/, '')
+            console.log(`[TemporaryPriceInfo] 路径保持: ${newPath}`)
+            console.log(`[TemporaryPriceInfo] 最终请求: ${env.VITE_API_TARGET}${newPath}`)
+            return newPath
+          }
+        },
         // 甲供物资相关API转发到1207端口（去掉/api前缀） - 优先级最高
         '/api/materials/partya': {
           target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
@@ -170,6 +182,7 @@ export default defineConfig(({ mode }) => {
             return path
           }
         },
+      
         // 通用API转发 - /api 前缀（文件上传主要使用此路径） - 优先级最低
         '/api': {
           target: env.VITE_API_TARGET || 'http://192.168.1.103:1207',
