@@ -285,14 +285,6 @@
               >
                 {{ BUTTON_CONFIG.DELETE.text }}
               </el-button>
-              <el-button
-                :type="BUTTON_CONFIG.DETAIL.type"
-                :size="BUTTON_CONFIG.DETAIL.size"
-                :link="BUTTON_CONFIG.DETAIL.link"
-                @click="handleViewDetail(row)"
-              >
-                {{ BUTTON_CONFIG.DETAIL.text }}
-              </el-button>
             </div>
           </template>
         </el-table-column>
@@ -484,14 +476,6 @@
                     @click="handleDelete(row)"
                   >
                     {{ BUTTON_CONFIG.DELETE.text }}
-                  </el-button>
-                  <el-button
-                    :type="BUTTON_CONFIG.DETAIL.type"
-                    :size="BUTTON_CONFIG.DETAIL.size"
-                    :link="BUTTON_CONFIG.DETAIL.link"
-                    @click="handleViewDetail(row)"
-                  >
-                    {{ BUTTON_CONFIG.DETAIL.text }}
                   </el-button>
                 </div>
               </template>
