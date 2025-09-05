@@ -200,21 +200,25 @@
                     <span v-if="row.hasUserSelectedData && row.confirmedBaseName" class="text-sm text-gray-600">
                       {{ row.confirmedBaseName }}
                     </span>
-                    <!-- 相似匹配显示选中的物资名称 -->
-                    <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.materialName || row.selectedMaterial.baseInfo?.materialName || row.materialName || '-' }}
+                    <!-- 已确认状态显示baseInfo -->
+                    <span v-else-if="row.confirmResult === 1 && row.baseInfo?.materialName" class="text-sm text-gray-600">
+                      {{ row.baseInfo.materialName }}
                     </span>
-                    <!-- 精确匹配显示匹配的物资名称 -->
-                    <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
-                      {{ row.materialName || '-' }}
+                    <!-- 相似匹配和历史匹配显示选中的物资名称 -->
+                    <span v-else-if="(row.matchedType === 2 || row.matchedType === 3) && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.materialName || row.selectedMaterial.baseInfo?.materialName || '-' }}
+                    </span>
+                    <!-- 精确匹配显示baseInfo的物资名称 -->
+                    <span v-else-if="row.matchedType === 1 && row.baseInfo?.materialName" class="text-sm text-gray-600">
+                      {{ row.baseInfo.materialName }}
                     </span>
                     <!-- 未匹配状态：显示等待选择 -->
                     <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
                       等待选择物资
                     </span>
-                    <!-- 其他情况显示原始物资名称 -->
+                    <!-- 其他情况 -->
                     <span v-else class="text-sm text-gray-500">
-                      {{ row.materialName || '-' }}
+                      {{ '-' }}
                     </span>
                   </div>
                   <!-- 数据差异标记（未匹配状态不显示） -->
@@ -241,20 +245,24 @@
                     <span v-if="row.hasUserSelectedData && row.confirmedBaseSpec" class="text-sm text-gray-600">
                       {{ row.confirmedBaseSpec }}
                     </span>
-                    <!-- 相似匹配：显示选中物资的规格型号 -->
-                    <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.baseInfo?.specifications || row.selectedMaterial.specificationModel || row.specifications || '-' }}
+                    <!-- 已确认状态显示baseInfo -->
+                    <span v-else-if="row.confirmResult === 1 && row.baseInfo?.specifications" class="text-sm text-gray-600">
+                      {{ row.baseInfo.specifications }}
                     </span>
-                    <!-- 精确匹配显示匹配的规格型号 -->
-                    <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
-                      {{ row.specifications || '-' }}
+                    <!-- 相似匹配和历史匹配：显示选中物资的规格型号 -->
+                    <span v-else-if="(row.matchedType === 2 || row.matchedType === 3) && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.baseInfo?.specifications || row.selectedMaterial.specificationModel || '-' }}
+                    </span>
+                    <!-- 精确匹配显示baseInfo的规格型号 -->
+                    <span v-else-if="row.matchedType === 1 && row.baseInfo?.specifications" class="text-sm text-gray-600">
+                      {{ row.baseInfo.specifications }}
                     </span>
                     <!-- 未匹配状态：显示等待选择 -->
                     <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
                       等待选择规格
                     </span>
-                    <!-- 其他情况显示原始规格 -->
-                    <span v-else class="text-sm text-gray-500">{{ row.specifications || '-' }}</span>
+                    <!-- 其他情况 -->
+                    <span v-else class="text-sm text-gray-500">{{ '-' }}</span>
                   </div>
                   <!-- 数据差异标记（未匹配状态不显示） -->
                   <el-icon v-if="hasSpecificationDifference(row) && row.matchedType !== 0" class="difference-marker">
@@ -276,24 +284,28 @@
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
-                    <!-- 用户选择的物资单位（不包括相似匹配） -->
-                    <span v-if="row.hasUserSelectedData && row.selectedMaterial && row.matchedType !== 2" class="text-sm text-gray-600">
+                    <!-- 用户选择的物资单位 -->
+                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
                       {{ row.selectedMaterial.unit || '-' }}
                     </span>
-                    <!-- 相似匹配状态显示选中物资的单位 -->
-                    <span v-else-if="row.matchedType === 2 && row.selectedMaterial" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.unit || row.unit || '-' }}
+                    <!-- 已确认状态显示baseInfo -->
+                    <span v-else-if="row.confirmResult === 1 && row.baseInfo?.unit" class="text-sm text-gray-600">
+                      {{ row.baseInfo.unit }}
                     </span>
-                    <!-- 精确匹配状态显示单位 -->
-                    <span v-else-if="row.matchedType === 1" class="text-sm text-gray-600">
-                      {{ row.unit || '-' }}
+                    <!-- 相似匹配和历史匹配状态显示选中物资的单位 -->
+                    <span v-else-if="(row.matchedType === 2 || row.matchedType === 3) && row.selectedMaterial" class="text-sm text-gray-600">
+                      {{ row.selectedMaterial.unit || '-' }}
+                    </span>
+                    <!-- 精确匹配状态显示baseInfo的单位 -->
+                    <span v-else-if="row.matchedType === 1 && row.baseInfo?.unit" class="text-sm text-gray-600">
+                      {{ row.baseInfo.unit }}
                     </span>
                     <!-- 未匹配状态：显示等待选择 -->
                     <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
                       等待选择
                     </span>
                     <!-- 其他情况 -->
-                    <span v-else class="text-sm text-gray-500">{{ row.unit || '-' }}</span>
+                    <span v-else class="text-sm text-gray-500">{{ '-' }}</span>
                   </div>
                   <!-- 数据差异标记（未匹配状态不显示） -->
                   <el-icon v-if="hasUnitDifference(row) && row.matchedType !== 0" class="difference-marker">
@@ -363,12 +375,16 @@
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType === 0" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
-                <!-- 精确匹配：显示匹配的价格信息 -->
-                <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-price">
-                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
+                <!-- 已确认状态优先显示priceInfo -->
+                <div v-else-if="row.confirmResult === 1 && row.priceInfo?.taxPrice" class="exact-match-price">
+                  <span class="price-text">¥{{ formatPrice(row.priceInfo.taxPrice) }}</span>
                 </div>
-                <!-- 相似匹配：显示匹配的价格信息 -->
-                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
+                <!-- 精确匹配：显示priceInfo或selectedPriceQuarter的价格信息 -->
+                <div v-else-if="row.matchedType === 1 && (row.priceInfo?.taxPrice || row.selectedPriceQuarter)" class="exact-match-price">
+                  <span class="price-text">¥{{ formatPrice(row.priceInfo?.taxPrice || row.selectedPriceQuarter?.taxPrice || row.selectedPriceQuarter?.unitPrice || 0) }}</span>
+                </div>
+                <!-- 相似匹配和历史匹配：显示匹配的价格信息 -->
+                <div v-else-if="(row.matchedType === 2 || row.matchedType === 3) && row.selectedPriceQuarter" class="similar-match-price">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
                 <!-- 用户重新选择的价格（适用于所有匹配类型的用户操作） -->
@@ -406,8 +422,8 @@
                 <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-price">
                   <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
                 </div>
-                <!-- 相似匹配：显示匹配的不含税价格信息 -->
-                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
+                <!-- 相似匹配和历史匹配：显示匹配的不含税价格信息 -->
+                <div v-else-if="(row.matchedType === 2 || row.matchedType === 3) && row.selectedPriceQuarter" class="similar-match-price">
                   <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
                 </div>
                 <!-- 用户重新选择的不含税价格（适用于所有匹配类型的用户操作） -->
@@ -440,8 +456,8 @@
                 <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-tax-rate">
                   <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
                 </div>
-                <!-- 相似匹配：显示匹配的税率信息 -->
-                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-tax-rate">
+                <!-- 相似匹配和历史匹配：显示匹配的税率信息 -->
+                <div v-else-if="(row.matchedType === 2 || row.matchedType === 3) && row.selectedPriceQuarter" class="similar-match-tax-rate">
                   <span class="tax-rate-text">{{ getSelectedTaxRate(row) }}</span>
                 </div>
                 <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
@@ -463,16 +479,20 @@
                 <!-- 分隔行显示为空 -->
               </div>
               <div v-else class="action-cell">
-                <!-- 用户手动选择的季度（不包括相似匹配） -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
+                <!-- 用户手动选择的季度 -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter" class="selected-price-info">
                   <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
                 </div>
-                <!-- 精确匹配：显示匹配的季度信息 -->
-                <div v-else-if="row.matchedType === 1 && row.selectedPriceQuarter" class="exact-match-quarter">
-                  <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
+                <!-- 已确认状态优先显示priceInfo -->
+                <div v-else-if="row.confirmResult === 1 && row.priceInfo?.quarter" class="exact-match-quarter">
+                  <span class="quarter-text">{{ row.priceInfo.quarter }}</span>
                 </div>
-                <!-- 相似匹配：显示匹配的季度信息 -->
-                <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-quarter">
+                <!-- 精确匹配：显示priceInfo或selectedPriceQuarter的季度信息 -->
+                <div v-else-if="row.matchedType === 1 && (row.priceInfo?.quarter || row.selectedPriceQuarter)" class="exact-match-quarter">
+                  <span class="quarter-text">{{ row.priceInfo?.quarter || row.selectedPriceQuarter?.quarter || '-' }}</span>
+                </div>
+                <!-- 相似匹配和历史匹配：显示匹配的季度信息 -->
+                <div v-else-if="(row.matchedType === 2 || row.matchedType === 3) && row.selectedPriceQuarter" class="similar-match-quarter">
                   <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
                 </div>
                 <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
@@ -508,8 +528,8 @@
                   </el-button>
                 </div>
                 
-                <!-- 相似匹配：显示重新选择按钮 -->
-                <div v-else-if="row.matchedType === 2" class="operation-group similar-match">
+                <!-- 相似匹配和历史匹配：显示重新选择按钮 -->
+                <div v-else-if="row.matchedType === 2 || row.matchedType === 3" class="operation-group similar-match">
                   <el-button type="primary" size="small" @click="handleViewOptions(row)" class="single-action">
                     <el-icon><Edit /></el-icon>
                     <span class="button-text">选择确认</span>
@@ -1270,6 +1290,12 @@ const getDataSourceType = (row) => {
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
+  // 数据行：始终显示外层的原始解析数据
+  if (row.rowType === 'data') {
+    return row.materialName || '-'
+  }
+  
+  // 操作行的显示逻辑
   // 最优先：如果用户已确认选择，显示确认的数据
   if (row.confirmResult === 1 && row.confirmedBaseName) {
     return row.confirmedBaseName
@@ -1280,28 +1306,28 @@ const getBaseInfoName = (row) => {
     return row.confirmedBaseName
   }
 
-  // 优先从直接的baseInfo获取（匹配后的数据）
+  // 从baseInfo获取（匹配后的数据）
   if (row.baseInfo && row.baseInfo.materialName) {
     return row.baseInfo.materialName
   }
 
-  // 从matchOptions中获取第一个匹配的基础数据
+  // 从matchOptions中获取第一个匹配的基础数据（用于相似匹配等情况）
   if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
-   
     return row.matchOptions[0].baseInfo.materialName
   }
 
-  // 无匹配时，显示原始物资名称（这是关键修改）
-  if (row.materialName) {
-    return row.materialName
-  }
-
-  const fallback = row.recommendedBaseName || '-'
-  return fallback
+  // 无匹配时返回空
+  return '-'
 }
 
 // 获取基础信息规格
 const getBaseInfoSpec = (row) => {
+  // 数据行：始终显示外层的原始解析数据
+  if (row.rowType === 'data') {
+    return row.specifications || '-'
+  }
+  
+  // 操作行的显示逻辑
   // 最优先：如果用户已确认选择，显示确认的数据
   if (row.confirmResult === 1 && row.confirmedBaseSpec) {
     return row.confirmedBaseSpec
@@ -1312,22 +1338,18 @@ const getBaseInfoSpec = (row) => {
     return row.confirmedBaseSpec
   }
 
-  // 优先从直接的baseInfo获取（匹配后的数据）
+  // 从baseInfo获取（匹配后的数据）
   if (row.baseInfo && row.baseInfo.specifications) {
     return row.baseInfo.specifications
   }
 
-  // 从matchOptions中获取第一个匹配的基础数据
+  // 从matchOptions中获取第一个匹配的基础数据（用于相似匹配等情况）
   if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
     return row.matchOptions[0].baseInfo.specifications || ''
   }
 
-  // 无匹配时，显示原始规格型号（这是关键修改）
-  if (row.specifications) {
-    return row.specifications
-  }
-
-  return row.recommendedBaseSpec || '-'
+  // 无匹配时返回空
+  return '-'
 }
 
 
@@ -1723,11 +1745,16 @@ watch(
 
 // 处理物资价格选择结果 - 匹配之前的数据选择逻辑
 const handleMaterialPriceSelection = async (selection) => {
-  // console.log('【调试】handleMaterialPriceSelection 开始，接收参数:', selection)
-  // console.log('【调试】currentSelectionRow.value:', currentSelectionRow.value)
+  console.log('【数据流转-6】handleMaterialPriceSelection 开始')
+  console.log('  接收的selection:', JSON.stringify(selection, null, 2))
+  console.log('  currentSelectionRow:', currentSelectionRow.value)
   
   if (!selection || !selection.material || !selection.price || !currentSelectionRow.value) {
-    console.log('【调试】参数缺失，退出')
+    console.log('【数据流转-6】参数缺失，退出')
+    console.log('  selection:', !!selection)
+    console.log('  selection.material:', !!selection?.material)
+    console.log('  selection.price:', !!selection?.price)
+    console.log('  currentSelectionRow:', !!currentSelectionRow.value)
     ElMessage.warning('选择数据不完整，请重新选择')
     return
   }
@@ -1753,34 +1780,64 @@ const handleMaterialPriceSelection = async (selection) => {
       id: selection.material.baseInfoId || selection.material.id
     }
     
+    // 智能提取价格数据，支持多种字段名
+    const extractPrice = (priceObj) => {
+      // 按优先级尝试多种可能的字段名
+      return priceObj.taxPrice || 
+             priceObj.unitPrice || 
+             priceObj.含税价格 || 
+             priceObj.price || 
+             priceObj.taxInclusivePrice ||
+             priceObj.selectedPrice || 
+             0
+    }
+
     const priceInfo = {
-      taxPrice: selection.price.taxPrice || selection.price.unitPrice,
-      unitPrice: selection.price.unitPrice || selection.price.taxPrice,
-      taxExcludedPrice: selection.price.taxExcludedPrice,
-      originalPrice: selection.price.originalPrice,
-      priceType: selection.price.priceType,
-      quarter: selection.price.quarter,
+      taxPrice: extractPrice(selection.price),
+      unitPrice: selection.price.unitPrice || selection.price.taxPrice || extractPrice(selection.price),
+      taxExcludedPrice: selection.price.taxExcludedPrice || selection.price.notaxPrice || 0,
+      originalPrice: selection.price.originalPrice || extractPrice(selection.price),
+      priceType: selection.price.priceType || 1,
+      quarter: selection.price.quarter || selection.price.季度 || '',
       id: selection.price.priceId || selection.price.id
     }
 
-    // console.log('【调试】解析出的物资基础信息:', materialBaseInfo)
-    // console.log('【调试】解析出的价格信息:', priceInfo)
+    console.log('【数据流转-6】数据提取完成:')
+    console.log('  materialBaseInfo:', materialBaseInfo)
+    console.log('  priceInfo:', priceInfo)
+    console.log('  selection.material所有字段:', Object.keys(selection.material))
+    console.log('  selection.price所有字段:', Object.keys(selection.price))
 
     // 更新物资信息
     const confirmBaseName = materialBaseInfo.materialName
     const confirmBaseSpec = materialBaseInfo.specificationModel
-    const confirmPrice = priceInfo.taxPrice || priceInfo.unitPrice
+    
+    // 确保价格字段有有效值
+    const extractedPrice = extractPrice(selection.price)
+    const confirmPrice = extractedPrice // 含税价格
     const confirmPriceQuarter = priceInfo.quarter
     
-    // 新增价格字段
-    const confirmUnitPrice = priceInfo.unitPrice
+    // 新增价格字段，确保都有值
+    const confirmUnitPrice = extractedPrice // 如果没有专门的单价，使用相同的价格
     const confirmTaxExcludedPrice = priceInfo.taxExcludedPrice
-    const confirmOriginalPrice = priceInfo.originalPrice
+    const confirmOriginalPrice = extractedPrice
     const confirmPriceType = priceInfo.priceType
 
+    console.log('【数据流转-6】计算出的确认数据:')
+    console.log('  confirmPrice:', confirmPrice, '(含税价)')
+    console.log('  confirmUnitPrice:', confirmUnitPrice)
+    console.log('  confirmTaxExcludedPrice:', confirmTaxExcludedPrice)
+    console.log('  confirmPriceQuarter:', confirmPriceQuarter)
+    console.log('  materialBaseInfo.id:', materialBaseInfo.id)
+    console.log('  priceInfo.id:', priceInfo.id)
+
     // 更新所有匹配的数据行和操作行
-    items.forEach((item) => {
+    items.forEach((item, index) => {
       const itemIndex = materialData.value.findIndex(dataItem => dataItem === item)
+      
+      console.log(`【数据流转-7】更新第${index + 1}个匹配项:`)
+      console.log('  item.rowType:', item.rowType)
+      console.log('  itemIndex:', itemIndex)
       
       if (itemIndex !== -1) {
         // 直接更新数组中的对象属性，确保Vue能检测到变化
@@ -1795,6 +1852,25 @@ const handleMaterialPriceSelection = async (selection) => {
         materialData.value[itemIndex].originalPrice = confirmOriginalPrice
         materialData.value[itemIndex].priceType = confirmPriceType
         
+        // 【核心修改】更新baseInfo和priceInfo对象
+        materialData.value[itemIndex].baseInfo = {
+          baseDataId: materialBaseInfo.id,
+          materialName: selection.material.materialName,
+          specifications: selection.material.specificationModel || selection.material.specifications,
+          unit: selection.material.unit,
+          serialNumber: selection.material.serialNumber || '',
+          priceCode: selection.material.priceCode || '',
+          materialCode: selection.material.materialCode || '',
+          type: selection.material.type || ''
+        }
+        
+        materialData.value[itemIndex].priceInfo = {
+          priceId: priceInfo.id,
+          baseDataId: materialBaseInfo.id,
+          taxPrice: extractedPrice,
+          quarter: confirmPriceQuarter
+        }
+        
         // 更新选择状态
         materialData.value[itemIndex].hasUserSelectedData = true
         materialData.value[itemIndex].selectedBaseDataId = materialBaseInfo.id
@@ -1802,7 +1878,7 @@ const handleMaterialPriceSelection = async (selection) => {
         materialData.value[itemIndex].isUserModified = true
         
         // 设置 selectedMaterial 对象（用于单位等信息的显示）
-        materialData.value[itemIndex].selectedMaterial = {
+        const newSelectedMaterial = {
           materialName: selection.material.materialName,
           specificationModel: selection.material.specificationModel,
           unit: selection.material.unit,
@@ -1810,25 +1886,59 @@ const handleMaterialPriceSelection = async (selection) => {
           materialCode: selection.material.materialCode,
           matchedId: selection.material.id
         }
+        materialData.value[itemIndex].selectedMaterial = newSelectedMaterial
         
-        // 直接设置 unit 和 type 字段
-        materialData.value[itemIndex].unit = selection.material.unit
-        materialData.value[itemIndex].type = selection.material.type
+        // 直接设置 unit 和 type 字段（保留兼容性）
+        // 注意：不要覆盖数据行的原始unit，只在操作行需要时使用selectedMaterial.unit
+        if (item.rowType === 'action') {
+          // 操作行不需要直接设置unit，应通过baseInfo或selectedMaterial获取
+        }
         
         // 更新选择的物资和价格数据（为了兼容其他组件的访问）
-        materialData.value[itemIndex].selectedPriceQuarter = {
-          taxPrice: confirmPrice,
-          unitPrice: confirmUnitPrice,
-          taxExcludedPrice: confirmTaxExcludedPrice,
-          originalPrice: confirmOriginalPrice,
-          priceType: confirmPriceType,
-          quarter: confirmPriceQuarter,
+        // 确保价格是数字类型
+        const newSelectedPriceQuarter = {
+          taxPrice: parseFloat(confirmPrice) || 0,
+          unitPrice: parseFloat(confirmUnitPrice) || 0,
+          taxExcludedPrice: parseFloat(confirmTaxExcludedPrice) || 0,
+          originalPrice: parseFloat(confirmOriginalPrice) || 0,
+          priceType: confirmPriceType || 1,
+          quarter: confirmPriceQuarter || '',
           ...priceInfo
         }
+        materialData.value[itemIndex].selectedPriceQuarter = newSelectedPriceQuarter
 
-        console.log('【调试】更新后的 item:', materialData.value[itemIndex])
+        console.log('【数据流转-7】关键数据设置完成:')
+        console.log('  confirmedPrice:', materialData.value[itemIndex].confirmedPrice)
+        console.log('  selectedMaterial:', newSelectedMaterial)
+        console.log('  selectedPriceQuarter:', newSelectedPriceQuarter)
+        console.log('  hasUserSelectedData:', materialData.value[itemIndex].hasUserSelectedData)
+        
+        // 验证操作行价格能否被正确读取
+        if (item.rowType === 'action') {
+          console.log('【数据流转-7】验证操作行价格读取:')
+          console.log('  操作行matchedType:', materialData.value[itemIndex].matchedType)
+          console.log('  操作行hasUserSelectedData:', materialData.value[itemIndex].hasUserSelectedData)
+          
+          // 模拟 getActionRowPrice 的逻辑
+          const testActionRow = materialData.value[itemIndex]
+          const hasValidCondition = ((testActionRow.hasUserSelectedData && testActionRow.matchedType !== 2) || 
+                                    testActionRow.matchedType === 1 || 
+                                    testActionRow.matchedType === 2) && 
+                                   testActionRow.selectedPriceQuarter
+          console.log('  价格读取条件满足:', hasValidCondition)
+          
+          if (hasValidCondition) {
+            const testPrice = parseFloat(testActionRow.selectedPriceQuarter.taxPrice || testActionRow.selectedPriceQuarter.unitPrice || 0)
+            console.log('  能读取到的价格值:', testPrice)
+          }
+        }
+      } else {
+        console.log('【数据流转-7】错误：未找到对应的itemIndex!')
       }
     })
+
+    // 强制触发Vue响应式更新
+    materialData.value = [...materialData.value]
 
     console.log('【调试】物资选择完成:', {
       confirmedBaseName: confirmBaseName,
@@ -2205,8 +2315,8 @@ const initializeRowData = (row) => {
       reactiveRow.selectedPriceId = firstPrice.priceId
       reactiveRow.selectedBaseDataId = firstMatch.matchedId
       
-      // 相似匹配时自动标记为已选择数据
-      if (reactiveRow.matchedType === 2) {
+      // 相似匹配和历史匹配时自动标记为已选择数据
+      if (reactiveRow.matchedType === 2 || reactiveRow.matchedType === 3) {
         reactiveRow.hasUserSelectedData = true
       }
     }

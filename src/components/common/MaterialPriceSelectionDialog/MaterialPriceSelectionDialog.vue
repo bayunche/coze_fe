@@ -266,6 +266,7 @@ const recommendMaterials = ref([])
 const recommendPrices = ref([])
 const selectedRecommendMaterial = ref(null)
 const selectedRecommendPrice = ref(null)
+const loadingRecommendPrices = ref(false) // 添加价格加载状态
 
 // 搜索相关
 const searchKeyword = ref('')
@@ -383,6 +384,7 @@ const initRecommendData = () => {
 const selectRecommendMaterial = async (material) => {
   selectedRecommendMaterial.value = material
   selectedRecommendPrice.value = null
+  loadingRecommendPrices.value = true // 开始加载
   recommendPrices.value = []
   
   try {
@@ -397,6 +399,7 @@ const selectRecommendMaterial = async (material) => {
         material: material
       })
       recommendPrices.value = material.priceOptions || []
+      loadingRecommendPrices.value = false
       return
     }
     
@@ -418,6 +421,9 @@ const selectRecommendMaterial = async (material) => {
     
     console.log('【价格调试】处理后的价格列表:', recommendPrices.value)
     
+    // 确保在数据加载完成后再自动选择
+    await nextTick() // 等待DOM更新
+    
     // 如果只有一个价格，自动选择
     if (recommendPrices.value.length === 1) {
       selectRecommendPrice(recommendPrices.value[0])
@@ -426,21 +432,33 @@ const selectRecommendMaterial = async (material) => {
     console.error('获取价格列表失败:', error)
     // 降级使用原有数据
     recommendPrices.value = material.priceOptions || []
+  } finally {
+    loadingRecommendPrices.value = false // 结束加载
   }
 }
 
 // 选择推荐价格
 const selectRecommendPrice = (price) => {
+  console.log('【数据流转-5】selectRecommendPrice 开始')
+  console.log('  选择的price:', price)
+  console.log('  当前selectedRecommendMaterial:', selectedRecommendMaterial.value)
+  
   selectedRecommendPrice.value = price
+  
+  const finalMaterial = {
+    ...selectedRecommendMaterial.value,
+    // 确保包含正确的ID字段，用于后续保存
+    id: selectedRecommendMaterial.value.matchedId || selectedRecommendMaterial.value.id,
+    baseInfoId: selectedRecommendMaterial.value.matchedId || selectedRecommendMaterial.value.id // 添加baseInfoId字段
+  }
+  
   finalSelection.value = {
-    material: {
-      ...selectedRecommendMaterial.value,
-      // 确保包含正确的ID字段，用于后续保存
-      id: selectedRecommendMaterial.value.matchedId || selectedRecommendMaterial.value.id
-    },
+    material: finalMaterial,
     price: price,
     source: 'recommend'
   }
+  
+  console.log('【数据流转-5】finalSelection 设置完成:', finalSelection.value)
 }
 
 // 处理搜索输入（防抖）
