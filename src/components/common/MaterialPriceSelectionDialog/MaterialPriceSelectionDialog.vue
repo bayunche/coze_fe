@@ -40,6 +40,7 @@
 
             <div v-if="selectedRecommendMaterial" class="price-selection-section">
               <h4 class="section-title">选择价格</h4>
+              <div class="selection-hint">点击表格行即可选择该价格</div>
               <el-table
                 :data="recommendPrices"
                 @row-click="selectRecommendPrice"
@@ -52,20 +53,13 @@
               >
                 <el-table-column label="物资价格（含税）" width="130" align="right">
                   <template #default="{ row }">
-                    <span class="price-value">¥{{ formatPrice(row.taxPrice || row.unitPrice || 0) }}</span>
+                    <span class="price-value">¥{{ formatPrice(getPriceValue(row)) }}</span>
                   </template>
                 </el-table-column>
                 <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
                 <el-table-column prop="priceType" label="价格类型" width="100" align="center">
                   <template #default="{ row }">
                     <span>{{ getPriceTypeText(row.priceType) }}</span>
-                  </template>
-                </el-table-column>
-                <el-table-column label="操作" width="80">
-                  <template #default="{ row }">
-                    <el-button type="primary" size="small" @click.stop="selectRecommendPrice(row)">
-                      选择
-                    </el-button>
                   </template>
                 </el-table-column>
               </el-table>
@@ -88,6 +82,7 @@
               </template>
             </el-input>
 
+            <div class="selection-hint">点击表格行即可选择该物资</div>
             <el-table
               :data="searchResults"
               v-loading="searchLoading"
@@ -110,13 +105,6 @@
                 </template>
               </el-table-column>
               <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
-              <el-table-column label="操作" width="80">
-                <template #default="{ row }">
-                  <el-button type="primary" size="small" @click.stop="selectSearchResult(row)">
-                    选择
-                  </el-button>
-                </template>
-              </el-table-column>
             </el-table>
 
             <div class="pagination-wrapper" v-if="searchTotal > 0">
@@ -608,6 +596,24 @@ const getPriceTypeText = (priceType) => {
   return typeMap[priceType] || '未知'
 }
 
+// 获取价格值的函数，支持多种可能的价格字段名
+const getPriceValue = (row) => {
+  // 调试：打印价格数据结构
+  console.log('【价格调试】row数据结构:', row)
+  
+  // 尝试不同的价格字段名，按优先级排序
+  const price = row.taxPrice || 
+                row.unitPrice || 
+                row.含税价格 || 
+                row.price || 
+                row.taxInclusivePrice ||
+                row.selectedPrice ||
+                0
+                
+  console.log('【价格调试】最终获取的价格值:', price)
+  return price
+}
+
 // 行样式类名
 const getRowClassName = ({ row }) => {
   return selectedRecommendMaterial.value === row ? 'selected-row' : 'selectable-row'
@@ -740,6 +746,17 @@ watch(activeTab, (newTab) => {
   font-weight: 600;
   color: var(--theme-success);
   font-size: 14px;
+}
+
+/* 选择提示样式 */
+.selection-hint {
+  font-size: 12px;
+  color: var(--theme-text-tertiary);
+  margin-bottom: 8px;
+  text-align: center;
+  padding: 4px 0;
+  background: var(--theme-bg-tertiary);
+  border-radius: 4px;
 }
 
 /* 表格行样式 */

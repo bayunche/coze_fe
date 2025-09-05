@@ -577,9 +577,8 @@
             type="primary"
             @click="handleSaveResults"
             :loading="saving"
-            :disabled="!hasModifiedData"
           >
-            保存解析结果
+            检查确认状态
           </el-button>
         </div>
       </div>
@@ -618,6 +617,7 @@ import {
   confirmSupplierMaterialData
 } from '@/utils/backendWorkflow.js'
 import supplierMaterialService from '@/services/SupplierMaterialService.js'
+import MaterialService from '@/services/MaterialService.js'
 
 // 导入常量和工具函数
 import { BUTTON_CONFIG, PAGINATION_CONFIG, CSS_CLASSES } from './constants.js'
@@ -626,11 +626,11 @@ import { useNavigation } from './utils.js'
 
 // 路由参数 - 使用 props 传递的参数
 const taskId = computed(() => {
-  console.log('【调试】详情页面 - taskId props:', props.taskId)
+  // console.log('【调试】详情页面 - taskId props:', props.taskId)
   return props.taskId
 })
 const detailId = computed(() => {
-  console.log('【调试】详情页面 - detailId props:', props.detailId)
+  // console.log('【调试】详情页面 - detailId props:', props.detailId)
   return props.detailId
 })
 
@@ -1330,79 +1330,6 @@ const getBaseInfoSpec = (row) => {
   return row.recommendedBaseSpec || '-'
 }
 
-// 获取价格文本 - 支持新的价格字段（暂时未使用，保留备用）
-/*
-const getPriceText = (row) => {
-  // 最优先：如果用户已确认选择，显示确认的价格
-  if (row.confirmResult === 1 && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
-    return formatPriceDisplay(row.confirmedPrice, row.taxExcludedPrice, row.priceType)
-  }
-
-  // 如果用户已选择但未确认，显示选择的价格
-  if (row.hasUserSelectedData && row.confirmedPrice !== undefined && row.confirmedPrice !== null) {
-    console.log('【调试】getPriceText - 返回用户选择的价格:', row.confirmedPrice)
-    return formatPriceDisplay(row.confirmedPrice, row.taxExcludedPrice, row.priceType)
-  }
-
-  // 使用新的价格字段：unitPrice(含税价) 和 taxExcludedPrice(不含税价)
-  if (row.unitPrice !== undefined && row.unitPrice !== null) {
-    return formatPriceDisplay(row.unitPrice, row.taxExcludedPrice, row.priceType)
-  }
-
-  // 优先从直接的priceInfo获取
-  if (row.priceInfo && row.priceInfo.taxPrice) {
-    return formatPriceDisplay(row.priceInfo.taxPrice, row.priceInfo.taxExcludedPrice, row.priceInfo.priceType)
-  }
-
-  // 从matchOptions中获取第一个匹配选项的最新价格信息
-  if (row.matchOptions && row.matchOptions.length > 0) {
-    const matchOption = row.matchOptions[0]
-    if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
-      // 取最新的价格（通常是第一个）
-      const latestPrice = matchOption.priceOptions[0]
-      return formatPriceDisplay(latestPrice.taxPrice, latestPrice.taxExcludedPrice, latestPrice.priceType)
-    }
-  }
-
-  const fallback = row.recommendedPrice ? formatPriceDisplay(row.recommendedPrice) : '无价格'
-  return fallback
-}
-*/
-
-// // 获取价格季度
-// const getPriceQuarter = (row) => {
-//   // 最优先：如果用户已确认选择，显示确认的季度信息
-//   if (row.confirmResult === 1 && row.confirmedPriceQuarter) {
-//     return row.confirmedPriceQuarter
-//   }
-
-//   // 如果用户已选择但未确认，显示选择的季度信息
-//   if (row.hasUserSelectedData && row.confirmedPriceQuarter) {
-//     return row.confirmedPriceQuarter
-//   }
-
-//   // 优先从直接的priceInfo获取
-//   if (row.priceInfo && row.priceInfo.quarter) {
-//     return row.priceInfo.quarter
-//   }
-
-//   // 从matchOptions中获取第一个匹配选项的最新价格季度信息
-//   if (row.matchOptions && row.matchOptions.length > 0) {
-//     const matchOption = row.matchOptions[0]
-//     if (matchOption.priceOptions && matchOption.priceOptions.length > 0) {
-//       // 取最新的价格季度（通常是第一个）
-//       const latestPrice = matchOption.priceOptions[0]
-//       return latestPrice.quarter || ''
-//     }
-//   }
-
-//   // 无匹配时，显示原始季度信息（如果有的话）
-//   if (row.quarter) {
-//     return row.quarter
-//   }
-
-//   return row.recommendedPriceQuarter || '-'
-// }
 
 // 获取操作行对应的价格数值（优化版本）
 const getActionRowPrice = (dataRow, priceType) => {
@@ -1536,7 +1463,7 @@ const debugPriceComparison = (row, priceType) => {
     taskDataId: row.taskDataId || row.id || '未知'
   }
   
-  console.log(`【价格对比调试】${debugInfo.物资名称} - ${debugInfo.价格类型}:`, debugInfo)
+  // console.log(`【价格对比调试】${debugInfo.物资名称} - ${debugInfo.价格类型}:`, debugInfo)
   
   return debugInfo
 }
@@ -1614,8 +1541,7 @@ const getPriceChangeIconStyle = (row, priceType) => {
 // 查看更多选项 - 打开物资价格选择对话框
 const handleViewOptions = async (row) => {
   console.log('【调试】handleViewOptions 被调用，设置 currentSelectionRow:', row)
-  console.log('【调试】row.taskDataId:', row.taskDataId)
-  console.log('【调试】row.materialName:', row.materialName)
+
 
   currentSelectionRow.value = row
   showMaterialPriceDialog.value = true
@@ -1797,8 +1723,8 @@ watch(
 
 // 处理物资价格选择结果 - 匹配之前的数据选择逻辑
 const handleMaterialPriceSelection = async (selection) => {
-  console.log('【调试】handleMaterialPriceSelection 开始，接收参数:', selection)
-  console.log('【调试】currentSelectionRow.value:', currentSelectionRow.value)
+  // console.log('【调试】handleMaterialPriceSelection 开始，接收参数:', selection)
+  // console.log('【调试】currentSelectionRow.value:', currentSelectionRow.value)
   
   if (!selection || !selection.material || !selection.price || !currentSelectionRow.value) {
     console.log('【调试】参数缺失，退出')
@@ -1837,8 +1763,8 @@ const handleMaterialPriceSelection = async (selection) => {
       id: selection.price.priceId || selection.price.id
     }
 
-    console.log('【调试】解析出的物资基础信息:', materialBaseInfo)
-    console.log('【调试】解析出的价格信息:', priceInfo)
+    // console.log('【调试】解析出的物资基础信息:', materialBaseInfo)
+    // console.log('【调试】解析出的价格信息:', priceInfo)
 
     // 更新物资信息
     const confirmBaseName = materialBaseInfo.materialName
@@ -1874,6 +1800,20 @@ const handleMaterialPriceSelection = async (selection) => {
         materialData.value[itemIndex].selectedBaseDataId = materialBaseInfo.id
         materialData.value[itemIndex].selectedPriceId = priceInfo.id
         materialData.value[itemIndex].isUserModified = true
+        
+        // 设置 selectedMaterial 对象（用于单位等信息的显示）
+        materialData.value[itemIndex].selectedMaterial = {
+          materialName: selection.material.materialName,
+          specificationModel: selection.material.specificationModel,
+          unit: selection.material.unit,
+          type: selection.material.type,
+          materialCode: selection.material.materialCode,
+          matchedId: selection.material.id
+        }
+        
+        // 直接设置 unit 和 type 字段
+        materialData.value[itemIndex].unit = selection.material.unit
+        materialData.value[itemIndex].type = selection.material.type
         
         // 更新选择的物资和价格数据（为了兼容其他组件的访问）
         materialData.value[itemIndex].selectedPriceQuarter = {
@@ -2280,60 +2220,32 @@ const initializeRowData = (row) => {
   return reactiveRow
 }
 
-// 新增：保存解析结果
+// 检查确认状态
 const handleSaveResults = async () => {
-  const modifiedItems = materialData.value.filter((item) => item.isUserModified === true)
-
-  if (modifiedItems.length === 0) {
-    ElMessage.info('未检测到修改的数据，无需保存。')
-    return
-  }
-
   try {
-    await ElMessageBox.confirm(
-      `即将保存 ${modifiedItems.length} 个物资的解析结果，确认继续？`,
-      '确认保存',
-      {
-        confirmButtonText: '确认',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
     saving.value = true
-
-    // 准备保存数据
-    const updateObjList = modifiedItems.map((item) => ({
-      id: item.taskDataId || item.id,
-      confirmBaseDataId: item.selectedBaseDataId || item.matchOptions?.[0]?.matchedId,
-      confirmPriceId: item.selectedPriceId || item.matchOptions?.[0]?.priceOptions?.[0]?.priceId,
-      confirmType: 2 // 人工确认
-    }))
-
-    // 这里应该调用保存的API接口
-    // 暂时使用确认接口的批量版本
-    const promises = updateObjList.map((data) => confirmSupplierMaterialData(data))
-    const results = await Promise.allSettled(promises)
-
-    let successCount = 0
-    results.forEach((result) => {
-      if (result.status === 'fulfilled' && result.value?.code === 200) {
-        successCount++
-      }
-    })
-
-    if (successCount > 0) {
-      ElMessage.success(`成功保存 ${successCount} 个物资的解析结果`)
-      // 刷新数据
-      fetchData()
+    
+    // 调用API查询未确认的数据数量
+    const unconfirmedCount = await MaterialService.getUnconfirmedCount(taskId.value)
+    
+    if (unconfirmedCount > 0) {
+      // 如果还有未确认的数据，提示用户
+      await ElMessageBox.alert(
+        `还有 ${unconfirmedCount} 条数据未确认，请先确认所有数据后再保存。`,
+        '提示',
+        {
+          confirmButtonText: '知道了',
+          type: 'warning'
+        }
+      )
     } else {
-      ElMessage.error('保存失败')
+      // 所有数据都已确认，显示成功消息
+      ElMessage.success('所有数据已确认，可以进行下一步操作')
     }
   } catch (error) {
     if (error !== 'cancel') {
-      console.error('保存解析结果失败:', error)
-      const errorMsg =
-        error?.response?.data?.message || error?.response?.data?.msg || error?.message || '保存失败'
+      console.error('检查未确认数据失败:', error)
+      const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '检查失败'
       ElMessage.error(errorMsg)
     }
   } finally {

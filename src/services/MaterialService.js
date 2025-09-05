@@ -234,6 +234,24 @@ class MaterialService {
       return []
     }
   }
+
+  /**
+   * 查询任务下未确认的物资数据数量
+   * @param {string} taskId - 任务ID
+   * @returns {Promise<number>} 未确认数据的数量
+   */
+  async getUnconfirmedCount(taskId) {
+    try {
+      const response = await request.get(`/materials/base-info/unconfirmed-count?taskId=${taskId}`)
+      if (response && response.data !== undefined) {
+        return response.data
+      }
+      return 0
+    } catch (error) {
+      console.error('查询未确认物资数据数量失败:', error)
+      throw error
+    }
+  }
 }
 
 export default new MaterialService()
