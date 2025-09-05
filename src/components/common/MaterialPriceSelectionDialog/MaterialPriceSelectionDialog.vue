@@ -570,7 +570,13 @@ const handleSearchSizeChange = (size) => {
 // 提交新增物资
 const submitNewMaterial = async () => {
   try {
-    await materialFormRef.value.validate()
+    // 表单验证
+    const isValid = await materialFormRef.value.validate().catch(() => false)
+    if (!isValid) {
+      ElMessage.warning('请检查表单填写是否正确')
+      return
+    }
+    
     savingMaterial.value = true
     
     // 1. 创建临时物资基础信息
@@ -625,18 +631,21 @@ const submitNewMaterial = async () => {
       source: 'add'
     }
     
-    // 设置 finalSelection 用于界面显示
+    // 设置 finalSelection 用于界面显示，执行正常的选择逻辑
     finalSelection.value = finalSelectionData
     
     ElMessage.success('新增物资数据保存成功')
     
-    // 直接确认选择并关闭弹窗
-    emit('confirm', finalSelectionData)
-    closeDialog()
+    // 不直接关闭弹窗，让用户可以看到选择结果并点击"确认选择"按钮
+    // 这样就执行了正常的选择逻辑
     
   } catch (error) {
     console.error('保存新增物资失败:', error)
-    ElMessage.error('保存新增物资数据失败，请重试')
+    if (error.message && error.message.includes('必填')) {
+      ElMessage.error('请填写必填字段：' + error.message)
+    } else {
+      ElMessage.error('保存新增物资数据失败，请重试')
+    }
   } finally {
     savingMaterial.value = false
   }
