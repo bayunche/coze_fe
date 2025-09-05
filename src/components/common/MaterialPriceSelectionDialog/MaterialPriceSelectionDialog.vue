@@ -50,12 +50,12 @@
                 max-height="200px"
                 :row-class-name="getPriceRowClassName"
               >
-                <el-table-column label="价格" width="120" align="right">
+                <el-table-column label="物资价格（含税）" width="130" align="right">
                   <template #default="{ row }">
                     <span class="price-value">¥{{ formatPrice(row.taxPrice || row.unitPrice || 0) }}</span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="quarter" label="季度" width="100" align="center" />
+                <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
                 <el-table-column prop="priceType" label="价格类型" width="100" align="center">
                   <template #default="{ row }">
                     <span>{{ getPriceTypeText(row.priceType) }}</span>
@@ -104,12 +104,12 @@
               <el-table-column prop="unit" label="单位" width="80" />
               <el-table-column prop="type" label="类型" width="100" />
               <el-table-column prop="materialCode" label="物资编码" width="120" show-overflow-tooltip />
-              <el-table-column label="价格" width="120" align="right">
+              <el-table-column label="物资价格（含税）" width="130" align="right">
                 <template #default="{ row }">
                   <span class="price-value">¥{{ formatPrice(row.taxPrice) }}</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="quarter" label="季度" width="100" align="center" />
+              <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
               <el-table-column label="操作" width="80">
                 <template #default="{ row }">
                   <el-button type="primary" size="small" @click.stop="selectSearchResult(row)">
@@ -183,12 +183,12 @@
                 </el-col>
                 <el-col :span="12">
                   <el-form-item label="价格季度" prop="quarter">
-                    <el-select v-model="newMaterialForm.quarter" placeholder="请选择季度" style="width: 100%">
-                      <el-option label="Q1" value="Q1" />
-                      <el-option label="Q2" value="Q2" />
-                      <el-option label="Q3" value="Q3" />
-                      <el-option label="Q4" value="Q4" />
-                    </el-select>
+                    <el-input 
+                      v-model="newMaterialForm.quarter" 
+                      placeholder="请输入价格季度（格式：xxxx-Qx，如2024-Q1）" 
+                      style="width: 100%" 
+                    />
+                    <div class="quarter-hint">格式示例：2024-Q1, 2024-Q2, 2024-Q3, 2024-Q4</div>
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -307,6 +307,22 @@ const finalSelection = ref({
   source: '' // 'recommend', 'search', 'add'
 })
 
+// 季度格式验证函数
+const validateQuarter = (rule, value, callback) => {
+  if (!value) {
+    callback(new Error('请输入价格季度'))
+  } else if (!/^\d{4}-Q[1-4]$/.test(value)) {
+    callback(new Error('季度格式不正确，请输入如 2024-Q1 的格式'))
+  } else {
+    const year = parseInt(value.substring(0, 4))
+    if (year < 2000 || year > 2099) {
+      callback(new Error('年份应在2000-2099之间'))
+    } else {
+      callback()
+    }
+  }
+}
+
 // 表单验证规则
 const materialFormRules = {
   materialName: [
@@ -322,7 +338,7 @@ const materialFormRules = {
     { required: true, message: '请输入价格', trigger: 'blur' }
   ],
   quarter: [
-    { required: true, message: '请选择季度', trigger: 'change' }
+    { required: true, validator: validateQuarter, trigger: 'blur' }
   ]
 }
 
@@ -777,6 +793,14 @@ watch(activeTab, (newTab) => {
 .action-buttons {
   display: flex;
   gap: 12px;
+}
+
+/* 季度格式提示样式 */
+.quarter-hint {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 
 /* 响应式设计 */

@@ -177,7 +177,10 @@
             <template #default="{ row, $index }">
               <div v-if="row.rowType === 'data'" class="sequence-number-container">
                 <div :class="getSequenceBarClass(row)" class="sequence-bar"></div>
-                <span class="sequence-number">{{ Math.floor($index / 2) + 1 }}</span>
+                <span class="sequence-number">{{ Math.floor($index / 3) + 1 }}</span>
+              </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
               </div>
             </template>
           </el-table-column>
@@ -186,6 +189,9 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 {{ getBaseInfoName(row) }}
+              </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
               </div>
               <div v-else class="action-cell">
                 <div class="material-cell">
@@ -225,6 +231,9 @@
               <div v-if="row.rowType === 'data'" class="data-cell">
                 {{ getBaseInfoSpec(row) }}
               </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
+              </div>
               <div v-else class="action-cell">
                 <div class="material-cell">
                   <div class="material-content">
@@ -260,6 +269,9 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 {{ row.unit || '-' }}
+              </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
               </div>
               <div v-else class="action-cell">
                 <div class="material-cell">
@@ -297,6 +309,9 @@
               <div v-if="row.rowType === 'data'" class="data-cell">
                 {{ formatNumber(row.quantity) }}
               </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
+              </div>
               <!-- 操作行不显示数量 -->
               <div v-else class="action-cell">
                 <span class="text-sm text-gray-500">-</span>
@@ -311,6 +326,9 @@
               <!-- 数据行不显示数据来源标签 -->
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <span class="text-xs text-gray-400">-</span>
+              </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
               </div>
               <!-- 操作行显示数据来源标签 -->
               <div v-else class="action-cell">
@@ -336,6 +354,9 @@
                     <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
                   </el-icon>
                 </div>
+              </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
               </div>
               <div v-else class="action-cell">
                 <!-- 用户手动选择的价格信息（不包括相似匹配） -->
@@ -369,6 +390,9 @@
                   </el-icon>
                 </div>
               </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
+              </div>
               <div v-else class="action-cell">
                 <!-- 用户手动选择的不含税价格（不包括相似匹配） -->
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
@@ -395,6 +419,9 @@
             <template #default="{ row }">
               <div v-if="row.rowType === 'data'" class="data-cell">
                 <span class="tax-rate-text">{{ getTaxRate(row) }}</span>
+              </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
               </div>
               <div v-else class="action-cell">
                 <!-- 用户手动选择的税率（不包括相似匹配） -->
@@ -424,6 +451,9 @@
                 <!-- 数据行不显示季度信息 -->
                 <span class="text-sm text-gray-400">-</span>
               </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
+              </div>
               <div v-else class="action-cell">
                 <!-- 用户手动选择的季度（不包括相似匹配） -->
                 <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
@@ -451,6 +481,9 @@
               <!-- 数据行：不显示任何操作内容 -->
               <div v-if="row.rowType === 'data'" class="data-cell operation-data-cell">
                 <span class="text-xs text-gray-400">-</span>
+              </div>
+              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
+                <!-- 分隔行显示为空 -->
               </div>
               
               <!-- 操作行：根据匹配类型显示不同控件 -->
@@ -568,7 +601,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Minus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
 import {
@@ -745,12 +778,22 @@ const fetchData = async () => {
       if (response && response.data) {
         // 获取数据并初始化每行数据，转换为双行结构
         const rawData = response.data.content || []
-        materialData.value = rawData.flatMap((item) => {
+        materialData.value = rawData.flatMap((item, index) => {
           const initialized = initializeRowData(item)
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
           
           // 数据初始化完成
+          
+          // 如果不是最后一项，添加分隔行
+          if (index < rawData.length - 1) {
+            const separatorRow = { 
+              rowType: 'separator', 
+              rowKey: `${initialized.taskDataId || initialized.id}-separator`,
+              id: `separator-${initialized.taskDataId || initialized.id}`
+            }
+            return [dataRow, actionRow, separatorRow]
+          }
           
           return [dataRow, actionRow]
         })
@@ -766,10 +809,21 @@ const fetchData = async () => {
 
       if (response && response.content) {
         // 初始化简单查询接口的数据，转换为双行结构
-        materialData.value = response.content.flatMap((item) => {
+        materialData.value = response.content.flatMap((item, index) => {
           const initialized = initializeRowData(item)
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
+          
+          // 如果不是最后一项，添加分隔行
+          if (index < response.content.length - 1) {
+            const separatorRow = { 
+              rowType: 'separator', 
+              rowKey: `${initialized.taskDataId || initialized.id}-separator`,
+              id: `separator-${initialized.taskDataId || initialized.id}`
+            }
+            return [dataRow, actionRow, separatorRow]
+          }
+          
           return [dataRow, actionRow]
         })
         // 注意：total现在从matchingStats计算而来，不再从response设置
@@ -1417,18 +1471,18 @@ const getPriceChangeIcon = (row, priceType) => {
   const priceDiff = Math.abs(actionPrice - dataPrice)
   const tolerance = 0.01 // 价格差异小于0.01元认为相等
   
-  // 如果价格差异小于容差，认为价格相同，不显示箭头
+  // 如果价格差异小于容差，认为价格相同，显示 Minus 图标代表 "--"
   if (priceDiff < tolerance) {
-    console.log(`【价格对比】${row.materialName} 价格相同，不显示箭头`)
-    return null
+    console.log(`【价格对比】${row.materialName} 价格相同，显示 "--" 符号`)
+    return Minus
   }
   
-  // 操作行价格大于数据行价格时，显示绿色向下箭头（表示操作行更贵）
-  if (actionPrice > dataPrice) {
+  // 数据行价格大于操作行价格时，显示绿色向下箭头（表示原价更高）
+  if (dataPrice > actionPrice) {
     return ArrowDown
   }
-  // 操作行价格小于数据行价格时，显示红色向上箭头（表示操作行更便宜）
-  else if (actionPrice < dataPrice) {
+  // 数据行价格小于操作行价格时，显示红色向上箭头（表示原价更低）
+  else if (dataPrice < actionPrice) {
     return ArrowUp
   }
   
@@ -1501,18 +1555,18 @@ const getPriceTextStyle = (row, priceType) => {
   const priceDiff = Math.abs(actionPrice - dataPrice)
   const tolerance = 0.01 // 价格差异小于0.01元认为相等
   
-  // 如果价格差异小于容差，认为价格相同，显示灰黑色
+  // 如果价格差异小于容差，认为价格相同，显示灰色
   if (priceDiff < tolerance) {
-    console.log(`【价格对比】${row.materialName} 价格相同，显示灰黑色`)
+    console.log(`【价格对比】${row.materialName} 价格相同，显示灰色`)
     return { color: '#666666', fontWeight: 'normal' }
   }
   
-  // 操作行价格大于数据行价格时，数据行价格显示绿色（表示原价更便宜）
-  if (actionPrice > dataPrice) {
+  // 数据行价格大于操作行价格时，数据行价格显示绿色（表示原价更高）
+  if (dataPrice > actionPrice) {
     return { color: '#67C23A', fontWeight: '600' }
   }
-  // 操作行价格小于数据行价格时，数据行价格显示红色（表示原价更贵）
-  else if (actionPrice < dataPrice) {
+  // 数据行价格小于操作行价格时，数据行价格显示红色（表示原价更低）
+  else if (dataPrice < actionPrice) {
     return { color: '#F56C6C', fontWeight: '600' }
   }
   
@@ -1532,17 +1586,17 @@ const getPriceChangeIconStyle = (row, priceType) => {
   const priceDiff = Math.abs(actionPrice - dataPrice)
   const tolerance = 0.01 // 价格差异小于0.01元认为相等
   
-  // 如果价格差异小于容差，认为价格相同，不显示箭头样式
+  // 如果价格差异小于容差，认为价格相同，显示灰色的 "--" 符号
   if (priceDiff < tolerance) {
-    return {}
+    return { color: '#666666', marginLeft: '4px', fontSize: '12px' }
   }
   
-  // 操作行价格大于数据行价格时，显示绿色向下箭头
-  if (actionPrice > dataPrice) {
+  // 数据行价格大于操作行价格时，显示绿色向下箭头
+  if (dataPrice > actionPrice) {
     return { color: '#67C23A', marginLeft: '4px', fontSize: '12px' }
   }
-  // 操作行价格小于数据行价格时，显示红色向上箭头
-  else if (actionPrice < dataPrice) {
+  // 数据行价格小于操作行价格时，显示红色向上箭头
+  else if (dataPrice < actionPrice) {
     return { color: '#F56C6C', marginLeft: '4px', fontSize: '12px' }
   }
   
@@ -1566,6 +1620,11 @@ const handleViewOptions = async (row) => {
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
   let className = ''
+  
+  // 分隔行特殊处理
+  if (row.rowType === 'separator') {
+    return 'separator-row'
+  }
   
   // 根据确认状态和匹配类型确定主要样式类
   if (Number(row.confirmResult) === 1) {
@@ -1602,10 +1661,10 @@ const tableSpanMethod = ({ row, columnIndex }) => {
     return { rowspan: 1, colspan: 1 }
   }
   
-  // 将第一列（序号）在 data 行合并两行
+  // 将第一列（序号）在 data 行合并三行（数据行+操作行+分隔行）
   if (columnIndex === 0) {
-    if (row.rowType === 'data') return { rowspan: 2, colspan: 1 }
-    return { rowspan: 0, colspan: 0 }
+    if (row.rowType === 'data') return { rowspan: 3, colspan: 1 }
+    if (row.rowType === 'action' || row.rowType === 'separator') return { rowspan: 0, colspan: 0 }
   }
   // 默认不合并其它列，返回默认值而不是 null
   return { rowspan: 1, colspan: 1 }
@@ -3085,11 +3144,12 @@ const handleBack = () => {
 :deep(.el-table td.el-table__cell) {
   border-bottom: 1px solid var(--theme-table-border) !important;
   color: var(--theme-text-primary) !important;
-  padding: 14px 12px;
+  padding: 12px;
   transition:
     background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
     color 0.3s ease;
   backdrop-filter: var(--theme-backdrop-blur, none);
+  vertical-align: middle;
 }
 
 :deep(.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell) {
@@ -3116,37 +3176,23 @@ const handleBack = () => {
   border-bottom: 1px solid var(--theme-table-border) !important;
 }
 
-/* 操作行底部增加分组间距 */
-:deep(.el-table .action-row .el-table__cell) {
-  border-bottom: 20px solid var(--theme-bg-primary) !important;
-  position: relative;
+/* 分隔行样式 - 用于组间分隔 */
+:deep(.separator-row) {
+  background: transparent !important;
+  height: 20px !important;
 }
 
-/* 操作行添加分组分隔线 */
-:deep(.el-table .action-row .el-table__cell)::after {
-  content: '';
-  position: absolute;
-  bottom: -20px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    var(--theme-primary-light) 20%, 
-    var(--theme-primary) 50%, 
-    var(--theme-primary-light) 80%, 
-    transparent 100%
-  );
-  opacity: 0.3;
+:deep(.separator-row td.el-table__cell) {
+  background: transparent !important;
+  border: none !important;
+  padding: 10px 0 !important;
+  height: 20px !important;
 }
 
-/* 最后一个操作行不需要分组间距和分隔线 */
-:deep(.el-table__body tr:last-child.action-row .el-table__cell) {
-  border-bottom: 1px solid var(--theme-table-border) !important;
-}
-
-:deep(.el-table__body tr:last-child.action-row .el-table__cell)::after {
-  display: none;
+/* 分隔单元格样式 */
+.separator-cell {
+  height: 20px;
+  background: transparent;
 }
 
 /* 行状态样式增强 - 更明显的分组区分度 */
@@ -3244,9 +3290,10 @@ const handleBack = () => {
 :deep(.action-row td.el-table__cell) {
   background: var(--theme-card-bg) !important;
   font-size: 13px;
-  padding: 12px;
+  padding: 10px 12px;
   border-top: 1px solid rgba(var(--theme-primary-rgb), 0.1) !important;
   position: relative;
+  vertical-align: middle;
 }
 
 /* 操作行继承对应data行的状态样式 */
@@ -4164,13 +4211,16 @@ const handleBack = () => {
 .price-value {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   justify-content: flex-end;
+  min-height: 24px;
 }
 
 .price-text {
   font-weight: 600;
   color: var(--theme-success);
+  font-size: 14px;
+  white-space: nowrap;
 }
 
 .quarter-text {
