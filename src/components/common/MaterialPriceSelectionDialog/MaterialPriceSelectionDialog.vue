@@ -101,7 +101,7 @@
               <el-table-column prop="materialCode" label="物资编码" width="120" show-overflow-tooltip />
               <el-table-column label="物资价格（含税）" width="130" align="right">
                 <template #default="{ row }">
-                  <span class="price-value">¥{{ formatPrice(row.taxPrice) }}</span>
+                  <span class="price-value">¥{{ formatPrice(getPriceValue(row)) }}</span>
                 </template>
               </el-table-column>
               <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
@@ -232,6 +232,7 @@ import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { queryMaterialBaseInfoWithPrices } from '@/utils/backendWorkflow'
 import { debounce } from 'lodash-es'
+import MaterialService from '@/services/MaterialService'
 
 const props = defineProps({
   modelValue: {
@@ -349,6 +350,8 @@ const initRecommendData = () => {
       return {
         ...option.baseInfo,
         originalOption: option,
+        // 将matchedId从option层级传递到物资数据中，这样可以用于API调用
+        matchedId: option.matchedId,
         // 根据接口文档，价格数据在 priceOptions 字段中
         priceOptions: option.priceOptions || option.priceList || []
       }
@@ -377,14 +380,52 @@ const initRecommendData = () => {
 }
 
 // 选择推荐物资
-const selectRecommendMaterial = (material) => {
+const selectRecommendMaterial = async (material) => {
   selectedRecommendMaterial.value = material
-  recommendPrices.value = material.priceOptions || []
   selectedRecommendPrice.value = null
+  recommendPrices.value = []
   
-  // 如果只有一个价格，自动选择
-  if (recommendPrices.value.length === 1) {
-    selectRecommendPrice(recommendPrices.value[0])
+  try {
+    // 通过baseInfoId获取完整的物资信息和价格列表
+    // 根据数据结构，推荐物资的ID应该是matchedId字段
+    const baseInfoId = material.matchedId || material.id || material.baseInfoId
+    if (!baseInfoId) {
+      console.warn('物资缺少baseInfoId，尝试的字段:', {
+        matchedId: material.matchedId,
+        id: material.id,
+        baseInfoId: material.baseInfoId,
+        material: material
+      })
+      recommendPrices.value = material.priceOptions || []
+      return
+    }
+    
+    console.log('【价格调试】获取物资价格列表，baseInfoId:', baseInfoId, '物资信息:', material)
+    const priceList = await MaterialService.queryPriceInfoList(baseInfoId)
+    console.log('【价格调试】获取到的价格列表:', priceList)
+    
+    if (priceList && priceList.length > 0) {
+      recommendPrices.value = priceList.map(price => ({
+        ...price,
+        // 确保包含含税价格字段
+        taxPrice: price.taxPrice || price.含税价格 || price.unitPrice || 0,
+        quarter: price.quarter || price.季度 || '-'
+      }))
+    } else {
+      // 如果API没有返回价格数据，使用原有数据
+      recommendPrices.value = material.priceOptions || []
+    }
+    
+    console.log('【价格调试】处理后的价格列表:', recommendPrices.value)
+    
+    // 如果只有一个价格，自动选择
+    if (recommendPrices.value.length === 1) {
+      selectRecommendPrice(recommendPrices.value[0])
+    }
+  } catch (error) {
+    console.error('获取价格列表失败:', error)
+    // 降级使用原有数据
+    recommendPrices.value = material.priceOptions || []
   }
 }
 
@@ -392,7 +433,11 @@ const selectRecommendMaterial = (material) => {
 const selectRecommendPrice = (price) => {
   selectedRecommendPrice.value = price
   finalSelection.value = {
-    material: selectedRecommendMaterial.value,
+    material: {
+      ...selectedRecommendMaterial.value,
+      // 确保包含正确的ID字段，用于后续保存
+      id: selectedRecommendMaterial.value.matchedId || selectedRecommendMaterial.value.id
+    },
     price: price,
     source: 'recommend'
   }

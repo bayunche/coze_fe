@@ -8,7 +8,7 @@
 
 **请求**
 
-- **URL:** `/api/materials/base-info/unconfirmed-count`
+- **URL:** `materials/partyb/unconfirmed-count`
 - **HTTP Method:** `GET`
 - **Content-Type:** `application/x-www-form-urlencoded`
 

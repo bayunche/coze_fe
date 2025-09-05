@@ -242,7 +242,7 @@ class MaterialService {
    */
   async getUnconfirmedCount(taskId) {
     try {
-      const response = await request.get(`/materials/base-info/unconfirmed-count?taskId=${taskId}`)
+      const response = await request.get(`/materials/partyb/unconfirmed-count?taskId=${taskId}`)
       if (response && response.data !== undefined) {
         return response.data
       }
