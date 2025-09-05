@@ -359,8 +359,8 @@
                 <!-- 分隔行显示为空 -->
               </div>
               <div v-else class="action-cell">
-                <!-- 用户手动选择的价格信息（不包括相似匹配） -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
+                <!-- 用户手动选择的价格信息（不包括系统匹配类型） -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType === 0" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
                 <!-- 精确匹配：显示匹配的价格信息 -->
@@ -369,6 +369,10 @@
                 </div>
                 <!-- 相似匹配：显示匹配的价格信息 -->
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
+                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
+                </div>
+                <!-- 用户重新选择的价格（适用于所有匹配类型的用户操作） -->
+                <div v-else-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.isUserModified" class="user-modified-price">
                   <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
                 </div>
                 <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
@@ -394,8 +398,8 @@
                 <!-- 分隔行显示为空 -->
               </div>
               <div v-else class="action-cell">
-                <!-- 用户手动选择的不含税价格（不包括相似匹配） -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType !== 2" class="selected-price-info">
+                <!-- 用户手动选择的不含税价格（不包括系统匹配类型） -->
+                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.matchedType === 0" class="selected-price-info">
                   <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
                 </div>
                 <!-- 精确匹配：显示匹配的不含税价格信息 -->
@@ -404,6 +408,10 @@
                 </div>
                 <!-- 相似匹配：显示匹配的不含税价格信息 -->
                 <div v-else-if="row.matchedType === 2 && row.selectedPriceQuarter" class="similar-match-price">
+                  <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
+                </div>
+                <!-- 用户重新选择的不含税价格（适用于所有匹配类型的用户操作） -->
+                <div v-else-if="row.hasUserSelectedData && row.selectedPriceQuarter && row.isUserModified" class="user-modified-price">
                   <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
                 </div>
                 <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->

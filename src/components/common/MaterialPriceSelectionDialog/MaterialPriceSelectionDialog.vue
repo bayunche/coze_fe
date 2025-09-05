@@ -203,7 +203,7 @@
 
             <div class="form-actions">
               <el-button @click="resetForm">重置</el-button>
-              <el-button type="primary" @click="submitNewMaterial" :loading="submitting">
+              <el-button type="primary" @click="submitNewMaterial">
                 确认新增并选择
               </el-button>
             </div>
@@ -298,7 +298,6 @@ const newMaterialForm = ref({
   taxPrice: null,
   quarter: ''
 })
-const submitting = ref(false)
 
 // 最终选择结果
 const finalSelection = ref({
@@ -358,12 +357,14 @@ const initRecommendData = () => {
   
   // 从 matchOptions 获取推荐物资
   if (props.rowData?.matchOptions && props.rowData.matchOptions.length > 0) {
-    recommendMaterials.value = props.rowData.matchOptions.map(option => ({
-      ...option.baseInfo,
-      originalOption: option,
-      // 根据接口文档，价格数据在 priceOptions 字段中
-      priceOptions: option.priceOptions || option.priceList || []
-    }))
+    recommendMaterials.value = props.rowData.matchOptions.map(option => {
+      return {
+        ...option.baseInfo,
+        originalOption: option,
+        // 根据接口文档，价格数据在 priceOptions 字段中
+        priceOptions: option.priceOptions || option.priceList || []
+      }
+    })
     
     // 如果有推荐物资，自动选择第一个物资，并加载其价格列表
     if (recommendMaterials.value.length > 0) {
@@ -516,10 +517,6 @@ const handleSearchSizeChange = (size) => {
 const submitNewMaterial = async () => {
   try {
     await materialFormRef.value.validate()
-    submitting.value = true
-    
-    // 模拟API调用
-    await new Promise(resolve => setTimeout(resolve, 1000))
     
     // 创建新的物资和价格数据
     const newMaterial = {
@@ -546,10 +543,12 @@ const submitNewMaterial = async () => {
     
     ElMessage.success('物资新增成功')
     
+    // 直接确认选择并关闭弹窗
+    emit('confirm', finalSelection.value)
+    closeDialog()
+    
   } catch (error) {
-    console.error('新增失败:', error)
-  } finally {
-    submitting.value = false
+    console.error('表单验证失败:', error)
   }
 }
 
