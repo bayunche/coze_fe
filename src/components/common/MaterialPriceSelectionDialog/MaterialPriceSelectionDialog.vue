@@ -192,7 +192,7 @@
             <div class="form-actions">
               <el-button @click="resetForm">重置</el-button>
               <el-button type="primary" @click="submitNewMaterial" :loading="savingMaterial">
-                {{ savingMaterial ? '保存中...' : '确认新增并选择' }}
+                {{ savingMaterial ? '保存中...' : '确认新增并自动选择' }}
               </el-button>
             </div>
           </div>
