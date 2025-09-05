@@ -217,8 +217,9 @@
             type="primary" 
             @click="confirmSelection" 
             :disabled="!isSelectionComplete"
+            :loading="savingMaterial"
           >
-            确认选择
+            {{ savingMaterial ? '保存中...' : '确认选择' }}
           </el-button>
         </div>
       </div>
@@ -233,6 +234,7 @@ import { Search } from '@element-plus/icons-vue'
 import { queryMaterialBaseInfoWithPrices } from '@/utils/backendWorkflow'
 import { debounce } from 'lodash-es'
 import MaterialService from '@/services/MaterialService'
+import temporaryDataService from '@/services/TemporaryDataService'
 
 const props = defineProps({
   modelValue: {
@@ -279,6 +281,7 @@ const selectedSearchResult = ref(null)
 
 // 新增物资表单
 const materialFormRef = ref()
+const savingMaterial = ref(false) // 新增保存状态
 const newMaterialForm = ref({
   materialName: '',
   specificationModel: '',
@@ -618,10 +621,77 @@ const resetForm = () => {
 }
 
 // 确认选择
-const confirmSelection = () => {
+const confirmSelection = async () => {
   if (!isSelectionComplete.value) {
     ElMessage.warning('请选择物资和价格')
     return
+  }
+  
+  // 如果是新增物资标签页且有新增的物资数据，需要先保存到临时数据表
+  if (activeTab.value === 'add' && finalSelection.value.source === 'add') {
+    try {
+      savingMaterial.value = true
+      
+      // 1. 创建临时物资基础信息
+      console.log('创建临时物资基础信息，参数:', newMaterialForm.value)
+      const baseInfoResponse = await temporaryDataService.createTemporaryBaseInfo({
+        materialName: newMaterialForm.value.materialName,
+        specificationModel: newMaterialForm.value.specificationModel,
+        unit: newMaterialForm.value.unit,
+        type: newMaterialForm.value.type,
+        materialCode: newMaterialForm.value.materialCode,
+        businessDomain: 'contract', // 默认为合同域
+        serialNumber: '', // 可以为空
+        priceCode: '', // 可以为空
+        mainDistributionNetwork: '', // 可以为空
+        mainDistributionType: 0 // 默认为0
+      })
+      
+      console.log('临时物资基础信息创建成功:', baseInfoResponse)
+      const baseInfoId = baseInfoResponse.id
+      
+      // 2. 创建临时价格信息
+      console.log('创建临时价格信息，baseInfoId:', baseInfoId)
+      const priceResponse = await temporaryDataService.createTemporaryPrice({
+        baseInfoId: baseInfoId,
+        quarter: newMaterialForm.value.quarter,
+        taxPrice: newMaterialForm.value.taxPrice,
+        taxExcludedPrice: (newMaterialForm.value.taxPrice / 1.13).toFixed(2), // 自动计算不含税价
+        unit: newMaterialForm.value.unit
+      })
+      
+      console.log('临时价格信息创建成功:', priceResponse)
+      
+      // 3. 更新 finalSelection 中的物资和价格信息，使用后端返回的数据
+      finalSelection.value = {
+        material: {
+          ...baseInfoResponse, // 使用后端返回的完整基础信息
+          materialName: baseInfoResponse.materialName,
+          specificationModel: baseInfoResponse.specificationModel,
+          unit: baseInfoResponse.unit,
+          type: baseInfoResponse.type,
+          materialCode: baseInfoResponse.materialCode,
+          id: baseInfoResponse.id
+        },
+        price: {
+          ...priceResponse, // 使用后端返回的完整价格信息
+          taxPrice: priceResponse.taxPrice,
+          quarter: priceResponse.quarter,
+          id: priceResponse.id,
+          priceType: 1,
+          baseInfoId: priceResponse.baseInfoId
+        },
+        source: 'add'
+      }
+      
+      ElMessage.success('新增物资数据保存成功')
+    } catch (error) {
+      console.error('保存临时数据失败:', error)
+      ElMessage.error('保存新增物资数据失败，请重试')
+      return
+    } finally {
+      savingMaterial.value = false
+    }
   }
   
   emit('confirm', finalSelection.value)

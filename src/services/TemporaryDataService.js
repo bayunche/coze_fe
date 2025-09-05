@@ -120,8 +120,7 @@ class TemporaryDataService {
    * @param {String} params.baseInfoId - 关联基础信息ID（必填）
    * @param {String} params.quarter - 季度（必填）
    * @param {Number} params.taxPrice - 含税价（必填）
-   * @param {String} params.taxRate - 税率（必填）
-   * @param {Number} params.taxExcludedPrice - 不含税价（自动计算）
+   * @param {Number} params.taxExcludedPrice - 不含税价（选填）
    * @param {String} params.unit - 价格单位
    * @returns {Promise<Object>} 创建结果
    */
@@ -130,15 +129,14 @@ class TemporaryDataService {
       console.log('【调用】创建临时价格信息，参数:', params)
       
       // 参数验证
-      if (!params.baseInfoId || !params.quarter || params.taxPrice == null || !params.taxRate) {
-        throw new Error('baseInfoId、quarter、taxPrice和taxRate为必填参数')
+      if (!params.baseInfoId || !params.quarter || params.taxPrice == null) {
+        throw new Error('baseInfoId、quarter、taxPrice为必填参数')
       }
 
       const requestData = {
         baseInfoId: params.baseInfoId,
         quarter: params.quarter,
         taxPrice: params.taxPrice,
-        taxRate: params.taxRate,
         taxExcludedPrice: params.taxExcludedPrice || 0,
         unit: params.unit || ''
       }
