@@ -493,11 +493,11 @@
                 </div>
                 
                 <!-- 精确匹配且价格不匹配：仅显示提示信息，不显示任何操作按钮 -->
-                <div v-else-if="row.matchedType === 1 && isPriceMismatch(row)" class="operation-group price-mismatch">
+                <div v-else-if="isPriceMismatch(row)" class="operation-group price-mismatch">
                   <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修改" placement="top">
                     <div class="price-mismatch-hint">
                       <el-icon class="warning-icon"><WarnTriangleFilled /></el-icon>
-                      <span class="hint-text">请确认结算书</span>
+                      <span class="hint-text">价格不匹配，请确认结算书是否有误并进行修改</span>
                     </div>
                   </el-tooltip>
                 </div>
@@ -921,29 +921,6 @@ const formatNumber = (value) => {
   return Number(value).toLocaleString()
 }
 
-// 格式化价格显示 - 显示含税价和不含税价（暂时未使用，保留备用）
-/*
-const formatPriceDisplay = (unitPrice, taxExcludedPrice, priceType) => {
-  // 如果只有一个价格值，直接显示
-  if ((taxExcludedPrice === undefined || taxExcludedPrice === null) && unitPrice !== undefined && unitPrice !== null) {
-    return `¥${formatNumber(unitPrice)}`
-  }
-
-  // 如果有含税价和不含税价，都显示
-  if (unitPrice !== undefined && unitPrice !== null && taxExcludedPrice !== undefined && taxExcludedPrice !== null) {
-    // 获取原始价格类型文本
-    const originalPriceTypeText = priceType === 1 ? '(原含税)' : priceType === 0 ? '(原不含税)' : ''
-    
-    return {
-      taxIncluded: `¥${formatNumber(unitPrice)}`,
-      taxExcluded: `¥${formatNumber(taxExcludedPrice)}`,
-      originalType: originalPriceTypeText
-    }
-  }
-
-  return '无价格'
-}
-*/
 
 // 搜索处理（防抖）
 let searchTimeout = null
@@ -1002,7 +979,7 @@ const handleOverviewCardClick = (type) => {
         break
       case 'matched':
         // 使用 matchingStatus = 1: 精确匹配且价格匹配
-        queryParams.value.matchingStatus = 2
+        queryParams.value.matchingStatus = 1
         break
       case 'unmatched':
         // 使用 matchingStatus = 3: 待处理匹配（包括相似匹配、历史匹配、人工匹配、无匹配）
@@ -1010,7 +987,7 @@ const handleOverviewCardClick = (type) => {
         break
       case 'priceMismatch':
         // 使用 matchingStatus = 2: 精确匹配但价格未匹配
-        queryParams.value.matchingStatus = 1
+        queryParams.value.matchingStatus = 2
         break
     }
     
@@ -1376,6 +1353,11 @@ const hasUnitDifference = (actionRow) => {
   const { dataRow } = getCorrespondingRows(actionRow)
   if (!dataRow || !actionRow) return false
   
+  // 如果操作行没有基础信息数据（baseInfo为空），不显示差异标记
+  if (!actionRow.baseInfo || Object.keys(actionRow.baseInfo).length === 0) {
+    return false
+  }
+  
   const dataUnit = (dataRow.unit || '').trim()
   const actionUnit = (actionRow.unit || '').trim()
   
@@ -1387,6 +1369,11 @@ const hasMaterialNameDifference = (actionRow) => {
   const { dataRow } = getCorrespondingRows(actionRow)
   if (!dataRow || !actionRow) return false
   
+  // 如果操作行没有基础信息数据（baseInfo为空），不显示差异标记
+  if (!actionRow.baseInfo || Object.keys(actionRow.baseInfo).length === 0) {
+    return false
+  }
+  
   const dataName = getDisplayMaterialName(dataRow)
   const actionName = getDisplayMaterialName(actionRow)
   
@@ -1397,6 +1384,11 @@ const hasMaterialNameDifference = (actionRow) => {
 const hasSpecificationDifference = (actionRow) => {
   const { dataRow } = getCorrespondingRows(actionRow)
   if (!dataRow || !actionRow) return false
+  
+  // 如果操作行没有基础信息数据（baseInfo为空），不显示差异标记
+  if (!actionRow.baseInfo || Object.keys(actionRow.baseInfo).length === 0) {
+    return false
+  }
   
   const dataSpec = getDisplaySpecification(dataRow)
   const actionSpec = getDisplaySpecification(actionRow)
@@ -1442,44 +1434,72 @@ const getDataSourceType = (row) => {
   return { text: '数据库', type: 'success' }
 }
 
-// 判断价格是否不匹配
+// 判断价格是否不匹配（优化后的逻辑）
 const isPriceMismatch = (row) => {
-  // 判断是否为精确匹配但价格不一致
-  if (row.matchedType === 1 && row.priceInfo) {
-    const parsedPrice = parseFloat(row.taxPrice || 0)
-    const matchedPrice = parseFloat(row.priceInfo.taxPrice || 0)
-    const result = Math.abs(parsedPrice - matchedPrice) > 0.01
-    
-    // 添加调试日志
-    if (row.taskDataId) {
-      console.log(`【价格匹配判断】ID: ${row.taskDataId}, matchedType: ${row.matchedType}`)
-      console.log(`  parsedPrice: ${parsedPrice}, matchedPrice: ${matchedPrice}`)
-      console.log(`  价格差异: ${Math.abs(parsedPrice - matchedPrice)}, 不匹配: ${result}`)
-    }
-    
-    return result
+  // 只对精确匹配的物资进行价格不匹配判断
+  if (row.matchedType !== 1) {
+    return false
   }
-  return false
+
+  // 获取原始价格（用户上传的价格）
+  let originalPrice = 0
+  if (row.unitPrice !== undefined && row.unitPrice !== null && row.unitPrice !== 0) {
+    originalPrice = parseFloat(row.unitPrice)
+  } else if (row.taxPrice !== undefined && row.taxPrice !== null && row.taxPrice !== 0) {
+    originalPrice = parseFloat(row.taxPrice)
+  }
+
+  // 获取匹配到的数据库价格
+  let matchedPrice = 0
+  if (row.priceInfo?.taxPrice !== undefined && row.priceInfo.taxPrice !== null) {
+    matchedPrice = parseFloat(row.priceInfo.taxPrice)
+  }
+
+  // 如果没有价格信息，视为价格不匹配（与标签逻辑保持一致）
+  if (originalPrice <= 0 || matchedPrice <= 0) {
+    return true
+  }
+
+  // 计算价格差异百分比，使用相对容差而不是绝对容差
+  const priceDifference = Math.abs(originalPrice - matchedPrice)
+  const relativeTolerance = Math.max(originalPrice, matchedPrice) * 0.05 // 5%容差
+  const absoluteTolerance = 0.1 // 0.1元绝对容差
+  
+  // 使用较大的容差值
+  const tolerance = Math.max(relativeTolerance, absoluteTolerance)
+  const result = priceDifference > tolerance
+  
+  // 调试日志 - 仅在有差异时输出
+  if (result && row.taskDataId) {
+    console.log(`【价格不匹配】物资: ${row.materialName}`)
+    console.log(`  原始价格: ¥${originalPrice.toFixed(2)} | 匹配价格: ¥${matchedPrice.toFixed(2)}`)
+    console.log(`  价格差异: ¥${priceDifference.toFixed(2)} | 容差: ¥${tolerance.toFixed(2)}`)
+    console.log(`  差异百分比: ${((priceDifference / Math.max(originalPrice, matchedPrice)) * 100).toFixed(2)}%`)
+  }
+  
+  return result
 }
 
-// 获取价格匹配状态标签
+// 获取价格匹配状态标签 - 简化逻辑，只关注价格是否匹配
 const getPriceMatchingStatusTag = (row) => {
-  // 根据matchedType和价格匹配情况返回状态标签
-  if (row.matchedType === 1) {
-    // 精确匹配
-    if (isPriceMismatch(row)) {
-      return { text: '价格不匹配', type: 'warning' }
-    } else {
-      return { text: '已匹配', type: 'success' }
-    }
-  } else if (row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4) {
-    // 相似匹配、历史匹配、人工匹配
-    return { text: '未找到物资', type: 'danger' }
-  } else if (row.matchedType === 0) {
-    // 未匹配
+  // 步骤1：判断是否有物资信息
+  if (!row.baseInfo || Object.keys(row.baseInfo).length === 0) {
     return { text: '未找到物资', type: 'danger' }
   }
-  return { text: '未知', type: 'info' }
+
+  // 步骤2：判断价格是否匹配（有物资信息的情况下）
+  // 无价格信息视为价格不匹配
+  if (!row.priceInfo || Object.keys(row.priceInfo).length === 0 || !row.priceInfo.taxPrice) {
+    return { text: '价格不匹配', type: 'warning' }
+  }
+
+  // 步骤3：有价格信息时判断是否匹配
+  if (isPriceMismatch(row)) {
+    return { text: '价格不匹配', type: 'warning' }
+  }
+
+  // 步骤4：价格匹配
+  return { text: '已匹配', type: 'success' }
 }
 
 // 调试函数：获取操作按钮的展示逻辑
@@ -1584,7 +1604,7 @@ const getBaseInfoSpec = (row) => {
 }
 
 
-// 获取操作行对应的价格数值（优化版本）
+// 获取操作行对应的价格数值（与标签逻辑保持一致）
 const getActionRowPrice = (dataRow, priceType) => {
   // 在 materialData 中查找对应的操作行
   const actionRowIndex = materialData.value.findIndex(item => 
@@ -1597,18 +1617,21 @@ const getActionRowPrice = (dataRow, priceType) => {
   
   const actionRow = materialData.value[actionRowIndex]
   
-  // 检查是否有价格数据（用户手动选择、精确匹配或相似匹配）
-  if (((actionRow.hasUserSelectedData && actionRow.matchedType !== 2) || actionRow.matchedType === 1 || actionRow.matchedType === 2) && actionRow.selectedPriceQuarter) {
-    if (priceType === 'taxIncluded') {
-      return parseFloat(actionRow.selectedPriceQuarter.taxPrice || actionRow.selectedPriceQuarter.unitPrice || 0) || null
-    } else if (priceType === 'taxExcluded') {
-      // 使用新的函数来获取不含税价格
-      const taxExcludedPrice = getActionRowTaxExcludedPrice(actionRow)
-      return taxExcludedPrice > 0 ? taxExcludedPrice : null
-    }
+  // 与标签逻辑保持一致：只有在有priceInfo且有taxPrice时才返回价格
+  // 如果没有priceInfo，标签显示"价格不匹配"，价格对比也不应该显示
+  if (!actionRow.priceInfo || !actionRow.priceInfo.taxPrice) {
+    return null
   }
   
-  // 如果没有价格数据，返回null（表示没有操作行价格进行比较）
+  // 从priceInfo获取价格
+  if (priceType === 'taxIncluded') {
+    return parseFloat(actionRow.priceInfo.taxPrice) || null
+  } else if (priceType === 'taxExcluded') {
+    // 从含税价格计算不含税价格（13%税率）
+    const taxIncluded = parseFloat(actionRow.priceInfo.taxPrice)
+    return taxIncluded > 0 ? taxIncluded / 1.13 : null
+  }
+  
   return null
 }
 
@@ -2528,6 +2551,12 @@ const initializeRowData = (row) => {
     hasUserSelectedData: false
   })
 
+  // 如果有priceInfo，标记为已有数据（但不创建selectedPriceQuarter，因为价格对比直接从priceInfo获取）
+  if (reactiveRow.priceInfo && reactiveRow.priceInfo.taxPrice) {
+    reactiveRow.selectedPriceId = reactiveRow.priceInfo.priceId
+    reactiveRow.hasUserSelectedData = true
+  }
+
   // 如果有匹配选项，预选第一个
   if (reactiveRow.matchOptions && reactiveRow.matchOptions.length > 0) {
     const firstMatch = reactiveRow.matchOptions[0]
@@ -2537,13 +2566,16 @@ const initializeRowData = (row) => {
 
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
       const firstPrice = firstMatch.priceOptions[0]
-      reactiveRow.selectedPriceQuarter = firstPrice
-      reactiveRow.selectedPriceId = firstPrice.priceId
-      reactiveRow.selectedBaseDataId = firstMatch.matchedId
-      
-      // 相似匹配和历史匹配时自动标记为已选择数据
-      if (reactiveRow.matchedType === 2 || reactiveRow.matchedType === 3) {
-        reactiveRow.hasUserSelectedData = true
+      // 只有当没有priceInfo时，才使用matchOptions的数据
+      if (!reactiveRow.priceInfo || !reactiveRow.priceInfo.taxPrice) {
+        reactiveRow.selectedPriceQuarter = firstPrice
+        reactiveRow.selectedPriceId = firstPrice.priceId
+        reactiveRow.selectedBaseDataId = firstMatch.matchedId
+        
+        // 相似匹配和历史匹配时自动标记为已选择数据
+        if (reactiveRow.matchedType === 2 || reactiveRow.matchedType === 3) {
+          reactiveRow.hasUserSelectedData = true
+        }
       }
     }
   }
@@ -4615,6 +4647,9 @@ const handleBack = () => {
 }
 
 .price-mismatch-hint .hint-text {
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.4;
+  max-width: 200px;
+  word-break: break-word;
 }
 </style>
