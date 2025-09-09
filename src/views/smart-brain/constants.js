@@ -72,6 +72,13 @@ export const MANAGEMENT_FEATURES = {
     route: '/temporary-data-management',
     available: true
   },
+  CONTRACT_FIELD: {
+    icon: '📝',
+    title: '合同字段管理',
+    description: '管理合同解析的关键提取字段',
+    route: '/contract-field-management',
+    available: true
+  },
   VECTOR_DB: {
     icon: MANAGEMENT_ICONS.VECTOR_DATABASE,
     title: '向量库数据管理',

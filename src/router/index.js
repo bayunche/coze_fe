@@ -76,6 +76,15 @@ const router = createRouter({
         breadcrumb: ['智能大脑', '数据管理', '临时数据']
       }
     },
+    {
+      path: '/contract-field-management',
+      name: 'contract-field-management',
+      component: () => import('../views/contract-field-management'),
+      meta: { 
+        title: '合同解析字段管理',
+        breadcrumb: ['智能大脑', '数据管理', '合同字段管理']
+      }
+    },
     // 保持向后兼容的重定向
     {
       path: '/supplier-material-approval',

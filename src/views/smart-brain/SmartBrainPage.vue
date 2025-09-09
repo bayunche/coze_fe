@@ -518,7 +518,6 @@ onMounted(() => {
   color: var(--theme-text-secondary);
 }
 
-
 .history-section {
   margin-bottom: 40px;
 }
@@ -591,6 +590,5 @@ onMounted(() => {
   .management-grid {
     grid-template-columns: 1fr;
   }
-
 }
 </style>

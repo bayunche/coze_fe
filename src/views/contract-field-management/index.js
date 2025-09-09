@@ -1,0 +1,3 @@
+import ContractFieldManagementPage from './ContractFieldManagementPage.vue'
+
+export default ContractFieldManagementPage
