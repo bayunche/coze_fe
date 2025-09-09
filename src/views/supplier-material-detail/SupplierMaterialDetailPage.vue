@@ -23,7 +23,9 @@
         <el-button @click="handleExport" :icon="Download" type="default" :loading="exportLoading">
           导出数据
         </el-button>
-     
+        <el-button @click="handleGenerateReport" :icon="Document" type="primary" :loading="reportGenerating">
+          生成解析报告
+        </el-button>
       </div>
     </div>
 
@@ -453,7 +455,7 @@
               </div>
               
               <!-- 操作行：根据匹配类型显示不同控件 -->
-              <div v-else class="action-cell operation-action-cell">
+              <div v-else class="action-cell operation-action-cell" :data-debug="getOperationButtonLogic(row)">
                 <!-- 已确认状态：显示状态和重选按钮 -->
                 <div v-if="row.confirmResult === 1" class="operation-group confirmed-state">
                   <el-tag type="success" size="small" class="status-tag">
@@ -467,12 +469,12 @@
                 </div>
                 
                 <!-- 相似匹配和历史匹配：显示重新选择按钮 -->
-                <div v-else-if="row.matchedType === 2 || row.matchedType === 3" class="operation-group similar-match">
+                <!-- <div v-else-if="row.matchedType === 2 || row.matchedType === 3" class="operation-group similar-match">
                   <el-button type="primary" size="small" @click="handleViewOptions(row)" class="single-action">
                     <el-icon><Edit /></el-icon>
                     <span class="button-text">选择确认</span>
                   </el-button>
-                </div>
+                </div> -->
                 
                 <!-- 未匹配且已选择：显示重新选择操作 -->
                 <div v-else-if="row.matchedType === 0 && row.hasUserSelectedData" class="operation-group no-match-selected">
@@ -490,8 +492,8 @@
                   </el-button>
                 </div>
                 
-                <!-- 价格不匹配：仅显示提示信息，不显示任何操作按钮 -->
-                <div v-if="row.matchedType === 1 && isPriceMismatch(row)" class="operation-group price-mismatch">
+                <!-- 精确匹配且价格不匹配：仅显示提示信息，不显示任何操作按钮 -->
+                <div v-else-if="row.matchedType === 1 && isPriceMismatch(row)" class="operation-group price-mismatch">
                   <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修改" placement="top">
                     <div class="price-mismatch-hint">
                       <el-icon class="warning-icon"><WarnTriangleFilled /></el-icon>
@@ -501,7 +503,7 @@
                 </div>
                 
                 <!-- 精确匹配且价格匹配：显示快速确认和重新选择按钮 -->
-                <div v-else-if="row.matchedType === 1" class="operation-group exact-match">
+                <div v-else-if="row.matchedType === 1 && !isPriceMismatch(row)" class="operation-group exact-match">
                   <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="primary-action">
                     <el-icon><Check /></el-icon>
                     <span class="button-text">确认</span>
@@ -512,11 +514,19 @@
                   </el-button>
                 </div>
                 
-                <!-- 其他匹配类型：显示重选按钮 -->
-                <div v-else class="operation-group other-match">
+                <!-- 相似匹配(2)、历史匹配(3)、人工匹配(4)：显示选择确认按钮 -->
+                <div v-else-if="row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4" class="operation-group similar-match">
                   <el-button type="primary" size="small" @click="handleViewOptions(row)" class="single-action">
                     <el-icon><Edit /></el-icon>
                     <span class="button-text">选择确认</span>
+                  </el-button>
+                </div>
+                
+                <!-- 其他未知匹配类型：显示重选按钮 -->
+                <div v-else class="operation-group other-match">
+                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="single-action">
+                    <el-icon><Edit /></el-icon>
+                    <span class="button-text">重新选择</span>
                   </el-button>
                 </div>
               </div>
@@ -559,6 +569,12 @@
       :show-recommend="true"
       @confirm="handleMaterialPriceSelection"
     />
+
+    <!-- 报告生成Dialog -->
+    <ReportGenerationDialog
+      v-model="showReportDialog"
+      :progress-text="reportProgressText"
+    />
   </div>
 </template>
 
@@ -576,16 +592,20 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Minus } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Minus, Document } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
+import ReportGenerationDialog from '@/components/common/ReportGenerationDialog.vue'
 import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
-  confirmSupplierMaterialData
+  confirmSupplierMaterialData,
+  callStreamWorkflow
 } from '@/utils/backendWorkflow.js'
 import supplierMaterialService from '@/services/SupplierMaterialService.js'
 import MaterialService from '@/services/MaterialService.js'
+import { useSupplierMaterialStore } from '@/stores/supplierMaterial'
 
 // 导入常量和工具函数
 import { BUTTON_CONFIG, PAGINATION_CONFIG, CSS_CLASSES } from './constants.js'
@@ -602,8 +622,10 @@ const detailId = computed(() => {
   return props.detailId
 })
 
-// 导航函数
+// 导航函数和Store
+const router = useRouter()
 const { goBack } = useNavigation()
+const supplierMaterialStore = useSupplierMaterialStore()
 
 // 响应式数据
 const pageLoading = ref(false)
@@ -612,6 +634,11 @@ const refreshLoading = ref(false)
 const batchConfirming = ref(false)
 const exportLoading = ref(false)
 const saving = ref(false)
+const reportGenerating = ref(false)
+
+// 报告生成Dialog相关状态
+const showReportDialog = ref(false)
+const reportProgressText = ref('')
 
 const materialData = ref([])
 const currentPage = ref(1)
@@ -691,15 +718,33 @@ const fetchMatchingStats = async () => {
     console.log('【调用】获取乙供物资匹配统计，taskId:', taskId.value)
     const response = await supplierMaterialService.getMaterialMatchingStats(taskId.value)
     
-    // 更新统计数据
+    // 【调试】打印原始API返回结果
+    console.log('【调试】原始API返回结果:', JSON.stringify(response, null, 2))
+    console.log('【调试】response的所有字段名:', Object.keys(response || {}))
+    
+    // 更新统计数据 - 添加调试信息来识别字段映射问题
     matchingStats.value = {
-      totalMaterials: response.totalMaterials || 0,
-      exactMatchCount: response.exactMatchCount || 0,
-      unmatchedPriceCount: response.unmatchedPriceCount || 0,
-      pendingMatchCount: response.pendingMatchCount || 0
+      totalMaterials: response.totalMaterials || response.total || response.totalCount || 0,
+      exactMatchCount: response.exactMatchCount || response.matched || response.matchedCount || 0,
+      unmatchedPriceCount: response.unmatchedPriceCount || response.priceMismatch || response.priceMismatchCount || 0,
+      pendingMatchCount: response.pendingMatchCount || response.unmatched || response.unmatchedCount || response.pending || 0
     }
     
+    // 添加详细的字段值调试
+    console.log('【调试】API返回字段对应关系:')
+    console.log('  response.exactMatchCount:', response.exactMatchCount)
+    console.log('  response.unmatchedPriceCount:', response.unmatchedPriceCount)
+    console.log('  response.pendingMatchCount:', response.pendingMatchCount)
+    console.log('  response.matched:', response.matched)
+    console.log('  response.priceMismatch:', response.priceMismatch)
+    console.log('  response.unmatched:', response.unmatched)
+    
     console.log('【响应】统计数据已更新:', matchingStats.value)
+    console.log('【调试】映射后的统计数据详情:')
+    console.log('  totalMaterials (总数):', matchingStats.value.totalMaterials)
+    console.log('  exactMatchCount (已匹配):', matchingStats.value.exactMatchCount)
+    console.log('  unmatchedPriceCount (价格不匹配):', matchingStats.value.unmatchedPriceCount)
+    console.log('  pendingMatchCount (未匹配):', matchingStats.value.pendingMatchCount)
   } catch (error) {
     console.error('【错误】获取匹配统计失败:', error)
     // 失败时保持默认值，不影响页面其他功能
@@ -748,8 +793,30 @@ const fetchData = async () => {
         params.matchingStatus = queryParams.value.matchingStatus
       }
 
-      console.log('使用复杂查询参数:', params)
+      console.log('【数据查询】使用复杂查询参数:', params)
+      console.log('【数据查询】当前筛选状态:', {
+        activeOverviewType: activeOverviewType.value,
+        queryParams: queryParams.value
+      })
+      
       response = await querySupplierMaterialsComplex(params)
+      
+      console.log('【数据查询】返回结果总数:', response?.data?.content?.length || 0)
+      console.log('【数据查询】返回结果总元素数:', response?.data?.totalElements || 0)
+      
+      // 调试：检查返回数据的匹配状态分布
+      if (response?.data?.content) {
+        const statusDistribution = {}
+        const typeDistribution = {}
+        response.data.content.forEach(item => {
+          const status = item.matchingStatus || 'undefined'
+          const type = item.matchedType || 'undefined'
+          statusDistribution[status] = (statusDistribution[status] || 0) + 1
+          typeDistribution[type] = (typeDistribution[type] || 0) + 1
+        })
+        console.log('【数据查询】返回数据matchingStatus分布:', statusDistribution)
+        console.log('【数据查询】返回数据matchedType分布:', typeDistribution)
+      }
 
       if (response && response.data) {
         // 获取数据并初始化每行数据，转换为双行结构
@@ -905,6 +972,8 @@ const handleFilterChange = () => {
 
 // 处理总览卡片点击
 const handleOverviewCardClick = (type) => {
+
+  
   // 如果点击的是当前激活的卡片，则取消筛选
   if (activeOverviewType.value === type) {
     activeOverviewType.value = null
@@ -929,10 +998,11 @@ const handleOverviewCardClick = (type) => {
     switch (type) {
       case 'total':
         // 显示全部，不设置筛选条件
+        console.log('【卡片筛选】选择全部数据')
         break
       case 'matched':
         // 使用 matchingStatus = 1: 精确匹配且价格匹配
-        queryParams.value.matchingStatus = 1
+        queryParams.value.matchingStatus = 2
         break
       case 'unmatched':
         // 使用 matchingStatus = 3: 待处理匹配（包括相似匹配、历史匹配、人工匹配、无匹配）
@@ -940,9 +1010,10 @@ const handleOverviewCardClick = (type) => {
         break
       case 'priceMismatch':
         // 使用 matchingStatus = 2: 精确匹配但价格未匹配
-        queryParams.value.matchingStatus = 2
+        queryParams.value.matchingStatus = 1
         break
     }
+    
   }
   
   currentPage.value = 1
@@ -991,6 +1062,153 @@ const handleExport = async () => {
     ElMessage.error(errorMsg)
   } finally {
     exportLoading.value = false
+  }
+}
+
+/**
+ * 生成解析报告
+ */
+const handleGenerateReport = async () => {
+  try {
+    reportGenerating.value = true
+    showReportDialog.value = true
+    reportProgressText.value = '正在初始化...'
+    
+    // 调用工作流ID 10生成报告
+    const inputs = {
+      taskId: taskId.value
+    }
+    
+    let finalReportData = null
+    
+    await callStreamWorkflow(inputs, '10', {
+      onMessage: (event) => {
+        console.log('【乙供物资报告生成】接收消息:', event)
+        
+        // 优先检查是否已经有解析好的llmReportData
+        if (event.llmReportData && typeof event.llmReportData === 'object') {
+          finalReportData = event.llmReportData
+          reportProgressText.value = '报告数据解析完成...'
+          console.log('【乙供物资报告生成】从llmReportData获取报告数据:', finalReportData)
+          return
+        }
+        
+        // 更新进度文字
+        if (event.content && typeof event.content === 'string' && !event.content.startsWith('{')) {
+          reportProgressText.value = event.content
+        }
+        
+        if (event.content) {
+          try {
+            // 尝试解析消息内容为JSON
+            const parsedContent = JSON.parse(event.content)
+            console.log('【乙供物资报告生成】解析后的内容:', parsedContent)
+            
+            if (parsedContent && typeof parsedContent === 'object') {
+              // 检查是否有嵌套的content字段需要再次解析
+              if (parsedContent.content && typeof parsedContent.content === 'string') {
+                try {
+                  const nestedContent = JSON.parse(parsedContent.content)
+                  console.log('【乙供物资报告生成】嵌套解析后的内容:', nestedContent)
+                  
+                  // 提取modelAnswer.output作为最终报告数据
+                  if (nestedContent.modelAnswer && nestedContent.modelAnswer.output) {
+                    finalReportData = nestedContent.modelAnswer.output
+                    reportProgressText.value = '正在处理报告数据...'
+                    console.log('【乙供物资报告生成】提取的报告数据:', finalReportData)
+                  } else if (nestedContent.output) {
+                    // 备用方案：直接从nestedContent.output获取
+                    finalReportData = nestedContent.output
+                    reportProgressText.value = '正在处理报告数据...'
+                    console.log('【乙供物资报告生成】从output获取报告数据:', finalReportData)
+                  } else {
+                    // 如果都没有，使用整个嵌套内容
+                    finalReportData = nestedContent
+                    reportProgressText.value = '正在处理报告数据...'
+                    console.log('【乙供物资报告生成】使用整个嵌套内容:', finalReportData)
+                  }
+                } catch (nestedError) {
+                  console.log('【乙供物资报告生成】嵌套内容不是JSON:', parsedContent.content)
+                  // 如果嵌套解析失败，但外层解析成功，使用外层内容
+                  if (parsedContent.modelAnswer && parsedContent.modelAnswer.output) {
+                    finalReportData = parsedContent.modelAnswer.output
+                    reportProgressText.value = '正在处理报告数据...'
+                    console.log('【乙供物资报告生成】从外层提取报告数据:', finalReportData)
+                  }
+                }
+              } else {
+                // 如果没有嵌套content，检查是否有modelAnswer.output
+                if (parsedContent.modelAnswer && parsedContent.modelAnswer.output) {
+                  finalReportData = parsedContent.modelAnswer.output
+                  reportProgressText.value = '正在处理报告数据...'
+                  console.log('【乙供物资报告生成】直接从外层modelAnswer提取:', finalReportData)
+                } else {
+                  // 直接使用解析后的内容
+                  finalReportData = parsedContent
+                  reportProgressText.value = '正在处理报告数据...'
+                  console.log('【乙供物资报告生成】使用整个解析后的内容:', finalReportData)
+                }
+              }
+            }
+          } catch (e) {
+            // 如果不是JSON格式，可能是文本消息，暂时忽略
+            console.log('【乙供物资报告生成】非JSON格式消息:', event.content)
+          }
+        }
+      },
+      onError: (error) => {
+        console.error('【乙供物资报告生成】工作流执行失败:', error)
+        showReportDialog.value = false
+        reportProgressText.value = ''
+        ElMessage.error('生成报告失败: ' + (error.message || '未知错误'))
+      },
+      onComplete: () => {
+        console.log('【乙供物资报告生成】工作流执行完成，报告数据:', finalReportData)
+        console.log('【乙供物资报告生成】当前taskId:', taskId.value)
+        
+        if (finalReportData) {
+          reportProgressText.value = '报告生成完成，正在跳转...'
+          
+          // 保存报告数据到store
+          console.log('【乙供物资报告生成】准备保存数据到store')
+          supplierMaterialStore.setReportData(taskId.value, finalReportData)
+          console.log('【乙供物资报告生成】数据已保存到store')
+          
+          // 延迟一下再关闭dialog和跳转，让用户看到完成提示
+          setTimeout(() => {
+            showReportDialog.value = false
+            reportProgressText.value = ''
+            
+            console.log('【乙供物资报告生成】准备跳转到报告页面')
+            
+            // 跳转到报告页面
+            router.push({
+              name: 'supplier-material-report',
+              params: { taskId: taskId.value }
+            }).then(() => {
+              console.log('【乙供物资报告生成】路由跳转成功')
+              ElMessage.success('报告生成成功！')
+            }).catch((error) => {
+              console.error('【乙供物资报告生成】路由跳转失败:', error)
+              ElMessage.error('页面跳转失败: ' + error.message)
+            })
+          }, 1000)
+        } else {
+          console.log('【乙供物资报告生成】未获取到有效的报告数据')
+          showReportDialog.value = false
+          reportProgressText.value = ''
+          ElMessage.warning('报告生成完成，但未获取到有效数据')
+        }
+      }
+    })
+    
+  } catch (error) {
+    console.error('【乙供物资报告生成】生成报告失败:', error)
+    showReportDialog.value = false
+    reportProgressText.value = ''
+    ElMessage.error('生成报告失败: ' + (error.message || '未知错误'))
+  } finally {
+    reportGenerating.value = false
   }
 }
 
@@ -1230,7 +1448,16 @@ const isPriceMismatch = (row) => {
   if (row.matchedType === 1 && row.priceInfo) {
     const parsedPrice = parseFloat(row.taxPrice || 0)
     const matchedPrice = parseFloat(row.priceInfo.taxPrice || 0)
-    return Math.abs(parsedPrice - matchedPrice) > 0.01
+    const result = Math.abs(parsedPrice - matchedPrice) > 0.01
+    
+    // 添加调试日志
+    if (row.taskDataId) {
+      console.log(`【价格匹配判断】ID: ${row.taskDataId}, matchedType: ${row.matchedType}`)
+      console.log(`  parsedPrice: ${parsedPrice}, matchedPrice: ${matchedPrice}`)
+      console.log(`  价格差异: ${Math.abs(parsedPrice - matchedPrice)}, 不匹配: ${result}`)
+    }
+    
+    return result
   }
   return false
 }
@@ -1253,6 +1480,43 @@ const getPriceMatchingStatusTag = (row) => {
     return { text: '未找到物资', type: 'danger' }
   }
   return { text: '未知', type: 'info' }
+}
+
+// 调试函数：获取操作按钮的展示逻辑
+const getOperationButtonLogic = (row) => {
+  if (row.rowType !== 'action') return null
+  
+  const logic = {
+    id: row.taskDataId,
+    confirmResult: row.confirmResult,
+    matchedType: row.matchedType,
+    hasUserSelectedData: row.hasUserSelectedData,
+    isPriceMismatch: isPriceMismatch(row),
+    shouldShow: null
+  }
+  
+  if (row.confirmResult === 1) {
+    logic.shouldShow = '已确认状态 - 显示已确认标签和重选按钮'
+  } else if (row.matchedType === 0 && row.hasUserSelectedData) {
+    logic.shouldShow = '未匹配已选择 - 显示重新选择按钮'
+  } else if (row.matchedType === 0) {
+    logic.shouldShow = '未匹配未选择 - 显示从库选择按钮'
+  } else if (row.matchedType === 1 && isPriceMismatch(row)) {
+    logic.shouldShow = '精确匹配价格不匹配 - 显示价格不匹配提示'
+  } else if (row.matchedType === 1 && !isPriceMismatch(row)) {
+    logic.shouldShow = '精确匹配价格匹配 - 显示确认和重选按钮'
+  } else if (row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4) {
+    logic.shouldShow = '相似/历史/人工匹配 - 显示选择确认按钮'
+  } else {
+    logic.shouldShow = '其他情况 - 显示重新选择按钮'
+  }
+  
+  // 只对有问题的行输出日志
+  if (row.taskDataId) {
+    console.log(`【操作按钮逻辑】`, logic)
+  }
+  
+  return logic
 }
 
 // 获取基础信息名称
@@ -1578,18 +1842,36 @@ const getSequenceBarClass = (row) => {
 }
 
 // 表格合并方法
-const tableSpanMethod = ({ row, columnIndex }) => {
+const tableSpanMethod = ({ row, columnIndex, column }) => {
   // 安全检查：确保 row 存在
   if (!row) {
     return { rowspan: 1, colspan: 1 }
   }
+  
+  // 获取列的属性名或标识
+  const columnProp = column.property || column.label
   
   // 将第一列（序号）在 data 行合并三行（数据行+操作行+分隔行）
   if (columnIndex === 0) {
     if (row.rowType === 'data') return { rowspan: 3, colspan: 1 }
     if (row.rowType === 'action' || row.rowType === 'separator') return { rowspan: 0, colspan: 0 }
   }
-  // 默认不合并其它列，返回默认值而不是 null
+  
+  // 数量列合并：数据行和操作行显示相同内容，所以合并
+  if (columnProp === 'quantity' || column.label === '数量') {
+    if (row.rowType === 'data') return { rowspan: 2, colspan: 1 } // 合并数据行和操作行
+    if (row.rowType === 'action') return { rowspan: 0, colspan: 0 } // 操作行隐藏
+    if (row.rowType === 'separator') return { rowspan: 1, colspan: 1 } // 分隔行正常显示
+  }
+  
+  // 税率列合并：数据行和操作行显示相同内容，所以合并
+  if (column.label === '税率（上传时选择的税率，价格以该税率为基准计算）') {
+    if (row.rowType === 'data') return { rowspan: 2, colspan: 1 } // 合并数据行和操作行
+    if (row.rowType === 'action') return { rowspan: 0, colspan: 0 } // 操作行隐藏
+    if (row.rowType === 'separator') return { rowspan: 1, colspan: 1 } // 分隔行正常显示
+  }
+  
+  // 默认不合并其它列，返回默认值
   return { rowspan: 1, colspan: 1 }
 }
 

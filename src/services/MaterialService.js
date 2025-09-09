@@ -252,6 +252,67 @@ class MaterialService {
       throw error
     }
   }
+
+  // ==================== 临时物资数据管理API ====================
+
+  /**
+   * 查询待审核历史匹配数据(临时物资价格数据)
+   * @param {Object} params - 查询参数
+   * @param {string} params.taskId - 任务ID(可选)
+   * @param {number} params.page - 页码，从0开始(可选，默认0)
+   * @param {number} params.size - 每页大小(可选，默认10)
+   * @param {string} params.keyword - 搜索关键字(可选)
+   * @returns {Promise<Object>} 分页结果
+   */
+  async queryPendingApprovalData(params = {}) {
+    try {
+      const requestData = {
+        page: params.page || 0,
+        size: params.size || 10
+      }
+      
+      if (params.taskId) {
+        requestData.taskId = params.taskId
+      }
+      
+      const response = await request.post('/materials/partyb/admin/query-pending-approval', requestData)
+      
+      // 如果有搜索关键字，需要在前端进行过滤
+      if (params.keyword && response?.data?.content) {
+        const keyword = params.keyword.toLowerCase()
+        response.data.content = response.data.content.filter(item => 
+          item.materialName?.toLowerCase().includes(keyword) ||
+          item.specificationModel?.toLowerCase().includes(keyword) ||
+          item.unit?.toLowerCase().includes(keyword) ||
+          item.confirmedBaseInfo?.materialCode?.toLowerCase().includes(keyword)
+        )
+        response.data.totalElements = response.data.content.length
+        response.data.numberOfElements = response.data.content.length
+      }
+      
+      return response
+    } catch (error) {
+      console.error('查询待审核历史匹配数据失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 管理员审核历史匹配数据
+   * @param {Object} params - 审核参数
+   * @param {Array<string>} params.ids - 记录ID数组
+   * @param {number} params.adminApproved - 审核状态：0-不通过，1-通过
+   * @returns {Promise<Object>} 审核结果
+   */
+  async approveHistoryData(params) {
+    try {
+      const response = await request.post('/materials/partyb/admin/approve-history', params)
+      return response
+    } catch (error) {
+      console.error('管理员审核历史匹配数据失败:', error)
+      throw error
+    }
+  }
 }
 
 export default new MaterialService()

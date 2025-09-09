@@ -29,13 +29,20 @@
               <el-table-column prop="specificationModel" label="规格型号" min-width="150" show-overflow-tooltip />
               <el-table-column prop="unit" label="单位" width="80" />
               <el-table-column prop="type" label="类型" width="100" />
-              <el-table-column label="操作" width="80">
+              <el-table-column label="推荐分数" width="120" align="center">
                 <template #default="{ row }">
-                  <el-button type="primary" size="small" @click.stop="selectRecommendMaterial(row)">
-                    选择
-                  </el-button>
+                  <div class="recommend-score-cell">
+                    <div class="score-progress">
+                      <div 
+                        class="score-bar" 
+                        :style="{ width: getRecommendScore(row) + '%' }"
+                      ></div>
+                    </div>
+                    <span class="score-text">{{ getRecommendScore(row) }}%</span>
+                  </div>
                 </template>
               </el-table-column>
+            
             </el-table>
 
             <div v-if="selectedRecommendMaterial" class="price-selection-section">
@@ -69,56 +76,191 @@
 
         <!-- 数据库搜索标签页 -->
         <el-tab-pane label="数据库搜索" name="search">
-          <div class="search-section">
-            <el-input
-              v-model="searchKeyword"
-              placeholder="搜索物资名称、规格型号等..."
-              clearable
-              class="search-input"
-              @input="handleSearchInput"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
+          <div class="database-section">
+            <!-- 数据库子标签页 -->
+            <el-tabs v-model="activeDbTab" type="border-card" class="database-tabs">
+              <!-- 数据库内数据子标签页 -->
+              <el-tab-pane label="数据库内数据" name="database">
+                <div class="search-section">
+                  <div class="search-filters">
+                    <el-input
+                      v-model="searchKeyword"
+                      placeholder="搜索物资名称、规格型号、物资编码、价格等..."
+                      clearable
+                      class="search-input"
+                      @input="handleSearchInput"
+                    >
+                      <template #prefix>
+                        <el-icon><Search /></el-icon>
+                      </template>
+                    </el-input>
+                    <el-select
+                      v-model="selectedQuarter"
+                      placeholder="选择价格季度"
+                      clearable
+                      class="quarter-select"
+                      @change="handleQuarterChange"
+                    >
+                      <el-option label="全部季度" value="" />
+                      <el-option v-for="quarter in quarterOptions" :key="quarter" :label="quarter" :value="quarter" />
+                    </el-select>
+                  </div>
 
-            <div class="selection-hint">点击表格行即可选择该物资</div>
-            <el-table
-              :data="searchResults"
-              v-loading="searchLoading"
-              @row-click="selectSearchResult"
-              highlight-current-row
-              border
-              stripe
-              style="width: 100%"
-              height="400px"
-              :row-class-name="getSearchRowClassName"
-            >
-              <el-table-column prop="materialName" label="物资名称" min-width="150" show-overflow-tooltip />
-              <el-table-column prop="specificationModel" label="规格型号" min-width="150" show-overflow-tooltip />
-              <el-table-column prop="unit" label="单位" width="80" />
-              <el-table-column prop="type" label="类型" width="100" />
-              <el-table-column prop="materialCode" label="物资编码" width="120" show-overflow-tooltip />
-              <el-table-column label="物资价格（含税）" width="130" align="right">
-                <template #default="{ row }">
-                  <span class="price-value">¥{{ formatPrice(getPriceValue(row)) }}</span>
-                </template>
-              </el-table-column>
-              <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
-            </el-table>
+                  <div class="selection-hint">点击表格行即可选择该物资</div>
+                  <el-table
+                    :data="searchResults"
+                    v-loading="searchLoading"
+                    @row-click="selectSearchResult"
+                    highlight-current-row
+                    border
+                    stripe
+                    style="width: 100%"
+                    height="350px"
+                    :row-class-name="getSearchRowClassName"
+                  >
+                    <el-table-column prop="materialName" label="物资名称" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="specificationModel" label="规格型号" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="unit" label="单位" width="80" />
+                    <el-table-column prop="type" label="类型" width="100" />
+                    <el-table-column prop="materialCode" label="物资编码" width="120" show-overflow-tooltip />
+                    <el-table-column label="物资价格（含税）" width="130" align="right">
+                      <template #default="{ row }">
+                        <span class="price-value">¥{{ formatPrice(getPriceValue(row)) }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
+                  </el-table>
 
-            <div class="pagination-wrapper" v-if="searchTotal > 0">
-              <el-pagination
-                background
-                layout="total, sizes, prev, pager, next, jumper"
-                :total="searchTotal"
-                :page-sizes="[10, 20, 50, 100]"
-                :page-size="searchPageSize"
-                :current-page="searchPageNum"
-                @current-change="handleSearchPageChange"
-                @size-change="handleSearchSizeChange"
-              />
-            </div>
+                  <div class="pagination-wrapper" v-if="searchTotal > 0">
+                    <el-pagination
+                      background
+                      layout="total, sizes, prev, pager, next, jumper"
+                      :total="searchTotal"
+                      :page-sizes="[10, 20, 50, 100]"
+                      :page-size="searchPageSize"
+                      :current-page="searchPageNum"
+                      @current-change="handleSearchPageChange"
+                      @size-change="handleSearchSizeChange"
+                    />
+                  </div>
+                </div>
+              </el-tab-pane>
+
+              <!-- 临时物资价格数据子标签页 -->
+              <el-tab-pane label="临时物资价格" name="temporary">
+                <div class="temporary-section">
+                  <div class="search-filters">
+                    <el-input
+                      v-model="temporarySearchKeyword"
+                      placeholder="搜索临时物资名称、规格型号等..."
+                      clearable
+                      class="search-input"
+                      @input="handleTemporarySearchInput"
+                    >
+                      <template #prefix>
+                        <el-icon><Search /></el-icon>
+                      </template>
+                    </el-input>
+                  </div>
+
+                  <div class="selection-hint">点击表格行即可选择该临时物资</div>
+                  <el-table
+                    :data="temporaryResults"
+                    v-loading="temporaryLoading"
+                    @row-click="selectTemporaryResult"
+                    highlight-current-row
+                    border
+                    stripe
+                    style="width: 100%"
+                    height="350px"
+                    :row-class-name="getTemporaryRowClassName"
+                  >
+                    <!-- 解析数据组 -->
+                    <el-table-column label="解析出的物资数据" align="center">
+                      <el-table-column prop="materialName" label="物资名称" min-width="120" show-overflow-tooltip>
+                        <template #default="{ row }">
+                          <div class="cell-content">
+                            <span class="data-source-tag parsed">解析</span>
+                            <span class="material-name">{{ row.materialName || '-' }}</span>
+                          </div>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="specificationModel" label="规格型号" min-width="120" show-overflow-tooltip>
+                        <template #default="{ row }">
+                          <span class="specification-text">{{ row.specificationModel || '-' }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="unit" label="单位" width="70" align="center">
+                        <template #default="{ row }">
+                          <span class="unit-text">{{ row.unit || '-' }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="价格（含税）" width="110" align="right">
+                        <template #default="{ row }">
+                          <span class="price-value parsed-price">¥{{ formatPrice(row.taxPrice || 0) }}</span>
+                        </template>
+                      </el-table-column>
+                    </el-table-column>
+
+                    <!-- 用户新增数据组 -->
+                    <el-table-column label="用户新增的物资数据" align="center">
+                      <el-table-column label="物资名称" min-width="120" show-overflow-tooltip>
+                        <template #default="{ row }">
+                          <div class="cell-content">
+                            <span class="data-source-tag user-added">新增</span>
+                            <span class="material-name">{{ row.confirmedBaseInfo?.materialName || '-' }}</span>
+                          </div>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="规格型号" min-width="120" show-overflow-tooltip>
+                        <template #default="{ row }">
+                          <span class="specification-text">{{ row.confirmedBaseInfo?.specificationModel || '-' }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="单位" width="70" align="center">
+                        <template #default="{ row }">
+                          <span class="unit-text">{{ row.confirmedBaseInfo?.unit || '-' }}</span>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="物资编码" width="100" show-overflow-tooltip>
+                        <template #default="{ row }">
+                          <span class="material-code">{{ row.confirmedBaseInfo?.materialCode || '-' }}</span>
+                        </template>
+                      </el-table-column>
+                    </el-table-column>
+
+                    <!-- 状态信息组 -->
+                    <el-table-column label="状态信息" align="center">
+                      <el-table-column label="审核状态" width="100" align="center">
+                        <template #default="{ row }">
+                          <el-tag :type="getApprovalStatusType(row.adminApproved)" size="small">
+                            {{ getApprovalStatusText(row.adminApproved) }}
+                          </el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="createdTime" label="创建时间" width="140" align="center">
+                        <template #default="{ row }">
+                          {{ formatDateTime(row.createdTime) }}
+                        </template>
+                      </el-table-column>
+                    </el-table-column>
+                  </el-table>
+
+                  <div class="pagination-wrapper" v-if="temporaryTotal > 0">
+                    <el-pagination
+                      background
+                      layout="total, sizes, prev, pager, next, jumper"
+                      :total="temporaryTotal"
+                      :page-sizes="[10, 20, 50, 100]"
+                      :page-size="temporaryPageSize"
+                      :current-page="temporaryPageNum"
+                      @current-change="handleTemporaryPageChange"
+                      @size-change="handleTemporarySizeChange"
+                    />
+                  </div>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
           </div>
         </el-tab-pane>
 
@@ -191,7 +333,12 @@
 
             <div class="form-actions">
               <el-button @click="resetForm">重置</el-button>
-              <el-button type="primary" @click="submitNewMaterial" :loading="savingMaterial">
+              <el-button 
+                type="primary" 
+                @click="submitNewMaterial" 
+                :loading="savingMaterial"
+                :disabled="!isFormValid || savingMaterial"
+              >
                 {{ savingMaterial ? '保存中...' : '确认新增' }}
               </el-button>
             </div>
@@ -262,6 +409,8 @@ const dialogVisible = computed({
 
 // 激活的标签页
 const activeTab = ref('recommend')
+// 数据库子标签页激活状态
+const activeDbTab = ref('database')
 
 // 推荐数据
 const recommendMaterials = ref([])
@@ -278,6 +427,31 @@ const searchTotal = ref(0)
 const searchPageNum = ref(1)
 const searchPageSize = ref(10)
 const selectedSearchResult = ref(null)
+const selectedQuarter = ref('')
+
+// 季度选项
+const quarterOptions = computed(() => {
+  const currentYear = new Date().getFullYear()
+  const quarters = []
+  
+  // 生成最近3年的季度选项
+  for (let year = currentYear; year >= currentYear - 2; year--) {
+    for (let quarter = 4; quarter >= 1; quarter--) {
+      quarters.push(`${year}-Q${quarter}`)
+    }
+  }
+  
+  return quarters
+})
+
+// 临时物资相关
+const temporarySearchKeyword = ref('')
+const temporaryResults = ref([])
+const temporaryLoading = ref(false)
+const temporaryTotal = ref(0)
+const temporaryPageNum = ref(1)
+const temporaryPageSize = ref(10)
+const selectedTemporaryResult = ref(null)
 
 // 新增物资表单
 const materialFormRef = ref()
@@ -342,6 +516,16 @@ const hasRecommendations = computed(() => {
 
 const isSelectionComplete = computed(() => {
   return finalSelection.value.material && finalSelection.value.price
+})
+
+// 新增物资表单是否有效
+const isFormValid = computed(() => {
+  return newMaterialForm.value.materialName &&
+         newMaterialForm.value.specificationModel &&
+         newMaterialForm.value.unit &&
+         newMaterialForm.value.taxPrice !== null &&
+         newMaterialForm.value.quarter &&
+         /^\d{4}-Q[1-4]$/.test(newMaterialForm.value.quarter)
 })
 
 // 初始化推荐数据
@@ -470,6 +654,12 @@ const handleSearchInput = debounce((keyword) => {
   performSearch(keyword)
 }, 300)
 
+// 处理季度筛选变化
+const handleQuarterChange = () => {
+  searchPageNum.value = 1
+  performSearch()
+}
+
 // 执行搜索
 const performSearch = async (keyword = searchKeyword.value) => {
   searchLoading.value = true
@@ -481,6 +671,10 @@ const performSearch = async (keyword = searchKeyword.value) => {
     
     if (keyword && keyword.trim()) {
       params.keyword = keyword.trim()
+    }
+    
+    if (selectedQuarter.value) {
+      params.quarter = selectedQuarter.value
     }
     
     const response = await queryMaterialBaseInfoWithPrices(params)
@@ -567,6 +761,84 @@ const handleSearchSizeChange = (size) => {
   performSearch()
 }
 
+// 临时物资相关方法
+// 处理临时物资搜索输入（防抖）
+const handleTemporarySearchInput = debounce((keyword) => {
+  temporaryPageNum.value = 1
+  performTemporarySearch(keyword)
+}, 300)
+
+// 执行临时物资搜索
+const performTemporarySearch = async (keyword = temporarySearchKeyword.value) => {
+  temporaryLoading.value = true
+  try {
+    const params = {
+      page: temporaryPageNum.value - 1,
+      size: temporaryPageSize.value
+    }
+    
+    if (keyword && keyword.trim()) {
+      params.keyword = keyword.trim()
+    }
+    
+    const response = await MaterialService.queryPendingApprovalData(params)
+    if (response && response.data && response.data.content) {
+      temporaryResults.value = response.data.content
+      temporaryTotal.value = response.data.totalElements || 0
+    } else {
+      temporaryResults.value = []
+      temporaryTotal.value = 0
+    }
+  } catch (error) {
+    console.error('搜索临时物资失败:', error)
+    ElMessage.error('搜索临时物资失败')
+    temporaryResults.value = []
+    temporaryTotal.value = 0
+  } finally {
+    temporaryLoading.value = false
+  }
+}
+
+// 选择临时物资结果
+const selectTemporaryResult = (result) => {
+  selectedTemporaryResult.value = result
+  
+  // 构建最终选择数据
+  finalSelection.value = {
+    material: {
+      materialName: result.materialName,
+      specificationModel: result.specificationModel,
+      unit: result.unit,
+      type: result.confirmedBaseInfo?.type || '',
+      materialCode: result.confirmedBaseInfo?.materialCode || '',
+      id: result.confirmBaseDataId || result.confirmedBaseInfo?.baseDataId
+    },
+    price: {
+      taxPrice: result.taxPrice,
+      unitPrice: result.price / (result.count || 1), // 计算单价
+      priceType: 1, // 含税价格
+      quarter: '-', // 临时数据可能没有季度信息
+      id: result.confirmPriceId,
+      isTemporary: true, // 标记为临时数据
+      taskDataId: result.taskDataId // 保存原始记录ID
+    },
+    source: 'temporary',
+    originalData: result
+  }
+}
+
+// 临时物资分页处理
+const handleTemporaryPageChange = (page) => {
+  temporaryPageNum.value = page
+  performTemporarySearch()
+}
+
+const handleTemporarySizeChange = (size) => {
+  temporaryPageSize.value = size
+  temporaryPageNum.value = 1
+  performTemporarySearch()
+}
+
 // 提交新增物资
 const submitNewMaterial = async () => {
   try {
@@ -631,13 +903,15 @@ const submitNewMaterial = async () => {
       source: 'add'
     }
     
-    // 设置 finalSelection 用于界面显示，执行正常的选择逻辑
+    // 设置 finalSelection 用于界面显示
     finalSelection.value = finalSelectionData
     
     ElMessage.success('新增物资数据保存成功')
     
-    // 不直接关闭弹窗，让用户可以看到选择结果并点击"确认选择"按钮
-    // 这样就执行了正常的选择逻辑
+    // 自动执行确认选择逻辑并关闭弹窗
+    await nextTick() // 等待界面更新
+    emit('confirm', finalSelectionData)
+    closeDialog()
     
   } catch (error) {
     console.error('保存新增物资失败:', error)
@@ -681,12 +955,17 @@ const closeDialog = () => {
   dialogVisible.value = false
   // 重置状态
   activeTab.value = 'recommend'
+  activeDbTab.value = 'database'
   finalSelection.value = { material: null, price: null, source: '' }
   selectedRecommendMaterial.value = null
   selectedRecommendPrice.value = null
   selectedSearchResult.value = null
+  selectedTemporaryResult.value = null
   searchKeyword.value = ''
   searchResults.value = []
+  selectedQuarter.value = ''
+  temporarySearchKeyword.value = ''
+  temporaryResults.value = []
   resetForm()
 }
 
@@ -725,6 +1004,13 @@ const getPriceValue = (row) => {
   return price
 }
 
+// 获取推荐分数
+const getRecommendScore = (row) => {
+  // 从原始选项中获取分数
+  const score = row.originalOption?.matchScore || row.matchScore || 0
+  return Math.round(score)
+}
+
 // 行样式类名
 const getRowClassName = ({ row }) => {
   return selectedRecommendMaterial.value === row ? 'selected-row' : 'selectable-row'
@@ -736,6 +1022,57 @@ const getPriceRowClassName = ({ row }) => {
 
 const getSearchRowClassName = ({ row }) => {
   return selectedSearchResult.value === row ? 'selected-row' : 'selectable-row'
+}
+
+const getTemporaryRowClassName = ({ row }) => {
+  return selectedTemporaryResult.value === row ? 'selected-row' : 'selectable-row'
+}
+
+// 获取审核状态文本
+const getApprovalStatusText = (adminApproved) => {
+  switch (adminApproved) {
+    case null:
+    case undefined:
+      return '待审核'
+    case 0:
+      return '未通过'
+    case 1:
+      return '已通过'
+    default:
+      return '未知'
+  }
+}
+
+// 获取审核状态标签类型
+const getApprovalStatusType = (adminApproved) => {
+  switch (adminApproved) {
+    case null:
+    case undefined:
+      return 'warning'
+    case 0:
+      return 'danger'
+    case 1:
+      return 'success'
+    default:
+      return 'info'
+  }
+}
+
+// 格式化日期时间
+const formatDateTime = (dateTime) => {
+  if (!dateTime) return '-'
+  try {
+    const date = new Date(dateTime)
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (error) {
+    return dateTime
+  }
 }
 
 // 监听对话框打开
@@ -753,8 +1090,24 @@ watch(dialogVisible, (newVal) => {
 
 // 监听标签页切换
 watch(activeTab, (newTab) => {
-  if (newTab === 'search' && searchResults.value.length === 0) {
+  if (newTab === 'search') {
+    // 切换到数据库搜索时，根据当前子标签页加载对应数据
+    nextTick(() => {
+      if (activeDbTab.value === 'database' && searchResults.value.length === 0) {
+        performSearch('')
+      } else if (activeDbTab.value === 'temporary' && temporaryResults.value.length === 0) {
+        performTemporarySearch('')
+      }
+    })
+  }
+})
+
+// 监听数据库子标签页切换
+watch(activeDbTab, (newDbTab) => {
+  if (newDbTab === 'database' && searchResults.value.length === 0) {
     performSearch('')
+  } else if (newDbTab === 'temporary' && temporaryResults.value.length === 0) {
+    performTemporarySearch('')
   }
 })
 </script>
@@ -805,8 +1158,47 @@ watch(activeTab, (newTab) => {
 /* 各个标签页内容样式 */
 .recommend-section,
 .search-section,
-.add-section {
+.add-section,
+.database-section,
+.temporary-section {
   height: 100%;
+}
+
+/* 数据库子标签页样式 */
+.database-tabs {
+  height: 100%;
+}
+
+:deep(.database-tabs .el-tabs__header) {
+  margin: 0 0 16px 0;
+  background: var(--theme-bg-tertiary);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+:deep(.database-tabs .el-tabs__content) {
+  height: calc(100% - 56px);
+  overflow-y: auto;
+}
+
+:deep(.database-tabs .el-tabs__item) {
+  color: var(--theme-text-secondary);
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  margin: 0 2px;
+  padding: 8px 16px;
+  font-size: 14px;
+}
+
+:deep(.database-tabs .el-tabs__item.is-active) {
+  background: var(--theme-primary);
+  color: white;
+}
+
+:deep(.database-tabs .el-tabs__item:hover) {
+  background: var(--theme-primary-light);
+  color: white;
 }
 
 .section-title {
@@ -823,10 +1215,23 @@ watch(activeTab, (newTab) => {
   border-top: 1px solid var(--theme-border-secondary);
 }
 
-/* 搜索输入框 */
-.search-input {
-  width: 100%;
+/* 搜索筛选区域 */
+.search-filters {
+  display: flex;
+  gap: 16px;
   margin-bottom: 20px;
+  align-items: flex-start;
+}
+
+.search-input {
+  flex: 2;
+  min-width: 300px;
+}
+
+.quarter-select {
+  flex: 1;
+  min-width: 160px;
+  max-width: 200px;
 }
 
 /* 分页样式 */
@@ -881,8 +1286,10 @@ watch(activeTab, (newTab) => {
 }
 
 :deep(.el-table .selected-row td.el-table__cell) {
-  background: var(--theme-primary-light) !important;
-  color: var(--theme-primary) !important;
+  background: rgba(64, 158, 255, 0.08) !important;
+  color: var(--theme-text-primary) !important;
+  border-left: 3px solid var(--theme-primary) !important;
+  font-weight: 500 !important;
 }
 
 /* 对话框底部样式 */
@@ -930,6 +1337,37 @@ watch(activeTab, (newTab) => {
   line-height: 1.4;
 }
 
+/* 推荐分数样式 */
+.recommend-score-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-progress {
+  flex: 1;
+  height: 8px;
+  background: var(--theme-border-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.score-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #10b981);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.score-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  min-width: 32px;
+  text-align: center;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   :deep(.material-price-selection-dialog) {
@@ -951,5 +1389,76 @@ watch(activeTab, (newTab) => {
   .action-buttons {
     justify-content: center;
   }
+}
+
+/* 临时物资数据源标签样式 */
+.cell-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.data-source-tag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  flex-shrink: 0;
+  min-width: 30px;
+  text-align: center;
+}
+
+.data-source-tag.parsed {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+  color: #1565c0;
+  border: 1px solid #90caf9;
+}
+
+.data-source-tag.user-added {
+  background: linear-gradient(135deg, #f3e5f5, #e1bee7);
+  color: #7b1fa2;
+  border: 1px solid #ce93d8;
+}
+
+.material-name {
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.specification-text,
+.unit-text,
+.material-code {
+  color: var(--theme-text-primary);
+  word-break: break-word;
+}
+
+.parsed-price {
+  font-weight: 600;
+  color: #1565c0;
+}
+
+/* 临时物资表格分组列头样式 */
+:deep(.temporary-section .el-table th.el-table__cell) {
+  background: var(--theme-bg-secondary);
+  color: var(--theme-text-primary);
+  font-weight: 600;
+}
+
+:deep(.temporary-section .el-table th.el-table__cell:first-child) {
+  background: linear-gradient(135deg, #e3f2fd, #f8f9fa);
+  color: #1565c0;
+}
+
+:deep(.temporary-section .el-table th.el-table__cell:nth-child(2)) {
+  background: linear-gradient(135deg, #f3e5f5, #f8f9fa);
+  color: #7b1fa2;
+}
+
+:deep(.temporary-section .el-table th.el-table__cell:last-child) {
+  background: var(--theme-bg-tertiary);
+  color: var(--theme-text-secondary);
 }
 </style>
