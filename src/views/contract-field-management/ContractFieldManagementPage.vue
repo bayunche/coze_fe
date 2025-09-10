@@ -124,6 +124,22 @@
           />
         </el-select>
 
+        <!-- 合同类型筛选 -->
+        <el-select
+          v-model="filters.contractType"
+          placeholder="选择合同类型"
+          clearable
+          class="filter-select"
+          @change="handleFilterChange"
+        >
+          <el-option
+            v-for="option in FILTER_OPTIONS.contractType"
+            :key="option.value"
+            :label="option.label"
+            :value="option.value"
+          />
+        </el-select>
+
         <!-- 必填筛选 -->
         <el-select
           v-model="filters.isRequired"
@@ -249,6 +265,25 @@
                 <component :is="iconMap[formatFieldType(row.fieldType).icon]" />
               </el-icon>
               {{ formatFieldType(row.fieldType).label }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
+        <!-- 所属合同类型 -->
+        <el-table-column
+          prop="contractType"
+          :label="TABLE_COLUMNS.fieldInfo.contractType.label"
+          :width="TABLE_COLUMNS.fieldInfo.contractType.width"
+          :align="TABLE_COLUMNS.fieldInfo.contractType.align"
+          sortable
+        >
+          <template #default="{ row }">
+            <el-tag 
+              :type="formatContractType(row.contractType).type"
+              :color="formatContractType(row.contractType).color"
+              size="small"
+            >
+              {{ formatContractType(row.contractType).label }}
             </el-tag>
           </template>
         </el-table-column>
@@ -409,6 +444,21 @@
           </el-select>
         </el-form-item>
         
+        <el-form-item label="合同类型" prop="contractType">
+          <el-select v-model="fieldForm.contractType" placeholder="请选择合同类型" style="width: 100%">
+            <el-option
+              v-for="option in FILTER_OPTIONS.contractType.slice(1)"
+              :key="option.value"
+              :label="option.label"
+              :value="option.value"
+            >
+              <div class="option-item" :style="{ color: formatContractType(option.value).color }">
+                {{ option.label }}
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        
         <el-form-item label="字段描述" prop="description">
           <el-input
             v-model="fieldForm.description"
@@ -548,6 +598,7 @@ import {
   formatTime,
   formatFieldType,
   formatFieldStatus,
+  formatContractType,
   generateDisplayOrder,
   generateFieldId
 } from './utils.js'
@@ -594,6 +645,7 @@ const selectedRows = ref([])
 const filters = reactive({
   keyword: '',
   fieldType: '',
+  contractType: '',
   status: '',
   isRequired: ''
 })
@@ -1134,7 +1186,7 @@ onMounted(() => {
   background-color: var(--theme-bg-primary);
   border-radius: 8px;
   padding: 20px;
-  height: 50vh;
+  height: 40vh;
   overflow: auto;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }

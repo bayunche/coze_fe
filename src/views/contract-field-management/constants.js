@@ -22,6 +22,20 @@ export const FIELD_TYPE = {
 }
 
 /**
+ * 合同类型枚举
+ */
+export const CONTRACT_TYPE = {
+  CONSTRUCTION: 'construction',
+  SUPPLY: 'supply',
+  SERVICE: 'service',
+  DESIGN: 'design',
+  CONSULTING: 'consulting',
+  LEASE: 'lease',
+  SALES: 'sales',
+  OTHER: 'other'
+}
+
+/**
  * 字段类型配置
  */
 export const FIELD_TYPE_CONFIG = {
@@ -82,6 +96,52 @@ export const FIELD_STATUS_CONFIG = {
 }
 
 /**
+ * 合同类型配置
+ */
+export const CONTRACT_TYPE_CONFIG = {
+  [CONTRACT_TYPE.CONSTRUCTION]: {
+    label: '建筑工程',
+    type: 'primary',
+    color: '#409eff'
+  },
+  [CONTRACT_TYPE.SUPPLY]: {
+    label: '物资供应',
+    type: 'success',
+    color: '#67c23a'
+  },
+  [CONTRACT_TYPE.SERVICE]: {
+    label: '服务类',
+    type: 'warning',
+    color: '#e6a23c'
+  },
+  [CONTRACT_TYPE.DESIGN]: {
+    label: '设计类',
+    type: 'info',
+    color: '#909399'
+  },
+  [CONTRACT_TYPE.CONSULTING]: {
+    label: '咨询类',
+    type: 'danger',
+    color: '#f56c6c'
+  },
+  [CONTRACT_TYPE.LEASE]: {
+    label: '租赁类',
+    type: 'default',
+    color: '#606266'
+  },
+  [CONTRACT_TYPE.SALES]: {
+    label: '销售类',
+    type: 'default',
+    color: '#8b5cf6'
+  },
+  [CONTRACT_TYPE.OTHER]: {
+    label: '其他',
+    type: 'default',
+    color: '#94a3b8'
+  }
+}
+
+/**
  * 表格列配置
  */
 export const TABLE_COLUMNS = {
@@ -89,6 +149,7 @@ export const TABLE_COLUMNS = {
     fieldName: { label: '字段名称', minWidth: 150, showOverflowTooltip: true },
     fieldCode: { label: '字段编码', width: 120, showOverflowTooltip: true },
     fieldType: { label: '字段类型', width: 100, align: 'center' },
+    contractType: { label: '所属合同类型', width: 140, align: 'center' },
     description: { label: '字段描述', minWidth: 200, showOverflowTooltip: true }
   },
   fieldConfig: {
@@ -259,6 +320,17 @@ export const FILTER_OPTIONS = {
     { label: '数组类型', value: FIELD_TYPE.ARRAY },
     { label: '对象类型', value: FIELD_TYPE.OBJECT }
   ],
+  contractType: [
+    { label: '全部合同类型', value: '' },
+    { label: '建筑工程', value: CONTRACT_TYPE.CONSTRUCTION },
+    { label: '物资供应', value: CONTRACT_TYPE.SUPPLY },
+    { label: '服务类', value: CONTRACT_TYPE.SERVICE },
+    { label: '设计类', value: CONTRACT_TYPE.DESIGN },
+    { label: '咨询类', value: CONTRACT_TYPE.CONSULTING },
+    { label: '租赁类', value: CONTRACT_TYPE.LEASE },
+    { label: '销售类', value: CONTRACT_TYPE.SALES },
+    { label: '其他', value: CONTRACT_TYPE.OTHER }
+  ],
   status: [
     { label: '全部状态', value: '' },
     { label: '启用中', value: FIELD_STATUS.ENABLED },
@@ -287,6 +359,9 @@ export const FORM_RULES = {
   fieldType: [
     { required: true, message: '请选择字段类型', trigger: 'change' }
   ],
+  contractType: [
+    { required: true, message: '请选择合同类型', trigger: 'change' }
+  ],
   description: [
     { max: 200, message: '描述长度不能超过 200 个字符', trigger: 'blur' }
   ],
@@ -306,6 +381,7 @@ export const DEFAULT_VALUES = {
     fieldName: '',
     fieldCode: '',
     fieldType: FIELD_TYPE.STRING,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '',
     isRequired: false,
     isEnabled: FIELD_STATUS.ENABLED,
@@ -335,6 +411,7 @@ export const PRESET_FIELDS = [
     fieldName: '合同编号',
     fieldCode: 'contractNo',
     fieldType: FIELD_TYPE.STRING,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同的唯一标识编号',
     isRequired: true,
     displayOrder: 1
@@ -343,6 +420,7 @@ export const PRESET_FIELDS = [
     fieldName: '合同名称',
     fieldCode: 'contractName',
     fieldType: FIELD_TYPE.STRING,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同的完整名称',
     isRequired: true,
     displayOrder: 2
@@ -351,6 +429,7 @@ export const PRESET_FIELDS = [
     fieldName: '签订日期',
     fieldCode: 'signDate',
     fieldType: FIELD_TYPE.DATE,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同签订的日期',
     isRequired: true,
     displayOrder: 3
@@ -359,6 +438,7 @@ export const PRESET_FIELDS = [
     fieldName: '合同金额',
     fieldCode: 'contractAmount',
     fieldType: FIELD_TYPE.NUMBER,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同总金额（元）',
     isRequired: true,
     displayOrder: 4
@@ -367,6 +447,7 @@ export const PRESET_FIELDS = [
     fieldName: '甲方名称',
     fieldCode: 'partyA',
     fieldType: FIELD_TYPE.STRING,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同甲方（发包方）名称',
     isRequired: true,
     displayOrder: 5
@@ -375,6 +456,7 @@ export const PRESET_FIELDS = [
     fieldName: '乙方名称',
     fieldCode: 'partyB',
     fieldType: FIELD_TYPE.STRING,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同乙方（承包方）名称',
     isRequired: true,
     displayOrder: 6
@@ -383,6 +465,7 @@ export const PRESET_FIELDS = [
     fieldName: '开始日期',
     fieldCode: 'startDate',
     fieldType: FIELD_TYPE.DATE,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同生效开始日期',
     isRequired: false,
     displayOrder: 7
@@ -391,6 +474,7 @@ export const PRESET_FIELDS = [
     fieldName: '结束日期',
     fieldCode: 'endDate',
     fieldType: FIELD_TYPE.DATE,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '合同到期结束日期',
     isRequired: false,
     displayOrder: 8
@@ -399,32 +483,36 @@ export const PRESET_FIELDS = [
     fieldName: '工程地点',
     fieldCode: 'projectLocation',
     fieldType: FIELD_TYPE.STRING,
+    contractType: CONTRACT_TYPE.CONSTRUCTION,
     description: '工程实施地点',
     isRequired: false,
     displayOrder: 9
   },
   {
-    fieldName: '联系人',
-    fieldCode: 'contactPerson',
+    fieldName: '供应商名称',
+    fieldCode: 'supplierName',
     fieldType: FIELD_TYPE.STRING,
-    description: '合同联系人姓名',
-    isRequired: false,
+    contractType: CONTRACT_TYPE.SUPPLY,
+    description: '物资供应商名称',
+    isRequired: true,
     displayOrder: 10
   },
   {
-    fieldName: '联系电话',
-    fieldCode: 'contactPhone',
-    fieldType: FIELD_TYPE.STRING,
-    description: '合同联系人电话',
-    isRequired: false,
+    fieldName: '供应物资清单',
+    fieldCode: 'supplyList',
+    fieldType: FIELD_TYPE.ARRAY,
+    contractType: CONTRACT_TYPE.SUPPLY,
+    description: '供应的物资清单',
+    isRequired: true,
     displayOrder: 11
   },
   {
-    fieldName: '付款方式',
-    fieldCode: 'paymentMethod',
+    fieldName: '服务内容',
+    fieldCode: 'serviceContent',
     fieldType: FIELD_TYPE.STRING,
-    description: '合同约定的付款方式',
-    isRequired: false,
+    contractType: CONTRACT_TYPE.SERVICE,
+    description: '服务合同的具体内容描述',
+    isRequired: true,
     displayOrder: 12
   }
 ]

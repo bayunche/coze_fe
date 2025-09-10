@@ -5,6 +5,7 @@ import {
   MESSAGE_CONFIG, 
   FIELD_TYPE_CONFIG, 
   FIELD_STATUS_CONFIG,
+  CONTRACT_TYPE_CONFIG,
   FIELD_STATUS 
 } from './constants.js'
 
@@ -47,6 +48,23 @@ export const formatFieldStatus = (status) => {
       label: '未知状态',
       type: 'default',
       icon: 'QuestionFilled'
+    }
+  }
+  return config
+}
+
+/**
+ * 格式化合同类型显示
+ * @param {string} contractType - 合同类型
+ * @returns {object} 格式化后的类型信息
+ */
+export const formatContractType = (contractType) => {
+  const config = CONTRACT_TYPE_CONFIG[contractType]
+  if (!config) {
+    return {
+      label: contractType || '未知类型',
+      type: 'default',
+      color: '#909399'
     }
   }
   return config
@@ -122,6 +140,11 @@ export const handleSearch = (data, filters) => {
     
     // 字段类型筛选
     if (filters.fieldType && item.fieldType !== filters.fieldType) {
+      return false
+    }
+    
+    // 合同类型筛选
+    if (filters.contractType && item.contractType !== filters.contractType) {
       return false
     }
     
