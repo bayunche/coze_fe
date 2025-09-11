@@ -13,7 +13,8 @@
         <el-form-item v-if="needsFileUpload && !isOwnerMaterial">
           <el-upload
             ref="uploadRef"
-            v-model:file-list="config.files"
+            :file-list="config.files"
+            @change="handleFileListChange"
             :auto-upload="false"
             multiple
             :limit="FILE_UPLOAD_CONFIG.DEFAULT_LIMIT"
@@ -41,7 +42,8 @@
             <el-col :span="12">
               <el-form-item label="指定季度" required>
                 <el-select 
-                  v-model="config.quarter" 
+                  :model-value="config.quarter"
+                  @update:model-value="(value) => updateConfig('quarter', value)"
                   placeholder="请选择季度"
                   style="width: 100%"
                   allow-create
@@ -68,7 +70,8 @@
             <el-col :span="12">
               <el-form-item label="指定税率" required>
                 <el-select 
-                  v-model="config.taxRate" 
+                  :model-value="config.taxRate"
+                  @update:model-value="(value) => updateConfig('taxRate', value)"
                   placeholder="请选择税率"
                   style="width: 100%"
                   allow-create
@@ -187,18 +190,21 @@
         <el-form-item v-for="param in currentFunctionParams" :key="param.key" :label="param.label">
           <el-input
             v-if="param.type === PARAM_TYPES.TEXT"
-            v-model="config.params[param.key]"
+            :model-value="config.params[param.key]"
+            @update:model-value="(value) => updateParam(param.key, value)"
             :placeholder="param.placeholder"
           />
           <el-input-number
             v-else-if="param.type === PARAM_TYPES.NUMBER"
-            v-model="config.params[param.key]"
+            :model-value="config.params[param.key]"
+            @update:model-value="(value) => updateParam(param.key, value)"
             :min="param.min"
             :max="param.max"
           />
           <el-select
             v-else-if="param.type === PARAM_TYPES.SELECT"
-            v-model="config.params[param.key]"
+            :model-value="config.params[param.key]"
+            @update:model-value="(value) => updateParam(param.key, value)"
             :placeholder="param.placeholder"
           >
             <el-option
@@ -208,7 +214,11 @@
               :value="option.value"
             />
           </el-select>
-          <el-switch v-else-if="param.type === PARAM_TYPES.BOOLEAN" v-model="config.params[param.key]" />
+          <el-switch 
+            v-else-if="param.type === PARAM_TYPES.BOOLEAN" 
+            :model-value="config.params[param.key]"
+            @update:model-value="(value) => updateParam(param.key, value)" 
+          />
         </el-form-item>
       </el-form>
     </div>
@@ -323,7 +333,8 @@ const props = defineProps({
 const emit = defineEmits([
   EMIT_EVENTS.UPDATE_SHOW,
   EMIT_EVENTS.CLOSE,
-  EMIT_EVENTS.START_WORKFLOW
+  EMIT_EVENTS.START_WORKFLOW,
+  'update:config'
 ])
 
 // 上传组件引用
@@ -352,14 +363,36 @@ const isOwnerMaterial = computed(() => isOwnerMaterialWorkflow(props.currentFunc
 const isSupplierMaterial = computed(() => props.currentFunctionName === WORKFLOW_NAMES.SUPPLIER_MATERIAL)
 const acceptFileTypes = computed(() => formatAcceptFileTypes(props.allowedFileTypes))
 
+// 更新配置的辅助函数
+const updateConfig = (key, value) => {
+  const newConfig = { ...props.config }
+  newConfig[key] = value
+  emit('update:config', newConfig)
+}
+
+// 更新参数的辅助函数
+const updateParam = (key, value) => {
+  const newConfig = { ...props.config }
+  if (!newConfig.params) {
+    newConfig.params = {}
+  }
+  newConfig.params[key] = value
+  emit('update:config', newConfig)
+}
+
+// 文件列表变更处理
+const handleFileListChange = (file, fileList) => {
+  updateConfig('files', fileList)
+}
+
 // 初始化乙供物资默认值
 watch(() => props.show, (newVal) => {
   if (newVal && isSupplierMaterial.value) {
     if (!props.config.quarter) {
-      props.config.quarter = SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER
+      updateConfig('quarter', SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER)
     }
     if (!props.config.taxRate) {
-      props.config.taxRate = SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE
+      updateConfig('taxRate', SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE)
     }
   }
 }, { immediate: true })
@@ -417,11 +450,11 @@ const closeDialog = () => {
 }
 
 // 自定义选项相关方法
-const handleQuarterDropdownToggle = (visible) => {
+const handleQuarterDropdownToggle = () => {
   // 下拉框打开时的处理逻辑（如果需要）
 }
 
-const handleTaxRateDropdownToggle = (visible) => {
+const handleTaxRateDropdownToggle = () => {
   // 下拉框打开时的处理逻辑（如果需要）
 }
 
@@ -436,7 +469,7 @@ const addCustomQuarter = () => {
     const exists = quarterOptions.value.some(option => option.value === newOption.value)
     if (!exists) {
       quarterOptions.value.push(newOption)
-      props.config.quarter = newOption.value
+      updateConfig('quarter', newOption.value)
     }
     
     showAddQuarterDialog.value = false
@@ -455,7 +488,7 @@ const addCustomTaxRate = () => {
     const exists = taxRateOptions.value.some(option => option.value === newOption.value)
     if (!exists) {
       taxRateOptions.value.push(newOption)
-      props.config.taxRate = newOption.value
+      updateConfig('taxRate', newOption.value)
     }
     
     showAddTaxRateDialog.value = false
@@ -483,12 +516,13 @@ const submitWorkflow = () => {
     }
 
     // 构建文件列表
-    props.config.files = buildOwnerMaterialFilesList(
+    const filesList = buildOwnerMaterialFilesList(
       comprehensiveClaimFiles.value,
       actualUsageFiles1.value,
       actualUsageFiles2.value,
       otherFiles.value
     )
+    updateConfig('files', filesList)
   }
 
   emit(EMIT_EVENTS.START_WORKFLOW)

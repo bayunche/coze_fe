@@ -53,28 +53,45 @@ export const VALIDATION_MESSAGES = {
   FILE_TYPE_ERROR: '文件类型不符合要求，只支持 {types} 格式!'
 }
 
+// 生成季度选项函数
+const generateQuarterOptions = () => {
+  const currentYear = new Date().getFullYear()
+  
+  const options = []
+  
+  // 往前两年到往后两年，共5年
+  for (let yearOffset = -2; yearOffset <= 2; yearOffset++) {
+    const year = currentYear + yearOffset
+    for (let quarter = 1; quarter <= 4; quarter++) {
+      const quarterLabels = ['第一季度', '第二季度', '第三季度', '第四季度']
+      options.push({
+        label: `${year}年${quarterLabels[quarter - 1]}`,
+        value: `${year}-Q${quarter}`
+      })
+    }
+  }
+  
+  return options
+}
+
+// 获取当前季度
+const getCurrentQuarter = () => {
+  const currentYear = new Date().getFullYear()
+  const currentMonth = new Date().getMonth() + 1
+  const currentQuarter = Math.ceil(currentMonth / 3)
+  return `${currentYear}-Q${currentQuarter}`
+}
+
 // 乙供物资解析专用配置
 export const SUPPLIER_MATERIAL_CONFIG = {
   // 季度选项
-  QUARTER_OPTIONS: [
-    { label: '2024年第一季度', value: '2024-Q1' },
-    { label: '2024年第二季度', value: '2024-Q2' },
-    { label: '2024年第三季度', value: '2024-Q3' },
-    { label: '2024年第四季度', value: '2024-Q4' },
-    { label: '2025年第一季度', value: '2025-Q1' },
-    { label: '2025年第二季度', value: '2025-Q2' },
-    { label: '2025年第三季度', value: '2025-Q3' },
-    { label: '2025年第四季度', value: '2025-Q4' }
-  ],
+  QUARTER_OPTIONS: generateQuarterOptions(),
   // 税率选项
   TAX_RATE_OPTIONS: [
     { label: '13%', value: '13%' },
-    { label: '9%', value: '9%' },
-    { label: '6%', value: '6%' },
-    { label: '3%', value: '3%' },
-    { label: '0%', value: '0%' }
+    { label: '3%', value: '3%' }
   ],
   // 默认值
-  DEFAULT_QUARTER: '2024-Q3',
+  DEFAULT_QUARTER: getCurrentQuarter(),
   DEFAULT_TAX_RATE: '13%'
 }
