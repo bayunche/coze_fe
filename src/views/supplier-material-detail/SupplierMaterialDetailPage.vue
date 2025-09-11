@@ -51,6 +51,9 @@
      
       </div>
 
+      <!-- 操作指引栏 -->
+      <OperationGuide />
+
       <!-- 解析结果总览卡片 -->
       <div class="overview-cards">
         <div 
@@ -111,428 +114,17 @@
       </div>
 
       <!-- 物资详情表格区块 -->
-      <div :class="CSS_CLASSES.TABLE_SECTION">
-        <div class="table-toolbar">
-          <div class="toolbar-left">
-          
-          </div>
-          <div class="toolbar-right">
-            <el-button
-              type="success"
-              :loading="batchConfirming"
-              :disabled="pendingCount === 0"
-              @click="handleBatchConfirm"
-              size="small"
-            >
-              批量确认全部
-            </el-button>
-          </div>
-        </div>
-
-        <el-table
+      <div v-if="showTable" :class="CSS_CLASSES.TABLE_SECTION">
+        <SupplierMaterialTable
           :data="materialData"
-          v-loading="tableLoading"
-          style="width: 100%"
-          :row-class-name="getRowClassName"
-          :row-key="row => row.rowKey"
-          :span-method="tableSpanMethod"
-          border
-          stripe
-          max-height="60vh"
-        >
-          <el-table-column label="序号" width="70">
-            <template #default="{ row, $index }">
-              <div v-if="row.rowType === 'data'" class="sequence-number-container">
-                <div :class="getSequenceBarClass(row)" class="sequence-bar"></div>
-                <span class="sequence-number">{{ Math.floor($index / 3) + 1 }}</span>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 价格匹配状态列 -->
-          <el-table-column label="价格匹配状态" width="130" align="center">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <el-tag :type="getPriceMatchingStatusTag(row).type" size="small">
-                  {{ getPriceMatchingStatusTag(row).text }}
-                </el-tag>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <el-tag :type="getPriceMatchingStatusTag(row).type" size="small">
-                  {{ getPriceMatchingStatusTag(row).text }}
-                </el-tag>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="materialName" label="物资名称" min-width="140" show-overflow-tooltip>
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                {{ getBaseInfoName(row) }}
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <div class="material-cell">
-                  <div class="material-content">
-                    <!-- 用户选择的物资信息（显示确认后的物资名称） -->
-                    <span v-if="row.hasUserSelectedData && row.confirmedBaseName" class="text-sm text-gray-600">
-                      {{ row.confirmedBaseName }}
-                    </span>
-                    <!-- 所有已匹配状态统一显示baseInfo -->
-                    <span v-else-if="row.baseInfo?.materialName" class="text-sm text-gray-600">
-                      {{ row.baseInfo.materialName }}
-                    </span>
-                    <!-- 未匹配状态：显示等待选择 -->
-                    <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
-                      等待选择物资
-                    </span>
-                    <!-- 其他情况 -->
-                    <span v-else class="text-sm text-gray-500">
-                      {{ '-' }}
-                    </span>
-                  </div>
-                  <!-- 数据差异标记（未匹配状态不显示） -->
-                  <el-icon v-if="hasMaterialNameDifference(row) && row.matchedType !== 0" class="difference-marker">
-                    <Close />
-                  </el-icon>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="specifications" label="规格型号" min-width="140" show-overflow-tooltip>
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                {{ getBaseInfoSpec(row) }}
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <div class="material-cell">
-                  <div class="material-content">
-                    <!-- 用户选择的物资规格（显示确认后的规格型号） -->
-                    <span v-if="row.hasUserSelectedData && row.confirmedBaseSpec" class="text-sm text-gray-600">
-                      {{ row.confirmedBaseSpec }}
-                    </span>
-                    <!-- 所有已匹配状态统一显示baseInfo -->
-                    <span v-else-if="row.baseInfo?.specifications" class="text-sm text-gray-600">
-                      {{ row.baseInfo.specifications }}
-                    </span>
-                    <!-- 未匹配状态：显示等待选择 -->
-                    <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
-                      等待选择规格
-                    </span>
-                    <!-- 其他情况 -->
-                    <span v-else class="text-sm text-gray-500">{{ '-' }}</span>
-                  </div>
-                  <!-- 数据差异标记（未匹配状态不显示） -->
-                  <el-icon v-if="hasSpecificationDifference(row) && row.matchedType !== 0" class="difference-marker">
-                    <Close />
-                  </el-icon>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="unit" label="单位" width="70">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                {{ row.unit || '-' }}
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <div class="material-cell">
-                  <div class="material-content">
-                    <!-- 用户选择的物资单位（保留用户手动选择的特殊逻辑） -->
-                    <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
-                      {{ row.selectedMaterial.unit || '-' }}
-                    </span>
-                    <!-- 所有已匹配状态统一显示baseInfo -->
-                    <span v-else-if="row.baseInfo?.unit" class="text-sm text-gray-600">
-                      {{ row.baseInfo.unit }}
-                    </span>
-                    <!-- 未匹配状态：显示等待选择 -->
-                    <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
-                      等待选择
-                    </span>
-                    <!-- 其他情况 -->
-                    <span v-else class="text-sm text-gray-500">{{ '-' }}</span>
-                  </div>
-                  <!-- 数据差异标记（未匹配状态不显示） -->
-                  <el-icon v-if="hasUnitDifference(row) && row.matchedType !== 0" class="difference-marker">
-                    <Close />
-                  </el-icon>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <el-table-column prop="quantity" label="数量" width="90">
-            <template #default="{ row }">
-              <!-- 数据行和操作行都显示数量 -->
-              <div v-if="row.rowType === 'data' || row.rowType === 'action'" class="data-cell">
-                {{ formatNumber(row.quantity) }}
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 物资价格（含税）列 -->
-          <el-table-column label="物资价格（含税）" width="140" align="right">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <div class="price-value">
-                  <span class="price-text" :style="getPriceTextStyle(row, 'taxIncluded')">¥{{ getTaxIncludedPrice(row) }}</span>
-                  <el-icon v-if="getPriceChangeIcon(row, 'taxIncluded')" :style="getPriceChangeIconStyle(row, 'taxIncluded')">
-                    <component :is="getPriceChangeIcon(row, 'taxIncluded')" />
-                  </el-icon>
-                </div>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <!-- 用户手动选择的价格信息 -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && (row.matchedType === 0 || row.isUserModified)" class="selected-price-info">
-                  <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
-                </div>
-                <!-- 所有已匹配状态统一显示priceInfo -->
-                <div v-else-if="row.priceInfo?.taxPrice" class="exact-match-price">
-                  <span class="price-text">¥{{ formatPrice(row.priceInfo.taxPrice) }}</span>
-                </div>
-                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
-                <div v-else class="empty-price-display">
-                  <span class="empty-price-text">¥--</span>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 物资价格（不含税）列 -->
-          <el-table-column label="物资价格（不含税）" width="140" align="right">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <div class="price-value">
-                  <span class="price-text" :style="getPriceTextStyle(row, 'taxExcluded')">¥{{ getTaxExcludedPrice(row) }}</span>
-                  <el-icon v-if="getPriceChangeIcon(row, 'taxExcluded')" :style="getPriceChangeIconStyle(row, 'taxExcluded')">
-                    <component :is="getPriceChangeIcon(row, 'taxExcluded')" />
-                  </el-icon>
-                </div>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <!-- 用户手动选择的不含税价格 -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && (row.matchedType === 0 || row.isUserModified)" class="selected-price-info">
-                  <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
-                </div>
-                <!-- 所有已匹配状态统一从priceInfo计算不含税价格 -->
-                <div v-else-if="row.priceInfo?.taxPrice" class="exact-match-price">
-                  <span class="price-text">¥{{ formatPrice(row.priceInfo.taxPrice ? row.priceInfo.taxPrice / 1.13 : 0) }}</span>
-                </div>
-                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
-                <div v-else class="empty-price-display">
-                  <span class="empty-price-text">¥--</span>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 税率列 -->
-          <el-table-column label="税率（上传时选择的税率，价格以该税率为基准计算）" width="200" align="center">
-            <template #default="{ row }">
-              <!-- 数据行和操作行都显示相同的税率 -->
-              <div v-if="row.rowType === 'data' || row.rowType === 'action'" class="data-cell">
-                <span class="tax-rate-text">{{ getTaxRate(row) }}</span>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 物资价格所属季度列 -->
-          <el-table-column label="物资价格所属季度" width="130" align="center">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <!-- 数据行不显示季度信息 -->
-                <span class="text-sm text-gray-400">-</span>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <!-- 用户手动选择的季度 -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && (row.matchedType === 0 || row.isUserModified)" class="selected-price-info">
-                  <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
-                </div>
-                <!-- 所有已匹配状态统一显示priceInfo -->
-                <div v-else-if="row.priceInfo?.quarter" class="exact-match-quarter">
-                  <span class="quarter-text">{{ row.priceInfo.quarter }}</span>
-                </div>
-                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
-                <div v-else class="empty-data-display">
-                  <span class="empty-data-text">--</span>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 数据来源列 -->
-          <el-table-column label="数据来源" width="90" align="center">
-            <template #default="{ row }">
-              <!-- 数据行显示结算书 -->
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <span class="text-xs text-gray-500">结算书</span>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <!-- 操作行显示数据来源标签 -->
-              <div v-else class="action-cell">
-                <!-- 未匹配状态显示等待选择 -->
-                <span v-if="row.matchedType === 0 && !row.hasUserSelectedData" class="text-xs text-gray-400 italic">
-                  等待选择
-                </span>
-                <!-- 其他状态显示数据来源标签 -->
-                <el-tag v-else :type="getDataSourceType(row).type" size="small">
-                  {{ getDataSourceType(row).text }}
-                </el-tag>
-              </div>
-            </template>
-          </el-table-column>
-
-          <!-- 物资价格所属季度列 -->
-          <el-table-column label="物资价格所属季度" width="130" align="center">
-            <template #default="{ row }">
-              <div v-if="row.rowType === 'data'" class="data-cell">
-                <!-- 数据行不显示季度信息 -->
-                <span class="text-sm text-gray-400">-</span>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              <div v-else class="action-cell">
-                <!-- 用户手动选择的季度 -->
-                <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && (row.matchedType === 0 || row.isUserModified)" class="selected-price-info">
-                  <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
-                </div>
-                <!-- 所有已匹配状态统一显示priceInfo -->
-                <div v-else-if="row.priceInfo?.quarter" class="exact-match-quarter">
-                  <span class="quarter-text">{{ row.priceInfo.quarter }}</span>
-                </div>
-                <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
-                <div v-else class="empty-data-display">
-                  <span class="empty-data-text">--</span>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-
-
-          <el-table-column label="操作" min-width="200" align="center" class-name="operation-column">
-            <template #default="{ row }">
-              <!-- 数据行：不显示任何操作内容 -->
-              <div v-if="row.rowType === 'data'" class="data-cell operation-data-cell">
-                <span class="text-xs text-gray-400">-</span>
-              </div>
-              <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-                <!-- 分隔行显示为空 -->
-              </div>
-              
-              <!-- 操作行：根据匹配类型显示不同控件 -->
-              <div v-else class="action-cell operation-action-cell" :data-debug="getOperationButtonLogic(row)">
-                <!-- 已确认状态：显示状态和重选按钮 -->
-                <div v-if="row.confirmResult === 1" class="operation-group confirmed-state">
-                  <el-tag type="success" size="small" class="status-tag">
-                    <el-icon><Check /></el-icon>
-                    <span>已确认</span>
-                  </el-tag>
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
-                    <el-icon><Edit /></el-icon>
-                    <span class="button-text">重选</span>
-                  </el-button>
-                </div>
-                
-                <!-- 相似匹配和历史匹配：显示重新选择按钮 -->
-                <!-- <div v-else-if="row.matchedType === 2 || row.matchedType === 3" class="operation-group similar-match">
-                  <el-button type="primary" size="small" @click="handleViewOptions(row)" class="single-action">
-                    <el-icon><Edit /></el-icon>
-                    <span class="button-text">选择确认</span>
-                  </el-button>
-                </div> -->
-                
-                <!-- 未匹配且已选择：显示重新选择操作 -->
-                <div v-else-if="row.matchedType === 0 && row.hasUserSelectedData" class="operation-group no-match-selected">
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="single-action">
-                    <el-icon><Edit /></el-icon>
-                    <span class="button-text">重新选择</span>
-                  </el-button>
-                </div>
-                
-                <!-- 未匹配且未选择：显示选择按钮 -->
-                <div v-else-if="row.matchedType === 0" class="operation-group no-match-unselected">
-                  <el-button type="primary" plain size="small" @click="handleViewOptions(row)" class="single-action">
-                    <el-icon><Plus /></el-icon>
-                    <span class="button-text">从库选择</span>
-                  </el-button>
-                </div>
-                
-                <!-- 精确匹配且价格不匹配：仅显示提示信息，不显示任何操作按钮 -->
-                <div v-else-if="isPriceMismatch(row)" class="operation-group price-mismatch">
-                  <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修改" placement="top">
-                    <div class="price-mismatch-hint">
-                      <el-icon class="warning-icon"><WarnTriangleFilled /></el-icon>
-                      <span class="hint-text">价格不匹配，请确认结算书是否有误并进行修改</span>
-                    </div>
-                  </el-tooltip>
-                </div>
-                
-                <!-- 精确匹配且价格匹配：显示快速确认和重新选择按钮 -->
-                <div v-else-if="row.matchedType === 1 && !isPriceMismatch(row)" class="operation-group exact-match">
-                  <el-button type="primary" size="small" @click="handleQuickConfirm(row)" class="primary-action">
-                    <el-icon><Check /></el-icon>
-                    <span class="button-text">确认</span>
-                  </el-button>
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="secondary-action">
-                    <el-icon><Edit /></el-icon>
-                    <span class="button-text">重选</span>
-                  </el-button>
-                </div>
-                
-                <!-- 相似匹配(2)、历史匹配(3)、人工匹配(4)：显示选择确认按钮 -->
-                <div v-else-if="row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4" class="operation-group similar-match">
-                  <el-button type="primary" size="small" @click="handleViewOptions(row)" class="single-action">
-                    <el-icon><Edit /></el-icon>
-                    <span class="button-text">选择确认</span>
-                  </el-button>
-                </div>
-                
-                <!-- 其他未知匹配类型：显示重选按钮 -->
-                <div v-else class="operation-group other-match">
-                  <el-button type="warning" plain size="small" @click="handleViewOptions(row)" class="single-action">
-                    <el-icon><Edit /></el-icon>
-                    <span class="button-text">重新选择</span>
-                  </el-button>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-        </el-table>
+          :table-type="currentTableType"
+          :loading="tableLoading"
+          :batch-confirming="batchConfirming"
+          :pending-count="pendingCount"
+          @quick-confirm="handleQuickConfirm"
+          @view-options="handleViewOptions"
+          @batch-confirm="handleBatchConfirm"
+        />
 
         <!-- 分页组件 -->
         <el-pagination
@@ -579,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, provide } from 'vue'
 
 // 定义 props 接收路由参数
 const props = defineProps({
@@ -592,7 +184,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Check, Search, Edit, Plus, ArrowDown, ArrowUp, Close, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Minus, Document } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Download, Search, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Document, Minus, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
@@ -606,6 +198,9 @@ import {
 import supplierMaterialService from '@/services/SupplierMaterialService.js'
 import MaterialService from '@/services/MaterialService.js'
 import { useSupplierMaterialStore } from '@/stores/supplierMaterial'
+
+// 导入新的组件
+import { SupplierMaterialTable, OperationGuide, TABLE_TYPES } from '@/components/supplier-material'
 
 // 导入常量和工具函数
 import { BUTTON_CONFIG, PAGINATION_CONFIG, CSS_CLASSES } from './constants.js'
@@ -686,6 +281,27 @@ const pendingCount = computed(() => {
 
 // 总览卡片相关状态
 const activeOverviewType = ref(null)
+
+// 表格显示控制
+const showTable = computed(() => activeOverviewType.value !== null)
+
+// 当前表格类型
+const currentTableType = computed(() => {
+  if (!activeOverviewType.value) return TABLE_TYPES.ALL
+  
+  switch (activeOverviewType.value) {
+    case 'total':
+      return TABLE_TYPES.ALL
+    case 'matched':
+      return TABLE_TYPES.MATCHED
+    case 'priceMismatch':
+      return TABLE_TYPES.PRICE_MISMATCH
+    case 'unmatched':
+      return TABLE_TYPES.UNMATCHED
+    default:
+      return TABLE_TYPES.ALL
+  }
+})
 
 // 基于后端统计接口的计算属性
 const matchedCount = computed(() => {
@@ -915,11 +531,11 @@ const handleSizeChange = (newSize) => {
   fetchData()
 }
 
-// 格式化数字
-const formatNumber = (value) => {
-  if (value === null || value === undefined || value === '') return '-'
-  return Number(value).toLocaleString()
-}
+// 格式化数字 - 已移至组件
+// const formatNumber = (value) => {
+//   if (value === null || value === undefined || value === '') return '-'
+//   return Number(value).toLocaleString()
+// }
 
 
 // 搜索处理（防抖）
@@ -941,11 +557,11 @@ const handleSearchClear = () => {
   fetchData()
 }
 
-// 筛选变化处理
-const handleFilterChange = () => {
-  currentPage.value = 1
-  fetchData()
-}
+// 筛选变化处理 - 已不再使用
+// const handleFilterChange = () => {
+//   currentPage.value = 1
+//   fetchData()
+// }
 
 // 处理总览卡片点击
 const handleOverviewCardClick = (type) => {
@@ -1048,6 +664,33 @@ const handleExport = async () => {
 const handleGenerateReport = async () => {
   try {
     reportGenerating.value = true
+    
+    // 先检查数据是否完全确认（参考检查确认状态按钮实现）
+    try {
+      // 调用API查询未确认的数据数量
+      const unconfirmedCount = await MaterialService.getUnconfirmedCount(taskId.value)
+      
+      if (unconfirmedCount > 0) {
+        // 如果还有未确认的数据，提示用户并中断生成报告
+        reportGenerating.value = false
+        await ElMessageBox.alert(
+          `还有 ${unconfirmedCount} 条数据未确认，请先确认所有数据后再生成报告。`,
+          '提示',
+          {
+            confirmButtonText: '知道了',
+            type: 'warning'
+          }
+        )
+        return // 中断报告生成
+      }
+    } catch (error) {
+      console.error('检查未确认数据失败:', error)
+      reportGenerating.value = false
+      ElMessage.error('检查数据状态失败，无法生成报告')
+      return
+    }
+    
+    // 数据检查通过，开始生成报告
     showReportDialog.value = true
     reportProgressText.value = '正在初始化...'
     
@@ -1502,42 +1145,42 @@ const getPriceMatchingStatusTag = (row) => {
   return { text: '已匹配', type: 'success' }
 }
 
-// 调试函数：获取操作按钮的展示逻辑
-const getOperationButtonLogic = (row) => {
-  if (row.rowType !== 'action') return null
-  
-  const logic = {
-    id: row.taskDataId,
-    confirmResult: row.confirmResult,
-    matchedType: row.matchedType,
-    hasUserSelectedData: row.hasUserSelectedData,
-    isPriceMismatch: isPriceMismatch(row),
-    shouldShow: null
-  }
-  
-  if (row.confirmResult === 1) {
-    logic.shouldShow = '已确认状态 - 显示已确认标签和重选按钮'
-  } else if (row.matchedType === 0 && row.hasUserSelectedData) {
-    logic.shouldShow = '未匹配已选择 - 显示重新选择按钮'
-  } else if (row.matchedType === 0) {
-    logic.shouldShow = '未匹配未选择 - 显示从库选择按钮'
-  } else if (row.matchedType === 1 && isPriceMismatch(row)) {
-    logic.shouldShow = '精确匹配价格不匹配 - 显示价格不匹配提示'
-  } else if (row.matchedType === 1 && !isPriceMismatch(row)) {
-    logic.shouldShow = '精确匹配价格匹配 - 显示确认和重选按钮'
-  } else if (row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4) {
-    logic.shouldShow = '相似/历史/人工匹配 - 显示选择确认按钮'
-  } else {
-    logic.shouldShow = '其他情况 - 显示重新选择按钮'
-  }
-  
-  // 只对有问题的行输出日志
-  if (row.taskDataId) {
-    console.log(`【操作按钮逻辑】`, logic)
-  }
-  
-  return logic
-}
+// 调试函数：获取操作按钮的展示逻辑 - 已不再使用
+// const getOperationButtonLogic = (row) => {
+//   if (row.rowType !== 'action') return null
+//   
+//   const logic = {
+//     id: row.taskDataId,
+//     confirmResult: row.confirmResult,
+//     matchedType: row.matchedType,
+//     hasUserSelectedData: row.hasUserSelectedData,
+//     isPriceMismatch: isPriceMismatch(row),
+//     shouldShow: null
+//   }
+//   
+//   if (row.confirmResult === 1) {
+//     logic.shouldShow = '已确认状态 - 显示已确认标签和重选按钮'
+//   } else if (row.matchedType === 0 && row.hasUserSelectedData) {
+//     logic.shouldShow = '未匹配已选择 - 显示重新选择按钮'
+//   } else if (row.matchedType === 0) {
+//     logic.shouldShow = '未匹配未选择 - 显示从库选择按钮'
+//   } else if (row.matchedType === 1 && isPriceMismatch(row)) {
+//     logic.shouldShow = '精确匹配价格不匹配 - 显示价格不匹配提示'
+//   } else if (row.matchedType === 1 && !isPriceMismatch(row)) {
+//     logic.shouldShow = '精确匹配价格匹配 - 显示确认和重选按钮'
+//   } else if (row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4) {
+//     logic.shouldShow = '相似/历史/人工匹配 - 显示选择确认按钮'
+//   } else {
+//     logic.shouldShow = '其他情况 - 显示重新选择按钮'
+//   }
+//   
+//   // 只对有问题的行输出日志
+//   if (row.taskDataId) {
+//     console.log(`【操作按钮逻辑】`, logic)
+//   }
+//   
+//   return logic
+// }
 
 // 获取基础信息名称
 const getBaseInfoName = (row) => {
@@ -2625,6 +2268,28 @@ const handleSaveResults = async () => {
 const handleBack = () => {
   goBack()
 }
+
+// 为子组件提供父组件方法（放在所有函数定义之后）
+provide('parentMethods', {
+  getPriceMatchingStatusTag,
+  getBaseInfoName,
+  getBaseInfoSpec,
+  hasMaterialNameDifference,
+  hasSpecificationDifference,
+  hasUnitDifference,
+  getTaxIncludedPrice,
+  getTaxExcludedPrice,
+  getActionRowTaxExcludedPrice,
+  getTaxRate,
+  getDataSourceType,
+  isPriceMismatch,
+  getPriceTextStyle,
+  getPriceChangeIcon,
+  getPriceChangeIconStyle,
+  getRowClassName,
+  getSequenceBarClass,
+  tableSpanMethod
+})
 </script>
 
 <style scoped>
