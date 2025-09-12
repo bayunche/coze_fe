@@ -301,7 +301,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { UploadFilled, Plus } from '@element-plus/icons-vue'
 import { 
   FILE_UPLOAD_CONFIG,
@@ -370,18 +370,16 @@ const isSupplierMaterial = computed(() => props.currentFunctionName === WORKFLOW
 const acceptFileTypes = computed(() => formatAcceptFileTypes(props.allowedFileTypes))
 
 // 更新配置的辅助函数
-const updateConfig = async (key, value) => {
-  console.log(`[WorkflowConfigDialog] 更新配置: ${key} = ${value}`)
-  console.log(`[WorkflowConfigDialog] 当前props.config:`, props.config)
-  const newConfig = { ...props.config }
-  newConfig[key] = value
-  console.log(`[WorkflowConfigDialog] 新配置:`, newConfig)
-  emit('update:config', newConfig)
-  console.log(`[WorkflowConfigDialog] 已发出update:config事件`)
-  
-  // 等待下一个 tick 确保 DOM 更新
-  await nextTick()
-  console.log(`[WorkflowConfigDialog] DOM 更新完成，当前 ${key}:`, props.config[key])
+const updateConfig = (key, value) => {
+  if (key === 'files') {
+    // 对于文件，直接修改props.config（保持原有行为）
+    // eslint-disable-next-line vue/no-mutating-props
+    props.config[key] = value
+  } else {
+    // 对于其他属性，直接修改props.config
+    // eslint-disable-next-line vue/no-mutating-props
+    props.config[key] = value
+  }
 }
 
 // 更新参数的辅助函数
@@ -396,20 +394,19 @@ const updateParam = (key, value) => {
 
 // 文件列表变更处理
 const handleFileListChange = (file, fileList) => {
+  console.log('[WorkflowConfigDialog] 文件列表变更:', fileList)
   updateConfig('files', fileList)
 }
 
 // 同步本地状态到配置
 watch(localQuarter, (newValue) => {
   if (newValue && newValue !== props.config.quarter) {
-    console.log(`[WorkflowConfigDialog] 季度本地值变化: ${newValue}`)
     updateConfig('quarter', newValue)
   }
 })
 
 watch(localTaxRate, (newValue) => {
   if (newValue && newValue !== props.config.taxRate) {
-    console.log(`[WorkflowConfigDialog] 税率本地值变化: ${newValue}`)
     updateConfig('taxRate', newValue)
   }
 })
@@ -417,14 +414,12 @@ watch(localTaxRate, (newValue) => {
 // 从配置同步到本地状态
 watch(() => props.config.quarter, (newValue) => {
   if (newValue && newValue !== localQuarter.value) {
-    console.log(`[WorkflowConfigDialog] 配置季度变化，同步到本地: ${newValue}`)
     localQuarter.value = newValue
   }
 })
 
 watch(() => props.config.taxRate, (newValue) => {
   if (newValue && newValue !== localTaxRate.value) {
-    console.log(`[WorkflowConfigDialog] 配置税率变化，同步到本地: ${newValue}`)
     localTaxRate.value = newValue
   }
 })
@@ -432,13 +427,6 @@ watch(() => props.config.taxRate, (newValue) => {
 // 初始化乙供物资默认值
 watch(() => [props.show, props.currentFunctionName], ([newShow, newFunctionName]) => {
   if (newShow && newFunctionName === WORKFLOW_NAMES.SUPPLIER_MATERIAL) {
-    console.log('[WorkflowConfigDialog] 季度选项:', quarterOptions.value)
-    console.log('[WorkflowConfigDialog] 税率选项:', taxRateOptions.value)
-    console.log('[WorkflowConfigDialog] 当前配置季度:', props.config.quarter)
-    console.log('[WorkflowConfigDialog] 当前配置税率:', props.config.taxRate)
-    console.log('[WorkflowConfigDialog] 默认季度:', SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER)
-    console.log('[WorkflowConfigDialog] 默认税率:', SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE)
-    
     // 初始化本地状态
     localQuarter.value = props.config.quarter || SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER
     localTaxRate.value = props.config.taxRate || SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE

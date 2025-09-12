@@ -31,7 +31,6 @@
     :current-function-params="getCurrentFunctionParams()"
     @close="onConfigDialogClose"
     @start-workflow="startWorkflowFromDialog(addMessage)"
-    @update:config="updateWorkflowConfig"
   />
 
   <!-- 智能大脑弹窗 -->
@@ -196,15 +195,5 @@ const viewContractTaskDetail = (data) => {
 
 const onConfigDialogClose = () => {
   // No action needed
-}
-
-const updateWorkflowConfig = (newConfig) => {
-  console.log('[DialogManager] 接收到配置更新:', newConfig)
-  console.log('[DialogManager] 当前配置:', workflowConfig)
-  // 手动更新 reactive 对象的属性，保持响应性
-  Object.keys(newConfig).forEach(key => {
-    workflowConfig[key] = newConfig[key]
-  })
-  console.log('[DialogManager] 更新后配置:', workflowConfig)
 }
 </script>
