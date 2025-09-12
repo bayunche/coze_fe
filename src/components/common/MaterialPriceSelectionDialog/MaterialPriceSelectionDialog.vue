@@ -861,7 +861,30 @@ const performTemporarySearch = async (keyword = temporarySearchKeyword.value) =>
 const selectTemporaryResult = (result) => {
   selectedTemporaryResult.value = result
   
-  // 构建最终选择数据
+  console.log('【临时物资选择调试】selectTemporaryResult开始')
+  console.log('  result原始数据:', result)
+  console.log('  result.id (价格ID):', result.id)
+  console.log('  result.baseInfo:', result.baseInfo)
+  console.log('  result.baseInfo?.id (物资基础信息ID):', result.baseInfo?.id)
+  console.log('  result.priceInfo:', result.priceInfo)
+  console.log('  result.priceInfo?.id (价格ID):', result.priceInfo?.id)
+  
+  // 正确获取物资ID和价格ID
+  // 物资ID应该从baseInfo中获取，因为result.id是价格ID
+  const materialId = result.baseInfo?.id || result.confirmedBaseInfo?.id || result.baseInfoId
+  const priceId = result.priceInfo?.id || result.id || null // result.id实际上是价格ID
+  
+  console.log('【临时物资选择调试】计算出的ID:')
+  console.log('  materialId (从baseInfo获取):', materialId)
+  console.log('  priceId (从priceInfo或result.id获取):', priceId)
+  
+  if (materialId === priceId) {
+    console.error('【临时物资选择错误】物资ID和价格ID相同！')
+    console.error('  这表明ID提取逻辑仍有问题')
+  } else {
+    console.log('【临时物资选择成功】物资ID和价格ID不同，逻辑正确')
+  }
+  
   finalSelection.value = {
     material: {
       materialName: result.materialName || '',
@@ -869,21 +892,23 @@ const selectTemporaryResult = (result) => {
       unit: result.unit || '',
       type: result.type || '',
       materialCode: result.materialCode || '',
-      id: result.id || result.baseInfoId // 使用基础信息ID
+      id: materialId // 使用物资基础信息ID
     },
     price: {
       taxPrice: result.taxPrice || 0,
       unitPrice: result.taxPrice || 0, // 单价与含税价相同
       priceType: 1, // 含税价格
       quarter: result.quarter || '-', // 从合并数据中获取季度
-      id: result.priceInfo?.id || null, // 价格信息ID
+      id: priceId, // 价格信息ID
       unit: result.unit || '', // 价格单位
       isTemporary: true, // 标记为临时数据
-      baseInfoId: result.id || result.baseInfoId // 关联的基础信息ID
+      baseInfoId: materialId // 关联的基础信息ID
     },
     source: 'temporary',
     originalData: result
   }
+  
+  console.log('【临时物资选择调试】最终finalSelection:', finalSelection.value)
 }
 
 // 临时物资分页处理
@@ -939,6 +964,18 @@ const submitNewMaterial = async () => {
     })
     
     console.log('临时价格信息创建成功:', priceResponse)
+    
+    console.log('【临时物资ID调试】后端返回的数据:')
+    console.log('  baseInfoResponse.id (物资ID):', baseInfoResponse.id)
+    console.log('  priceResponse.id (价格ID):', priceResponse.id)
+    console.log('  priceResponse.baseInfoId (价格关联的物资ID):', priceResponse.baseInfoId)
+    
+    if (baseInfoResponse.id === priceResponse.id) {
+      console.error('【错误】后端返回的物资ID和价格ID相同！这是后端bug!')
+      console.error('  物资ID应该和价格ID不同')
+      console.error('  baseInfoResponse:', baseInfoResponse)
+      console.error('  priceResponse:', priceResponse)
+    }
     
     // 3. 创建最终选择数据，使用后端返回的数据
     const finalSelectionData = {

@@ -1678,7 +1678,10 @@ const handleMaterialPriceSelection = async (selection) => {
     const materialBaseInfo = {
       materialName: selection.material.materialName,
       specificationModel: selection.material.specificationModel || selection.material.specifications,
-      id: selection.material.baseInfoId || selection.material.id
+      // 根据不同来源选择正确的物资ID
+      id: selection.source === 'recommend' 
+          ? (selection.material.matchedId || selection.material.baseInfoId || selection.material.id)
+          : selection.material.id // 新增临时物资直接取id
     }
     
     // 智能提取价格数据，支持多种字段名
@@ -1700,7 +1703,7 @@ const handleMaterialPriceSelection = async (selection) => {
       originalPrice: selection.price.originalPrice || extractPrice(selection.price),
       priceType: selection.price.priceType || 1,
       quarter: selection.price.quarter || selection.price.季度 || '',
-      id: selection.price.priceId || selection.price.id
+      id: selection.price.id // 必须取价格ID，确保不会取到其他字段
     }
 
     console.log('【数据流转-6】数据提取完成:')
@@ -1708,6 +1711,14 @@ const handleMaterialPriceSelection = async (selection) => {
     console.log('  priceInfo:', priceInfo)
     console.log('  selection.material所有字段:', Object.keys(selection.material))
     console.log('  selection.price所有字段:', Object.keys(selection.price))
+    console.log('【ID取值调试】临时物资ID分配:')
+    console.log('  selection.source:', selection.source)
+    console.log('  selection.material.id (物资ID):', selection.material.id)
+    console.log('  selection.material.baseInfoId (基础信息ID):', selection.material.baseInfoId)
+    console.log('  selection.price.id (价格ID):', selection.price.id)
+    console.log('  selection.price.baseInfoId (价格关联的基础信息ID):', selection.price.baseInfoId)
+    console.log('  最终materialBaseInfo.id:', materialBaseInfo.id)
+    console.log('  最终priceInfo.id:', priceInfo.id)
 
     // 更新物资信息
     const confirmBaseName = materialBaseInfo.materialName
@@ -2064,6 +2075,10 @@ const handleAutoConfirm = async (row) => {
     }
 
     console.log('【自动确认】调用确认接口:', confirmData)
+    console.log('【ID确认调试】确认数据ID检查:')
+    console.log('  confirmBaseDataId (应该是物资ID):', confirmData.confirmBaseDataId)
+    console.log('  confirmPriceId (应该是价格ID):', confirmData.confirmPriceId)
+    
     const result = await confirmSupplierMaterialData(confirmData)
 
     if (result && result.code === 200) {

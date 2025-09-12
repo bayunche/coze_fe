@@ -5,7 +5,7 @@
         <InfoFilled />
       </el-icon>
       <span class="guide-text">请点击下方卡片查看对应的物资数据并进行处理</span>
-      <span class="guide-text">请将所有有问题的数据处理完毕后再进行生成报告操作</span>
+      <p class="guide-text">请将所有有问题的数据处理完毕后再进行生成报告操作</p>
 
     </div>
   </div>
