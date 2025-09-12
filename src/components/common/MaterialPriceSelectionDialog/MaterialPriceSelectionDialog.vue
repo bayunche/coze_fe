@@ -258,14 +258,46 @@
               </el-row>
               <el-row :gutter="20">
                 <el-col :span="12">
-                  <el-form-item label="价格" prop="taxPrice">
+                  <el-form-item label="不含税价格" prop="taxExcludedPrice">
+                    <el-input-number
+                      v-model="newMaterialForm.taxExcludedPrice"
+                      :min="0"
+                      :precision="3"
+                      controls-position="right"
+                      placeholder="请输入不含税价格"
+                      style="width: 100%"
+                      @change="calculateTaxPrice"
+                    />
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="税率" prop="tax">
+                    <el-input-number
+                      v-model="newMaterialForm.tax"
+                      :min="0"
+                      :max="100"
+                      :precision="2"
+                      controls-position="right"
+                      placeholder="请输入税率"
+                      style="width: 100%"
+                      @change="calculateTaxPrice"
+                    >
+                      <template #append>%</template>
+                    </el-input-number>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <el-form-item label="含税价格" prop="taxPrice">
                     <el-input-number
                       v-model="newMaterialForm.taxPrice"
                       :min="0"
-                      :precision="2"
+                      :precision="3"
                       controls-position="right"
-                      placeholder="请输入价格"
+                      placeholder="自动计算"
                       style="width: 100%"
+                      disabled
                     />
                   </el-form-item>
                 </el-col>
@@ -277,13 +309,6 @@
                       style="width: 100%" 
                     />
                     <div class="quarter-hint">格式示例：2024-Q1, 2024-Q2, 2024-Q3, 2024-Q4</div>
-                  </el-form-item>
-                </el-col>
-              </el-row>
-              <el-row>
-                <el-col :span="24">
-                  <el-form-item label="物资编码">
-                    <el-input v-model="newMaterialForm.materialCode" placeholder="请输入物资编码（可选）" />
                   </el-form-item>
                 </el-col>
               </el-row>
@@ -419,8 +444,9 @@ const newMaterialForm = ref({
   specificationModel: '',
   unit: '',
   type: '',
-  materialCode: '',
-  taxPrice: null,
+  taxExcludedPrice: null, // 不含税价格
+  tax: null, // 税率
+  taxPrice: null, // 含税价格（自动计算）
   quarter: ''
 })
 
@@ -430,6 +456,18 @@ const finalSelection = ref({
   price: null,
   source: '' // 'recommend', 'search', 'add'
 })
+
+// 计算含税价格函数
+const calculateTaxPrice = () => {
+  const { taxExcludedPrice, tax } = newMaterialForm.value
+  if (taxExcludedPrice !== null && tax !== null && taxExcludedPrice > 0 && tax >= 0) {
+    // 含税价格 = 不含税价格 * (1 + 税率/100)
+    const calculatedTaxPrice = taxExcludedPrice * (1 + tax / 100)
+    newMaterialForm.value.taxPrice = parseFloat(calculatedTaxPrice.toFixed(3))
+  } else {
+    newMaterialForm.value.taxPrice = null
+  }
+}
 
 // 季度格式验证函数
 const validateQuarter = (rule, value, callback) => {
@@ -458,8 +496,11 @@ const materialFormRules = {
   unit: [
     { required: true, message: '请输入单位', trigger: 'blur' }
   ],
-  taxPrice: [
-    { required: true, message: '请输入价格', trigger: 'blur' }
+  taxExcludedPrice: [
+    { required: true, message: '请输入不含税价格', trigger: 'blur' }
+  ],
+  tax: [
+    { required: true, message: '请输入税率', trigger: 'blur' }
   ],
   quarter: [
     { required: true, validator: validateQuarter, trigger: 'blur' }
@@ -481,7 +522,8 @@ const isFormValid = computed(() => {
   return newMaterialForm.value.materialName &&
          newMaterialForm.value.specificationModel &&
          newMaterialForm.value.unit &&
-         newMaterialForm.value.taxPrice !== null &&
+         newMaterialForm.value.taxExcludedPrice !== null &&
+         newMaterialForm.value.tax !== null &&
          newMaterialForm.value.quarter &&
          /^\d{4}-Q[1-4]$/.test(newMaterialForm.value.quarter)
 })
@@ -875,7 +917,6 @@ const submitNewMaterial = async () => {
       specificationModel: newMaterialForm.value.specificationModel,
       unit: newMaterialForm.value.unit,
       type: newMaterialForm.value.type,
-      materialCode: newMaterialForm.value.materialCode,
       businessDomain: 'contract', // 默认为合同域
       serialNumber: '', // 可以为空
       priceCode: '', // 可以为空
@@ -892,7 +933,8 @@ const submitNewMaterial = async () => {
       baseInfoId: baseInfoId,
       quarter: newMaterialForm.value.quarter,
       taxPrice: newMaterialForm.value.taxPrice,
-      taxExcludedPrice: (newMaterialForm.value.taxPrice / 1.13).toFixed(2), // 自动计算不含税价
+      taxExcludedPrice: newMaterialForm.value.taxExcludedPrice,
+      tax: newMaterialForm.value.tax,
       unit: newMaterialForm.value.unit
     })
     
@@ -950,7 +992,8 @@ const resetForm = () => {
     specificationModel: '',
     unit: '',
     type: '',
-    materialCode: '',
+    taxExcludedPrice: null,
+    tax: null,
     taxPrice: null,
     quarter: ''
   }
