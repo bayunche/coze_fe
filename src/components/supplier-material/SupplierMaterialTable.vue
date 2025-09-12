@@ -561,7 +561,7 @@ const processedTableData = computed(() => {
     // 添加操作行
     result.push(group.actionRow)
     
-    // 检查价格匹配状态（可能在不同位置）
+    // 检查价格匹配状态（优先使用与matchOptions同级的字段）
     const priceStatus = group.actionRow.priceMatchedStatus || 
                        (group.actionRow.matchOptions?.[0]?.priceMatchedStatus)
     
@@ -622,7 +622,7 @@ const getSequenceNumber = (index) => {
 
 // 获取原因解释文本
 const getReasonExplanation = (row) => {
-  // 获取价格匹配状态（检查多个位置）
+  // 获取价格匹配状态（优先使用与matchOptions同级的字段）
   const priceStatus = row.priceMatchedStatus || 
                      (row.matchOptions?.[0]?.priceMatchedStatus)
   

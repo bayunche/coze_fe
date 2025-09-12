@@ -549,13 +549,13 @@ export const getPriceMatchingStatusDisplay = (priceMatchedStatus) => {
  * @returns {Object} 包含text和type的标签信息
  */
 export const getPriceMatchingStatusTagFromRow = (row) => {
-  // 优先使用新的priceMatchedStatus字段
+  // 优先使用与matchOptions同级的priceMatchedStatus字段
   if (row.priceMatchedStatus !== undefined && row.priceMatchedStatus !== null) {
     const statusInfo = getPriceMatchingStatusDisplay(row.priceMatchedStatus)
     return { text: statusInfo.text, type: statusInfo.type }
   }
   
-  // 如果是matchOptions数组的情况，检查第一个选项的priceMatchedStatus
+  // 向后兼容：检查matchOptions内部的priceMatchedStatus（旧数据结构）
   if (Array.isArray(row.matchOptions) && row.matchOptions.length > 0) {
     const firstOption = row.matchOptions[0]
     if (firstOption.priceMatchedStatus !== undefined && firstOption.priceMatchedStatus !== null) {

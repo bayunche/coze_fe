@@ -939,6 +939,9 @@ const handleBatchConfirm = async () => {
     } else {
       ElMessage.success(`批量确认成功！共处理 ${successCount} 个物资`)
     }
+    
+    // 批量确认完成后更新统计数据
+    await fetchMatchingStats()
   } catch (error) {
     if (error !== 'cancel') {
       console.error('批量确认失败:', error)
@@ -2080,6 +2083,8 @@ const handleAutoConfirm = async (row) => {
       
       // 刷新数据以获取最新状态
       await fetchData()
+      // 更新统计数据
+      await fetchMatchingStats()
     } else {
       ElMessage.error(result?.message || '确认失败')
     }
@@ -2149,6 +2154,9 @@ const handleQuickConfirm = async (row) => {
       }
 
       ElMessage.success('确认成功')
+      
+      // 快速确认完成后更新统计数据
+      await fetchMatchingStats()
     } else {
       const errorMsg = result?.message || result?.msg || '确认失败'
       ElMessage.error(errorMsg)
