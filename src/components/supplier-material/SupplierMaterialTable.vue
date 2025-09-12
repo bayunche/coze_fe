@@ -23,7 +23,7 @@
     <el-table
       :data="processedTableData"
       v-loading="loading"
-      style="width: 100%; min-width: 1600px"
+      style="width: 100%"
       :row-class-name="getRowClassName"
       :row-key="row => row.rowKey"
       :span-method="tableSpanMethod"
@@ -148,7 +148,7 @@
       </el-table-column>
 
       <!-- 规格型号列 -->
-      <el-table-column prop="specifications" label="规格型号" width="180" show-overflow-tooltip>
+      <el-table-column prop="specifications" label="规格型号" width="200" show-overflow-tooltip>
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             {{ getBaseInfoSpec(row) }}
@@ -201,13 +201,13 @@
           <div v-else class="action-cell">
             <div class="material-cell">
               <div class="material-content">
-                <!-- 用户选择的物资单位（保留用户手动选择的特殊逻辑） -->
-                <span v-if="row.hasUserSelectedData && row.selectedMaterial" class="text-sm text-gray-600">
-                  {{ row.selectedMaterial.unit || '-' }}
-                </span>
-                <!-- 所有已匹配状态统一显示baseInfo -->
-                <span v-else-if="row.baseInfo?.unit" class="text-sm text-gray-600">
+                <!-- 优先显示baseInfo中的单位（匹配后的准确单位） -->
+                <span v-if="row.baseInfo?.unit" class="text-sm text-gray-600">
                   {{ row.baseInfo.unit }}
+                </span>
+                <!-- 如果没有baseInfo但有用户选择的数据，显示selectedMaterial的单位 -->
+                <span v-else-if="row.hasUserSelectedData && row.selectedMaterial?.unit" class="text-sm text-gray-600">
+                  {{ row.selectedMaterial.unit }}
                 </span>
                 <!-- 未匹配状态：显示等待选择 -->
                 <span v-else-if="row.matchedType === 0" class="text-sm text-gray-400 italic">
@@ -242,7 +242,7 @@
       </el-table-column>
 
       <!-- 物资价格（含税）列 -->
-      <el-table-column label="物资价格（含税）" width="160" align="right">
+      <el-table-column label="物资价格（含税）" width="140" align="right">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             <div class="price-value">
@@ -276,7 +276,7 @@
       </el-table-column>
 
       <!-- 物资价格（不含税）列 -->
-      <el-table-column label="物资价格（不含税）" width="160" align="right">
+      <el-table-column label="物资价格（不含税）" width="140" align="right">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             <div class="price-value">
@@ -310,7 +310,7 @@
       </el-table-column>
 
       <!-- 税率列 -->
-      <el-table-column label="税率（上传时选择的税率，价格以该税率为基准计算）" width="250" align="center">
+      <el-table-column label="税率（上传时选择的税率，价格以该税率为基准计算）" width="240" align="center">
         <template #default="{ row }">
           <!-- 数据行和操作行都显示相同的税率 -->
           <div v-if="row.rowType === 'data' || row.rowType === 'action'" class="data-cell">
@@ -326,7 +326,7 @@
       </el-table-column>
 
       <!-- 物资价格所属季度列 -->
-      <el-table-column label="物资价格所属季度" width="150" align="center">
+      <el-table-column label="所属季度" width="120" align="center">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             <!-- 数据行不显示季度信息 -->
@@ -356,7 +356,7 @@
       </el-table-column>
 
       <!-- 数据来源列 -->
-      <el-table-column label="数据来源" width="100" align="center">
+      <el-table-column label="数据来源" width="120" align="center">
         <template #default="{ row }">
           <!-- 数据行显示结算书 -->
           <div v-if="row.rowType === 'data'" class="data-cell">
@@ -383,7 +383,7 @@
       </el-table-column>
 
       <!-- 操作列 -->
-      <el-table-column label="操作" width="240" align="center" class-name="operation-column" fixed="right">
+      <el-table-column label="操作" width="260" align="center" class-name="operation-column" >
         <template #default="{ row }">
           <!-- 数据行：不显示任何操作内容 -->
           <div v-if="row.rowType === 'data'" class="data-cell operation-data-cell">
@@ -525,7 +525,7 @@ const props = defineProps({
 })
 
 // Emits 定义
-const emits = defineEmits([
+defineEmits([
   'quick-confirm',
   'view-options',
   'batch-confirm'
@@ -798,31 +798,202 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   gap: 12px;
 }
 
-/* 原因解释行样式 */
+/* 表格行类型样式 */
+.data-cell {
+  padding: 8px 12px;
+}
+
+.action-cell {
+  padding: 8px 12px;
+}
+
+.separator-cell {
+  padding: 2px 0 !important;
+  height: 8px !important;
+  line-height: 8px !important;
+}
+
+.reason-cell {
+  padding: 0 !important;
+}
+
+/* 原因解释行内容样式 */
 .reason-cell.reason-explanation {
-  padding: 12px 16px;
-  background: var(--el-color-warning-light-9);
-  border-left: 4px solid var(--el-color-warning);
+  padding: 16px 20px !important;
+  /* background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important; */
+  border: 3px solid transparent !important;
+  border-radius: 12px !important;
+  margin: 10px 15px !important;
+  box-shadow: 
+    0 8px 25px rgba(59, 130, 246, 0.25),
+    0 0 0 1px rgba(59, 130, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.reason-cell.reason-explanation::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  /* background: linear-gradient(45deg, #3b82f6, #8b5cf6, #06b6d4, #10b981, #3b82f6); */
+  background-size: 300% 300%;
+  border-radius: 15px;
+  z-index: -1;
+  animation: aiGlow 3s linear infinite;
+}
+
+.reason-cell.reason-explanation::after {
+  content: 'AI';
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #3b82f6;
+  /* background: rgba(59, 130, 246, 0.1); */
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  animation: aiPulse 2s ease-in-out infinite;
+}
+
+@keyframes aiGlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes aiPulse {
+  0%, 100% { 
+    opacity: 0.6; 
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.05);
+  }
 }
 
 .reason-content {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--el-color-warning-dark-2);
+  gap: 14px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #e2e8f0;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
 }
 
 .reason-icon {
-  font-size: 16px;
-  margin-top: 2px;
+  font-size: 20px;
+  margin-top: 3px;
   flex-shrink: 0;
+  color: #60a5fa;
+  filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.6));
+  animation: iconFloat 3s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-2px); }
 }
 
 .reason-text {
   flex: 1;
+  /* text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); */
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-/* 其他样式继承父组件 */
+/* AI推荐特殊样式 */
+.reason-content .reason-text::first-letter {
+  font-size: 1.3em;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.3));
+}
+
+/* 高亮关键词 */
+.reason-text:has-text("AI") {
+  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* 序号列样式优化 */
+.sequence-number-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.sequence-bar {
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+}
+
+.sequence-number {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* 表格行样式优化 - 使用更强的选择器 */
+:deep(.supplier-material-table .el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+:deep(.supplier-material-table .el-table__row:hover) {
+  background-color: var(--el-fill-color-lighter);
+}
+
+/* 分隔行样式 - 使用更强的选择器 */
+:deep(.supplier-material-table .el-table__row[class*="separator"]) {
+  background-color: #f8f9fa !important;
+  border-top: 1px solid #e9ecef !important;
+  border-bottom: 1px solid #e9ecef !important;
+  height: 12px !important;
+}
+
+:deep(.supplier-material-table .el-table__row[class*="separator"]:hover) {
+  background-color: #f8f9fa !important;
+}
+
+:deep(.supplier-material-table .el-table__row[class*="separator"] .el-table__cell) {
+  padding: 2px 0 !important;
+  height: 12px !important;
+  line-height: 12px !important;
+}
+
+/* 原因解释行整行样式 - 使用更强的选择器 */
+:deep(.supplier-material-table .el-table__row[class*="reason"]) {
+  /* background-color: transparent !important; */
+}
+
+:deep(.supplier-material-table .el-table__row[class*="reason"]:hover) {
+  background-color: transparent !important;
+}
+
+:deep(.supplier-material-table .el-table__row[class*="reason"] .el-table__cell) {
+  padding: 8px !important;
+  border-bottom: none !important;
+}
+
+/* 原因解释行第一列的特殊样式 */
+:deep(.supplier-material-table .el-table__row[class*="reason"] .el-table__cell:first-child) {
+  padding: 8px !important;
+}
 </style>

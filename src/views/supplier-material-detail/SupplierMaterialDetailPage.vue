@@ -20,9 +20,9 @@
         <el-button @click="handleRefresh" :icon="Refresh" type="default" :loading="refreshLoading">
           刷新数据
         </el-button>
-        <el-button @click="handleExport" :icon="Download" type="default" :loading="exportLoading">
+        <!-- <el-button @click="handleExport" :icon="Download" type="default" :loading="exportLoading">
           导出数据
-        </el-button>
+        </el-button> -->
         <el-button @click="handleGenerateReport" :icon="Document" type="primary" :loading="reportGenerating">
           生成解析报告
         </el-button>
