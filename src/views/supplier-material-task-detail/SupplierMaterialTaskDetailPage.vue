@@ -86,7 +86,7 @@
                 <el-button 
                   type="primary"
                   size="small"
-                  @click="handleViewDetail(item, taskId)"
+                  @click="handleViewDetail(item, taskId, router)"
                 >
                   {{ BUTTON_LABELS.VIEW_DETAIL }}
                 </el-button>

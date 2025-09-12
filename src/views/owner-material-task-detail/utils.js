@@ -37,10 +37,34 @@ export const formatTime = (timeStr) => {
  * 处理查看详情
  * @param {Object} row - 表格行数据
  * @param {string} taskId - 任务ID
+ * @param {Function} router - Vue路由器实例
  */
-export const handleViewDetail = (row, taskId) => {
-  console.log('查看甲供物资解析详情:', row, 'taskId:', taskId)
-  ElMessage.info('查看详情功能待实现')
+export const handleViewDetail = (row, taskId, router) => {
+  // 检查任务状态，只有处理完成或已确认的任务才能查看解析结果详情
+  if (row.taskDetailStatus !== 2 && row.taskDetailStatus !== 3) {
+    ElMessage.warning('只有处理完成或已确认的任务才能查看解析结果详情')
+    return
+  }
+
+  try {
+    if (!taskId) {
+      ElMessage.error('无法获取任务ID，请重试')
+      return
+    }
+    
+    console.log('跳转到甲供物资解析详情:', { taskId })
+    
+    // 跳转到甲供物资详情页面
+    router.push({
+      name: 'owner-material-detail',
+      params: {
+        taskId: String(taskId)
+      }
+    })
+  } catch (error) {
+    console.error('跳转甲供物资解析详情失败:', error)
+    ElMessage.error('跳转详情页面失败: ' + (error.message || '未知错误'))
+  }
 }
 
 /**

@@ -1,7 +1,6 @@
 import { ElMessage } from 'element-plus'
 import { TASK_DETAIL_STATUS_MAP, DEFAULT_VALUES } from './constants.js'
 import { downloadSourceFile } from '@/utils/fileDownload.js'
-import { useParsingResultStore } from '@/stores/parsingResult'
 
 /**
  * 格式化任务详情状态
@@ -32,8 +31,9 @@ export const formatTime = (time) => {
  * 处理查看详情按钮点击
  * @param {Object} row - 表格行数据
  * @param {string} taskId - 主任务ID
+ * @param {Function} router - Vue路由器实例
  */
-export const handleViewDetail = async (row, taskId) => {
+export const handleViewDetail = async (row, taskId, router) => {
   // 检查任务状态，只有处理完成或已确认的任务才能查看解析结果详情
   if (row.taskDetailStatus !== 2 && row.taskDetailStatus !== 3) {
     ElMessage.warning('只有处理完成或已确认的任务才能查看解析结果详情')
@@ -46,18 +46,14 @@ export const handleViewDetail = async (row, taskId) => {
       return
     }
     
-    const parsingResultStore = useParsingResultStore()
-    
-    // 调用 parsingResultStore 的 viewResultDetail 方法显示合同解析结果详情
-    // 传入主任务ID，将显示该任务下所有文件的解析结果
-    await parsingResultStore.viewResultDetail({
-      isSupplierMaterial: false, // 合同解析，不是乙供物资
-      specificTaskId: taskId, // 使用主任务ID
-      taskDetailId: row.id || row.taskDetailId // 传递任务详情ID以便后续筛选
+    // 跳转到合同解析结果详情页面（通用物资详情页面）
+    router.push({
+      name: 'material-detail',
+      params: { taskId: taskId }
     })
   } catch (error) {
-    console.error('查看合同解析结果详情失败:', error)
-    ElMessage.error('查看解析结果详情失败: ' + (error.message || '未知错误'))
+    console.error('跳转合同解析结果详情失败:', error)
+    ElMessage.error('跳转详情页面失败: ' + (error.message || '未知错误'))
   }
 }
 
