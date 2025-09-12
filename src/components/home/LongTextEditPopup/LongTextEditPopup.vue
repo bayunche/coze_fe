@@ -12,7 +12,6 @@
 
 <script setup>
 import { useParsingResultStore } from '@/stores/parsingResult'
-import { computed } from 'vue'
 import { storeToRefs } from 'pinia' // 引入 storeToRefs
 
 const parsingResultStore = useParsingResultStore()

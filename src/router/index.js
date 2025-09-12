@@ -21,6 +21,65 @@ const router = createRouter({
       name: 'smart-brain',
       component: () => import('../views/smart-brain')
     },
+    // 智能大脑任务列表页面
+    {
+      path: '/smart-brain/contract-tasks',
+      name: 'contract-tasks',
+      component: () => import('../views/contract-tasks'),
+      meta: { 
+        title: '合同解析任务列表',
+        breadcrumb: ['智能大脑', '合同解析任务']
+      }
+    },
+    {
+      path: '/smart-brain/supplier-material-tasks',
+      name: 'supplier-material-tasks',
+      component: () => import('../views/supplier-material-tasks'),
+      meta: { 
+        title: '乙供物资解析任务列表',
+        breadcrumb: ['智能大脑', '乙供物资解析任务']
+      }
+    },
+    {
+      path: '/smart-brain/owner-material-tasks',
+      name: 'owner-material-tasks',
+      component: () => import('../views/owner-material-tasks'),
+      meta: { 
+        title: '甲供物资解析任务列表',
+        breadcrumb: ['智能大脑', '甲供物资解析任务']
+      }
+    },
+    // 智能大脑任务详情页面
+    {
+      path: '/smart-brain/contract-task-detail/:taskId',
+      name: 'contract-task-detail',
+      component: () => import('../views/contract-task-detail'),
+      props: true,
+      meta: { 
+        title: '合同解析任务详情',
+        breadcrumb: ['智能大脑', '合同解析任务', '任务详情']
+      }
+    },
+    {
+      path: '/smart-brain/supplier-material-task-detail/:taskId',
+      name: 'supplier-material-task-detail',
+      component: () => import('../views/supplier-material-task-detail'),
+      props: true,
+      meta: { 
+        title: '乙供物资解析任务详情',
+        breadcrumb: ['智能大脑', '乙供物资解析任务', '任务详情']
+      }
+    },
+    {
+      path: '/smart-brain/owner-material-task-detail/:taskId',
+      name: 'owner-material-task-detail',
+      component: () => import('../views/owner-material-task-detail'),
+      props: true,
+      meta: { 
+        title: '甲供物资解析任务详情',
+        breadcrumb: ['智能大脑', '甲供物资解析任务', '任务详情']
+      }
+    },
     {
       path: '/smart-brain/material-management',
       name: 'material-management',

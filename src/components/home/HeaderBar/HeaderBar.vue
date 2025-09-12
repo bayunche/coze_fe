@@ -12,37 +12,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
-import { BREADCRUMB_CONFIG } from './constants.js'
-import { buildBreadcrumbPath, formatLogsCount, getFunctionStatus } from './utils.js'
-
-const props = defineProps({
-  currentFunctionName: {
-    type: String,
-    required: true
-  },
-  executionLogsCount: {
-    type: Number,
-    required: true
-  },
-  activeFunction: {
-    type: String,
-    required: true
-  }
-})
-
-const emit = defineEmits(['show-workflow-config'])
-
-// 计算属性
-const breadcrumbPath = computed(() => buildBreadcrumbPath(props.currentFunctionName))
-const formattedLogsCount = computed(() => formatLogsCount(props.executionLogsCount))
-const functionStatus = computed(() => getFunctionStatus(props.activeFunction))
-
-// 显示工作流配置
-const showWorkflowConfig = () => {
-  emit('show-workflow-config')
-}
+// Static header component with no dynamic functionality currently
 </script>
 
 <style scoped>

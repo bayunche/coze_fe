@@ -121,22 +121,6 @@
       </el-table>
     </div> -->
 
-      <!-- 任务详情弹窗 -->
-      <TaskParsingResultDialog
-        v-if="dialogStates.isContractParsing"
-        v-model:show="dialogStates.taskParsingResultDialogVisible"
-        agent-id="contractParsing"
-      />
-      <MaterialParsingResultDialog
-        v-if="dialogStates.isSupplierMaterialParsing"
-        v-model:show="dialogStates.supplierMaterialParsingResultDialogVisible"
-        agent-id="supplierMaterialParsing"
-      />
-      <OwnerMaterialParsingResultDialog
-        v-if="dialogStates.isOwnerMaterialParsing"
-        v-model:show="dialogStates.ownerMaterialParsingResultDialogVisible"
-        agent-id="ownerSuppliedMaterialParsing"
-      />
       
       <!-- 统计弹窗 -->
       <OverviewStatsDialog
@@ -153,13 +137,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, reactive } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkflowStore } from '@/stores/workflow'
-import TaskParsingResultDialog from '@/components/home/TaskParsingResultDialog'
-import MaterialParsingResultDialog from '@/components/home/MaterialParsingResultDialog'
-import OwnerMaterialParsingResultDialog from '@/components/home/OwnerMaterialParsingResultDialog'
 import DialogManager from '@/components/home/DialogManager'
 import OverviewStatsDialog from '@/components/home/OverviewStatsDialog'
 
@@ -169,11 +150,9 @@ import {
 } from './constants.js'
 import {
   calculateOverviewData,
-  getDialogTypeByAgentId,
   isFeatureAvailable,
   getUserRoleTag,
   createRouteNavigator,
-  resetDialogStates,
   getStatsDialogMockData
 } from './utils.js'
 
@@ -183,9 +162,6 @@ const workflowStore = useWorkflowStore()
 
 // 创建路由导航函数
 const navigateToFeature = createRouteNavigator(router)
-
-// 对话框状态管理
-const dialogStates = reactive(resetDialogStates())
 
 // 统计弹窗相关状态
 const statsDialogVisible = ref(false)
@@ -216,42 +192,19 @@ const goToHome = () => {
   router.push('/home')
 }
 
-const openAgentDialog = async (agent) => {
-  // 重置所有对话框状态
-  Object.assign(dialogStates, resetDialogStates())
-
-  // 根据智能体类型显示对应对话框
-  const dialogType = getDialogTypeByAgentId(agent.id)
-
-  if (dialogType) {
-    // 先设置组件渲染条件
-    switch (dialogType) {
-      case 'contractParsing':
-        dialogStates.isContractParsing = true
-        break
-      case 'supplierMaterialParsing':
-        dialogStates.isSupplierMaterialParsing = true
-        break
-      case 'ownerSuppliedMaterialParsing':
-        dialogStates.isOwnerMaterialParsing = true
-        break
-    }
-
-    // 等待DOM更新，让组件渲染完成
-    await nextTick()
-
-    // 再设置弹窗可见性
-    switch (dialogType) {
-      case 'contractParsing':
-        dialogStates.taskParsingResultDialogVisible = true
-        break
-      case 'supplierMaterialParsing':
-        dialogStates.supplierMaterialParsingResultDialogVisible = true
-        break
-      case 'ownerSuppliedMaterialParsing':
-        dialogStates.ownerMaterialParsingResultDialogVisible = true
-        break
-    }
+const openAgentDialog = (agent) => {
+  // 根据智能体类型跳转到对应的任务列表页面
+  const routeMap = {
+    'contractParsing': '/smart-brain/contract-tasks',
+    'supplierMaterialParsing': '/smart-brain/supplier-material-tasks',
+    'ownerSuppliedMaterialParsing': '/smart-brain/owner-material-tasks'
+  }
+  
+  const targetRoute = routeMap[agent.id]
+  if (targetRoute) {
+    router.push(targetRoute)
+  } else {
+    console.warn('未找到对应的路由:', agent.id)
   }
 }
 

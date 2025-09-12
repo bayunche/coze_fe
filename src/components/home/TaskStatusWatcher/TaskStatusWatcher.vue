@@ -1,5 +1,7 @@
 <template>
-  <!-- 这是一个逻辑组件，不渲染任何内容 -->
+  <div>
+    <!-- 这是一个逻辑组件，不渲染任何内容 -->
+  </div>
 </template>
 
 <script setup>
@@ -58,7 +60,7 @@ onMounted(() => {
 // 监听甲供物资对平任务状态的变化
 watch(
   [taskStatusMap, currentTaskId],
-  ([newTaskStatusMap, newCurrentTaskId], [oldTaskStatusMap, oldCurrentTaskId]) => {
+  ([newTaskStatusMap], [oldTaskStatusMap]) => {
     // 检查是否有任务状态变为 ready_for_alignment
     Object.keys(newTaskStatusMap).forEach(async (taskId) => {
       const newStatus = newTaskStatusMap[taskId]?.status

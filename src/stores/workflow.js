@@ -1126,6 +1126,17 @@ export const useWorkflowStore = defineStore('workflow', () => {
     })
     workflowConfig.params = newParams
     workflowConfig.files = []
+
+    // 如果是乙供物资解析，设置默认的季度和税率
+    if (func.id === 'supplierMaterialParsing') {
+      const currentYear = new Date().getFullYear()
+      const currentMonth = new Date().getMonth() + 1
+      const currentQuarter = Math.ceil(currentMonth / 3)
+      const defaultQuarter = `${currentYear}-Q${currentQuarter}`
+      
+      workflowConfig.quarter = defaultQuarter
+      workflowConfig.taxRate = '13%'
+    }
   }
 
   const clearHistory = (addMessageCallback) => {

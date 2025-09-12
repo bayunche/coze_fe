@@ -42,13 +42,14 @@
             <el-col :span="12">
               <el-form-item label="指定季度" required>
                 <el-select 
-                  :model-value="config.quarter"
-                  @update:model-value="(value) => updateConfig('quarter', value)"
+                  v-model="localQuarter"
                   placeholder="请选择季度"
                   style="width: 100%"
                   allow-create
                   filterable
+                  clearable
                   @visible-change="handleQuarterDropdownToggle"
+                  @change="(value) => console.log('季度选择变化:', value)"
                 >
                   <el-option
                     v-for="option in quarterOptions"
@@ -70,13 +71,14 @@
             <el-col :span="12">
               <el-form-item label="指定税率" required>
                 <el-select 
-                  :model-value="config.taxRate"
-                  @update:model-value="(value) => updateConfig('taxRate', value)"
+                  v-model="localTaxRate"
                   placeholder="请选择税率"
                   style="width: 100%"
                   allow-create
                   filterable
+                  clearable
                   @visible-change="handleTaxRateDropdownToggle"
+                  @change="(value) => console.log('税率选择变化:', value)"
                 >
                   <el-option
                     v-for="option in taxRateOptions"
@@ -299,7 +301,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { UploadFilled, Plus } from '@element-plus/icons-vue'
 import { 
   FILE_UPLOAD_CONFIG,
@@ -358,16 +360,28 @@ const customTaxRate = ref({ label: '', value: '' })
 const quarterOptions = ref([...SUPPLIER_MATERIAL_CONFIG.QUARTER_OPTIONS])
 const taxRateOptions = ref([...SUPPLIER_MATERIAL_CONFIG.TAX_RATE_OPTIONS])
 
+// 本地状态管理选择框的值
+const localQuarter = ref('')
+const localTaxRate = ref('')
+
 // 计算属性
 const isOwnerMaterial = computed(() => isOwnerMaterialWorkflow(props.currentFunctionName))
 const isSupplierMaterial = computed(() => props.currentFunctionName === WORKFLOW_NAMES.SUPPLIER_MATERIAL)
 const acceptFileTypes = computed(() => formatAcceptFileTypes(props.allowedFileTypes))
 
 // 更新配置的辅助函数
-const updateConfig = (key, value) => {
+const updateConfig = async (key, value) => {
+  console.log(`[WorkflowConfigDialog] 更新配置: ${key} = ${value}`)
+  console.log(`[WorkflowConfigDialog] 当前props.config:`, props.config)
   const newConfig = { ...props.config }
   newConfig[key] = value
+  console.log(`[WorkflowConfigDialog] 新配置:`, newConfig)
   emit('update:config', newConfig)
+  console.log(`[WorkflowConfigDialog] 已发出update:config事件`)
+  
+  // 等待下一个 tick 确保 DOM 更新
+  await nextTick()
+  console.log(`[WorkflowConfigDialog] DOM 更新完成，当前 ${key}:`, props.config[key])
 }
 
 // 更新参数的辅助函数
@@ -385,9 +399,51 @@ const handleFileListChange = (file, fileList) => {
   updateConfig('files', fileList)
 }
 
+// 同步本地状态到配置
+watch(localQuarter, (newValue) => {
+  if (newValue && newValue !== props.config.quarter) {
+    console.log(`[WorkflowConfigDialog] 季度本地值变化: ${newValue}`)
+    updateConfig('quarter', newValue)
+  }
+})
+
+watch(localTaxRate, (newValue) => {
+  if (newValue && newValue !== props.config.taxRate) {
+    console.log(`[WorkflowConfigDialog] 税率本地值变化: ${newValue}`)
+    updateConfig('taxRate', newValue)
+  }
+})
+
+// 从配置同步到本地状态
+watch(() => props.config.quarter, (newValue) => {
+  if (newValue && newValue !== localQuarter.value) {
+    console.log(`[WorkflowConfigDialog] 配置季度变化，同步到本地: ${newValue}`)
+    localQuarter.value = newValue
+  }
+})
+
+watch(() => props.config.taxRate, (newValue) => {
+  if (newValue && newValue !== localTaxRate.value) {
+    console.log(`[WorkflowConfigDialog] 配置税率变化，同步到本地: ${newValue}`)
+    localTaxRate.value = newValue
+  }
+})
+
 // 初始化乙供物资默认值
-watch(() => props.show, (newVal) => {
-  if (newVal && isSupplierMaterial.value) {
+watch(() => [props.show, props.currentFunctionName], ([newShow, newFunctionName]) => {
+  if (newShow && newFunctionName === WORKFLOW_NAMES.SUPPLIER_MATERIAL) {
+    console.log('[WorkflowConfigDialog] 季度选项:', quarterOptions.value)
+    console.log('[WorkflowConfigDialog] 税率选项:', taxRateOptions.value)
+    console.log('[WorkflowConfigDialog] 当前配置季度:', props.config.quarter)
+    console.log('[WorkflowConfigDialog] 当前配置税率:', props.config.taxRate)
+    console.log('[WorkflowConfigDialog] 默认季度:', SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER)
+    console.log('[WorkflowConfigDialog] 默认税率:', SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE)
+    
+    // 初始化本地状态
+    localQuarter.value = props.config.quarter || SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER
+    localTaxRate.value = props.config.taxRate || SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE
+    
+    // 确保配置有默认值
     if (!props.config.quarter) {
       updateConfig('quarter', SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER)
     }

@@ -37,6 +37,6 @@ export const hasOpenDialog = (dialogStates) => {
  * @returns {string|null} 对话框类型或null
  */
 export const getCurrentOpenDialog = (dialogStates) => {
-  const openDialog = Object.entries(dialogStates).find(([key, value]) => value === true)
+  const openDialog = Object.entries(dialogStates).find(([, value]) => value === true)
   return openDialog ? openDialog[0] : null
 }
