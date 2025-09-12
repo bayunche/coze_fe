@@ -313,6 +313,33 @@ class MaterialService {
       throw error
     }
   }
+
+  // ==================== 价格季度管理API ====================
+
+  /**
+   * 查询所有可用的季度信息
+   * 用于乙供物资解析、价格查询、任务配置等场景的季度选择器
+   * @returns {Promise<Array<string>>} 季度列表，按降序排列(最新季度在前)
+   * @example 
+   * const quarters = await MaterialService.getAllAvailableQuarters()
+   * // 返回: ["2024-Q4", "2024-Q3", "2024-Q2", ...]
+   */
+  async getAllAvailableQuarters() {
+    try {
+      const response = await request.get('/materials/priceinfo/quarters')
+      
+      if (response && response.code === 0 && Array.isArray(response.data)) {
+        return response.data
+      }
+      
+      // API返回格式异常时，抛出错误
+      console.error('季度查询API返回格式异常:', response)
+      throw new Error('季度查询API返回数据格式异常')
+    } catch (error) {
+      console.error('查询可用季度信息失败:', error)
+      throw error
+    }
+  }
 }
 
 export default new MaterialService()

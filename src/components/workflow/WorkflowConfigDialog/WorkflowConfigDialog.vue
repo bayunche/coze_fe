@@ -303,6 +303,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { UploadFilled, Plus } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import { 
   FILE_UPLOAD_CONFIG,
   FILE_TYPES,
@@ -310,7 +311,8 @@ import {
   PARAM_TYPES,
   EMIT_EVENTS,
   SUPPLIER_MATERIAL_CONFIG,
-  WORKFLOW_NAMES
+  WORKFLOW_NAMES,
+  quarterUtils
 } from './constants.js'
 import { 
   isOwnerMaterialWorkflow,
@@ -322,6 +324,7 @@ import {
   handleFileExceed,
   handleSingleFileExceed
 } from './utils.js'
+import MaterialService from '@/services/MaterialService.js'
 
 const props = defineProps({
   show: Boolean,
@@ -359,6 +362,7 @@ const customQuarter = ref({ label: '', value: '' })
 const customTaxRate = ref({ label: '', value: '' })
 const quarterOptions = ref([...SUPPLIER_MATERIAL_CONFIG.QUARTER_OPTIONS])
 const taxRateOptions = ref([...SUPPLIER_MATERIAL_CONFIG.TAX_RATE_OPTIONS])
+const quarterLoading = ref(false) // 季度数据加载状态
 
 // 本地状态管理选择框的值
 const localQuarter = ref('')
@@ -427,16 +431,20 @@ watch(() => props.config.taxRate, (newValue) => {
 // 初始化乙供物资默认值
 watch(() => [props.show, props.currentFunctionName], ([newShow, newFunctionName]) => {
   if (newShow && newFunctionName === WORKFLOW_NAMES.SUPPLIER_MATERIAL) {
-    // 初始化本地状态
-    localQuarter.value = props.config.quarter || SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER
+    // 初始化税率（税率仍使用本地默认值）
     localTaxRate.value = props.config.taxRate || SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE
-    
-    // 确保配置有默认值
-    if (!props.config.quarter) {
-      updateConfig('quarter', SUPPLIER_MATERIAL_CONFIG.DEFAULT_QUARTER)
-    }
     if (!props.config.taxRate) {
       updateConfig('taxRate', SUPPLIER_MATERIAL_CONFIG.DEFAULT_TAX_RATE)
+    }
+    
+    // 初始化季度（优先从API获取，失败时使用备用方案）
+    if (props.config.quarter) {
+      // 如果配置中已有季度，直接使用
+      localQuarter.value = props.config.quarter
+    } else {
+      // 如果配置中没有季度，尝试从API获取最新季度
+      console.log('[WorkflowConfigDialog] 乙供物资对话框打开，获取最新季度数据')
+      fetchAvailableQuarters()
     }
   }
 }, { immediate: true })
@@ -493,9 +501,69 @@ const closeDialog = () => {
   emit(EMIT_EVENTS.CLOSE)
 }
 
+// ==================== 季度数据管理方法 ====================
+
+/**
+ * 从API获取可用的季度数据
+ */
+const fetchAvailableQuarters = async () => {
+  if (quarterLoading.value) return // 防止重复请求
+  
+  quarterLoading.value = true
+  
+  try {
+    console.log('[WorkflowConfigDialog] 开始获取季度数据...')
+    const quartersData = await MaterialService.getAllAvailableQuarters()
+    
+    if (Array.isArray(quartersData) && quartersData.length > 0) {
+      // 将API返回的季度字符串转换为选项格式
+      const newQuarterOptions = quarterUtils.convertQuartersToOptions(quartersData)
+      quarterOptions.value = newQuarterOptions
+      
+      console.log('[WorkflowConfigDialog] 成功从API获取季度数据:', newQuarterOptions)
+      
+      // 如果当前没有选择季度，使用API返回的第一个季度作为默认值（最新季度）
+      if (!localQuarter.value && quartersData.length > 0) {
+        const defaultQuarter = quartersData[0] // API返回的季度按降序排列，第一个是最新的
+        localQuarter.value = defaultQuarter
+        updateConfig('quarter', defaultQuarter)
+        console.log('[WorkflowConfigDialog] 设置默认季度:', defaultQuarter)
+      }
+    } else {
+      console.warn('[WorkflowConfigDialog] API返回的季度数据为空，使用备用方案')
+      useFallbackQuarters()
+    }
+  } catch (error) {
+    console.error('[WorkflowConfigDialog] 获取季度数据失败，使用备用方案:', error)
+    ElMessage.warning('获取季度数据失败，使用本地生成的季度选项')
+    useFallbackQuarters()
+  } finally {
+    quarterLoading.value = false
+  }
+}
+
+/**
+ * 使用备用方案生成季度选项
+ */
+const useFallbackQuarters = () => {
+  const fallbackOptions = quarterUtils.generateQuarterOptionsAsFallback()
+  quarterOptions.value = fallbackOptions
+  
+  // 如果当前没有选择季度，使用备用方案的当前季度
+  if (!localQuarter.value) {
+    const fallbackDefaultQuarter = quarterUtils.getCurrentQuarterAsFallback()
+    localQuarter.value = fallbackDefaultQuarter
+    updateConfig('quarter', fallbackDefaultQuarter)
+    console.log('[WorkflowConfigDialog] 使用备用方案设置默认季度:', fallbackDefaultQuarter)
+  }
+}
+
 // 自定义选项相关方法
-const handleQuarterDropdownToggle = () => {
-  // 下拉框打开时的处理逻辑（如果需要）
+const handleQuarterDropdownToggle = (visible) => {
+  // 下拉框第一次打开时，尝试从API获取最新的季度数据
+  if (visible && quarterOptions.value.length <= 20) { // 备用方案生成20个季度选项，如果只有这些说明还没有从API获取过
+    fetchAvailableQuarters()
+  }
 }
 
 const handleTaxRateDropdownToggle = () => {

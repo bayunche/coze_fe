@@ -64,9 +64,9 @@
                   </template>
                 </el-table-column>
                 <el-table-column prop="quarter" label="价格所属季度" width="120" align="center" />
-                <el-table-column prop="priceType" label="价格类型" width="100" align="center">
+                <el-table-column prop="unit" label="价格单位" width="100" align="center">
                   <template #default="{ row }">
-                    <span>{{ getPriceTypeText(row.priceType) }}</span>
+                    <span>{{ row.unit || '-' }}</span>
                   </template>
                 </el-table-column>
               </el-table>
@@ -175,74 +175,32 @@
                     height="350px"
                     :row-class-name="getTemporaryRowClassName"
                   >
-                    <!-- 解析数据组 -->
-                    <el-table-column label="解析出的物资数据" align="center">
-                      <el-table-column prop="materialName" label="物资名称" min-width="120" show-overflow-tooltip>
-                        <template #default="{ row }">
-                          <div class="cell-content">
-                            <span class="data-source-tag parsed">解析</span>
-                            <span class="material-name">{{ row.materialName || '-' }}</span>
-                          </div>
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="specificationModel" label="规格型号" min-width="120" show-overflow-tooltip>
-                        <template #default="{ row }">
-                          <span class="specification-text">{{ row.specificationModel || '-' }}</span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="unit" label="单位" width="70" align="center">
-                        <template #default="{ row }">
-                          <span class="unit-text">{{ row.unit || '-' }}</span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column label="价格（含税）" width="110" align="right">
-                        <template #default="{ row }">
-                          <span class="price-value parsed-price">¥{{ formatPrice(row.taxPrice || 0) }}</span>
-                        </template>
-                      </el-table-column>
+                    <!-- 物资基础信息列 -->
+                    <el-table-column prop="materialName" label="物资名称" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="specificationModel" label="规格型号" min-width="150" show-overflow-tooltip />
+                    <el-table-column prop="unit" label="单位" width="80" align="center" />
+                    <el-table-column prop="materialCode" label="物资编码" width="120" show-overflow-tooltip />
+                    
+                    <!-- 价格信息列 -->
+                    <el-table-column label="含税价格" width="120" align="right">
+                      <template #default="{ row }">
+                        <span class="price-value">¥{{ formatPrice(row.taxPrice || 0) }}</span>
+                      </template>
                     </el-table-column>
-
-                    <!-- 用户新增数据组 -->
-                    <el-table-column label="用户新增的物资数据" align="center">
-                      <el-table-column label="物资名称" min-width="120" show-overflow-tooltip>
-                        <template #default="{ row }">
-                          <div class="cell-content">
-                            <span class="data-source-tag user-added">新增</span>
-                            <span class="material-name">{{ row.confirmedBaseInfo?.materialName || '-' }}</span>
-                          </div>
-                        </template>
-                      </el-table-column>
-                      <el-table-column label="规格型号" min-width="120" show-overflow-tooltip>
-                        <template #default="{ row }">
-                          <span class="specification-text">{{ row.confirmedBaseInfo?.specificationModel || '-' }}</span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column label="单位" width="70" align="center">
-                        <template #default="{ row }">
-                          <span class="unit-text">{{ row.confirmedBaseInfo?.unit || '-' }}</span>
-                        </template>
-                      </el-table-column>
-                      <el-table-column label="物资编码" width="100" show-overflow-tooltip>
-                        <template #default="{ row }">
-                          <span class="material-code">{{ row.confirmedBaseInfo?.materialCode || '-' }}</span>
-                        </template>
-                      </el-table-column>
+                    <el-table-column prop="quarter" label="价格季度" width="120" align="center" />
+                    
+                    <!-- 状态信息列 -->
+                    <el-table-column label="审核状态" width="100" align="center">
+                      <template #default="{ row }">
+                        <el-tag :type="getApprovalStatusType(row.adminApproved)" size="small">
+                          {{ getApprovalStatusText(row.adminApproved) }}
+                        </el-tag>
+                      </template>
                     </el-table-column>
-
-                    <!-- 状态信息组 -->
-                    <el-table-column label="状态信息" align="center">
-                      <el-table-column label="审核状态" width="100" align="center">
-                        <template #default="{ row }">
-                          <el-tag :type="getApprovalStatusType(row.adminApproved)" size="small">
-                            {{ getApprovalStatusText(row.adminApproved) }}
-                          </el-tag>
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="createdTime" label="创建时间" width="140" align="center">
-                        <template #default="{ row }">
-                          {{ formatDateTime(row.createdTime) }}
-                        </template>
-                      </el-table-column>
+                    <el-table-column prop="createdTime" label="创建时间" width="140" align="center">
+                      <template #default="{ row }">
+                        {{ formatDateTime(row.createdTime) }}
+                      </template>
                     </el-table-column>
                   </el-table>
 
@@ -535,8 +493,18 @@ const initRecommendData = () => {
   // 从 matchOptions 获取推荐物资
   if (props.rowData?.matchOptions && props.rowData.matchOptions.length > 0) {
     recommendMaterials.value = props.rowData.matchOptions.map(option => {
+      // 确保从baseInfo中正确获取物资名称和规格型号，如果没有则从option中获取
+      const baseInfo = option.baseInfo || {}
       return {
-        ...option.baseInfo,
+        ...baseInfo,
+        // 确保物资名称正确带入
+        materialName: baseInfo.materialName || option.materialName || props.rowData.materialName || '',
+        // 确保规格型号正确带入  
+        specificationModel: baseInfo.specificationModel || option.specificationModel || props.rowData.specificationModel || '',
+        // 确保单位正确带入
+        unit: baseInfo.unit || option.unit || props.rowData.unit || '',
+        // 确保物资类型正确带入
+        type: baseInfo.type || option.type || props.rowData.type || '',
         originalOption: option,
         // 将matchedId从option层级传递到物资数据中，这样可以用于API调用
         matchedId: option.matchedId,
@@ -777,14 +745,65 @@ const performTemporarySearch = async (keyword = temporarySearchKeyword.value) =>
       size: temporaryPageSize.value
     }
     
+    // 搜索关键词参数需要根据临时数据API调整
     if (keyword && keyword.trim()) {
+      // 临时数据API可能不支持keyword参数，这里先保留，后续可能需要调整
       params.keyword = keyword.trim()
     }
     
-    const response = await MaterialService.queryPendingApprovalData(params)
-    if (response && response.data && response.data.content) {
-      temporaryResults.value = response.data.content
-      temporaryTotal.value = response.data.totalElements || 0
+    const response = await temporaryDataService.queryTemporaryData(params)
+    if (response && response.data) {
+      // 合并临时基础信息和价格信息
+      const mergedResults = []
+      
+      // 处理临时基础信息
+      const temporaryBaseInfos = response.data.temporaryBaseInfos || []
+      const temporaryPrices = response.data.temporaryPrices || []
+      
+      // 创建价格信息的baseInfoId映射
+      const pricesByBaseInfoId = new Map()
+      temporaryPrices.forEach(price => {
+        const baseInfoId = price.baseInfoId
+        if (!pricesByBaseInfoId.has(baseInfoId)) {
+          pricesByBaseInfoId.set(baseInfoId, [])
+        }
+        pricesByBaseInfoId.get(baseInfoId).push(price)
+      })
+      
+      // 合并基础信息和价格信息
+      temporaryBaseInfos.forEach(baseInfo => {
+        const prices = pricesByBaseInfoId.get(baseInfo.id) || []
+        if (prices.length > 0) {
+          prices.forEach(price => {
+            mergedResults.push({
+              ...baseInfo,
+              ...price,
+              // 保留原始数据结构
+              baseInfo: baseInfo,
+              priceInfo: price,
+              // 兼容字段
+              confirmedBaseInfo: baseInfo,
+              taxPrice: price.taxPrice || 0,
+              adminApproved: baseInfo.adminApproved || null,
+              createdTime: baseInfo.createdTime || price.createdTime
+            })
+          })
+        } else {
+          // 没有价格信息的基础信息
+          mergedResults.push({
+            ...baseInfo,
+            baseInfo: baseInfo,
+            priceInfo: null,
+            confirmedBaseInfo: baseInfo,
+            taxPrice: 0,
+            adminApproved: baseInfo.adminApproved || null,
+            createdTime: baseInfo.createdTime
+          })
+        }
+      })
+      
+      temporaryResults.value = mergedResults
+      temporaryTotal.value = response.data.page?.totalElements || mergedResults.length
     } else {
       temporaryResults.value = []
       temporaryTotal.value = 0
@@ -806,21 +825,22 @@ const selectTemporaryResult = (result) => {
   // 构建最终选择数据
   finalSelection.value = {
     material: {
-      materialName: result.materialName,
-      specificationModel: result.specificationModel,
-      unit: result.unit,
-      type: result.confirmedBaseInfo?.type || '',
-      materialCode: result.confirmedBaseInfo?.materialCode || '',
-      id: result.confirmBaseDataId || result.confirmedBaseInfo?.baseDataId
+      materialName: result.materialName || '',
+      specificationModel: result.specificationModel || '',
+      unit: result.unit || '',
+      type: result.type || '',
+      materialCode: result.materialCode || '',
+      id: result.id || result.baseInfoId // 使用基础信息ID
     },
     price: {
-      taxPrice: result.taxPrice,
-      unitPrice: result.price / (result.count || 1), // 计算单价
+      taxPrice: result.taxPrice || 0,
+      unitPrice: result.taxPrice || 0, // 单价与含税价相同
       priceType: 1, // 含税价格
-      quarter: '-', // 临时数据可能没有季度信息
-      id: result.confirmPriceId,
+      quarter: result.quarter || '-', // 从合并数据中获取季度
+      id: result.priceInfo?.id || null, // 价格信息ID
+      unit: result.unit || '', // 价格单位
       isTemporary: true, // 标记为临时数据
-      taskDataId: result.taskDataId // 保存原始记录ID
+      baseInfoId: result.id || result.baseInfoId // 关联的基础信息ID
     },
     source: 'temporary',
     originalData: result
@@ -977,14 +997,6 @@ const formatPrice = (price) => {
   return '0.00'
 }
 
-const getPriceTypeText = (priceType) => {
-  const typeMap = {
-    0: '不含税',
-    1: '含税',
-    2: '其他'
-  }
-  return typeMap[priceType] || '未知'
-}
 
 // 获取价格值的函数，支持多种可能的价格字段名
 const getPriceValue = (row) => {

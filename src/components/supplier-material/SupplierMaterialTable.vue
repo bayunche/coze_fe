@@ -561,8 +561,8 @@ const processedTableData = computed(() => {
     // 添加操作行
     result.push(group.actionRow)
     
-    // 为需要解释的情况添加原因解释行（未找到物资和相似匹配）
-    if (group.actionRow.matchedType === 0 || group.actionRow.matchedType === 2) {
+    // 为需要解释的情况添加原因解释行（未找到物资、相似匹配、价格不存在）
+    if (group.actionRow.matchedType === 0 || group.actionRow.matchedType === 2 || group.actionRow.priceMatchedStatus === -1) {
       const reasonRow = {
         ...group.actionRow,
         rowType: ROW_TYPES.REASON,
@@ -618,6 +618,11 @@ const getSequenceNumber = (index) => {
 
 // 获取原因解释文本
 const getReasonExplanation = (row) => {
+  // 检查价格不存在状态 - 优先判断价格状态
+  if (row.priceMatchedStatus === -1) {
+    return REASON_EXPLANATIONS.PRICE_NOT_FOUND
+  }
+  
   if (row.matchedType === 0) {
     // 未找到物资：检查是否有推荐数据
     if (row.matchOptions && row.matchOptions.length > 0) {

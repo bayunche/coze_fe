@@ -53,8 +53,10 @@ export const VALIDATION_MESSAGES = {
   FILE_TYPE_ERROR: '文件类型不符合要求，只支持 {types} 格式!'
 }
 
-// 生成季度选项函数
-const generateQuarterOptions = () => {
+// ==================== 季度管理相关函数 ====================
+
+// 【备用方案】生成季度选项函数 - 当API不可用时的备用方案
+const generateQuarterOptionsAsFallback = () => {
   const currentYear = new Date().getFullYear()
   
   const options = []
@@ -74,24 +76,48 @@ const generateQuarterOptions = () => {
   return options
 }
 
-// 获取当前季度
-const getCurrentQuarter = () => {
+// 【备用方案】获取当前季度 - 当API不可用时的备用方案
+const getCurrentQuarterAsFallback = () => {
   const currentYear = new Date().getFullYear()
   const currentMonth = new Date().getMonth() + 1
   const currentQuarter = Math.ceil(currentMonth / 3)
   return `${currentYear}-Q${currentQuarter}`
 }
 
+// 将API返回的季度字符串转换为选项格式
+const convertQuartersToOptions = (quarters) => {
+  return quarters.map(quarter => {
+    // 解析季度字符串，如 "2024-Q3"
+    const [year, q] = quarter.split('-Q')
+    const quarterNum = parseInt(q)
+    const quarterLabels = ['第一季度', '第二季度', '第三季度', '第四季度']
+    
+    return {
+      label: `${year}年${quarterLabels[quarterNum - 1]}`,
+      value: quarter
+    }
+  })
+}
+
 // 乙供物资解析专用配置
 export const SUPPLIER_MATERIAL_CONFIG = {
-  // 季度选项
-  QUARTER_OPTIONS: generateQuarterOptions(),
+  // 季度选项 - 使用备用方案初始化，实际使用时会通过API动态获取
+  QUARTER_OPTIONS: generateQuarterOptionsAsFallback(),
   // 税率选项
   TAX_RATE_OPTIONS: [
     { label: '13%', value: '13%' },
     { label: '3%', value: '3%' }
   ],
-  // 默认值
-  DEFAULT_QUARTER: getCurrentQuarter(),
+  // 默认值 - 使用备用方案初始化，实际使用时会通过API动态获取
+  DEFAULT_QUARTER: getCurrentQuarterAsFallback(),
   DEFAULT_TAX_RATE: '13%'
+}
+
+// 导出工具函数供组件使用
+export const quarterUtils = {
+  // 备用方案函数
+  generateQuarterOptionsAsFallback,
+  getCurrentQuarterAsFallback,
+  // 转换函数
+  convertQuartersToOptions
 }

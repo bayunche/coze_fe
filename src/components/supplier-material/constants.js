@@ -27,7 +27,7 @@ export const TABLE_COLUMNS_CONFIG = {
   [TABLE_TYPES.PRICE_MISMATCH]: {
     showPriceMatchStatus: true,     // 显示价格匹配状态列
     showMaterialMatchStatus: false, // 不显示物资匹配状态列
-    showReasonRow: false            // 不显示原因解释行
+    showReasonRow: true             // 显示原因解释行（为价格不存在状态添加）
   },
   [TABLE_TYPES.UNMATCHED]: {
     showPriceMatchStatus: false,    // 不显示价格匹配状态列
@@ -89,7 +89,10 @@ export const REASON_EXPLANATIONS = {
 📊 建议您仔细核对推荐的物资信息和价格数据是否符合预期，如需调整可重新选择。`,
   NO_MATCH: `🔍 AI智能搜索结果：
 大模型已扫描全部数据库记录，暂未发现与您解析物资相匹配的数据项。
-💡 建议从右侧按钮手动选择最接近的物资类型，或联系管理员录入新的标准数据。`
+💡 建议从右侧按钮手动选择最接近的物资类型，或联系管理员录入新的标准数据。`,
+  PRICE_NOT_FOUND: `💰 AI价格分析结果：
+经过AI大模型智能分析，该季度该物资的价格信息在数据库中不存在。
+🔧 建议您确认结算季度是否正确，或联系管理员更新该季度的价格信息。`
 }
 
 /**
