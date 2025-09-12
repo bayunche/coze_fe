@@ -127,6 +127,16 @@ const router = createRouter({
       props: (route) => ({ taskId: route.params.taskId })
     },
     {
+      path: '/material-detail/:taskId',
+      name: 'material-detail',
+      component: () => import('../views/material-detail'),
+      props: true,
+      meta: { 
+        title: '物资解析详情',
+        breadcrumb: ['智能大脑', '解析结果', '详情']
+      }
+    },
+    {
       path: '/temporary-data-management',
       name: 'temporary-data-management',
       component: () => import('../views/temporary-data-management'),

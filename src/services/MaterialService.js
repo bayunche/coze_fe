@@ -328,7 +328,8 @@ class MaterialService {
     try {
       const response = await request.get('/materials/priceinfo/quarters')
       
-      if (response && response.code === 0 && Array.isArray(response.data)) {
+      // 兼容不同的成功状态码：0 或 200
+      if (response && (response.code === 0 || response.code === 200) && Array.isArray(response.data)) {
         return response.data
       }
       

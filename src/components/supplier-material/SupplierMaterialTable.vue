@@ -561,8 +561,12 @@ const processedTableData = computed(() => {
     // 添加操作行
     result.push(group.actionRow)
     
+    // 检查价格匹配状态（可能在不同位置）
+    const priceStatus = group.actionRow.priceMatchedStatus || 
+                       (group.actionRow.matchOptions?.[0]?.priceMatchedStatus)
+    
     // 为需要解释的情况添加原因解释行（未找到物资、相似匹配、价格不存在）
-    if (group.actionRow.matchedType === 0 || group.actionRow.matchedType === 2 || group.actionRow.priceMatchedStatus === -1) {
+    if (group.actionRow.matchedType === 0 || group.actionRow.matchedType === 2 || priceStatus === -1) {
       const reasonRow = {
         ...group.actionRow,
         rowType: ROW_TYPES.REASON,
@@ -618,8 +622,12 @@ const getSequenceNumber = (index) => {
 
 // 获取原因解释文本
 const getReasonExplanation = (row) => {
+  // 获取价格匹配状态（检查多个位置）
+  const priceStatus = row.priceMatchedStatus || 
+                     (row.matchOptions?.[0]?.priceMatchedStatus)
+  
   // 检查价格不存在状态 - 优先判断价格状态
-  if (row.priceMatchedStatus === -1) {
+  if (priceStatus === -1) {
     return REASON_EXPLANATIONS.PRICE_NOT_FOUND
   }
   
@@ -634,6 +642,7 @@ const getReasonExplanation = (row) => {
     // 相似匹配：显示AI推荐说明
     return REASON_EXPLANATIONS.SIMILAR_MATCH
   }
+  
   return ''
 }
 

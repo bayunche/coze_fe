@@ -499,8 +499,8 @@ const initRecommendData = () => {
         ...baseInfo,
         // 确保物资名称正确带入
         materialName: baseInfo.materialName || option.materialName || props.rowData.materialName || '',
-        // 确保规格型号正确带入  
-        specificationModel: baseInfo.specificationModel || option.specificationModel || props.rowData.specificationModel || '',
+        // 确保规格型号正确带入 - 优先使用specifications字段
+        specificationModel: baseInfo.specifications || baseInfo.specificationModel || option.specifications || option.specificationModel || props.rowData.specificationModel || '',
         // 确保单位正确带入
         unit: baseInfo.unit || option.unit || props.rowData.unit || '',
         // 确保物资类型正确带入
@@ -558,9 +558,7 @@ const selectRecommendMaterial = async (material) => {
       return
     }
     
-    console.log('【价格调试】获取物资价格列表，baseInfoId:', baseInfoId, '物资信息:', material)
     const priceList = await MaterialService.queryPriceInfoList(baseInfoId)
-    console.log('【价格调试】获取到的价格列表:', priceList)
     
     if (priceList && priceList.length > 0) {
       recommendPrices.value = priceList.map(price => ({
@@ -574,7 +572,6 @@ const selectRecommendMaterial = async (material) => {
       recommendPrices.value = material.priceOptions || []
     }
     
-    console.log('【价格调试】处理后的价格列表:', recommendPrices.value)
     
     // 确保在数据加载完成后再自动选择
     await nextTick() // 等待DOM更新
@@ -1001,7 +998,6 @@ const formatPrice = (price) => {
 // 获取价格值的函数，支持多种可能的价格字段名
 const getPriceValue = (row) => {
   // 调试：打印价格数据结构
-  console.log('【价格调试】row数据结构:', row)
   
   // 尝试不同的价格字段名，按优先级排序
   const price = row.taxPrice || 
@@ -1012,7 +1008,6 @@ const getPriceValue = (row) => {
                 row.selectedPrice ||
                 0
                 
-  console.log('【价格调试】最终获取的价格值:', price)
   return price
 }
 
