@@ -2190,6 +2190,20 @@ const initializeRowData = (row) => {
     reactiveRow.selectedMaterial = firstMatch
     reactiveRow.selectedMaterialId = firstMatch.matchedId
 
+    // 【关键修复】如果当前行没有baseInfo但matchOptions有baseInfo，则设置baseInfo
+    if ((!reactiveRow.baseInfo || Object.keys(reactiveRow.baseInfo).length === 0) && firstMatch.baseInfo) {
+      reactiveRow.baseInfo = {
+        baseDataId: firstMatch.baseInfo.baseDataId || firstMatch.matchedId,
+        materialName: firstMatch.baseInfo.materialName,
+        specifications: firstMatch.baseInfo.specifications,
+        unit: firstMatch.baseInfo.unit,
+        serialNumber: firstMatch.baseInfo.serialNumber || '',
+        priceCode: firstMatch.baseInfo.priceCode || '',
+        materialCode: firstMatch.baseInfo.materialCode || '',
+        type: firstMatch.baseInfo.type || ''
+      }
+    }
+
     if (firstMatch.priceOptions && firstMatch.priceOptions.length > 0) {
       const firstPrice = firstMatch.priceOptions[0]
       // 只有当没有priceInfo时，才使用matchOptions的数据

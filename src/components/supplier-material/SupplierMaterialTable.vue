@@ -819,15 +819,14 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 
 /* 原因解释行内容样式 */
 .reason-cell.reason-explanation {
-  padding: 16px 20px !important;
-  /* background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%) !important; */
-  border: 3px solid transparent !important;
-  border-radius: 12px !important;
-  margin: 10px 15px !important;
+  padding: 14px 16px !important;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+  border: 2px solid #0ea5e9 !important;
+  border-radius: 8px !important;
+  margin: 8px 12px !important;
   box-shadow: 
-    0 8px 25px rgba(59, 130, 246, 0.25),
-    0 0 0 1px rgba(59, 130, 246, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    0 4px 12px rgba(14, 165, 233, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
   position: relative !important;
   overflow: hidden !important;
 }
@@ -835,30 +834,31 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 .reason-cell.reason-explanation::before {
   content: '';
   position: absolute;
-  top: -3px;
-  left: -3px;
-  right: -3px;
-  bottom: -3px;
-  /* background: linear-gradient(45deg, #3b82f6, #8b5cf6, #06b6d4, #10b981, #3b82f6); */
-  background-size: 300% 300%;
-  border-radius: 15px;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(135deg, #0ea5e9, #3b82f6, #0ea5e9);
+  background-size: 200% 200%;
+  border-radius: 10px;
   z-index: -1;
-  animation: aiGlow 3s linear infinite;
+  animation: aiGlow 4s ease-in-out infinite;
+  opacity: 0.8;
 }
 
 .reason-cell.reason-explanation::after {
-  content: 'AI';
+  content: '🤖 AI';
   position: absolute;
-  top: 8px;
-  right: 12px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #3b82f6;
-  /* background: rgba(59, 130, 246, 0.1); */
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  animation: aiPulse 2s ease-in-out infinite;
+  top: 6px;
+  right: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1e40af;
+  background: rgba(59, 130, 246, 0.15);
+  padding: 3px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  animation: aiPulse 3s ease-in-out infinite;
 }
 
 @keyframes aiGlow {
@@ -881,56 +881,42 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 .reason-content {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  font-size: 14px;
-  line-height: 1.7;
-  color: #e2e8f0;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.6;
   font-weight: 500;
   position: relative;
   z-index: 1;
 }
 
 .reason-icon {
-  font-size: 20px;
-  margin-top: 3px;
+  font-size: 18px;
+  margin-top: 2px;
   flex-shrink: 0;
-  color: #60a5fa;
-  filter: drop-shadow(0 0 8px rgba(96, 165, 250, 0.6));
-  animation: iconFloat 3s ease-in-out infinite;
+  color: #0ea5e9;
+  filter: drop-shadow(0 1px 2px rgba(14, 165, 233, 0.3));
+  animation: iconFloat 2s ease-in-out infinite;
 }
 
 @keyframes iconFloat {
   0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-2px); }
+  50% { transform: translateY(-1px); }
 }
 
 .reason-text {
   flex: 1;
-  /* text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5); */
-  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #1e40af;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  white-space: pre-line;
 }
 
 /* AI推荐特殊样式 */
 .reason-content .reason-text::first-letter {
-  font-size: 1.3em;
-  font-weight: 700;
-  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  filter: drop-shadow(0 0 2px rgba(59, 130, 246, 0.3));
+  font-size: 1.2em;
+  font-weight: 600;
+  color: #0ea5e9;
 }
 
-/* 高亮关键词 */
-.reason-text:has-text("AI") {
-  background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
 
 /* 序号列样式优化 */
 .sequence-number-container {
@@ -980,7 +966,7 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 
 /* 原因解释行整行样式 - 使用更强的选择器 */
 :deep(.supplier-material-table .el-table__row[class*="reason"]) {
-  /* background-color: transparent !important; */
+  background-color: transparent !important;
 }
 
 :deep(.supplier-material-table .el-table__row[class*="reason"]:hover) {
