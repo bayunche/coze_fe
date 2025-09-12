@@ -38,6 +38,10 @@
             <span class="stat-value">{{ formatStatValue(agent.tasks.total) }}</span>
             <span class="stat-label">{{ STAT_LABELS.TOTAL }}</span>
           </div>
+          <div class="stat-item" v-if="agent.tasks.projectCount !== undefined">
+            <span class="stat-value">{{ formatStatValue(agent.tasks.projectCount) }}</span>
+            <span class="stat-label">{{ STAT_LABELS.PROJECT_COUNT }}</span>
+          </div>
         </div>
       </el-card>
     </div>
@@ -72,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive } from 'vue'
+import { computed, reactive } from 'vue'
 import TaskParsingResultDialog from '../TaskParsingResultDialog'
 import MaterialParsingResultDialog from '../MaterialParsingResultDialog'
 import OwnerMaterialParsingResultDialog from '../OwnerMaterialParsingResultDialog'
@@ -203,6 +207,8 @@ const dialogVisibility = reactive({
   justify-content: space-around;
   text-align: center;
   padding: 16px 0;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .stat-item {

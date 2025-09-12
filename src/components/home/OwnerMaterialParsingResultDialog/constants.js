@@ -20,6 +20,8 @@ export const TAB_CONFIG = [
 
 export const TABLE_COLUMNS = [
   { prop: 'id', label: '任务编号', width: 180 },
+  { prop: 'projectCode', label: '项目编号', width: 150 },
+  { prop: 'projectName', label: '项目名称', width: 200 },
   { prop: 'createdTime', label: '任务创建时间', width: 200 },
   { label: '状态', width: 120 },
   { label: '进度', minWidth: 200 },

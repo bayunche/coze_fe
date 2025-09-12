@@ -30,7 +30,8 @@ export const DIALOG_CONFIG = {
 export const STAT_LABELS = {
   COMPLETED: '已完成',
   IN_PROGRESS: '进行中',
-  TOTAL: '总任务'
+  TOTAL: '总任务',
+  PROJECT_COUNT: '关联项目'
 }
 
 export const GRID_CONFIG = {

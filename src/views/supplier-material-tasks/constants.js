@@ -14,6 +14,8 @@ export const TAB_CONFIG = [
 export const TABLE_COLUMNS = [
   { prop: 'id', label: 'ID', width: '100' },
   { prop: 'taskName', label: '任务名称', minWidth: '200', showOverflowTooltip: true },
+  { prop: 'projectCode', label: '项目编号', width: '150', showOverflowTooltip: true },
+  { prop: 'projectName', label: '项目名称', width: '200', showOverflowTooltip: true },
   { prop: 'createdTime', label: '创建时间', width: '180' },
   { label: '状态', width: '100' },
   { label: '进度', width: '150' },

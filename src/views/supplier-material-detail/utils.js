@@ -509,4 +509,75 @@ export const useNavigation = () => {
   }
 }
 
+/**
+ * 根据API返回的价格匹配状态获取显示信息
+ * @param {number} priceMatchedStatus - 价格匹配状态 (-1, 1, 2)
+ * @returns {Object} 包含text、type和action的状态信息
+ */
+export const getPriceMatchingStatusDisplay = (priceMatchedStatus) => {
+  switch(priceMatchedStatus) {
+    case -1:
+      return {
+        text: '价格信息不全',
+        type: 'danger',
+        action: '联系管理员新增价格或调整季度'
+      }
+    case 1:
+      return {
+        text: '精确匹配',
+        type: 'success',
+        action: '自动匹配成功'
+      }
+    case 2:
+      return {
+        text: '价格不一致',
+        type: 'warning',
+        action: '需要人工确认'
+      }
+    default:
+      return {
+        text: '未知状态',
+        type: 'info',
+        action: '请联系技术支持'
+      }
+  }
+}
+
+/**
+ * 从行数据中获取价格匹配状态标签 - 使用新的API状态字段
+ * @param {Object} row - 行数据
+ * @returns {Object} 包含text和type的标签信息
+ */
+export const getPriceMatchingStatusTagFromRow = (row) => {
+  // 优先使用新的priceMatchedStatus字段
+  if (row.priceMatchedStatus !== undefined && row.priceMatchedStatus !== null) {
+    const statusInfo = getPriceMatchingStatusDisplay(row.priceMatchedStatus)
+    return { text: statusInfo.text, type: statusInfo.type }
+  }
+  
+  // 如果是matchOptions数组的情况，检查第一个选项的priceMatchedStatus
+  if (Array.isArray(row.matchOptions) && row.matchOptions.length > 0) {
+    const firstOption = row.matchOptions[0]
+    if (firstOption.priceMatchedStatus !== undefined && firstOption.priceMatchedStatus !== null) {
+      const statusInfo = getPriceMatchingStatusDisplay(firstOption.priceMatchedStatus)
+      return { text: statusInfo.text, type: statusInfo.type }
+    }
+  }
+  
+  // 向后兼容：如果没有新的状态字段，保持原有逻辑
+  // 步骤1：判断是否有物资信息
+  if (!row.baseInfo || Object.keys(row.baseInfo).length === 0) {
+    return { text: '未找到物资', type: 'danger' }
+  }
+
+  // 步骤2：判断价格是否匹配（有物资信息的情况下）
+  // 无价格信息视为价格不匹配
+  if (!row.priceInfo || Object.keys(row.priceInfo).length === 0 || !row.priceInfo.taxPrice) {
+    return { text: '价格不匹配', type: 'warning' }
+  }
+
+  // 步骤3：如果有价格信息，默认为已匹配（这里可能需要更复杂的逻辑）
+  return { text: '已匹配', type: 'success' }
+}
+
 // 导出功能已移除，直接在组件中处理开发中提示

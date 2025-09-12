@@ -11,6 +11,16 @@
       <el-table-column type="index" prop="" label="序号" width="60"></el-table-column>
 
       <el-table-column prop="fileName" label="文件名称"></el-table-column>
+      <el-table-column prop="projectCode" label="项目编号" width="150">
+        <template #default="{ row }">
+          {{ row.projectInfo?.projectCode || '-' }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="projectName" label="项目名称" width="200">
+        <template #default="{ row }">
+          {{ row.projectInfo?.projectName || '-' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="startTime" label="开始时间">
         <template #default="{ row }">
           {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}

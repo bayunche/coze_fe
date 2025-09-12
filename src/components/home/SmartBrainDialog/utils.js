@@ -162,6 +162,11 @@ export const validateAgentData = (agent) => {
     }
   }
   
+  // projectCount是可选字段，需要验证类型（如果存在的话）
+  if ('projectCount' in tasks && typeof tasks.projectCount !== 'number') {
+    return false
+  }
+  
   return true
 }
 

@@ -75,6 +75,17 @@
             <div class="card-content">
               <div class="content-row">
                 <div class="content-item">
+                  <span class="label">项目编号:</span>
+                  <span class="value">{{ item.projectInfo?.projectCode || '-' }}</span>
+                </div>
+                <div class="content-item">
+                  <span class="label">项目名称:</span>
+                  <span class="value">{{ item.projectInfo?.projectName || '-' }}</span>
+                </div>
+              </div>
+              
+              <div class="content-row">
+                <div class="content-item">
                   <span class="label">创建时间:</span>
                   <span class="value">{{ formatTimestamp(item.createdTime) }}</span>
                 </div>
@@ -151,7 +162,6 @@ import SmartBrainService from '@/services/SmartBrainService'
 import {
   PAGE_CONFIG,
   TAB_CONFIG,
-  TABLE_COLUMNS,
   BUTTON_LABELS,
   PAGINATION_CONFIG
 } from './constants.js'

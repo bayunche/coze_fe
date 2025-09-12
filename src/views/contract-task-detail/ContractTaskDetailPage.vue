@@ -131,7 +131,6 @@ import SmartBrainService from '@/services/SmartBrainService'
 // 导入常量和工具函数
 import {
   PAGE_CONFIG,
-  TABLE_COLUMNS,
   BUTTON_LABELS,
   PAGINATION_CONFIG
 } from './constants.js'

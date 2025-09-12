@@ -3,8 +3,9 @@ import request from '@/utils/request.js'
 class SmartBrainService {
   /**
    * 获取智能体任务详情统计
-   * 按业务域划分的智能体任务统计详情，包括每个业务域的总任务数、已完成任务数和进行中任务数
+   * 按业务域划分的智能体任务统计详情，包括每个业务域的总任务数、已完成任务数、进行中任务数和关联项目数量
    * @returns {Promise<Array>} 智能体任务统计数据数组
+   * 响应格式：AgentTaskDetailVO[]，新增projectCount字段（可选）
    */
   async getAgentTaskDetails() {
     try {
@@ -40,6 +41,7 @@ class SmartBrainService {
    * @param {number} params.size - 每页大小（可选，默认10）
    * @param {string} params.sort - 排序字段（可选，默认按创建时间倒序）
    * @returns {Promise<Object>} 分页数据对象，包含content数组和分页信息
+   * 响应格式：任务详情对象新增projectInfo字段（BaseProjectInfoDO | null）
    */
   async getTaskDetailsList(taskId, params = {}) {
     try {
@@ -118,6 +120,7 @@ class SmartBrainService {
    * @param {number} params.size - 每页大小（可选，默认10）
    * @param {string} params.sort - 排序字段（可选，默认按创建时间倒序）
    * @returns {Promise<Object>} 分页数据对象，包含WmesTasksDO数组和分页信息
+   * 响应格式：任务对象新增projectInfo字段（BaseProjectInfoDO | null）
    */
   async getAgentTasksList(agentLabels, params = {}) {
     try {

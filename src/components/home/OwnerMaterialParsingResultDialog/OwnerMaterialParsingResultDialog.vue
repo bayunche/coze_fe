@@ -42,6 +42,14 @@
             </div>
           </template>
 
+          <template v-else-if="column.prop === 'projectCode'" #default="{ row }">
+            <span>{{ row.projectInfo?.projectCode || '-' }}</span>
+          </template>
+
+          <template v-else-if="column.prop === 'projectName'" #default="{ row }">
+            <span>{{ row.projectInfo?.projectName || '-' }}</span>
+          </template>
+
           <template v-else-if="column.label === '操作'" #default="{ row }">
             <el-button
               type="primary"

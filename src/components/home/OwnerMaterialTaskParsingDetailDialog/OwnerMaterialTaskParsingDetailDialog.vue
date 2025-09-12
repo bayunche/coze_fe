@@ -36,6 +36,16 @@
           <span>{{ formatErrorReason(row.errorReason) }}</span>
         </template>
         
+        <!-- 项目编号列 -->
+        <template v-else-if="column.prop === 'projectCode'" #default="{ row }">
+          <span>{{ row.projectInfo?.projectCode || '-' }}</span>
+        </template>
+
+        <!-- 项目名称列 -->
+        <template v-else-if="column.prop === 'projectName'" #default="{ row }">
+          <span>{{ row.projectInfo?.projectName || '-' }}</span>
+        </template>
+
         <!-- 操作列 -->
         <template v-else-if="column.label === '操作'" #default="{ row }">
           <div class="action-buttons-container">

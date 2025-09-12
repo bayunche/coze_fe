@@ -9,6 +9,8 @@ export const DIALOG_CONFIG = {
 export const TABLE_COLUMNS = [
   { type: 'index', label: '序号', width: 60 },
   { prop: 'fileName', label: '文件名称' },
+  { prop: 'projectCode', label: '项目编号', width: 150 },
+  { prop: 'projectName', label: '项目名称', width: 200 },
   { prop: 'startTime', label: '开始时间', width: 140 },
   { prop: 'endTime', label: '结束时间', width: 140 },
   { prop: 'taskDetailStatus', label: '任务解析状态', width: 120 },

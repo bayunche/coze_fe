@@ -205,7 +205,7 @@ import { SupplierMaterialTable, OperationGuide, TABLE_TYPES } from '@/components
 // 导入常量和工具函数
 import { BUTTON_CONFIG, PAGINATION_CONFIG, CSS_CLASSES } from './constants.js'
 
-import { useNavigation } from './utils.js'
+import { useNavigation, getPriceMatchingStatusTagFromRow } from './utils.js'
 
 // 路由参数 - 使用 props 传递的参数
 const taskId = computed(() => {
@@ -1123,26 +1123,9 @@ const isPriceMismatch = (row) => {
   return result
 }
 
-// 获取价格匹配状态标签 - 简化逻辑，只关注价格是否匹配
+// 获取价格匹配状态标签 - 使用新的API状态字段
 const getPriceMatchingStatusTag = (row) => {
-  // 步骤1：判断是否有物资信息
-  if (!row.baseInfo || Object.keys(row.baseInfo).length === 0) {
-    return { text: '未找到物资', type: 'danger' }
-  }
-
-  // 步骤2：判断价格是否匹配（有物资信息的情况下）
-  // 无价格信息视为价格不匹配
-  if (!row.priceInfo || Object.keys(row.priceInfo).length === 0 || !row.priceInfo.taxPrice) {
-    return { text: '价格不匹配', type: 'warning' }
-  }
-
-  // 步骤3：有价格信息时判断是否匹配
-  if (isPriceMismatch(row)) {
-    return { text: '价格不匹配', type: 'warning' }
-  }
-
-  // 步骤4：价格匹配
-  return { text: '已匹配', type: 'success' }
+  return getPriceMatchingStatusTagFromRow(row)
 }
 
 // 调试函数：获取操作按钮的展示逻辑 - 已不再使用
