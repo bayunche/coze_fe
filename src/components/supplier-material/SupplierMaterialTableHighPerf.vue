@@ -372,8 +372,8 @@
         </template>
       </el-table-column>
 
-      <!-- 原因解释列 - 根据showReasonRows控制显示 -->
-      <el-table-column v-if="showReasonRows" label="原因解释" width="300">
+      <!-- 原因解释列 - 直接渲染原因行 -->
+      <el-table-column label="原因解释" width="300">
         <template #default="{ row }">
           <div v-if="row.rowType === 'reason'" class="reason-explanation-cell">
             <div class="reason-content">
@@ -381,10 +381,10 @@
                 <el-icon class="reason-icon" :class="getReasonIconClass(row)">
                   <component :is="getReasonIconComponent(getReasonIconType(row))" />
                 </el-icon>
-                <span class="reason-text">{{ row.reason || getReasonText(row) }}</span>
+                <span class="reason-text">{{ row.reason }}</span>
               </div>
-              <div v-if="row.explanation || getExplanationText(row)" class="explanation-text">
-                {{ row.explanation || getExplanationText(row) }}
+              <div v-if="row.explanation" class="explanation-text">
+                {{ row.explanation }}
               </div>
             </div>
           </div>
@@ -447,11 +447,6 @@ const props = defineProps({
   pendingCount: {
     type: Number,
     default: 0
-  },
-  // 是否显示原因解释行
-  showReasonRows: {
-    type: Boolean,
-    default: true
   }
 })
 
@@ -477,7 +472,7 @@ const columnConfig = computed(() => {
   return TABLE_COLUMNS_CONFIG[props.tableType] || TABLE_COLUMNS_CONFIG[TABLE_TYPES.ALL]
 })
 
-// 保留完整的行结构，包括原因解释行
+// 直接渲染所有行，包括根据数据生成的原因行
 const simpleTableData = computed(() => {
   const result = []
   const dataGroups = groupDataByItem(props.data)
@@ -489,9 +484,10 @@ const simpleTableData = computed(() => {
     // 添加操作行
     result.push(group.actionRow)
 
-    // 根据props控制是否添加原因解释行
-    if (props.showReasonRows && group.reasonRow) {
-      result.push(group.reasonRow)
+    // 根据数据行信息生成原因解释行（如果需要）
+    if (shouldGenerateReasonRow(group.dataRow)) {
+      const reasonRow = generateReasonRow(group.dataRow, result.length)
+      result.push(reasonRow)
     }
 
     // 添加分隔行（如果不是最后一组）
@@ -615,6 +611,36 @@ const getExplanationText = (row) => {
   }
 
   return ''
+}
+
+// 判断是否需要生成原因行
+const shouldGenerateReasonRow = (dataRow) => {
+  if (!dataRow || dataRow.rowType !== 'data') return false
+
+  const priceStatus = dataRow.priceMatchedStatus || (dataRow.matchOptions?.[0]?.priceMatchedStatus)
+
+  // 需要显示原因的情况：未匹配、价格不存在、价格不匹配、相似匹配
+  return dataRow.matchedType === 0 ||
+         dataRow.matchedType === 2 ||
+         priceStatus === -1 ||
+         priceStatus === 2
+}
+
+// 根据数据行生成原因行
+const generateReasonRow = (dataRow, currentIndex) => {
+  const reasonText = getReasonText(dataRow)
+  const explanationText = getExplanationText(dataRow)
+
+  return {
+    rowType: 'reason',
+    rowKey: `reason-${dataRow.rowKey || currentIndex}`,
+    reason: reasonText,
+    explanation: explanationText,
+    // 继承一些数据行的信息，用于样式判断
+    matchedType: dataRow.matchedType,
+    priceMatchedStatus: dataRow.priceMatchedStatus,
+    matchOptions: dataRow.matchOptions
+  }
 }
 
 // 判断是否需要显示原因提示
@@ -840,9 +866,40 @@ const getSequenceBarClass = (row) => {
   return parentMethods.getSequenceBarClass?.(row) || ''
 }
 
-// 高性能的简化表格跨列方法
-const simpleSpanMethod = () => {
-  // 完全移除跨列合并逻辑，提升性能
+// 简化的跨行合并方法 - 原因行跨所有列除了原因解释列
+const simpleSpanMethod = ({ row, column }) => {
+  // 原因行跨列显示（除了原因解释列）
+  if (row.rowType === 'reason') {
+    // 在序号列显示，跨到原因解释列之前的所有列
+    if (column.label === '序号') {
+      // 计算需要跨的列数（除了原因解释列）
+      const visibleColumns = [
+        columnConfig.value.showPriceMatchStatus,
+        columnConfig.value.showMaterialMatchStatus,
+        true, // 物资名称列
+        columnConfig.value.showSpecifications,
+        columnConfig.value.showUnit,
+        columnConfig.value.showQuantity,
+        columnConfig.value.showPrice,
+        columnConfig.value.showAmount,
+        columnConfig.value.showBrand,
+        columnConfig.value.showModel,
+        columnConfig.value.showManufacturer,
+        columnConfig.value.showSupplier,
+        columnConfig.value.showDeliveryDate,
+        true // 操作列
+      ].filter(Boolean).length
+
+      return { rowspan: 1, colspan: visibleColumns }
+    }
+
+    // 其他列（除了原因解释列）隐藏
+    if (column.label !== '原因解释') {
+      return { rowspan: 0, colspan: 0 }
+    }
+  }
+
+  // 其他行正常显示
   return { rowspan: 1, colspan: 1 }
 }
 </script>
