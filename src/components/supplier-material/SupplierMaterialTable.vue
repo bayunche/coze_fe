@@ -47,7 +47,7 @@
       <!-- 价格匹配状态列 -->
       <el-table-column 
         v-if="columnConfig.showPriceMatchStatus" 
-        label="价格匹配状�? 
+        label="价格匹配状态" 
         width="140" 
         align="center"
       >
@@ -73,9 +73,9 @@
 
       <!-- 物资匹配状态列 -->
       <el-table-column 
-        v-if="columnConfig.showMaterialMatchStatus" 
-        label="物资匹配状�? 
-        width="140" 
+        v-if="columnConfig.showMaterialMatchStatus"
+        label="物资匹配状态"
+        width="140"
         align="center"
       >
         <template #default="{ row }">
@@ -268,7 +268,7 @@
       </el-table-column>
 
       <!-- 物资价格（不含税）列 -->
-      <el-table-column label="物资价格（不含税�? width="140" align="right">
+      <el-table-column label="物资价格（不含税）" width="140" align="right">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             <div class="price-value">
@@ -318,7 +318,7 @@
       </el-table-column>
 
       <!-- 物资价格所属季度列 -->
-      <el-table-column label="所属季�? width="120" align="center">
+      <el-table-column label="所属季度" width="120" align="center">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             <!-- 数据行不显示季度信息 -->
@@ -352,12 +352,12 @@
         <template #default="{ row }">
           <!-- 数据行显示结算书 -->
           <div v-if="row.rowType === 'data'" class="data-cell">
-            <span class="text-xs text-gray-500">结算�?/span>
+            <span class="text-xs text-gray-500">结算书</span>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为�?-->
+            <!-- 分隔行显示为空-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
+          <!-- 原因解释行（会被跨列覆盖，不显示内容-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <!-- 操作行显示数据来源标�?-->
@@ -396,11 +396,11 @@
             <div v-if="row.confirmResult === 1" class="operation-group confirmed-state">
               <el-tag type="success" size="small" class="status-tag">
                 <el-icon><Check /></el-icon>
-                <span>已确�?/span>
+                <span>已确认</span>
               </el-tag>
               <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="secondary-action">
                 <el-icon><Edit /></el-icon>
-                <span class="button-text">重�?/span>
+                <span class="button-text">重选</span>
               </el-button>
             </div>
             
@@ -430,10 +430,10 @@
 
             <!-- 精确匹配且价格不匹配：仅显示提示信息，不显示任何操作按钮 -->
             <div v-else-if="isPriceMismatch(row)" class="operation-group price-mismatch">
-              <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修�? placement="top">
+              <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修改" placement="top">
                 <div class="price-mismatch-hint">
                   <el-icon class="warning-icon"><WarnTriangleFilled /></el-icon>
-                  <span class="hint-text">价格不匹配，请确认结算书是否有误并进行修�?/span>
+                  <span class="hint-text">价格不匹配，请确认结算书是否有误并进行修改</span>
                 </div>
               </el-tooltip>
             </div>
@@ -446,19 +446,19 @@
               </el-button>
               <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="secondary-action">
                 <el-icon><Edit /></el-icon>
-                <span class="button-text">重�?/span>
+                <span class="button-text">重选</span>
               </el-button>
             </div>
-            
-            <!-- 相似匹配(2)、历史匹�?3)、人工匹�?4)：显示选择确认按钮 -->
+
+            <!-- 相似匹配(2)、历史匹配(3)、人工匹配(4))：显示选择确认按钮 -->
             <div v-else-if="row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4" class="operation-group similar-match">
               <el-button type="primary" size="small" @click="$emit('view-options', row)" class="single-action">
                 <el-icon><Edit /></el-icon>
                 <span class="button-text">选择确认</span>
               </el-button>
             </div>
-            
-            <!-- 其他未知匹配类型：显示重选按�?-->
+
+            <!-- 其他未知匹配类型：显示重新选择按钮 -->
             <div v-else class="operation-group other-match">
               <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="single-action">
                 <el-icon><Edit /></el-icon>
@@ -704,7 +704,7 @@ const getTaxRate = (row) => {
 }
 
 const getDataSourceType = (row) => {
-  return parentMethods.getDataSourceType?.(row) || { text: '数据�?, type: 'success' }
+  return parentMethods.getDataSourceType?.(row) || { text: '数据�?', type: 'success' }
 }
 
 const isPriceMismatch = (row) => {
