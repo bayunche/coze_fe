@@ -640,7 +640,7 @@ const getSequenceBarClass = (row) => {
 }
 
 // 高性能的简化表格跨列方法
-const simpleSpanMethod = ({ row, columnIndex }) => {
+const simpleSpanMethod = () => {
   // 完全移除跨列合并逻辑，提升性能
   return { rowspan: 1, colspan: 1 }
 }

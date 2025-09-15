@@ -211,7 +211,7 @@ import MaterialService from '@/services/MaterialService.js'
 import { useSupplierMaterialStore } from '@/stores/supplierMaterial'
 
 // 导入新的组件
-import { SupplierMaterialTable, OperationGuide, TABLE_TYPES } from '@/components/supplier-material'
+import { SupplierMaterialTableHighPerf as SupplierMaterialTable, OperationGuide, TABLE_TYPES } from '@/components/supplier-material'
 
 // 导入常量和工具函数
 import { BUTTON_CONFIG, PAGINATION_CONFIG, CSS_CLASSES } from './constants.js'
