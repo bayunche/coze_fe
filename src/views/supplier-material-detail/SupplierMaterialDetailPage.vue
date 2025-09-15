@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div :class="CSS_CLASSES.PAGE_CONTAINER">
     <!-- 页面头部 -->
     <div :class="CSS_CLASSES.PAGE_HEADER">
@@ -115,7 +115,7 @@
 
       <!-- 物资详情表格区块 -->
       <div v-if="showTable" :class="CSS_CLASSES.TABLE_SECTION">
-        <SupplierMaterialTable
+        <!-- <SupplierMaterialTable
           :data="materialData"
           :table-type="currentTableType"
           :loading="tableLoading"
@@ -125,8 +125,14 @@
           @view-options="handleViewOptions"
           @batch-confirm="handleBatchConfirm"
           @add-price="handleAddPrice"
-        />
-
+        /> -->
+ <SupplierMaterialTableSimple
+    :data="materialData"
+    :loading="tableLoading"
+    @quick-confirm="handleQuickConfirm"
+    @view-options="handleViewOptions"
+    @add-price="handleAddPrice"
+  />
         <!-- 分页组件 -->
         <el-pagination
           v-model:current-page="currentPage"
