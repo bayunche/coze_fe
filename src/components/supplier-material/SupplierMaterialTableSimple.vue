@@ -682,17 +682,12 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 }
 
 .reason-container {
-  padding: 14px 16px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border: 2px solid #0ea5e9;
-  border-radius: 8px;
+  padding: 12px 16px;
+  background-color: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 6px;
   margin: 8px 12px;
-  box-shadow:
-    0 4px 12px rgba(14, 165, 233, 0.15),
-    0 1px 3px rgba(14, 165, 233, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(14, 165, 233, 0.1);
 }
 
 .reason-content {
@@ -805,27 +800,13 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   padding: 8px !important;
 }
 
-/* 步骤3：添加复杂的多重CSS选择器（类似原版） */
-:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell),
-:deep(.el-table .spec-mismatch-row .el-table__cell),
-:deep(.spec-mismatch-row .el-table__cell),
-:deep(.spec-mismatch-row td),
-:deep(tr.spec-mismatch-row td) {
-  background: linear-gradient(135deg,
-    rgba(239, 68, 68, 0.06) 0%,
-    rgba(239, 68, 68, 0.03) 100%) !important;
-  border-left: 4px solid #ef4444 !important;
-  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
+/* 优化版：简化的规格不一致行样式，避免复杂选择器 */
+:deep(.spec-mismatch-row td) {
+  background-color: #fef2f2 !important;
+  border-left: 3px solid #ef4444 !important;
 }
 
-:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell),
-:deep(.el-table .spec-mismatch-row:hover .el-table__cell),
-:deep(.spec-mismatch-row:hover .el-table__cell),
-:deep(.spec-mismatch-row:hover td),
-:deep(tr.spec-mismatch-row:hover td) {
-  background: linear-gradient(135deg,
-    rgba(239, 68, 68, 0.12) 0%,
-    rgba(239, 68, 68, 0.06) 100%) !important;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
+:deep(.spec-mismatch-row:hover td) {
+  background-color: #fde7e7 !important;
 }
 </style>
