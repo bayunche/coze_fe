@@ -7,7 +7,7 @@
       style="width: 100%"
       :row-class-name="getRowClassName"
       :row-key="row => row.rowKey"
-      :span-method="simpleSpanMethod"
+      :span-method="enhancedSpanMethod"
       v-bind="tableConfig"
     >
       <!-- 序号列 - 包含问题概览 -->
@@ -79,62 +79,54 @@
         </template>
       </el-table-column>
 
-      <!-- 物资名称列 - 包含原因信息 -->
-      <el-table-column prop="materialName" label="物资名称" width="240" show-overflow-tooltip>
+      <!-- 物资名称列 -->
+      <el-table-column prop="materialName" label="物资名称" width="200" show-overflow-tooltip>
         <template #default="{ row }">
-          <div v-if="row.rowType === 'data'" class="material-display">
-            <div class="material-name">{{ getBaseInfoName(row) }}</div>
-            <!-- 直接显示问题原因信息 -->
-            <div v-if="shouldShowReasonInfo(row)" class="reason-display">
-              <el-tag
-                :type="getReasonTagType(row)"
-                size="small"
-                :effect="getReasonTagEffect(row)"
-                class="problem-tag">
-                <el-icon class="tag-icon">
-                  <component :is="getReasonIcon(row)" />
-                </el-icon>
-                {{ getReasonShortText(row) }}
-              </el-tag>
-              <div v-if="getReasonExplanation(row)" class="explanation-text">
-                {{ getReasonExplanation(row) }}
-              </div>
-            </div>
+          <div v-if="row.rowType === 'data'">
+            {{ getBaseInfoName(row) }}
           </div>
           <div v-else-if="row.rowType === 'separator'">
             <!-- 分隔行显示为空 -->
           </div>
           <div v-else>
-            <div class="material-display">
-              <div class="material-name">
-                <span v-if="row.hasUserSelectedData && row.confirmedBaseName">
-                  {{ row.confirmedBaseName }}
-                </span>
-                <span v-else-if="row.baseInfo?.materialName">
-                  {{ row.baseInfo.materialName }}
-                </span>
-                <span v-else-if="row.matchedType === 0" class="text-gray-400">
-                  等待选择物资
-                </span>
-                <span v-else>{{ '-' }}</span>
-              </div>
-              <!-- 操作行也显示原因信息 -->
-              <div v-if="shouldShowReasonInfo(row)" class="reason-display">
-                <el-tag
-                  :type="getReasonTagType(row)"
-                  size="small"
-                  effect="light"
-                  class="problem-tag">
-                  <el-icon class="tag-icon">
-                    <component :is="getReasonIcon(row)" />
-                  </el-icon>
-                  {{ getReasonShortText(row) }}
-                </el-tag>
-              </div>
+            <div class="flex items-center gap-2">
+              <span v-if="row.hasUserSelectedData && row.confirmedBaseName">
+                {{ row.confirmedBaseName }}
+              </span>
+              <span v-else-if="row.baseInfo?.materialName">
+                {{ row.baseInfo.materialName }}
+              </span>
+              <span v-else-if="row.matchedType === 0" class="text-gray-400">
+                等待选择物资
+              </span>
+              <span v-else>{{ '-' }}</span>
               <!-- 差异标记 -->
               <el-icon v-if="hasMaterialNameDifference(row) && row.matchedType !== 0" class="text-red-500">
                 <Close />
               </el-icon>
+            </div>
+          </div>
+        </template>
+      </el-table-column>
+
+      <!-- 原因与解释列 -->
+      <el-table-column label="原因与解释" width="280">
+        <template #default="{ row }">
+          <div v-if="row.rowType === 'data' && shouldShowReasonInfo(row)" class="reason-card">
+            <div class="reason-header">
+              <el-tag
+                :type="getReasonTagType(row)"
+                size="small"
+                :effect="getReasonTagEffect(row)"
+                class="reason-tag">
+                <el-icon class="tag-icon">
+                  <component :is="getReasonIcon(row)" />
+                </el-icon>
+                {{ getReasonShortText(row) }}
+              </el-tag>
+            </div>
+            <div v-if="getReasonExplanation(row)" class="reason-explanation">
+              {{ getReasonExplanation(row) }}
             </div>
           </div>
         </template>
@@ -864,9 +856,25 @@ const getSequenceBarClass = (row) => {
   return parentMethods.getSequenceBarClass?.(row) || ''
 }
 
-// 极简的跨行合并方法 - 无需复杂逻辑
-const simpleSpanMethod = () => {
-  // 所有行都正常显示，无需合并
+// 增强的跨行合并方法 - 支持原因列合并
+const enhancedSpanMethod = ({ row, column, rowIndex, columnIndex }) => {
+  // 只对原因与解释列进行特殊处理
+  if (column.label === '原因与解释') {
+    // 如果是数据行且有原因信息，合并到下一行（操作行）
+    if (row.rowType === 'data' && shouldShowReasonInfo(row)) {
+      return { rowspan: 2, colspan: 1 }
+    }
+
+    // 如果是操作行，且前一行是有原因的数据行，则隐藏当前行
+    if (row.rowType === 'action' && rowIndex > 0) {
+      const prevRow = simpleTableData.value[rowIndex - 1]
+      if (prevRow && prevRow.rowType === 'data' && shouldShowReasonInfo(prevRow)) {
+        return { rowspan: 0, colspan: 0 }
+      }
+    }
+  }
+
+  // 其他列和情况正常显示
   return { rowspan: 1, colspan: 1 }
 }
 </script>
@@ -1217,5 +1225,46 @@ const simpleSpanMethod = () => {
   border: 1px solid #e2e8f0;
   border-radius: 6px;
   color: #334155;
+}
+
+/* 原因卡片样式 */
+.reason-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 4px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.reason-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.reason-header {
+  margin-bottom: 8px;
+}
+
+.reason-tag {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.reason-tag .tag-icon {
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+.reason-explanation {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+  margin-top: 6px;
+  padding: 6px;
+  background: #f9fafb;
+  border-radius: 4px;
+  border-left: 3px solid #d1d5db;
 }
 </style>
