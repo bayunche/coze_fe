@@ -848,49 +848,17 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 
 /* 原因解释行内容样�?*/
 .reason-cell.reason-explanation {
-  padding: 14px 16px !important;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
-  border: 2px solid #0ea5e9 !important;
-  border-radius: 8px !important;
+  padding: 12px 16px !important;
+  background-color: #f0f9ff !important;
+  border: 1px solid #0ea5e9 !important;
+  border-radius: 6px !important;
   margin: 8px 12px !important;
-  box-shadow: 
-    0 4px 12px rgba(14, 165, 233, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-  position: relative !important;
-  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(14, 165, 233, 0.1) !important;
 }
 
-.reason-cell.reason-explanation::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(135deg, #0ea5e9, #3b82f6, #0ea5e9);
-  background-size: 200% 200%;
-  border-radius: 10px;
-  z-index: -1;
-  /* animation: aiGlow 4s ease-in-out infinite; 暂时禁用动画 */
-  transform: translate3d(0, 0, 0); /* 启用硬件加速 */
-  opacity: 0.8;
-}
+/* 移除复杂的::before伪元素动画效果 */
 
-.reason-cell.reason-explanation::after {
-  content: '🤖 AI';
-  position: absolute;
-  top: 6px;
-  right: 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #1e40af;
-  background: rgba(59, 130, 246, 0.15);
-  padding: 3px 8px;
-  border-radius: 12px;
-  border: 1px solid rgba(59, 130, 246, 0.25);
-  /* animation: aiPulse 3s ease-in-out infinite; 暂时禁用动画 */
-  transform: translate3d(0, 0, 0); /* 启用硬件加速 */
-}
+/* 移除复杂的::after伪元素动画效果 */
 
 @keyframes aiGlow {
   0% { background-position: 0% 50%; }
@@ -921,13 +889,10 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 }
 
 .reason-icon {
-  font-size: 18px;
+  font-size: 16px;
   margin-top: 2px;
   flex-shrink: 0;
   color: #0ea5e9;
-  filter: drop-shadow(0 1px 2px rgba(14, 165, 233, 0.3));
-  /* animation: iconFloat 2s ease-in-out infinite; 暂时禁用动画 */
-  transform: translate3d(0, 0, 0); /* 启用硬件加速 */
 }
 
 @keyframes iconFloat {
@@ -1002,27 +967,14 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 }
 
 /* 规格型号不一致行的红色标记样�?- 在组件级别也添加样式穿�?*/
-:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell),
-:deep(.el-table .spec-mismatch-row .el-table__cell),
-:deep(.spec-mismatch-row .el-table__cell),
-:deep(.spec-mismatch-row td),
-:deep(tr.spec-mismatch-row td) {
-  background: linear-gradient(135deg,
-    rgba(239, 68, 68, 0.06) 0%,
-    rgba(239, 68, 68, 0.03) 100%) !important;
-  border-left: 4px solid #ef4444 !important;
-  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
+/* 优化版：简化的规格不一致行样式，避免复杂选择器和渐变 */
+:deep(.spec-mismatch-row td) {
+  background-color: #fef2f2 !important;
+  border-left: 3px solid #ef4444 !important;
 }
 
-:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell),
-:deep(.el-table .spec-mismatch-row:hover .el-table__cell),
-:deep(.spec-mismatch-row:hover .el-table__cell),
-:deep(.spec-mismatch-row:hover td),
-:deep(tr.spec-mismatch-row:hover td) {
-  background: linear-gradient(135deg,
-    rgba(239, 68, 68, 0.12) 0%,
-    rgba(239, 68, 68, 0.06) 100%) !important;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
+:deep(.spec-mismatch-row:hover td) {
+  background-color: #fde7e7 !important;
 }
 
 :deep(.supplier-material-table .el-table__row[class*="reason"]:hover) {
@@ -1049,31 +1001,5 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   -webkit-overflow-scrolling: touch;
 }
 
-/* 性能优化：条件性启用动画 */
-@media (prefers-reduced-motion: no-preference) and (min-width: 1367px) {
-  .reason-cell.reason-explanation::before {
-    animation: aiGlow 4s ease-in-out infinite;
-    will-change: background-position;
-  }
-
-  .reason-cell.reason-explanation::after {
-    animation: aiPulse 3s ease-in-out infinite;
-    will-change: opacity, transform;
-  }
-
-  .reason-icon {
-    animation: iconFloat 2s ease-in-out infinite;
-    will-change: transform;
-  }
-}
-
-/* 减少动画复杂度的媒体查询 */
-@media (max-width: 1366px) {
-  /* 在较小屏幕上禁用复杂动画 */
-  .reason-cell.reason-explanation::before,
-  .reason-cell.reason-explanation::after,
-  .reason-icon {
-    animation: none !important;
-  }
-}
+/* 移除动画相关的媒体查询和条件性启用代码 */
 </style>
