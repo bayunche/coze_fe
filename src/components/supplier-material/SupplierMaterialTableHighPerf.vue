@@ -15,14 +15,14 @@
         <template #default="{ row, $index }">
           <div v-if="row.rowType === 'data'" class="sequence-container">
             <div :class="getSequenceBarClass(row)" class="sequence-bar"></div>
-            <div class="sequence-content">
-              <div class="sequence-number">{{ getSequenceNumber($index) }}</div>
-              <!-- 如果有原因信息，显示简要指示 -->
-              <div v-if="row.hasReason" class="reason-indicator" :class="`reason-${row.reasonType}`">
-                <el-icon class="reason-icon">
-                  <component :is="getReasonIconComponent(row.reasonIcon)" />
-                </el-icon>
-              </div>
+            <span>{{ getSequenceNumber($index) }}</span>
+          </div>
+          <div v-else-if="row.rowType === 'reason'">
+            <!-- 原因行显示为空或者显示原因图标 -->
+            <div class="reason-sequence">
+              <el-icon class="reason-icon-small" :class="getReasonIconClass(row)">
+                <component :is="getReasonIconComponent(getReasonIconType(row))" />
+              </el-icon>
             </div>
           </div>
           <div v-else-if="row.rowType === 'separator'">
@@ -79,47 +79,30 @@
         </template>
       </el-table-column>
 
-      <!-- 物资名称列 - 简化版，直接显示合并后的数据 -->
-      <el-table-column prop="materialName" label="物资名称" width="220" show-overflow-tooltip>
+      <!-- 物资名称列 -->
+      <el-table-column prop="materialName" label="物资名称" width="200" show-overflow-tooltip>
         <template #default="{ row }">
-          <div v-if="row.rowType === 'data'" class="material-display">
-            <div class="material-name">{{ getBaseInfoName(row) }}</div>
-            <!-- 直接显示已合并的原因信息 -->
-            <div v-if="row.hasReason" class="reason-display">
-              <el-tag
-                :type="row.reasonType || 'info'"
-                size="small"
-                effect="plain">
-                {{ row.reasonText }}
-              </el-tag>
-            </div>
+          <div v-if="row.rowType === 'data'">
+            {{ getBaseInfoName(row) }}
+          </div>
+          <div v-else-if="row.rowType === 'reason'">
+            <!-- 原因行在物资名称列显示为空 -->
           </div>
           <div v-else-if="row.rowType === 'separator'">
             <!-- 分隔行显示为空 -->
           </div>
           <div v-else>
-            <div class="material-display">
-              <div class="material-name">
-                <span v-if="row.hasUserSelectedData && row.confirmedBaseName">
-                  {{ row.confirmedBaseName }}
-                </span>
-                <span v-else-if="row.baseInfo?.materialName">
-                  {{ row.baseInfo.materialName }}
-                </span>
-                <span v-else-if="row.matchedType === 0" class="text-gray-400">
-                  等待选择物资
-                </span>
-                <span v-else>{{ '-' }}</span>
-              </div>
-              <!-- 操作行也显示原因 -->
-              <div v-if="row.hasReason" class="reason-display">
-                <el-tag
-                  :type="row.reasonType || 'info'"
-                  size="small"
-                  effect="light">
-                  {{ row.reasonText }}
-                </el-tag>
-              </div>
+            <div class="material-cell">
+              <span v-if="row.hasUserSelectedData && row.confirmedBaseName">
+                {{ row.confirmedBaseName }}
+              </span>
+              <span v-else-if="row.baseInfo?.materialName">
+                {{ row.baseInfo.materialName }}
+              </span>
+              <span v-else-if="row.matchedType === 0" class="text-gray-400">
+                等待选择物资
+              </span>
+              <span v-else>{{ '-' }}</span>
               <!-- 差异标记 -->
               <el-icon v-if="hasMaterialNameDifference(row) && row.matchedType !== 0" class="text-red-500">
                 <Close />
@@ -388,6 +371,31 @@
           </div>
         </template>
       </el-table-column>
+
+      <!-- 原因解释列 - 根据showReasonRows控制显示 -->
+      <el-table-column v-if="showReasonRows" label="原因解释" width="300">
+        <template #default="{ row }">
+          <div v-if="row.rowType === 'reason'" class="reason-explanation-cell">
+            <div class="reason-content">
+              <div class="reason-title">
+                <el-icon class="reason-icon" :class="getReasonIconClass(row)">
+                  <component :is="getReasonIconComponent(getReasonIconType(row))" />
+                </el-icon>
+                <span class="reason-text">{{ row.reason || getReasonText(row) }}</span>
+              </div>
+              <div v-if="row.explanation || getExplanationText(row)" class="explanation-text">
+                {{ row.explanation || getExplanationText(row) }}
+              </div>
+            </div>
+          </div>
+          <div v-else-if="row.rowType === 'data' || row.rowType === 'action'">
+            <!-- 数据行和操作行在原因解释列显示为空 -->
+          </div>
+          <div v-else-if="row.rowType === 'separator'">
+            <!-- 分隔行显示为空 -->
+          </div>
+        </template>
+      </el-table-column>
     </el-table>
   </div>
 </template>
@@ -439,6 +447,11 @@ const props = defineProps({
   pendingCount: {
     type: Number,
     default: 0
+  },
+  // 是否显示原因解释行
+  showReasonRows: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -464,18 +477,22 @@ const columnConfig = computed(() => {
   return TABLE_COLUMNS_CONFIG[props.tableType] || TABLE_COLUMNS_CONFIG[TABLE_TYPES.ALL]
 })
 
-// 高性能数据处理：直接将原因行内容合并到主数据行
+// 保留完整的行结构，包括原因解释行
 const simpleTableData = computed(() => {
   const result = []
   const dataGroups = groupDataByItem(props.data)
 
   dataGroups.forEach((group, index) => {
-    // 将原因行信息直接合并到数据行
-    const mergedDataRow = mergeReasonInfoToDataRow(group)
-    const mergedActionRow = mergeReasonInfoToActionRow(group)
+    // 添加数据行
+    result.push(group.dataRow)
 
-    result.push(mergedDataRow)
-    result.push(mergedActionRow)
+    // 添加操作行
+    result.push(group.actionRow)
+
+    // 根据props控制是否添加原因解释行
+    if (props.showReasonRows && group.reasonRow) {
+      result.push(group.reasonRow)
+    }
 
     // 添加分隔行（如果不是最后一组）
     if (group.separatorRow && index < dataGroups.length - 1) {
@@ -486,47 +503,6 @@ const simpleTableData = computed(() => {
   return result
 })
 
-// 将原因行信息合并到数据行
-const mergeReasonInfoToDataRow = (group) => {
-  const dataRow = { ...group.dataRow }
-  const reasonRow = group.reasonRow
-
-  if (reasonRow) {
-    // 直接将原因信息作为数据行的属性
-    dataRow.reasonText = reasonRow.reason || ''
-    dataRow.explanationText = reasonRow.explanation || ''
-    dataRow.hasReason = true
-
-    // 根据原因类型设置状态
-    if (reasonRow.reason?.includes('未匹配')) {
-      dataRow.reasonType = 'danger'
-      dataRow.reasonIcon = 'close'
-    } else if (reasonRow.reason?.includes('价格')) {
-      dataRow.reasonType = 'warning'
-      dataRow.reasonIcon = 'warning'
-    } else if (reasonRow.reason?.includes('相似')) {
-      dataRow.reasonType = 'primary'
-      dataRow.reasonIcon = 'info'
-    }
-  }
-
-  return dataRow
-}
-
-// 将原因行信息合并到操作行
-const mergeReasonInfoToActionRow = (group) => {
-  const actionRow = { ...group.actionRow }
-  const reasonRow = group.reasonRow
-
-  if (reasonRow) {
-    // 操作行也携带原因信息，用于显示一致性
-    actionRow.reasonText = reasonRow.reason || ''
-    actionRow.hasReason = true
-    actionRow.reasonType = actionRow.reasonType || 'info'
-  }
-
-  return actionRow
-}
 
 // 增强的数据分组 - 识别并处理原因行
 const groupDataByItem = (data) => {
@@ -580,6 +556,65 @@ const getReasonIconComponent = (iconType) => {
     default:
       return Check
   }
+}
+
+// 从原因行数据获取原因图标类型
+const getReasonIconType = (reasonRow) => {
+  if (!reasonRow) return 'info'
+
+  const reason = reasonRow.reason || ''
+  if (reason.includes('未匹配')) return 'close'
+  if (reason.includes('价格')) return 'warning'
+  return 'info'
+}
+
+// 获取原因图标样式类
+const getReasonIconClass = (reasonRow) => {
+  const iconType = getReasonIconType(reasonRow)
+  return `reason-icon-${iconType}`
+}
+
+// 从行数据获取原因文本
+const getReasonText = (row) => {
+  // 根据行数据分析生成原因文本
+  const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  if (row.matchedType === 0) {
+    if (row.matchOptions && row.matchOptions.length > 0) {
+      return '存在相似物资'
+    }
+    return '未找到匹配物资'
+  } else if (priceStatus === -1) {
+    return '价格信息缺失'
+  } else if (priceStatus === 2) {
+    return '价格不匹配'
+  } else if (row.matchedType === 2) {
+    return '相似匹配'
+  }
+
+  return ''
+}
+
+// 从行数据获取解释文本
+const getExplanationText = (row) => {
+  const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  if (priceStatus === -1) {
+    return REASON_EXPLANATIONS.PRICE_NOT_FOUND
+  }
+  if (priceStatus === 2) {
+    return REASON_EXPLANATIONS.PRICE_MISMATCH
+  }
+  if (row.matchedType === 0) {
+    if (row.matchOptions && row.matchOptions.length > 0) {
+      return REASON_EXPLANATIONS.SIMILAR_MATCH
+    }
+    return REASON_EXPLANATIONS.NO_MATCH
+  } else if (row.matchedType === 2) {
+    return REASON_EXPLANATIONS.SIMILAR_MATCH
+  }
+
+  return ''
 }
 
 // 判断是否需要显示原因提示
@@ -988,56 +1023,64 @@ const simpleSpanMethod = () => {
 </style>
 
 <style scoped>
-/* 简化的物资显示样式 */
-.material-display {
+/* 原因解释列样式 */
+.reason-explanation-cell {
+  padding: 8px;
+  background-color: #fafafa;
+  border-radius: 6px;
+  border-left: 3px solid #e5e7eb;
+}
+
+.reason-content {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 4px 0;
 }
 
-.material-name {
+.reason-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-weight: 500;
-  color: #374151;
-  line-height: 1.4;
-}
-
-.reason-display {
-  display: flex;
-  align-items: center;
-}
-
-/* 序号列的原因指示器 */
-.reason-indicator {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 2px;
-}
-
-.reason-indicator.reason-danger {
-  background-color: #fef2f2;
-  color: #dc2626;
-  border: 1px solid #fca5a5;
-}
-
-.reason-indicator.reason-warning {
-  background-color: #fffbeb;
-  color: #d97706;
-  border: 1px solid #fed7aa;
-}
-
-.reason-indicator.reason-primary {
-  background-color: #eff6ff;
-  color: #2563eb;
-  border: 1px solid #93c5fd;
 }
 
 .reason-icon {
-  font-size: 10px;
+  font-size: 14px;
+}
+
+.reason-icon-close {
+  color: #dc2626;
+}
+
+.reason-icon-warning {
+  color: #d97706;
+}
+
+.reason-icon-info {
+  color: #2563eb;
+}
+
+.reason-text {
+  color: #374151;
+  font-size: 14px;
+}
+
+.explanation-text {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.4;
+  padding-left: 20px;
+}
+
+/* 序号列的原因行样式 */
+.reason-sequence {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.reason-icon-small {
+  font-size: 12px;
 }
 
 .material-cell {
