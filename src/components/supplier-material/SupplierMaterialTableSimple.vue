@@ -682,11 +682,17 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 }
 
 .reason-container {
-  padding: 12px;
-  background-color: #f0f9ff;
-  border: 1px solid #0ea5e9;
-  border-radius: 6px;
-  margin: 4px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 2px solid #0ea5e9;
+  border-radius: 8px;
+  margin: 8px 12px;
+  box-shadow:
+    0 4px 12px rgba(14, 165, 233, 0.15),
+    0 1px 3px rgba(14, 165, 233, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
 }
 
 .reason-content {
@@ -797,5 +803,29 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 
 :deep(.supplier-material-table-simple .el-table__row[class*="reason"] .el-table__cell:first-child) {
   padding: 8px !important;
+}
+
+/* 步骤3：添加复杂的多重CSS选择器（类似原版） */
+:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell),
+:deep(.el-table .spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row td),
+:deep(tr.spec-mismatch-row td) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.06) 0%,
+    rgba(239, 68, 68, 0.03) 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell),
+:deep(.el-table .spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover td),
+:deep(tr.spec-mismatch-row:hover td) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.12) 0%,
+    rgba(239, 68, 68, 0.06) 100%) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
 }
 </style>
