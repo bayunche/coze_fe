@@ -16,7 +16,7 @@
           <div v-if="row.rowType === 'data'" class="sequence-container">
             <div :class="getSequenceBarClass(row)" class="sequence-bar"></div>
             <span>{{ getSequenceNumber($index) }}</span>
-            <!-- 高性能方案：问题状态指示器 + 工具提示 -->
+            <!-- 增强的问题状态指示器 -->
             <el-tooltip
               v-if="shouldShowReasonTooltip(row)"
               :content="getReasonExplanation(row)"
@@ -24,11 +24,16 @@
               effect="light"
               :show-arrow="true"
               :offset="8"
-              popper-class="reason-tooltip"
+              :show-after="200"
+              :hide-after="100"
+              popper-class="enhanced-reason-tooltip"
             >
-              <el-icon class="reason-indicator" :class="getReasonIconClass(row)">
-                <InfoFilled />
-              </el-icon>
+              <div class="reason-badge" :class="getReasonBadgeClass(row)">
+                <el-icon class="reason-icon">
+                  <component :is="getReasonIcon(row)" />
+                </el-icon>
+                <span class="reason-text">{{ getReasonShortText(row) }}</span>
+              </div>
             </el-tooltip>
           </div>
           <div v-else-if="row.rowType === 'separator'">
@@ -385,8 +390,7 @@ import {
   Edit,
   Plus,
   Close,
-  WarnTriangleFilled,
-  InfoFilled
+  WarnTriangleFilled
 } from '@element-plus/icons-vue'
 
 // 引入常量配置
@@ -516,21 +520,58 @@ const shouldShowReasonTooltip = (row) => {
          priceStatus === 2
 }
 
-// 获取原因图标样式类
-const getReasonIconClass = (row) => {
+// 获取原因徽章样式类
+const getReasonBadgeClass = (row) => {
   const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
 
   if (row.matchedType === 0) {
-    return 'reason-no-match' // 未匹配 - 红色
+    return 'reason-badge--danger' // 未匹配 - 红色
   } else if (priceStatus === -1) {
-    return 'reason-price-missing' // 价格不存在 - 橙色
+    return 'reason-badge--warning' // 价格不存在 - 橙色
   } else if (priceStatus === 2) {
-    return 'reason-price-mismatch' // 价格不匹配 - 黄色
+    return 'reason-badge--caution' // 价格不匹配 - 黄色
   } else if (row.matchedType === 2) {
-    return 'reason-similar-match' // 相似匹配 - 蓝色
+    return 'reason-badge--info' // 相似匹配 - 蓝色
   }
 
-  return 'reason-info' // 默认 - 灰色
+  return 'reason-badge--default' // 默认 - 灰色
+}
+
+// 获取原因图标组件
+const getReasonIcon = (row) => {
+  const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  if (row.matchedType === 0) {
+    return Close // 未匹配
+  } else if (priceStatus === -1) {
+    return WarnTriangleFilled // 价格不存在
+  } else if (priceStatus === 2) {
+    return WarnTriangleFilled // 价格不匹配
+  } else if (row.matchedType === 2) {
+    return Check // 相似匹配
+  }
+
+  return Check // 默认
+}
+
+// 获取原因短文本
+const getReasonShortText = (row) => {
+  const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  if (row.matchedType === 0) {
+    if (row.matchOptions && row.matchOptions.length > 0) {
+      return '相似'
+    }
+    return '未匹配'
+  } else if (priceStatus === -1) {
+    return '无价格'
+  } else if (priceStatus === 2) {
+    return '价格异常'
+  } else if (row.matchedType === 2) {
+    return '相似匹配'
+  }
+
+  return '信息'
 }
 
 // 获取原因解释文本
@@ -677,46 +718,91 @@ const simpleSpanMethod = () => {
   background-color: #ef4444;
 }
 
-/* 原因指示器 - 替代原因解释行 */
-.reason-indicator {
-  position: absolute;
-  top: -2px;
-  right: -6px;
-  font-size: 12px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
+/* 增强的原因徽章 - 更好的视觉效果 */
+.reason-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
   cursor: help;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
 }
 
-.reason-indicator.reason-no-match {
-  color: #fff;
-  background-color: #ef4444;
+.reason-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.reason-indicator.reason-price-missing {
-  color: #fff;
-  background-color: #f59e0b;
+.reason-icon {
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
-.reason-indicator.reason-price-mismatch {
-  color: #fff;
-  background-color: #eab308;
+.reason-text {
+  white-space: nowrap;
+  line-height: 1;
 }
 
-.reason-indicator.reason-similar-match {
-  color: #fff;
-  background-color: #3b82f6;
+/* 不同类型的徽章样式 */
+.reason-badge--danger {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
 }
 
-.reason-indicator.reason-info {
-  color: #fff;
-  background-color: #6b7280;
+.reason-badge--warning {
+  background-color: #fffbeb;
+  border: 1px solid #fed7aa;
+  color: #d97706;
 }
 
+.reason-badge--caution {
+  background-color: #fefce8;
+  border: 1px solid #fde68a;
+  color: #ca8a04;
+}
+
+.reason-badge--info {
+  background-color: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #2563eb;
+}
+
+.reason-badge--default {
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+}
+</style>
+
+<!-- 全局样式：增强的tooltip -->
+<style>
+.enhanced-reason-tooltip {
+  max-width: 300px !important;
+}
+
+.enhanced-reason-tooltip .el-tooltip__content {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  padding: 12px 16px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+  color: #fff !important;
+}
+
+.enhanced-reason-tooltip .el-tooltip__arrow {
+  border-right-color: #667eea !important;
+}
+</style>
+
+<style scoped>
 .material-cell {
   display: flex;
   align-items: center;
