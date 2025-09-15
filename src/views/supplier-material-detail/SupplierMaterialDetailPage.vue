@@ -124,6 +124,7 @@
           @quick-confirm="handleQuickConfirm"
           @view-options="handleViewOptions"
           @batch-confirm="handleBatchConfirm"
+          @add-price="handleAddPrice"
         />
 
         <!-- 分页组件 -->
@@ -167,6 +168,15 @@
       v-model="showReportDialog"
       :progress-text="reportProgressText"
     />
+
+    <!-- 新增价格弹窗 -->
+    <AddPriceDialog
+      v-model="showAddPriceDialog"
+      :row-data="addPriceRow"
+      :task-id="taskId"
+      @success="handlePriceAddSuccess"
+      @cancel="handlePriceAddCancel"
+    />
   </div>
 </template>
 
@@ -189,6 +199,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
 import ReportGenerationDialog from '@/components/common/ReportGenerationDialog.vue'
+import AddPriceDialog from '@/components/supplier-material/AddPriceDialog.vue'
 import {
   getSupplierMaterialParsingResults,
   querySupplierMaterialsComplex,
@@ -240,6 +251,10 @@ const pageSize = ref(20)
 // 物资价格选择弹窗状态
 const showMaterialPriceDialog = ref(false)
 const currentSelectionRow = ref(null)
+
+// 新增价格弹窗状态（新增功能，不影响现有状态）
+const showAddPriceDialog = ref(false)
+const addPriceRow = ref(null)
 
 // 搜索和筛选参数
 const searchKeyword = ref('')
@@ -1442,6 +1457,66 @@ const handleViewOptions = async (row) => {
 
   currentSelectionRow.value = row
   showMaterialPriceDialog.value = true
+}
+
+// 处理新增价格操作（新增方法，不修改现有方法）
+const handleAddPrice = (row) => {
+  console.log('【新增价格】开始处理价格新增，物资信息:', {
+    materialName: row.materialName,
+    specifications: row.specifications,
+    baseInfoId: row.baseInfo?.id,
+    taskDataId: row.taskDataId
+  })
+
+  // 检查基础物资信息是否完整
+  if (!row.baseInfo || !row.baseInfo.id) {
+    ElMessage.warning('物资基础信息不完整，无法新增价格')
+    return
+  }
+
+  // 检查是否为价格不存在状态
+  const priceStatus = row.priceMatchedStatus ||
+                     (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  if (priceStatus !== -1) {
+    ElMessage.warning('当前状态不需要新增价格')
+    return
+  }
+
+  // 保存当前操作行数据
+  addPriceRow.value = row
+  // 打开新增价格弹窗
+  showAddPriceDialog.value = true
+}
+
+// 处理价格新增成功（新增方法，用于刷新数据）
+const handlePriceAddSuccess = async (data) => {
+  console.log('【新增价格】价格创建成功，开始刷新数据', data)
+
+  try {
+    // 关闭弹窗
+    showAddPriceDialog.value = false
+    addPriceRow.value = null
+
+    // 提示用户
+    ElMessage.success('价格信息已成功添加')
+
+    // 刷新当前页数据（复用现有的数据加载方法）
+    await fetchData()
+
+    // 更新统计信息
+    await fetchMatchingStats()
+
+  } catch (error) {
+    console.error('【新增价格】刷新数据失败:', error)
+    ElMessage.error('数据刷新失败，请手动刷新页面')
+  }
+}
+
+// 处理价格新增取消
+const handlePriceAddCancel = () => {
+  console.log('【新增价格】用户取消价格新增操作')
+  addPriceRow.value = null
 }
 
 // 旧的物资选择数据加载方法已移除，统一使用 MaterialPriceSelectionDialog
@@ -3540,6 +3615,30 @@ provide('parentMethods', {
 
 .operation-group .el-button:active {
   transform: translateY(0);
+}
+
+/* 价格不存在状态特殊样式 */
+.operation-group.price-not-found {
+  background: linear-gradient(135deg,
+    rgba(16, 185, 129, 0.05) 0%,
+    rgba(16, 185, 129, 0.02) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+}
+
+.operation-group.price-not-found .primary-action {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #10b981;
+  color: white;
+  font-weight: 500;
+}
+
+.operation-group.price-not-found .primary-action:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  border-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 /* 价格显示样式 */

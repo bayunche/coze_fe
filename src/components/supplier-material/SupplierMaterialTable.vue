@@ -420,6 +420,18 @@
               </el-button>
             </div>
             
+            <!-- 价格不存在状态：显示新增价格和重新选择按钮 -->
+            <div v-else-if="isPriceNotFound(row)" class="operation-group price-not-found">
+              <el-button type="primary" size="small" @click="$emit('add-price', row)" class="primary-action">
+                <el-icon><Plus /></el-icon>
+                <span class="button-text">新增价格</span>
+              </el-button>
+              <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="secondary-action">
+                <el-icon><Edit /></el-icon>
+                <span class="button-text">重新选择</span>
+              </el-button>
+            </div>
+
             <!-- 精确匹配且价格不匹配：仅显示提示信息，不显示任何操作按钮 -->
             <div v-else-if="isPriceMismatch(row)" class="operation-group price-mismatch">
               <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修改" placement="top">
@@ -701,6 +713,16 @@ const getDataSourceType = (row) => {
 
 const isPriceMismatch = (row) => {
   return parentMethods.isPriceMismatch?.(row) || false
+}
+
+// 判断是否为价格不存在状态（新增功能，不影响现有逻辑）
+const isPriceNotFound = (row) => {
+  // 获取价格匹配状态（优先使用与matchOptions同级的字段）
+  const priceStatus = row.priceMatchedStatus ||
+                     (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  // 返回是否为价格不存在状态
+  return priceStatus === -1
 }
 
 const formatPrice = (price) => {
