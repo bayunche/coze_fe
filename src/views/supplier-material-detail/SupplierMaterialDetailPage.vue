@@ -209,11 +209,9 @@ import { useNavigation, getPriceMatchingStatusTagFromRow } from './utils.js'
 
 // 路由参数 - 使用 props 传递的参数
 const taskId = computed(() => {
-  // console.log('【调试】详情页面 - taskId props:', props.taskId)
   return props.taskId
 })
 const detailId = computed(() => {
-  // console.log('【调试】详情页面 - detailId props:', props.detailId)
   return props.detailId
 })
 
@@ -530,12 +528,6 @@ const handleSizeChange = (newSize) => {
   currentPage.value = 1
   fetchData()
 }
-
-// 格式化数字 - 已移至组件
-// const formatNumber = (value) => {
-//   if (value === null || value === undefined || value === '') return '-'
-//   return Number(value).toLocaleString()
-// }
 
 
 // 搜索处理（防抖）
@@ -1459,12 +1451,12 @@ const handleViewOptions = async (row) => {
 // 获取行样式类名
 const getRowClassName = ({ row }) => {
   let className = ''
-  
+
   // 分隔行特殊处理
   if (row.rowType === 'separator') {
     return 'separator-row'
   }
-  
+
   // 根据确认状态和匹配类型确定主要样式类
   if (Number(row.confirmResult) === 1) {
     className += 'confirmed-row'
@@ -1473,12 +1465,17 @@ const getRowClassName = ({ row }) => {
   } else {
     className += 'pending-row'
   }
-  
+
   // 为操作行添加特殊样式类名
   if (row.rowType === 'action') {
     className += ' action-row'
+
+    // 检查规格型号不一致，添加红色标记样式
+    if (hasSpecificationDifference(row) || hasMaterialNameDifference(row) || hasUnitDifference(row)) {
+      className += ' spec-mismatch-row'
+    }
   }
-  
+
   return className.trim()
 }
 
@@ -3327,10 +3324,26 @@ provide('parentMethods', {
 
 :deep(.el-table__body tr.no-match-row:hover + tr.action-row td.el-table__cell),
 :deep(.el-table__body tr.no-match-row + tr.action-row:hover td.el-table__cell) {
-  background: linear-gradient(135deg, 
-    rgba(239, 68, 68, 0.08) 0%, 
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.08) 0%,
     rgba(239, 68, 68, 0.04) 100%) !important;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15) !important;
+}
+
+/* 规格型号不一致行的红色标记样式 */
+:deep(.el-table .spec-mismatch-row .el-table__cell) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.06) 0%,
+    rgba(239, 68, 68, 0.03) 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+:deep(.el-table .spec-mismatch-row:hover .el-table__cell) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.12) 0%,
+    rgba(239, 68, 68, 0.06) 100%) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
 }
 
 /* 数据行和操作行内容样式 */
@@ -4336,5 +4349,35 @@ provide('parentMethods', {
   line-height: 1.4;
   max-width: 200px;
   word-break: break-word;
+}
+
+/* 价格对比行样式增强 */
+:deep(.el-table .price-comparison-row .el-table__cell) {
+  background: linear-gradient(135deg,
+    rgba(245, 158, 11, 0.04) 0%,
+    rgba(245, 158, 11, 0.02) 100%) !important;
+}
+
+:deep(.el-table .price-comparison-row:hover .el-table__cell) {
+  background: linear-gradient(135deg,
+    rgba(245, 158, 11, 0.08) 0%,
+    rgba(245, 158, 11, 0.04) 100%) !important;
+}
+
+/* 确保价格文本在所有状态下都有正确的样式 */
+:deep(.price-info .price-text),
+:deep(.selected-price-info .price-display),
+:deep(.exact-match-price .price-text),
+:deep(.similar-match-price .price-text) {
+  font-family: 'Segoe UI', -apple-system, sans-serif !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* 价格匹配状态标签样式增强 */
+:deep(.el-tag.price-match-tag) {
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+  padding: 0 8px !important;
 }
 </style>

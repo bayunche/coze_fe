@@ -518,7 +518,7 @@ export const getPriceMatchingStatusDisplay = (priceMatchedStatus) => {
   switch(priceMatchedStatus) {
     case -1:
       return {
-        text: '价格信息不全',
+        text: '价格信息不存在',
         type: 'danger',
         action: '联系管理员新增价格或调整季度'
       }

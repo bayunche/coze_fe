@@ -7,15 +7,7 @@
         <slot name="toolbar-left"></slot>
       </div>
       <div class="toolbar-right">
-        <!-- <el-button
-          type="success"
-          :loading="batchConfirming"
-          :disabled="pendingCount === 0"
-          @click="handleBatchConfirm"
-          size="small"
-        >
-          批量确认全部
-        </el-button> -->
+
       </div>
     </div>
 
@@ -562,11 +554,11 @@ const processedTableData = computed(() => {
     result.push(group.actionRow)
     
     // 检查价格匹配状态（优先使用与matchOptions同级的字段）
-    const priceStatus = group.actionRow.priceMatchedStatus || 
+    const priceStatus = group.actionRow.priceMatchedStatus ||
                        (group.actionRow.matchOptions?.[0]?.priceMatchedStatus)
-    
-    // 为需要解释的情况添加原因解释行（未找到物资、相似匹配、价格不存在）
-    if (group.actionRow.matchedType === 0 || group.actionRow.matchedType === 2 || priceStatus === -1) {
+
+    // 为需要解释的情况添加原因解释行（未找到物资、相似匹配、价格不存在、价格不一致）
+    if (group.actionRow.matchedType === 0 || group.actionRow.matchedType === 2 || priceStatus === -1 || priceStatus === 2) {
       const reasonRow = {
         ...group.actionRow,
         rowType: ROW_TYPES.REASON,
@@ -623,14 +615,19 @@ const getSequenceNumber = (index) => {
 // 获取原因解释文本
 const getReasonExplanation = (row) => {
   // 获取价格匹配状态（优先使用与matchOptions同级的字段）
-  const priceStatus = row.priceMatchedStatus || 
+  const priceStatus = row.priceMatchedStatus ||
                      (row.matchOptions?.[0]?.priceMatchedStatus)
-  
+
   // 检查价格不存在状态 - 优先判断价格状态
   if (priceStatus === -1) {
     return REASON_EXPLANATIONS.PRICE_NOT_FOUND
   }
-  
+
+  // 检查价格不一致状态
+  if (priceStatus === 2) {
+    return REASON_EXPLANATIONS.PRICE_MISMATCH
+  }
+
   if (row.matchedType === 0) {
     // 未找到物资：检查是否有推荐数据
     if (row.matchOptions && row.matchOptions.length > 0) {
@@ -642,7 +639,7 @@ const getReasonExplanation = (row) => {
     // 相似匹配：显示AI推荐说明
     return REASON_EXPLANATIONS.SIMILAR_MATCH
   }
-  
+
   return ''
 }
 

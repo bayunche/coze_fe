@@ -4,9 +4,16 @@
       <el-icon class="guide-icon">
         <InfoFilled />
       </el-icon>
-      <span class="guide-text">请点击下方卡片查看对应的物资数据并进行处理</span>
-      <p class="guide-text">请将所有有问题的数据处理完毕后再进行生成报告操作</p>
-
+      <div class="guide-text-content">
+        <div class="guide-step">
+          <span class="step-number">1.</span>
+          <span class="step-text">点击下方卡片查看对应的物资数据并进行处理</span>
+        </div>
+        <div class="guide-step">
+          <span class="step-number">2.</span>
+          <span class="step-text">将所有有问题的数据处理完毕后再进行生成报告操作</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -29,8 +36,8 @@ import { InfoFilled } from '@element-plus/icons-vue'
 
 .guide-content {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 12px;
   color: var(--theme-text-secondary);
   font-size: 14px;
 }
@@ -38,10 +45,33 @@ import { InfoFilled } from '@element-plus/icons-vue'
 .guide-icon {
   font-size: 16px;
   color: var(--theme-primary-color);
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
-.guide-text {
-  line-height: 1.4;
+.guide-text-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guide-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.step-number {
+  color: var(--theme-primary-color);
+  font-weight: 600;
+  flex-shrink: 0;
+  min-width: 20px;
+}
+
+.step-text {
+  flex: 1;
 }
 
 /* 苹果毛玻璃主题优化 */
