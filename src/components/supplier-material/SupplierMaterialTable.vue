@@ -1,9 +1,9 @@
 <template>
   <div class="supplier-material-table">
-    <!-- 表格工具栏 -->
+    <!-- 表格工具�?-->
     <div class="table-toolbar">
       <div class="toolbar-left">
-        <!-- 预留给父组件的插槽 -->
+        <!-- 预留给父组件的插�?-->
         <slot name="toolbar-left"></slot>
       </div>
       <div class="toolbar-right">
@@ -21,14 +21,14 @@
       :span-method="tableSpanMethod"
       v-bind="tableConfig"
     >
-      <!-- 序号列 -->
+      <!-- 序号�?-->
       <el-table-column label="序号" width="80" fixed="left">
         <template #default="{ row, $index }">
           <div v-if="row.rowType === 'data'" class="sequence-number-container">
             <div :class="getSequenceBarClass(row)" class="sequence-bar"></div>
             <span class="sequence-number">{{ getSequenceNumber($index) }}</span>
           </div>
-            <!-- 原因解释行 -->
+            <!-- 原因解释�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell reason-explanation">
             <div class="reason-content">
               <el-icon class="reason-icon">
@@ -38,7 +38,7 @@
             </div>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
         
         </template>
@@ -47,7 +47,7 @@
       <!-- 价格匹配状态列 -->
       <el-table-column 
         v-if="columnConfig.showPriceMatchStatus" 
-        label="价格匹配状态" 
+        label="价格匹配状�? 
         width="140" 
         align="center"
       >
@@ -58,9 +58,9 @@
             </el-tag>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
@@ -74,7 +74,7 @@
       <!-- 物资匹配状态列 -->
       <el-table-column 
         v-if="columnConfig.showMaterialMatchStatus" 
-        label="物资匹配状态" 
+        label="物资匹配状�? 
         width="140" 
         align="center"
       >
@@ -85,9 +85,9 @@
             </el-tag>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
@@ -98,22 +98,22 @@
         </template>
       </el-table-column>
 
-      <!-- 物资名称列 -->
+      <!-- 物资名称�?-->
       <el-table-column prop="materialName" label="物资名称" width="200" show-overflow-tooltip>
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             {{ getBaseInfoName(row) }}
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
             <div class="material-cell">
               <div class="material-content">
-                <!-- 用户选择的物资信息（显示确认后的物资名称） -->
+                <!-- 用户选择的物资信息（显示确认后的物资名称�?-->
                 <span v-if="row.hasUserSelectedData && row.confirmedBaseName" class="text-sm text-gray-600">
                   {{ row.confirmedBaseName }}
                 </span>
@@ -130,7 +130,7 @@
                   {{ '-' }}
                 </span>
               </div>
-              <!-- 数据差异标记（未匹配状态不显示） -->
+              <!-- 数据差异标记（未匹配状态不显示�?-->
               <el-icon v-if="hasMaterialNameDifference(row) && row.matchedType !== 0" class="difference-marker">
                 <Close />
               </el-icon>
@@ -139,22 +139,22 @@
         </template>
       </el-table-column>
 
-      <!-- 规格型号列 -->
+      <!-- 规格型号�?-->
       <el-table-column prop="specifications" label="规格型号" width="200" show-overflow-tooltip>
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             {{ getBaseInfoSpec(row) }}
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
             <div class="material-cell">
               <div class="material-content">
-                <!-- 用户选择的物资规格（显示确认后的规格型号） -->
+                <!-- 用户选择的物资规格（显示确认后的规格型号�?-->
                 <span v-if="row.hasUserSelectedData && row.confirmedBaseSpec" class="text-sm text-gray-600">
                   {{ row.confirmedBaseSpec }}
                 </span>
@@ -169,7 +169,7 @@
                 <!-- 其他情况 -->
                 <span v-else class="text-sm text-gray-500">{{ '-' }}</span>
               </div>
-              <!-- 数据差异标记（未匹配状态不显示） -->
+              <!-- 数据差异标记（未匹配状态不显示�?-->
               <el-icon v-if="hasSpecificationDifference(row) && row.matchedType !== 0" class="difference-marker">
                 <Close />
               </el-icon>
@@ -178,16 +178,16 @@
         </template>
       </el-table-column>
 
-      <!-- 单位列 -->
+      <!-- 单位�?-->
       <el-table-column prop="unit" label="单位" width="80">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             {{ row.unit || '-' }}
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
@@ -197,7 +197,7 @@
                 <span v-if="row.baseInfo?.unit" class="text-sm text-gray-600">
                   {{ row.baseInfo.unit }}
                 </span>
-                <!-- 如果没有baseInfo但有用户选择的数据，显示selectedMaterial的单位 -->
+                <!-- 如果没有baseInfo但有用户选择的数据，显示selectedMaterial的单�?-->
                 <span v-else-if="row.hasUserSelectedData && row.selectedMaterial?.unit" class="text-sm text-gray-600">
                   {{ row.selectedMaterial.unit }}
                 </span>
@@ -208,7 +208,7 @@
                 <!-- 其他情况 -->
                 <span v-else class="text-sm text-gray-500">{{ '-' }}</span>
               </div>
-              <!-- 数据差异标记（未匹配状态不显示） -->
+              <!-- 数据差异标记（未匹配状态不显示�?-->
               <el-icon v-if="hasUnitDifference(row) && row.matchedType !== 0" class="difference-marker">
                 <Close />
               </el-icon>
@@ -217,7 +217,7 @@
         </template>
       </el-table-column>
 
-      <!-- 数量列 -->
+      <!-- 数量�?-->
       <el-table-column prop="quantity" label="数量" width="100">
         <template #default="{ row }">
           <!-- 数据行和操作行都显示数量 -->
@@ -225,15 +225,15 @@
             {{ formatNumber(row.quantity) }}
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
         </template>
       </el-table-column>
 
-      <!-- 物资价格（含税）列 -->
+      <!-- 物资价格（含税）�?-->
       <el-table-column label="物资价格（含税）" width="140" align="right">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
@@ -245,13 +245,13 @@
             </div>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
-            <!-- 用户手动选择的价格信息 -->
+            <!-- 用户手动选择的价格信�?-->
             <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && (row.matchedType === 0 || row.isUserModified)" class="selected-price-info">
               <span class="price-text">¥{{ formatPrice(row.selectedPriceQuarter.taxPrice || row.selectedPriceQuarter.unitPrice || 0) }}</span>
             </div>
@@ -259,7 +259,7 @@
             <div v-else-if="row.priceInfo?.taxPrice" class="exact-match-price">
               <span class="price-text">¥{{ formatPrice(row.priceInfo.taxPrice) }}</span>
             </div>
-            <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
+            <!-- 未匹配和其他状态：显示类似股票的灰色显�?-->
             <div v-else class="empty-price-display">
               <span class="empty-price-text">¥--</span>
             </div>
@@ -268,7 +268,7 @@
       </el-table-column>
 
       <!-- 物资价格（不含税）列 -->
-      <el-table-column label="物资价格（不含税）" width="140" align="right">
+      <el-table-column label="物资价格（不含税�? width="140" align="right">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             <div class="price-value">
@@ -279,9 +279,9 @@
             </div>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
@@ -289,11 +289,11 @@
             <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && (row.matchedType === 0 || row.isUserModified)" class="selected-price-info">
               <span class="price-text">¥{{ formatPrice(getActionRowTaxExcludedPrice(row)) }}</span>
             </div>
-            <!-- 所有已匹配状态统一从priceInfo计算不含税价格 -->
+            <!-- 所有已匹配状态统一从priceInfo计算不含税价�?-->
             <div v-else-if="row.priceInfo?.taxPrice" class="exact-match-price">
               <span class="price-text">¥{{ formatPrice(row.priceInfo.taxPrice ? row.priceInfo.taxPrice / 1.13 : 0) }}</span>
             </div>
-            <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
+            <!-- 未匹配和其他状态：显示类似股票的灰色显�?-->
             <div v-else class="empty-price-display">
               <span class="empty-price-text">¥--</span>
             </div>
@@ -301,37 +301,37 @@
         </template>
       </el-table-column>
 
-      <!-- 税率列 -->
+      <!-- 税率�?-->
       <el-table-column label="税率（上传时选择的税率，价格以该税率为基准计算）" width="240" align="center">
         <template #default="{ row }">
-          <!-- 数据行和操作行都显示相同的税率 -->
+          <!-- 数据行和操作行都显示相同的税�?-->
           <div v-if="row.rowType === 'data' || row.rowType === 'action'" class="data-cell">
             <span class="tax-rate-text">{{ getTaxRate(row) }}</span>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
         </template>
       </el-table-column>
 
       <!-- 物资价格所属季度列 -->
-      <el-table-column label="所属季度" width="120" align="center">
+      <el-table-column label="所属季�? width="120" align="center">
         <template #default="{ row }">
           <div v-if="row.rowType === 'data'" class="data-cell">
             <!-- 数据行不显示季度信息 -->
             <span class="text-sm text-gray-400">-</span>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           <div v-else class="action-cell">
-            <!-- 用户手动选择的季度 -->
+            <!-- 用户手动选择的季�?-->
             <div v-if="row.hasUserSelectedData && row.selectedPriceQuarter && (row.matchedType === 0 || row.isUserModified)" class="selected-price-info">
               <span class="quarter-text">{{ row.selectedPriceQuarter.quarter || '-' }}</span>
             </div>
@@ -339,7 +339,7 @@
             <div v-else-if="row.priceInfo?.quarter" class="exact-match-quarter">
               <span class="quarter-text">{{ row.priceInfo.quarter }}</span>
             </div>
-            <!-- 未匹配和其他状态：显示类似股票的灰色显示 -->
+            <!-- 未匹配和其他状态：显示类似股票的灰色显�?-->
             <div v-else class="empty-data-display">
               <span class="empty-data-text">--</span>
             </div>
@@ -347,26 +347,26 @@
         </template>
       </el-table-column>
 
-      <!-- 数据来源列 -->
+      <!-- 数据来源�?-->
       <el-table-column label="数据来源" width="120" align="center">
         <template #default="{ row }">
           <!-- 数据行显示结算书 -->
           <div v-if="row.rowType === 'data'" class="data-cell">
-            <span class="text-xs text-gray-500">结算书</span>
+            <span class="text-xs text-gray-500">结算�?/span>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
-          <!-- 操作行显示数据来源标签 -->
+          <!-- 操作行显示数据来源标�?-->
           <div v-else class="action-cell">
             <!-- 未匹配状态显示等待选择 -->
             <span v-if="row.matchedType === 0 && !row.hasUserSelectedData" class="text-xs text-gray-400 italic">
               等待选择
             </span>
-            <!-- 其他状态显示数据来源标签 -->
+            <!-- 其他状态显示数据来源标�?-->
             <el-tag v-else :type="getDataSourceType(row).type" size="small">
               {{ getDataSourceType(row).text }}
             </el-tag>
@@ -374,33 +374,33 @@
         </template>
       </el-table-column>
 
-      <!-- 操作列 -->
+      <!-- 操作�?-->
       <el-table-column label="操作" width="260" align="center" class-name="operation-column" >
         <template #default="{ row }">
-          <!-- 数据行：不显示任何操作内容 -->
+          <!-- 数据行：不显示任何操作内�?-->
           <div v-if="row.rowType === 'data'" class="data-cell operation-data-cell">
             <span class="text-xs text-gray-400">-</span>
           </div>
           <div v-else-if="row.rowType === 'separator'" class="separator-cell">
-            <!-- 分隔行显示为空 -->
+            <!-- 分隔行显示为�?-->
           </div>
           
-          <!-- 原因解释行 -->
-          <!-- 原因解释行（会被跨列覆盖，不显示） -->
+          <!-- 原因解释�?-->
+          <!-- 原因解释行（会被跨列覆盖，不显示�?-->
           <div v-else-if="row.rowType === 'reason'" class="reason-cell">
           </div>
           
           <!-- 操作行：根据匹配类型显示不同控件 -->
           <div v-else class="action-cell operation-action-cell">
-            <!-- 已确认状态：显示状态和重选按钮 -->
+            <!-- 已确认状态：显示状态和重选按�?-->
             <div v-if="row.confirmResult === 1" class="operation-group confirmed-state">
               <el-tag type="success" size="small" class="status-tag">
                 <el-icon><Check /></el-icon>
-                <span>已确认</span>
+                <span>已确�?/span>
               </el-tag>
               <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="secondary-action">
                 <el-icon><Edit /></el-icon>
-                <span class="button-text">重选</span>
+                <span class="button-text">重�?/span>
               </el-button>
             </div>
             
@@ -420,24 +420,20 @@
               </el-button>
             </div>
             
-            <!-- 价格不存在状态：显示新增价格和修改按钮 -->
+            <!-- 价格不存在状态：只显示新增价格按�?-->
             <div v-else-if="isPriceNotFound(row)" class="operation-group price-not-found">
-              <el-button type="primary" size="small" @click="$emit('add-price', row)" class="primary-action">
+              <el-button type="primary" size="small" @click="$emit('add-price', row)" class="single-action">
                 <el-icon><Plus /></el-icon>
                 <span class="button-text">新增价格</span>
-              </el-button>
-              <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="secondary-action">
-                <el-icon><Edit /></el-icon>
-                <span class="button-text">修改</span>
               </el-button>
             </div>
 
             <!-- 精确匹配且价格不匹配：仅显示提示信息，不显示任何操作按钮 -->
             <div v-else-if="isPriceMismatch(row)" class="operation-group price-mismatch">
-              <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修改" placement="top">
+              <el-tooltip content="价格不匹配，请确认结算书是否有误并进行修�? placement="top">
                 <div class="price-mismatch-hint">
                   <el-icon class="warning-icon"><WarnTriangleFilled /></el-icon>
-                  <span class="hint-text">价格不匹配，请确认结算书是否有误并进行修改</span>
+                  <span class="hint-text">价格不匹配，请确认结算书是否有误并进行修�?/span>
                 </div>
               </el-tooltip>
             </div>
@@ -450,11 +446,11 @@
               </el-button>
               <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="secondary-action">
                 <el-icon><Edit /></el-icon>
-                <span class="button-text">重选</span>
+                <span class="button-text">重�?/span>
               </el-button>
             </div>
             
-            <!-- 相似匹配(2)、历史匹配(3)、人工匹配(4)：显示选择确认按钮 -->
+            <!-- 相似匹配(2)、历史匹�?3)、人工匹�?4)：显示选择确认按钮 -->
             <div v-else-if="row.matchedType === 2 || row.matchedType === 3 || row.matchedType === 4" class="operation-group similar-match">
               <el-button type="primary" size="small" @click="$emit('view-options', row)" class="single-action">
                 <el-icon><Edit /></el-icon>
@@ -462,7 +458,7 @@
               </el-button>
             </div>
             
-            <!-- 其他未知匹配类型：显示重选按钮 -->
+            <!-- 其他未知匹配类型：显示重选按�?-->
             <div v-else class="operation-group other-match">
               <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="single-action">
                 <el-icon><Edit /></el-icon>
@@ -511,17 +507,17 @@ const props = defineProps({
     default: TABLE_TYPES.ALL,
     validator: (value) => Object.values(TABLE_TYPES).includes(value)
   },
-  // 加载状态
+  // 加载状�?
   loading: {
     type: Boolean,
     default: false
   },
-  // 批量确认加载状态
+  // 批量确认加载状�?
   batchConfirming: {
     type: Boolean,
     default: false
   },
-  // 待确认数量
+  // 待确认数�?
   pendingCount: {
     type: Number,
     default: 0
@@ -535,7 +531,7 @@ defineEmits([
   'batch-confirm'
 ])
 
-// 注入父组件的方法（用于访问父组件中的复杂逻辑函数）
+// 注入父组件的方法（用于访问父组件中的复杂逻辑函数�?
 const parentMethods = inject('parentMethods', {})
 
 // 表格配置
@@ -544,7 +540,7 @@ const tableConfig = computed(() => ({
   emptyText: '暂无数据'
 }))
 
-// 列配置
+// 列配�?
 const columnConfig = computed(() => {
   return TABLE_COLUMNS_CONFIG[props.tableType] || TABLE_COLUMNS_CONFIG[TABLE_TYPES.ALL]
 })
@@ -555,14 +551,14 @@ const processedTableData = computed(() => {
     return props.data
   }
 
-  // 为未找到物资表格添加原因解释行
+  // 为未找到物资表格添加原因解释�?
   const result = []
   const dataGroups = groupDataByItem(props.data)
   
   dataGroups.forEach((group, index) => {
-    // 添加数据行
+    // 添加数据�?
     result.push(group.dataRow)
-    // 添加操作行
+    // 添加操作�?
     result.push(group.actionRow)
     
     // 检查价格匹配状态（优先使用与matchOptions同级的字段）
@@ -588,7 +584,7 @@ const processedTableData = computed(() => {
   return result
 })
 
-// 将数据按物资项分组
+// 将数据按物资项分�?
 const groupDataByItem = (data) => {
   const groups = []
   let currentGroup = null
@@ -619,7 +615,7 @@ const groupDataByItem = (data) => {
 
 // 获取序号
 const getSequenceNumber = (index) => {
-  // 根据是否有原因解释行来计算序号
+  // 根据是否有原因解释行来计算序�?
   const rowsPerItem = columnConfig.value.showReasonRow ? 4 : 3 // data + action + (reason) + separator
   return Math.floor(index / rowsPerItem) + 1
 }
@@ -630,12 +626,12 @@ const getReasonExplanation = (row) => {
   const priceStatus = row.priceMatchedStatus ||
                      (row.matchOptions?.[0]?.priceMatchedStatus)
 
-  // 检查价格不存在状态 - 优先判断价格状态
+  // 检查价格不存在状�?- 优先判断价格状�?
   if (priceStatus === -1) {
     return REASON_EXPLANATIONS.PRICE_NOT_FOUND
   }
 
-  // 检查价格不一致状态
+  // 检查价格不一致状�?
   if (priceStatus === 2) {
     return REASON_EXPLANATIONS.PRICE_MISMATCH
   }
@@ -655,13 +651,13 @@ const getReasonExplanation = (row) => {
   return ''
 }
 
-// 获取物资匹配状态标签
+// 获取物资匹配状态标�?
 const getMaterialMatchingStatusTag = (row) => {
   const matchType = MATCH_TYPE_MAP[row.matchedType] || 'NO_MATCH'
   return MATERIAL_MATCH_STATUS[matchType] || MATERIAL_MATCH_STATUS.NO_MATCH
 }
 
-// 从父组件方法中获取各种处理函数
+// 从父组件方法中获取各种处理函�?
 const getPriceMatchingStatusTag = (row) => {
   return parentMethods.getPriceMatchingStatusTag?.(row) || { text: '-', type: 'info' }
 }
@@ -708,20 +704,20 @@ const getTaxRate = (row) => {
 }
 
 const getDataSourceType = (row) => {
-  return parentMethods.getDataSourceType?.(row) || { text: '数据库', type: 'success' }
+  return parentMethods.getDataSourceType?.(row) || { text: '数据�?, type: 'success' }
 }
 
 const isPriceMismatch = (row) => {
   return parentMethods.isPriceMismatch?.(row) || false
 }
 
-// 判断是否为价格不存在状态（新增功能，不影响现有逻辑）
+// 判断是否为价格不存在状态（新增功能，不影响现有逻辑�?
 const isPriceNotFound = (row) => {
   // 获取价格匹配状态（优先使用与matchOptions同级的字段）
   const priceStatus = row.priceMatchedStatus ||
                      (row.matchOptions?.[0]?.priceMatchedStatus)
 
-  // 返回是否为价格不存在状态
+  // 返回是否为价格不存在状�?
   return priceStatus === -1
 }
 
@@ -730,7 +726,7 @@ const formatPrice = (price) => {
   if (typeof price === 'number') {
     return price.toFixed(2)
   }
-  // 处理字符串类型 - 尝试转换为数字
+  // 处理字符串类�?- 尝试转换为数�?
   if (typeof price === 'string' && price !== '') {
     const numPrice = parseFloat(price)
     if (!isNaN(numPrice)) {
@@ -761,24 +757,24 @@ const getSequenceBarClass = (row) => {
   return parentMethods.getSequenceBarClass?.(row) || ''
 }
 
-// 表格跨列方法 - 处理原因解释行
+// 表格跨列方法 - 处理原因解释�?
 const tableSpanMethod = ({ row, columnIndex }) => {
   // 原因解释行需要跨所有列
   if (row.rowType === 'reason') {
     // 第一列显示全部内容，跨所有列
     if (columnIndex === 0) {
       // 计算总列数（根据当前列配置动态计算）
-      let totalColumns = 10 // 基础列数：序号、物资名称、规格型号、单位、数量、含税价格、不含税价格、税率、季度、数据来源、操作
+      let totalColumns = 11 // 基础列数：序号、物资名称、规格型号、单位、数量、含税价格、不含税价格、税率、季度、数据来源、操�?
       if (columnConfig.value.showPriceMatchStatus) totalColumns += 1
       if (columnConfig.value.showMaterialMatchStatus) totalColumns += 1
       return { rowspan: 1, colspan: totalColumns }
     } else {
-      // 其他列隐藏
+      // 其他列隐�?
       return { rowspan: 0, colspan: 0 }
     }
   }
   
-  // 其他行正常显示
+  // 其他行正常显�?
   return { rowspan: 1, colspan: 1 }
 }
 
@@ -805,7 +801,7 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   border-radius: 0 0 8px 8px;
 }
 
-/* 工具栏样式 */
+/* 工具栏样�?*/
 .table-toolbar {
   display: flex;
   justify-content: space-between;
@@ -831,7 +827,7 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   gap: 12px;
 }
 
-/* 表格行类型样式 */
+/* 表格行类型样�?*/
 .data-cell {
   padding: 8px 12px;
 }
@@ -850,7 +846,7 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   padding: 0 !important;
 }
 
-/* 原因解释行内容样式 */
+/* 原因解释行内容样�?*/
 .reason-cell.reason-explanation {
   padding: 14px 16px !important;
   background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
@@ -951,7 +947,7 @@ const tableSpanMethod = ({ row, columnIndex }) => {
 }
 
 
-/* 序号列样式优化 */
+/* 序号列样式优�?*/
 .sequence-number-container {
   display: flex;
   align-items: center;
@@ -970,7 +966,7 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   font-size: 14px;
 }
 
-/* 表格行样式优化 - 使用更强的选择器 */
+/* 表格行样式优�?- 使用更强的选择�?*/
 :deep(.supplier-material-table .el-table__row) {
   transition: background-color 0.2s ease;
 }
@@ -979,7 +975,7 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   background-color: var(--el-fill-color-lighter);
 }
 
-/* 分隔行样式 - 使用更强的选择器 */
+/* 分隔行样�?- 使用更强的选择�?*/
 :deep(.supplier-material-table .el-table__row[class*="separator"]) {
   background-color: #f8f9fa !important;
   border-top: 1px solid #e9ecef !important;
@@ -997,9 +993,33 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   line-height: 12px !important;
 }
 
-/* 原因解释行整行样式 - 使用更强的选择器 */
+/* 原因解释行整行样�?- 使用更强的选择�?*/
 :deep(.supplier-material-table .el-table__row[class*="reason"]) {
   background-color: transparent !important;
+}
+
+/* 规格型号不一致行的红色标记样�?- 在组件级别也添加样式穿�?*/
+:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell),
+:deep(.el-table .spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row td),
+:deep(tr.spec-mismatch-row td) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.06) 0%,
+    rgba(239, 68, 68, 0.03) 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
+}
+
+:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell),
+:deep(.el-table .spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover td),
+:deep(tr.spec-mismatch-row:hover td) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.12) 0%,
+    rgba(239, 68, 68, 0.06) 100%) !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
 }
 
 :deep(.supplier-material-table .el-table__row[class*="reason"]:hover) {

@@ -1478,16 +1478,48 @@ const handleAddPrice = (row) => {
     return
   }
 
-  // 增强baseInfo检查逻辑：如果没有baseInfo但有matchOptions，从matchOptions获取
-  let baseInfo = row.baseInfo
-  if ((!baseInfo || !baseInfo.id) && row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
+  // 多层fallback逻辑获取baseInfo - 从展示行获取物资信息
+  let baseInfo = null
+
+  // 第一层：直接从row.baseInfo获取
+  if (row.baseInfo && row.baseInfo.id) {
+    baseInfo = row.baseInfo
+    console.log('【新增价格】从row.baseInfo获取基础信息:', baseInfo)
+  }
+
+  // 第二层：从matchOptions[0].baseInfo获取
+  else if (row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
     baseInfo = row.matchOptions[0].baseInfo
-    console.log('【新增价格】从matchOptions获取baseInfo:', baseInfo)
+    console.log('【新增价格】从matchOptions[0].baseInfo获取基础信息:', baseInfo)
+  }
+
+  // 第三层：从matchOptions[0]直接获取字段
+  else if (row.matchOptions && row.matchOptions.length > 0) {
+    const match = row.matchOptions[0]
+    baseInfo = {
+      id: match.matchedId || match.id,
+      materialName: match.materialName || row.materialName,
+      specificationModel: match.specificationModel || row.specifications,
+      unit: match.unit || row.unit
+    }
+    console.log('【新增价格】从matchOptions[0]构建基础信息:', baseInfo)
+  }
+
+  // 第四层：直接从行数据构建baseInfo（使用展示的物资信息）
+  else {
+    baseInfo = {
+      id: row.baseDataId || row.id || row.taskDataId,
+      materialName: row.materialName,
+      specificationModel: row.specifications,
+      unit: row.unit
+    }
+    console.log('【新增价格】从行数据构建基础信息:', baseInfo)
   }
 
   // 检查基础物资信息是否完整
-  if (!baseInfo || !baseInfo.id) {
-    ElMessage.warning('物资基础信息不完整，无法新增价格')
+  if (!baseInfo || !baseInfo.id || !baseInfo.materialName) {
+    console.error('【新增价格】物资基础信息不完整:', baseInfo)
+    ElMessage.warning('未找到物资信息，请检查数据完整性')
     return
   }
 
@@ -3419,8 +3451,12 @@ provide('parentMethods', {
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15) !important;
 }
 
-/* 规格型号不一致行的红色标记样式 */
-:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell) {
+/* 规格型号不一致行的红色标记样式 - 使用多重选择器确保样式穿透 */
+:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell),
+:deep(.el-table .spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row td),
+:deep(tr.spec-mismatch-row td) {
   background: linear-gradient(135deg,
     rgba(239, 68, 68, 0.06) 0%,
     rgba(239, 68, 68, 0.03) 100%) !important;
@@ -3428,7 +3464,11 @@ provide('parentMethods', {
   box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
 }
 
-:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell) {
+:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell),
+:deep(.el-table .spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover td),
+:deep(tr.spec-mismatch-row:hover td) {
   background: linear-gradient(135deg,
     rgba(239, 68, 68, 0.12) 0%,
     rgba(239, 68, 68, 0.06) 100%) !important;
