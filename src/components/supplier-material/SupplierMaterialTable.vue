@@ -420,7 +420,7 @@
               </el-button>
             </div>
             
-            <!-- 价格不存在状态：显示新增价格和重新选择按钮 -->
+            <!-- 价格不存在状态：显示新增价格和修改按钮 -->
             <div v-else-if="isPriceNotFound(row)" class="operation-group price-not-found">
               <el-button type="primary" size="small" @click="$emit('add-price', row)" class="primary-action">
                 <el-icon><Plus /></el-icon>
@@ -428,7 +428,7 @@
               </el-button>
               <el-button type="warning" plain size="small" @click="$emit('view-options', row)" class="secondary-action">
                 <el-icon><Edit /></el-icon>
-                <span class="button-text">重新选择</span>
+                <span class="button-text">修改</span>
               </el-button>
             </div>
 

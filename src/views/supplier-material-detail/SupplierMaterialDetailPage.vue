@@ -1465,14 +1465,9 @@ const handleAddPrice = (row) => {
     materialName: row.materialName,
     specifications: row.specifications,
     baseInfoId: row.baseInfo?.id,
-    taskDataId: row.taskDataId
+    taskDataId: row.taskDataId,
+    matchOptions: row.matchOptions
   })
-
-  // 检查基础物资信息是否完整
-  if (!row.baseInfo || !row.baseInfo.id) {
-    ElMessage.warning('物资基础信息不完整，无法新增价格')
-    return
-  }
 
   // 检查是否为价格不存在状态
   const priceStatus = row.priceMatchedStatus ||
@@ -1483,8 +1478,27 @@ const handleAddPrice = (row) => {
     return
   }
 
+  // 增强baseInfo检查逻辑：如果没有baseInfo但有matchOptions，从matchOptions获取
+  let baseInfo = row.baseInfo
+  if ((!baseInfo || !baseInfo.id) && row.matchOptions && row.matchOptions.length > 0 && row.matchOptions[0].baseInfo) {
+    baseInfo = row.matchOptions[0].baseInfo
+    console.log('【新增价格】从matchOptions获取baseInfo:', baseInfo)
+  }
+
+  // 检查基础物资信息是否完整
+  if (!baseInfo || !baseInfo.id) {
+    ElMessage.warning('物资基础信息不完整，无法新增价格')
+    return
+  }
+
+  // 构建传递给弹窗的行数据，确保包含正确的baseInfo
+  const enhancedRow = {
+    ...row,
+    baseInfo: baseInfo
+  }
+
   // 保存当前操作行数据
-  addPriceRow.value = row
+  addPriceRow.value = enhancedRow
   // 打开新增价格弹窗
   showAddPriceDialog.value = true
 }
@@ -3406,7 +3420,7 @@ provide('parentMethods', {
 }
 
 /* 规格型号不一致行的红色标记样式 */
-:deep(.el-table .spec-mismatch-row .el-table__cell) {
+:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell) {
   background: linear-gradient(135deg,
     rgba(239, 68, 68, 0.06) 0%,
     rgba(239, 68, 68, 0.03) 100%) !important;
@@ -3414,7 +3428,7 @@ provide('parentMethods', {
   box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
 }
 
-:deep(.el-table .spec-mismatch-row:hover .el-table__cell) {
+:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell) {
   background: linear-gradient(135deg,
     rgba(239, 68, 68, 0.12) 0%,
     rgba(239, 68, 68, 0.06) 100%) !important;

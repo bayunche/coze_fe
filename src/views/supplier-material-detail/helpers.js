@@ -197,10 +197,9 @@ export const OperationStatusHelper = {
 
   /**
    * 判断是否需要显示操作按钮
-   * @param {Object} _row - 表格行数据（暂未使用）
    * @returns {boolean} 是否需要显示操作按钮
    */
-  shouldShowOperationButtons(_row) {
+  shouldShowOperationButtons() {
     // 已确认的状态仍然显示重选按钮
     return true
   }

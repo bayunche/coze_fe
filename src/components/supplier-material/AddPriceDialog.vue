@@ -186,13 +186,30 @@ const dialogVisible = computed({
 const materialInfo = computed(() => {
   const row = props.rowData || {}
 
+  // 优先使用操作行显示的物资信息（materialName、specifications、unit）
+  // 这些是用户在表格中看到的信息，应该与新增价格时的物资信息一致
+  let displayName = row.materialName || ''
+  let displaySpec = row.specifications || ''
+  let displayUnit = row.unit || ''
+
+  // 如果操作行的显示信息为空，再从baseInfo获取
+  if (!displayName && row.baseInfo?.materialName) {
+    displayName = row.baseInfo.materialName
+  }
+  if (!displaySpec && row.baseInfo?.specifications) {
+    displaySpec = row.baseInfo.specifications
+  }
+  if (!displayUnit && row.baseInfo?.unit) {
+    displayUnit = row.baseInfo.unit
+  }
+
   return {
-    // 基础物资ID，用于API调用
-    id: row.baseInfo?.id || null,
-    // 显示用的物资信息（优先使用baseInfo，备选使用row本身）
-    displayName: row.baseInfo?.materialName || row.materialName || '',
-    displaySpec: row.baseInfo?.specifications || row.specifications || '',
-    displayUnit: row.baseInfo?.unit || row.unit || '',
+    // 基础物资ID，用于API调用（从baseInfo获取）
+    id: row.baseInfo?.id || row.baseInfo?.baseDataId || null,
+    // 显示用的物资信息（优先使用操作行显示的信息）
+    displayName: displayName,
+    displaySpec: displaySpec,
+    displayUnit: displayUnit,
     // 原始数据备用
     originalRow: row
   }
