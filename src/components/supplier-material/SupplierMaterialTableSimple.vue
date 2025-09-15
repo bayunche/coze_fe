@@ -748,6 +748,15 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   border-bottom: 1px solid #f3f4f6;
 }
 
+/* 步骤1：添加表格行的基础样式和过渡效果 */
+:deep(.supplier-material-table-simple .el-table__row) {
+  transition: background-color 0.2s ease;
+}
+
+:deep(.supplier-material-table-simple .el-table__row:hover) {
+  background-color: var(--el-fill-color-lighter);
+}
+
 /* 简化的规格不一致行样式 */
 :deep(.spec-mismatch-row td) {
   background-color: #fef2f2 !important;
