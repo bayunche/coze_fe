@@ -15,26 +15,15 @@
         <template #default="{ row, $index }">
           <div v-if="row.rowType === 'data'" class="sequence-container">
             <div :class="getSequenceBarClass(row)" class="sequence-bar"></div>
-            <span>{{ getSequenceNumber($index) }}</span>
-            <!-- 增强的问题状态指示器 -->
-            <el-tooltip
-              v-if="shouldShowReasonTooltip(row)"
-              :content="getReasonExplanation(row)"
-              placement="right"
-              effect="light"
-              :show-arrow="true"
-              :offset="8"
-              :show-after="200"
-              :hide-after="100"
-              popper-class="enhanced-reason-tooltip"
-            >
-              <div class="reason-badge" :class="getReasonBadgeClass(row)">
+            <div class="sequence-content">
+              <div class="sequence-number">{{ getSequenceNumber($index) }}</div>
+              <!-- 如果有原因信息，显示简要指示 -->
+              <div v-if="row.hasReason" class="reason-indicator" :class="`reason-${row.reasonType}`">
                 <el-icon class="reason-icon">
-                  <component :is="getReasonIcon(row)" />
+                  <component :is="getReasonIconComponent(row.reasonIcon)" />
                 </el-icon>
-                <span class="reason-text">{{ getReasonShortText(row) }}</span>
               </div>
-            </el-tooltip>
+            </div>
           </div>
           <div v-else-if="row.rowType === 'separator'">
             <!-- 分隔行显示为空 -->
@@ -90,27 +79,47 @@
         </template>
       </el-table-column>
 
-      <!-- 物资名称列 -->
-      <el-table-column prop="materialName" label="物资名称" width="200" show-overflow-tooltip>
+      <!-- 物资名称列 - 简化版，直接显示合并后的数据 -->
+      <el-table-column prop="materialName" label="物资名称" width="220" show-overflow-tooltip>
         <template #default="{ row }">
-          <div v-if="row.rowType === 'data'">
-            {{ getBaseInfoName(row) }}
+          <div v-if="row.rowType === 'data'" class="material-display">
+            <div class="material-name">{{ getBaseInfoName(row) }}</div>
+            <!-- 直接显示已合并的原因信息 -->
+            <div v-if="row.hasReason" class="reason-display">
+              <el-tag
+                :type="row.reasonType || 'info'"
+                size="small"
+                effect="plain">
+                {{ row.reasonText }}
+              </el-tag>
+            </div>
           </div>
           <div v-else-if="row.rowType === 'separator'">
             <!-- 分隔行显示为空 -->
           </div>
           <div v-else>
-            <div class="material-cell">
-              <span v-if="row.hasUserSelectedData && row.confirmedBaseName">
-                {{ row.confirmedBaseName }}
-              </span>
-              <span v-else-if="row.baseInfo?.materialName">
-                {{ row.baseInfo.materialName }}
-              </span>
-              <span v-else-if="row.matchedType === 0" class="text-gray-400">
-                等待选择物资
-              </span>
-              <span v-else>{{ '-' }}</span>
+            <div class="material-display">
+              <div class="material-name">
+                <span v-if="row.hasUserSelectedData && row.confirmedBaseName">
+                  {{ row.confirmedBaseName }}
+                </span>
+                <span v-else-if="row.baseInfo?.materialName">
+                  {{ row.baseInfo.materialName }}
+                </span>
+                <span v-else-if="row.matchedType === 0" class="text-gray-400">
+                  等待选择物资
+                </span>
+                <span v-else>{{ '-' }}</span>
+              </div>
+              <!-- 操作行也显示原因 -->
+              <div v-if="row.hasReason" class="reason-display">
+                <el-tag
+                  :type="row.reasonType || 'info'"
+                  size="small"
+                  effect="light">
+                  {{ row.reasonText }}
+                </el-tag>
+              </div>
               <!-- 差异标记 -->
               <el-icon v-if="hasMaterialNameDifference(row) && row.matchedType !== 0" class="text-red-500">
                 <Close />
@@ -455,15 +464,18 @@ const columnConfig = computed(() => {
   return TABLE_COLUMNS_CONFIG[props.tableType] || TABLE_COLUMNS_CONFIG[TABLE_TYPES.ALL]
 })
 
-// 高性能处理：只使用简单的两行结构，完全移除原因解释行
+// 高性能数据处理：直接将原因行内容合并到主数据行
 const simpleTableData = computed(() => {
   const result = []
   const dataGroups = groupDataByItem(props.data)
 
   dataGroups.forEach((group, index) => {
-    // 只添加数据行和操作行，不添加原因解释行
-    result.push(group.dataRow)
-    result.push(group.actionRow)
+    // 将原因行信息直接合并到数据行
+    const mergedDataRow = mergeReasonInfoToDataRow(group)
+    const mergedActionRow = mergeReasonInfoToActionRow(group)
+
+    result.push(mergedDataRow)
+    result.push(mergedActionRow)
 
     // 添加分隔行（如果不是最后一组）
     if (group.separatorRow && index < dataGroups.length - 1) {
@@ -474,7 +486,49 @@ const simpleTableData = computed(() => {
   return result
 })
 
-// 数据分组
+// 将原因行信息合并到数据行
+const mergeReasonInfoToDataRow = (group) => {
+  const dataRow = { ...group.dataRow }
+  const reasonRow = group.reasonRow
+
+  if (reasonRow) {
+    // 直接将原因信息作为数据行的属性
+    dataRow.reasonText = reasonRow.reason || ''
+    dataRow.explanationText = reasonRow.explanation || ''
+    dataRow.hasReason = true
+
+    // 根据原因类型设置状态
+    if (reasonRow.reason?.includes('未匹配')) {
+      dataRow.reasonType = 'danger'
+      dataRow.reasonIcon = 'close'
+    } else if (reasonRow.reason?.includes('价格')) {
+      dataRow.reasonType = 'warning'
+      dataRow.reasonIcon = 'warning'
+    } else if (reasonRow.reason?.includes('相似')) {
+      dataRow.reasonType = 'primary'
+      dataRow.reasonIcon = 'info'
+    }
+  }
+
+  return dataRow
+}
+
+// 将原因行信息合并到操作行
+const mergeReasonInfoToActionRow = (group) => {
+  const actionRow = { ...group.actionRow }
+  const reasonRow = group.reasonRow
+
+  if (reasonRow) {
+    // 操作行也携带原因信息，用于显示一致性
+    actionRow.reasonText = reasonRow.reason || ''
+    actionRow.hasReason = true
+    actionRow.reasonType = actionRow.reasonType || 'info'
+  }
+
+  return actionRow
+}
+
+// 增强的数据分组 - 识别并处理原因行
 const groupDataByItem = (data) => {
   const groups = []
   let currentGroup = null
@@ -488,6 +542,11 @@ const groupDataByItem = (data) => {
     } else if (item.rowType === 'action') {
       if (currentGroup) {
         currentGroup.actionRow = item
+      }
+    } else if (item.rowType === 'reason') {
+      // 处理原因行
+      if (currentGroup) {
+        currentGroup.reasonRow = item
       }
     } else if (item.rowType === 'separator') {
       if (currentGroup) {
@@ -507,6 +566,20 @@ const groupDataByItem = (data) => {
 const getSequenceNumber = (index) => {
   // 简化计算：每组只有2行（数据行+操作行）或3行（+分隔行）
   return Math.floor(index / 3) + 1
+}
+
+// 获取原因图标组件（基于字符串）
+const getReasonIconComponent = (iconType) => {
+  switch (iconType) {
+    case 'close':
+      return Close
+    case 'warning':
+      return WarnTriangleFilled
+    case 'info':
+      return Check
+    default:
+      return Check
+  }
 }
 
 // 判断是否需要显示原因提示
@@ -572,6 +645,58 @@ const getReasonShortText = (row) => {
   }
 
   return '信息'
+}
+
+// 获取Element Plus标签类型
+const getReasonTagType = (row) => {
+  const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  if (row.matchedType === 0) {
+    return 'danger' // 未匹配 - 红色
+  } else if (priceStatus === -1) {
+    return 'warning' // 价格不存在 - 橙色
+  } else if (priceStatus === 2) {
+    return 'warning' // 价格不匹配 - 橙色
+  } else if (row.matchedType === 2) {
+    return 'primary' // 相似匹配 - 蓝色
+  }
+
+  return 'info' // 默认
+}
+
+// 获取标签效果
+const getReasonTagEffect = (row) => {
+  const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  if (row.matchedType === 0) {
+    return 'dark' // 未匹配用深色
+  } else if (priceStatus === -1 || priceStatus === 2) {
+    return 'plain' // 价格问题用浅色
+  }
+
+  return 'light' // 其他用浅色
+}
+
+// 获取附加原因信息
+const getAdditionalReasonInfo = (row) => {
+  const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
+
+  // 如果是相似匹配且有选项，显示选项数量
+  if (row.matchedType === 0 && row.matchOptions && row.matchOptions.length > 0) {
+    return `${row.matchOptions.length}个选项`
+  }
+
+  // 如果有价格差异，显示价格信息
+  if (priceStatus === 2 && row.baseInfo?.price && row.matchOptions?.[0]?.price) {
+    const originalPrice = parseFloat(row.baseInfo.price)
+    const matchedPrice = parseFloat(row.matchOptions[0].price)
+    const diff = Math.abs(originalPrice - matchedPrice)
+    if (diff > 0.01) {
+      return `差异¥${diff.toFixed(2)}`
+    }
+  }
+
+  return ''
 }
 
 // 获取原因解释文本
@@ -695,9 +820,69 @@ const simpleSpanMethod = () => {
 
 .sequence-container {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   position: relative;
+  min-height: 40px;
+  padding: 4px 0;
+}
+
+.sequence-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.sequence-number {
+  font-weight: 600;
+  font-size: 14px;
+  color: #374151;
+}
+
+.problem-summary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.problem-type {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.problem-type.reason-badge--danger {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+}
+
+.problem-type.reason-badge--warning {
+  background-color: #fffbeb;
+  border: 1px solid #fed7aa;
+  color: #d97706;
+}
+
+.problem-type.reason-badge--info {
+  background-color: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #2563eb;
+}
+
+.problem-icon {
+  font-size: 10px;
+}
+
+.problem-description {
+  font-size: 11px;
+  color: #6b7280;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .sequence-bar {
@@ -803,6 +988,58 @@ const simpleSpanMethod = () => {
 </style>
 
 <style scoped>
+/* 简化的物资显示样式 */
+.material-display {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.material-name {
+  font-weight: 500;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.reason-display {
+  display: flex;
+  align-items: center;
+}
+
+/* 序号列的原因指示器 */
+.reason-indicator {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.reason-indicator.reason-danger {
+  background-color: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+}
+
+.reason-indicator.reason-warning {
+  background-color: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fed7aa;
+}
+
+.reason-indicator.reason-primary {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #93c5fd;
+}
+
+.reason-icon {
+  font-size: 10px;
+}
+
 .material-cell {
   display: flex;
   align-items: center;
