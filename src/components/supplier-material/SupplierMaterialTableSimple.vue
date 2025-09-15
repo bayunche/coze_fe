@@ -763,14 +763,39 @@ const tableSpanMethod = ({ row, columnIndex }) => {
   border-left: 3px solid #ef4444 !important;
 }
 
-/* 分隔行样式 */
-:deep(.separator-row) {
+/* 步骤2：添加分隔行的复杂样式 */
+:deep(.supplier-material-table-simple .el-table__row[class*="separator"]) {
   background-color: #f8f9fa !important;
-  height: 8px !important;
+  border-top: 1px solid #e9ecef !important;
+  border-bottom: 1px solid #e9ecef !important;
+  height: 12px !important;
 }
 
-:deep(.separator-row td) {
+:deep(.supplier-material-table-simple .el-table__row[class*="separator"]:hover) {
+  background-color: #f8f9fa !important;
+}
+
+:deep(.supplier-material-table-simple .el-table__row[class*="separator"] .el-table__cell) {
   padding: 2px 0 !important;
-  height: 8px !important;
+  height: 12px !important;
+  line-height: 12px !important;
+}
+
+/* 步骤2：添加原因解释行的复杂样式（但暂时不添加动画） */
+:deep(.supplier-material-table-simple .el-table__row[class*="reason"]) {
+  background-color: transparent !important;
+}
+
+:deep(.supplier-material-table-simple .el-table__row[class*="reason"]:hover) {
+  background-color: transparent !important;
+}
+
+:deep(.supplier-material-table-simple .el-table__row[class*="reason"] .el-table__cell) {
+  padding: 8px !important;
+  border-bottom: none !important;
+}
+
+:deep(.supplier-material-table-simple .el-table__row[class*="reason"] .el-table__cell:first-child) {
+  padding: 8px !important;
 }
 </style>
