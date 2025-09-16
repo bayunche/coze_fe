@@ -26,7 +26,7 @@ class TodoService {
         ...(params.todoType && { todoType: params.todoType })
       })
 
-      const response = await request.get(`/api/todo/admin/pending?${queryParams}`)
+      const response = await request.get(`/todo/admin/pending?${queryParams}`)
 
       console.log('【响应】管理员待办列表:', response)
       return response
@@ -45,7 +45,7 @@ class TodoService {
     try {
       console.log('【调用】创建待办事项，数据:', data)
 
-      const response = await request.post('/api/todo/create', data)
+      const response = await request.post('/todo/create', data)
 
       console.log('【响应】创建待办事项结果:', response)
 
@@ -69,7 +69,7 @@ class TodoService {
     try {
       console.log('【调用】查询待办事项，参数:', params)
 
-      const response = await request.post('/api/todo/query', params)
+      const response = await request.post('/todo/query', params)
 
       console.log('【响应】查询待办事项结果:', response)
       return response
@@ -95,7 +95,7 @@ class TodoService {
         ...(remarks && { remarks })
       })
 
-      const response = await request.put(`/api/todo/${id}/status?${queryParams}`)
+      const response = await request.put(`/todo/${id}/status?${queryParams}`)
 
       console.log('【响应】更新待办状态结果:', response)
 
@@ -120,7 +120,7 @@ class TodoService {
     try {
       console.log('【调用】根据业务ID查询待办，businessId:', businessId)
 
-      const response = await request.get(`/api/todo/business/${businessId}`)
+      const response = await request.get(`/todo/business/${businessId}`)
 
       console.log('【响应】业务相关待办列表:', response)
       return response.data || []
@@ -147,7 +147,7 @@ class TodoService {
         ...(remarks && { remarks })
       })
 
-      const response = await request.put(`/api/todo/batch/status?${queryParams}`)
+      const response = await request.put(`/todo/batch/status?${queryParams}`)
 
       console.log('【响应】批量更新状态结果:', response)
 
@@ -171,7 +171,7 @@ class TodoService {
     try {
       console.log('【调用】获取待办统计信息')
 
-      const response = await request.get('/api/todo/statistics')
+      const response = await request.get('/todo/statistics')
 
       console.log('【响应】待办统计信息:', response)
       return response.data || {}
@@ -190,7 +190,7 @@ class TodoService {
     try {
       console.log('【调用】根据任务ID获取待办统计，taskId:', taskId)
 
-      const response = await request.get(`/api/todo/statistics/task/${taskId}`)
+      const response = await request.get(`/todo/statistics/task/${taskId}`)
 
       console.log('【响应】任务相关待办统计:', response)
       return response.data || {}
