@@ -73,6 +73,9 @@
         </div>
       </div>
 
+      <!-- 待办事项区（仅管理员可见） -->
+      <TodoSection />
+
       <!-- 管理功能入口区（仅管理员可见） -->
       <div v-if="authStore.isAdmin" class="management-section">
         <h2 class="section-title">管理功能</h2>
@@ -143,6 +146,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useWorkflowStore } from '@/stores/workflow'
 import DialogManager from '@/components/home/DialogManager'
 import OverviewStatsDialog from '@/components/home/OverviewStatsDialog'
+import TodoSection from '@/components/todo/TodoSection.vue'
 
 import {
   OVERVIEW_CARD_CONFIG,

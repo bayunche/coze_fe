@@ -154,6 +154,17 @@ const router = createRouter({
         breadcrumb: ['智能大脑', '数据管理', '合同字段管理']
       }
     },
+    // 乙供物资审批管理页面
+    {
+      path: '/supplier-material-approval/:taskId',
+      name: 'supplier-material-approval',
+      component: () => import('../views/supplier-material-approval'),
+      props: true,
+      meta: {
+        title: '乙供物资审批管理',
+        breadcrumb: ['智能大脑', '物资管理', '乙供物资审批']
+      }
+    },
     // 保持向后兼容的重定向
     {
       path: '/supplier-material-approval',

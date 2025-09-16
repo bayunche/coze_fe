@@ -531,6 +531,7 @@ const getSequenceNumber = (index) => {
 }
 
 // 获取原因图标组件（基于字符串）
+// eslint-disable-next-line no-unused-vars
 const getReasonIconComponent = (iconType) => {
   switch (iconType) {
     case 'close':
@@ -555,12 +556,14 @@ const getReasonIconType = (reasonRow) => {
 }
 
 // 获取原因图标样式类
+// eslint-disable-next-line no-unused-vars
 const getReasonIconClass = (reasonRow) => {
   const iconType = getReasonIconType(reasonRow)
   return `reason-icon-${iconType}`
 }
 
 // 从行数据获取原因文本
+// eslint-disable-next-line no-unused-vars
 const getReasonText = (row) => {
   // 根据行数据分析生成原因文本
   const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
@@ -582,6 +585,7 @@ const getReasonText = (row) => {
 }
 
 // 从行数据获取解释文本
+// eslint-disable-next-line no-unused-vars
 const getExplanationText = (row) => {
   const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
 
@@ -664,6 +668,7 @@ const getReasonIndicatorClass = (row) => {
 }
 
 // 判断是否需要显示原因提示
+// eslint-disable-next-line no-unused-vars
 const shouldShowReasonTooltip = (row) => {
   const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
 
@@ -675,6 +680,7 @@ const shouldShowReasonTooltip = (row) => {
 }
 
 // 获取原因徽章样式类
+// eslint-disable-next-line no-unused-vars
 const getReasonBadgeClass = (row) => {
   const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
 
@@ -729,6 +735,7 @@ const getReasonShortText = (row) => {
 }
 
 // 获取附加原因信息
+// eslint-disable-next-line no-unused-vars
 const getAdditionalReasonInfo = (row) => {
   const priceStatus = row.priceMatchedStatus || (row.matchOptions?.[0]?.priceMatchedStatus)
 
@@ -857,7 +864,7 @@ const getSequenceBarClass = (row) => {
 }
 
 // 增强的跨行合并方法 - 支持原因列合并
-const enhancedSpanMethod = ({ row, column, rowIndex, columnIndex }) => {
+const enhancedSpanMethod = ({ row, column, rowIndex }) => {
   // 只对原因与解释列进行特殊处理
   if (column.label === '原因与解释') {
     // 如果是数据行且有原因信息，合并到下一行（操作行）
@@ -1194,14 +1201,56 @@ const enhancedSpanMethod = ({ row, column, rowIndex, columnIndex }) => {
   border-bottom: 1px solid #f3f4f6;
 }
 
-/* 简化的规格不一致行样式 */
-:deep(.spec-mismatch-row td) {
-  background-color: #fef2f2 !important;
+/* 规格不一致行的多重样式穿透确保 */
+:deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell),
+:deep(.el-table .spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row .el-table__cell),
+:deep(.spec-mismatch-row td),
+:deep(tr.spec-mismatch-row td) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.06) 0%,
+    rgba(252, 165, 165, 0.04) 50%,
+    rgba(254, 202, 202, 0.02) 100%) !important;
+  border-left: 3px solid #ef4444 !important;
+}
+
+/* 规格不一致行的悬停效果 */
+:deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell),
+:deep(.el-table .spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover .el-table__cell),
+:deep(.spec-mismatch-row:hover td),
+:deep(tr.spec-mismatch-row:hover td) {
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.12) 0%,
+    rgba(252, 165, 165, 0.08) 50%,
+    rgba(254, 202, 202, 0.04) 100%) !important;
   border-left: 3px solid #ef4444 !important;
 }
 
 :deep(.spec-mismatch-row:hover td) {
   background-color: #fde7e7 !important;
+}
+
+/* 价格对比行样式增强 */
+:deep(.el-table .price-comparison-row .el-table__cell),
+:deep(.price-comparison-row .el-table__cell),
+:deep(.price-comparison-row td),
+:deep(tr.price-comparison-row td) {
+  background: linear-gradient(135deg,
+    rgba(245, 158, 11, 0.04) 0%,
+    rgba(251, 191, 36, 0.02) 100%) !important;
+  border-left: 2px solid #f59e0b !important;
+}
+
+/* 价格对比行的悬停效果 */
+:deep(.el-table .price-comparison-row:hover .el-table__cell),
+:deep(.price-comparison-row:hover .el-table__cell),
+:deep(.price-comparison-row:hover td),
+:deep(tr.price-comparison-row:hover td) {
+  background: linear-gradient(135deg,
+    rgba(245, 158, 11, 0.08) 0%,
+    rgba(251, 191, 36, 0.04) 100%) !important;
+  border-left: 2px solid #f59e0b !important;
 }
 
 /* 分隔行样式 */

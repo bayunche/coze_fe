@@ -167,6 +167,75 @@ class SupplierMaterialService {
   }
 
   /**
+   * 查询能否展示审批报告
+   * @param {String} taskId - 任务ID（必填）
+   * @returns {Promise<boolean>} 是否可以展示审批报告
+   */
+  async canShowApprovalReport(taskId) {
+    try {
+      console.log('【调用】查询能否展示审批报告，taskId:', taskId)
+
+      if (!taskId) {
+        throw new Error('taskId参数不能为空')
+      }
+
+      const response = await request.get(`/materials/partyb/can-show-approval-report?taskId=${taskId}`)
+
+      console.log('【响应】能否展示审批报告结果:', response)
+      return response.data || false
+    } catch (error) {
+      console.error('【错误】查询能否展示审批报告失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 提交任务审批
+   * @param {Object} params - 提交参数
+   * @param {String} params.taskId - 任务ID（必填）
+   * @param {String} params.remarks - 提交备注（可选）
+   * @returns {Promise<Object>} 提交结果
+   */
+  async submitTaskApproval(params) {
+    try {
+      console.log('【调用】提交任务审批，参数:', params)
+
+      // 参数验证
+      if (!params.taskId) {
+        throw new Error('taskId参数不能为空')
+      }
+
+      const response = await request.post('/tasks/submit-approval', {
+        taskId: params.taskId,
+        remarks: params.remarks || '用户手动提交审批'
+      })
+
+      console.log('【响应】提交任务审批结果:', response)
+
+      if (response.code === 200) {
+        return {
+          success: response.data?.submitSuccess || false,
+          todoId: response.data?.todoId,
+          message: response.data?.message || response.msg || '提交成功',
+          businessDomain: response.data?.businessDomain
+        }
+      } else {
+        throw new Error(response.msg || '提交审批失败')
+      }
+    } catch (error) {
+      console.error('【错误】提交任务审批失败:', error)
+
+      // 处理业务错误信息
+      const errorMessage = error.response?.data?.msg ||
+                          error.response?.data?.message ||
+                          error.message ||
+                          '提交审批失败，请稍后再试'
+
+      throw new Error(errorMessage)
+    }
+  }
+
+  /**
    * 获取审批列表
    * @param {Object} params - 查询参数
    * @param {Number} params.page - 页码（从0开始）
@@ -179,7 +248,7 @@ class SupplierMaterialService {
   async getApprovalList(params) {
     try {
       console.log('【调用】获取审批列表，参数:', params)
-      
+
       const response = await request.get('/api/v2/materials/party-b/approval-list', {
         params: {
           page: params.page || 0,
@@ -189,7 +258,7 @@ class SupplierMaterialService {
           matchedType: params.matchedType
         }
       })
-      
+
       console.log('【响应】审批列表数据:', response)
       return response
     } catch (error) {
@@ -335,10 +404,10 @@ class SupplierMaterialService {
   }
 
   /**
-   * 获取审批统计数据
+   * 获取通用审批统计数据
    * @returns {Promise<Object>} 统计数据
    */
-  async getApprovalStatistics() {
+  async getGeneralApprovalStatistics() {
     try {
       console.log('【调用】获取审批统计数据')
       
@@ -360,11 +429,11 @@ class SupplierMaterialService {
   async batchConfirm(items) {
     try {
       console.log('【调用】批量确认乙供物资，数量:', items.length)
-      
+
       // 逐个调用确认接口
       const results = []
       const errors = []
-      
+
       for (const item of items) {
         try {
           const result = await this.manualConfirm({
@@ -396,6 +465,135 @@ class SupplierMaterialService {
       console.error('【错误】批量确认失败:', error)
       throw error
     }
+  }
+
+  /**
+   * 按匹配类型筛选查询任务物资数据
+   * @param {Object} params - 查询参数
+   * @param {String} params.taskId - 任务ID（必填）
+   * @param {Number} params.page - 页码（从0开始）
+   * @param {Number} params.size - 每页大小
+   * @param {String} params.keyword - 搜索关键词
+   * @param {Number} params.confirmResult - 确认结果筛选（0：未确认，1：已确认）
+   * @param {Number} params.matchedType - 匹配类型筛选
+   * @param {Number} params.queryType - 查询类型（1：人工修改物资，2：系统自动匹配，3：查全部）
+   * @returns {Promise<Object>} 查询结果
+   */
+  async queryMaterialsByType(params) {
+    try {
+      console.log('【调用】按匹配类型筛选查询，参数:', params)
+
+      const response = await request.post('/api/materials/partyb/query-by-type', {
+        taskId: params.taskId,
+        page: params.page || 0,
+        size: params.size || 20,
+        keyword: params.keyword || '',
+        confirmResult: params.confirmResult,
+        matchedType: params.matchedType,
+        queryType: params.queryType || 3
+      })
+
+      console.log('【响应】按匹配类型筛选查询结果:', response)
+      return response
+    } catch (error) {
+      console.error('【错误】按匹配类型筛选查询失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 任务审批接口
+   * @param {Object} params - 审批参数
+   * @param {String} params.taskId - 任务ID（必填）
+   * @param {Number} params.approvalResult - 审批结果（0: 不通过, 1: 通过）
+   * @param {String} params.approvalReason - 审批理由
+   * @param {String} params.approverId - 审批人ID
+   * @param {String} params.approverName - 审批人姓名
+   * @returns {Promise<Object>} 审批结果
+   */
+  async approveTask(params) {
+    try {
+      console.log('【调用】任务审批，参数:', params)
+
+      if (!params.taskId) {
+        throw new Error('taskId参数不能为空')
+      }
+
+      const response = await request.post('/api/tasks/approve', {
+        taskId: params.taskId,
+        approvalResult: params.approvalResult,
+        approvalReason: params.approvalReason || '',
+        approverId: params.approverId || '',
+        approverName: params.approverName || ''
+      })
+
+      console.log('【响应】任务审批结果:', response)
+
+      if (response.approvalSuccess) {
+        const message = response.message || '审批操作成功'
+        ElMessage.success(message)
+        return response
+      } else {
+        throw new Error(response.message || '审批操作失败')
+      }
+    } catch (error) {
+      console.error('【错误】任务审批失败:', error)
+
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          '审批操作失败，请稍后再试'
+
+      throw new Error(errorMessage)
+    }
+  }
+
+  /**
+   * 获取任务物资匹配扩展统计信息
+   * @param {String} taskId - 任务ID（必填）
+   * @returns {Promise<Object>} 扩展统计信息
+   */
+  async getTaskMaterialMatchingStats(taskId) {
+    try {
+      console.log('【调用】获取任务物资匹配扩展统计，taskId:', taskId)
+
+      if (!taskId) {
+        throw new Error('taskId参数不能为空')
+      }
+
+      const queryParams = new URLSearchParams({
+        taskId: taskId
+      })
+
+      const response = await request.get(`/api/materials/partyb/getTaskMaterialMatchingStats?${queryParams}`)
+
+      console.log('【响应】任务物资匹配扩展统计结果:', response)
+
+      // 统一返回格式，确保与现有代码兼容
+      const statistics = {
+        manualCount: response.manualModifiedCount || 0,
+        autoCount: response.autoMatchedCount || 0,
+        totalCount: response.totalMaterials || 0,
+        // 保留原始字段名以供需要时使用
+        manualModifiedCount: response.manualModifiedCount || 0,
+        autoMatchedCount: response.autoMatchedCount || 0,
+        totalMaterials: response.totalMaterials || 0
+      }
+
+      return statistics
+    } catch (error) {
+      console.error('【错误】获取任务物资匹配扩展统计失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 获取任务审批统计信息
+   * @param {String} taskId - 任务ID
+   * @returns {Promise<Object>} 统计信息
+   */
+  async getApprovalStatistics(taskId) {
+    // 使用新的扩展统计接口
+    return this.getTaskMaterialMatchingStats(taskId)
   }
 }
 

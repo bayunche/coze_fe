@@ -26,6 +26,15 @@
         <el-button @click="handleGenerateReport" :icon="Document" type="primary" :loading="reportGenerating">
           生成解析报告
         </el-button>
+        <el-button
+          v-if="showApprovalButton"
+          @click="handleSubmitApproval"
+          :icon="Check"
+          type="success"
+          :loading="submittingApproval"
+        >
+          提交审核
+        </el-button>
       </div>
     </div>
 
@@ -194,7 +203,7 @@ const props = defineProps({
     required: true
   }
 })
-import { ArrowLeft, Refresh, Download, Search, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Document, Minus, ArrowDown, ArrowUp } from '@element-plus/icons-vue'
+import { ArrowLeft, Refresh, Search, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Document, Minus, ArrowDown, ArrowUp, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
@@ -236,13 +245,16 @@ const pageLoading = ref(false)
 const tableLoading = ref(false)
 const refreshLoading = ref(false)
 const batchConfirming = ref(false)
-const exportLoading = ref(false)
 const saving = ref(false)
 const reportGenerating = ref(false)
 
 // 报告生成Dialog相关状态
 const showReportDialog = ref(false)
 const reportProgressText = ref('')
+
+// 审核按钮相关状态
+const showApprovalButton = ref(false)
+const submittingApproval = ref(false)
 
 const materialData = ref([])
 const currentPage = ref(1)
@@ -346,11 +358,11 @@ const fetchMatchingStats = async () => {
   try {
     console.log('【调用】获取乙供物资匹配统计，taskId:', taskId.value)
     const response = await supplierMaterialService.getMaterialMatchingStats(taskId.value)
-    
+
     // 【调试】打印原始API返回结果
     console.log('【调试】原始API返回结果:', JSON.stringify(response, null, 2))
     console.log('【调试】response的所有字段名:', Object.keys(response || {}))
-    
+
     // 更新统计数据 - 添加调试信息来识别字段映射问题
     matchingStats.value = {
       totalMaterials: response.totalMaterials || response.total || response.totalCount || 0,
@@ -358,7 +370,7 @@ const fetchMatchingStats = async () => {
       unmatchedPriceCount: response.unmatchedPriceCount || response.priceMismatch || response.priceMismatchCount || 0,
       pendingMatchCount: response.pendingMatchCount || response.unmatched || response.unmatchedCount || response.pending || 0
     }
-    
+
     // 添加详细的字段值调试
     console.log('【调试】API返回字段对应关系:')
     console.log('  response.exactMatchCount:', response.exactMatchCount)
@@ -367,7 +379,7 @@ const fetchMatchingStats = async () => {
     console.log('  response.matched:', response.matched)
     console.log('  response.priceMismatch:', response.priceMismatch)
     console.log('  response.unmatched:', response.unmatched)
-    
+
     console.log('【响应】统计数据已更新:', matchingStats.value)
     console.log('【调试】映射后的统计数据详情:')
     console.log('  totalMaterials (总数):', matchingStats.value.totalMaterials)
@@ -383,6 +395,23 @@ const fetchMatchingStats = async () => {
       unmatchedPriceCount: 0,
       pendingMatchCount: 0
     }
+  }
+}
+
+/**
+ * 检查是否可以显示审核按钮
+ */
+const checkCanShowApprovalButton = async () => {
+  if (!taskId.value) return
+
+  try {
+    console.log('【调用】检查是否可以显示审核按钮，taskId:', taskId.value)
+    const canShow = await supplierMaterialService.canShowApprovalReport(taskId.value)
+    showApprovalButton.value = canShow
+    console.log('【响应】审核按钮显示状态:', canShow)
+  } catch (error) {
+    console.error('【错误】检查审核按钮显示状态失败:', error)
+    showApprovalButton.value = false
   }
 }
 
@@ -637,32 +666,6 @@ const handleRefresh = async () => {
     fetchData(),
     fetchMatchingStats()
   ])
-}
-
-/**
- * 处理导出
- */
-const handleExport = async () => {
-  exportLoading.value = true
-
-  try {
-    // 模拟加载时间，提供更好的用户体验
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    ElMessage.info({
-      message: '此功能正在开发中，请等待功能上线！',
-      duration: 3000,
-      showClose: true
-    })
-
-    console.log('【提示】导出功能正在开发中')
-  } catch (error) {
-    console.error('【错误】处理导出失败:', error)
-    const errorMsg = error?.response?.data?.message || error?.message || '处理失败，请稍后再试'
-    ElMessage.error(errorMsg)
-  } finally {
-    exportLoading.value = false
-  }
 }
 
 /**
@@ -1565,6 +1568,71 @@ const handlePriceAddCancel = () => {
   addPriceRow.value = null
 }
 
+// 处理提交审核
+const handleSubmitApproval = async () => {
+  try {
+    const result = await ElMessageBox.confirm(
+      '确认提交审核？提交后将无法再修改数据。',
+      '提交审核确认',
+      {
+        confirmButtonText: '确认提交',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+
+    if (result === 'confirm') {
+      submittingApproval.value = true
+      console.log('【提交审核】开始提交审核，taskId:', taskId.value)
+
+      try {
+        // 调用实际的提交审核API接口
+        const submitResult = await supplierMaterialService.submitTaskApproval({
+          taskId: taskId.value,
+          remarks: '所有物资已完成审核，用户手动提交审批'
+        })
+
+        console.log('【提交审核】提交成功:', submitResult)
+
+        if (submitResult.success) {
+          ElMessage.success({
+            message: `审核已提交成功！${submitResult.todoId ? '待办事项ID: ' + submitResult.todoId : ''}`,
+            duration: 5000,
+            showClose: true
+          })
+
+          // 提交成功后隐藏审核按钮并重新检查按钮状态
+          showApprovalButton.value = false
+
+          // 可选：刷新数据以获取最新状态
+          await checkCanShowApprovalButton()
+        } else {
+          throw new Error(submitResult.message || '提交失败')
+        }
+      } catch (submitError) {
+        console.error('【提交审核】API调用失败:', submitError)
+
+        // 显示具体的错误信息
+        const errorMessage = submitError.message || '提交审核失败，请稍后再试'
+        ElMessage.error({
+          message: errorMessage,
+          duration: 5000,
+          showClose: true
+        })
+      }
+    }
+  } catch (error) {
+    if (error === 'cancel') {
+      console.log('【提交审核】用户取消提交审核')
+    } else {
+      console.error('【提交审核】确认对话框错误:', error)
+      ElMessage.error('操作失败，请稍后再试')
+    }
+  } finally {
+    submittingApproval.value = false
+  }
+}
+
 // 旧的物资选择数据加载方法已移除，统一使用 MaterialPriceSelectionDialog
 
 // 旧的物资选择方法已移除，统一使用 MaterialPriceSelectionDialog
@@ -1726,7 +1794,8 @@ onMounted(() => {
     // 同时加载数据和统计信息
     Promise.all([
       fetchData(),
-      fetchMatchingStats()
+      fetchMatchingStats(),
+      checkCanShowApprovalButton()
     ]).then(() => {
       // 数据加载完成后，延迟执行调试输出，确保渲染完成
       setTimeout(() => {
@@ -3115,6 +3184,7 @@ provide('parentMethods', {
 .table-section {
   background: var(--theme-card-bg);
   border-radius: 12px;
+  /* 移除固定高度，让表格跟随页面滚动 */
   padding: 24px;
   box-shadow: var(--theme-card-shadow);
   border: 1px solid var(--theme-card-border);

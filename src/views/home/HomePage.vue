@@ -16,6 +16,9 @@
 
   <!-- 任务状态监听器 -->
   <TaskStatusWatcher />
+
+  <!-- TODO 浮动小窗口 -->
+  <TodoWidget />
 </template>
 
 <script setup>
@@ -31,6 +34,7 @@ import MainLayout from '@/components/home/MainLayout'
 import WorkflowExecutionPanel from '@/components/home/WorkflowExecutionPanel'
 import DialogManager from '@/components/home/DialogManager'
 import TaskStatusWatcher from '@/components/home/TaskStatusWatcher'
+import TodoWidget from '@/components/todo/TodoWidget.vue'
 
 // Pinia Stores
 const chatStore = useChatStore()
