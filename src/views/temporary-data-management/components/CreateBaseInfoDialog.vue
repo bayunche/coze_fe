@@ -8,26 +8,30 @@
     @closed="handleClosed"
     class="create-base-info-dialog"
   >
-    <el-form
-      ref="formRef"
-      :model="form"
-      :rules="rules"
-      label-width="120px"
-      label-position="left"
-      v-loading="submitting"
-    >
-      <!-- 关联任务信息 -->
-      <div class="form-section">
-        <div class="section-title">关联信息</div>
-        <el-form-item label="关联任务ID" prop="associatedTaskId">
-          <el-input
-            v-model="form.associatedTaskId"
-            placeholder="请输入关联的任务ID（选填）"
-            clearable
-            :disabled="props.taskId && props.taskId.length > 0"
-          />
-        </el-form-item>
-      </div>
+    <!-- 创建方式选择 -->
+    <el-tabs v-model="createMode" class="create-mode-tabs">
+      <!-- 手动创建Tab -->
+      <el-tab-pane label="手动创建" name="manual">
+        <el-form
+          ref="formRef"
+          :model="form"
+          :rules="rules"
+          label-width="120px"
+          label-position="left"
+          v-loading="submitting"
+        >
+          <!-- 关联任务信息 -->
+          <div class="form-section">
+            <div class="section-title">关联信息</div>
+            <el-form-item label="关联任务ID" prop="associatedTaskId">
+              <el-input
+                v-model="form.associatedTaskId"
+                placeholder="请输入关联的任务ID（选填）"
+                clearable
+                :disabled="props.taskId && props.taskId.length > 0"
+              />
+            </el-form-item>
+          </div>
 
       <!-- 基础信息 -->
       <div class="form-section">
@@ -117,15 +121,114 @@
           />
         </el-form-item>
 
-        <el-form-item label="物资类型" prop="type">
-          <el-input
-            v-model="form.type"
-            placeholder="请输入物资类型"
-            clearable
-          />
-        </el-form-item>
+          <el-form-item label="物资类型" prop="type">
+            <el-input
+              v-model="form.type"
+              placeholder="请输入物资类型"
+              clearable
+            />
+          </el-form-item>
+        </div>
+      </el-form>
+    </el-tab-pane>
+
+    <!-- 文件导入Tab -->
+    <el-tab-pane label="文件导入" name="import">
+      <div class="import-section" v-loading="importing">
+        <!-- 关联任务ID -->
+        <div class="form-section">
+          <div class="section-title">关联信息</div>
+          <el-form-item label="关联任务ID">
+            <el-input
+              v-model="importForm.associatedTaskId"
+              placeholder="请输入关联的任务ID（选填）"
+              clearable
+              :disabled="props.taskId && props.taskId.length > 0"
+            />
+          </el-form-item>
+        </div>
+
+        <!-- 文件上传区域 -->
+        <div class="form-section">
+          <div class="section-title">文件上传</div>
+          <el-upload
+            ref="uploadRef"
+            v-model:file-list="fileList"
+            :auto-upload="false"
+            :limit="1"
+            accept=".xlsx,.xls"
+            drag
+            :on-change="handleFileChange"
+            :on-exceed="handleFileExceed"
+            :before-upload="beforeUpload"
+            class="upload-area"
+          >
+            <div class="upload-content">
+              <el-icon class="upload-icon"><UploadFilled /></el-icon>
+              <div class="upload-text">
+                将Excel文件拖到此处，或<em>点击选择文件</em>
+              </div>
+              <div class="upload-tip">
+                支持 .xlsx 和 .xls 格式，文件大小不超过10MB
+              </div>
+            </div>
+          </el-upload>
+        </div>
+
+        <!-- 文件模板下载 -->
+        <div class="template-section">
+          <div class="section-title">模板下载</div>
+          <div class="template-info">
+            <p>请按照以下模板格式准备数据：</p>
+            <el-button type="primary" link @click="downloadTemplate">
+              <el-icon><Download /></el-icon>
+              下载Excel模板
+            </el-button>
+          </div>
+          <div class="template-format">
+            <h4>必需字段说明：</h4>
+            <ul>
+              <li><strong>物资名称</strong>：物资的名称（必填）</li>
+              <li><strong>规格型号</strong>：物资的规格型号（可选）</li>
+              <li><strong>单位</strong>：物资的计量单位（可选）</li>
+              <li><strong>物资编码</strong>：物资编码（可选）</li>
+              <li><strong>序号</strong>：物资序号（可选）</li>
+              <li><strong>业务域</strong>：物资所属业务域（可选）</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 导入预览 -->
+        <div v-if="importPreview.length > 0" class="preview-section">
+          <div class="section-title">导入预览（前5条）</div>
+          <el-table
+            :data="importPreview.slice(0, 5)"
+            size="small"
+            stripe
+            border
+            style="width: 100%"
+          >
+            <el-table-column prop="materialName" label="物资名称" width="120" />
+            <el-table-column prop="specificationModel" label="规格型号" width="120" />
+            <el-table-column prop="unit" label="单位" width="80" />
+            <el-table-column prop="materialCode" label="物资编码" width="100" />
+            <el-table-column prop="serialNumber" label="序号" width="80" />
+            <el-table-column prop="businessDomain" label="业务域" width="100" />
+            <el-table-column label="状态" width="80">
+              <template #default="{ row }">
+                <el-tag :type="row.valid ? 'success' : 'danger'" size="small">
+                  {{ row.valid ? '有效' : '无效' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+          <div class="preview-summary">
+            总计 {{ importPreview.length }} 条记录，其中有效 {{ validRecords }} 条，无效 {{ invalidRecords }} 条
+          </div>
+        </div>
       </div>
-    </el-form>
+    </el-tab-pane>
+  </el-tabs>
 
     <template #footer>
       <div class="dialog-footer">
@@ -147,6 +250,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { UploadFilled, Download } from '@element-plus/icons-vue'
 import temporaryDataService from '@/services/TemporaryDataService'
 
 // Props
@@ -167,6 +271,18 @@ const emit = defineEmits(['update:modelValue', 'success'])
 // 响应式数据
 const formRef = ref()
 const submitting = ref(false)
+
+// Tab相关
+const createMode = ref('manual')
+
+// 文件导入相关
+const uploadRef = ref()
+const importing = ref(false)
+const fileList = ref([])
+const importPreview = ref([])
+const importForm = reactive({
+  associatedTaskId: ''
+})
 
 // 表单数据
 const form = reactive({
@@ -224,6 +340,15 @@ const dialogVisible = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
+// 文件导入相关计算属性
+const validRecords = computed(() => {
+  return importPreview.value.filter(item => item.valid).length
+})
+
+const invalidRecords = computed(() => {
+  return importPreview.value.filter(item => !item.valid).length
+})
+
 // 监听taskId变化
 watch(() => props.taskId, (newTaskId) => {
   if (newTaskId) {
@@ -240,6 +365,15 @@ watch(dialogVisible, (visible) => {
 
 // 提交表单
 const handleSubmit = async () => {
+  if (createMode.value === 'manual') {
+    await handleManualSubmit()
+  } else if (createMode.value === 'import') {
+    await handleImportSubmit()
+  }
+}
+
+// 手动创建提交
+const handleManualSubmit = async () => {
   try {
     // 表单验证
     const valid = await formRef.value?.validate()
@@ -248,7 +382,7 @@ const handleSubmit = async () => {
     }
 
     submitting.value = true
-    
+
     // 调用API创建临时基础信息
     await temporaryDataService.createTemporaryBaseInfo({
       associatedTaskId: form.associatedTaskId,
@@ -267,7 +401,7 @@ const handleSubmit = async () => {
     // 关闭弹窗并触发刷新
     dialogVisible.value = false
     emit('success')
-    
+
     ElMessage.success('创建临时物资基础信息成功')
   } catch (error) {
     console.error('创建临时基础信息失败:', error)
@@ -275,6 +409,170 @@ const handleSubmit = async () => {
   } finally {
     submitting.value = false
   }
+}
+
+// 文件导入提交
+const handleImportSubmit = async () => {
+  try {
+    if (importPreview.value.length === 0) {
+      ElMessage.warning('请先上传文件并解析数据')
+      return
+    }
+
+    if (validRecords.value === 0) {
+      ElMessage.warning('没有有效的数据可以导入')
+      return
+    }
+
+    submitting.value = true
+
+    // 只提交有效的记录
+    const validData = importPreview.value.filter(item => item.valid)
+
+    console.log('【CreateBaseInfoDialog】批量导入物资基础信息:', validData)
+
+    // 这里应该调用批量导入API
+    // await temporaryDataService.batchCreateTemporaryBaseInfos({
+    //   associatedTaskId: importForm.associatedTaskId,
+    //   baseInfoData: validData
+    // })
+
+    // 模拟API调用
+    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    // 关闭弹窗并触发刷新
+    dialogVisible.value = false
+    emit('success')
+
+    ElMessage.success(`成功导入 ${validRecords.value} 条物资基础信息`)
+  } catch (error) {
+    console.error('批量导入物资基础信息失败:', error)
+    ElMessage.error('导入失败，请重试')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// ===== 文件导入相关方法 =====
+
+/**
+ * 文件上传前验证
+ */
+const beforeUpload = (file) => {
+  const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+                  file.type === 'application/vnd.ms-excel'
+  const isLt10M = file.size / 1024 / 1024 < 10
+
+  if (!isExcel) {
+    ElMessage.error('只能上传Excel文件')
+    return false
+  }
+  if (!isLt10M) {
+    ElMessage.error('文件大小不能超过10MB')
+    return false
+  }
+  return true
+}
+
+/**
+ * 文件选择变化处理
+ */
+const handleFileChange = async (file) => {
+  console.log('【CreateBaseInfoDialog】文件变化:', file)
+
+  if (file.status === 'ready') {
+    await parseExcelFile(file.raw)
+  }
+}
+
+/**
+ * 文件超限处理
+ */
+const handleFileExceed = () => {
+  ElMessage.warning('只能上传一个文件')
+}
+
+/**
+ * 解析Excel文件
+ */
+const parseExcelFile = async (file) => {
+  importing.value = true
+  try {
+    console.log('【CreateBaseInfoDialog】开始解析Excel文件')
+
+    // 这里应该调用实际的Excel解析API
+    // const response = await temporaryDataService.parseExcelForBaseInfos(file)
+
+    // 模拟解析结果
+    const mockData = [
+      {
+        materialName: '水泥',
+        specificationModel: 'P.O 42.5',
+        unit: '吨',
+        materialCode: 'SM001',
+        serialNumber: '001',
+        businessDomain: '建筑材料',
+        valid: true
+      },
+      {
+        materialName: '钢筋',
+        specificationModel: 'HRB400 Φ12',
+        unit: '吨',
+        materialCode: 'SM002',
+        serialNumber: '002',
+        businessDomain: '建筑材料',
+        valid: true
+      },
+      {
+        materialName: '', // 无效数据 - 缺少物资名称
+        specificationModel: '标准砖',
+        unit: '块',
+        materialCode: '',
+        serialNumber: '003',
+        businessDomain: '建筑材料',
+        valid: false
+      }
+    ]
+
+    importPreview.value = mockData
+    ElMessage.success(`文件解析完成，共 ${mockData.length} 条记录`)
+
+  } catch (error) {
+    console.error('【CreateBaseInfoDialog】解析Excel文件失败:', error)
+    ElMessage.error('文件解析失败，请检查文件格式是否正确')
+    importPreview.value = []
+  } finally {
+    importing.value = false
+  }
+}
+
+/**
+ * 下载模板文件
+ */
+const downloadTemplate = () => {
+  // 创建模板数据
+  const templateData = [
+    ['物资名称', '规格型号', '单位', '物资编码', '序号', '业务域'],
+    ['水泥', 'P.O 42.5', '吨', 'SM001', '001', '建筑材料'],
+    ['钢筋', 'HRB400 Φ12', '吨', 'SM002', '002', '建筑材料'],
+    ['砖块', '标准红砖', '块', 'SM003', '003', '建筑材料']
+  ]
+
+  // 创建CSV内容
+  const csvContent = templateData.map(row => row.join(',')).join('\n')
+  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' })
+  const url = window.URL.createObjectURL(blob)
+
+  // 创建下载链接
+  const link = document.createElement('a')
+  link.href = url
+  link.download = '临时物资基础信息导入模板.csv'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+
+  ElMessage.success('模板下载完成')
 }
 
 // 关闭弹窗
@@ -286,6 +584,9 @@ const handleClose = () => {
 
 // 弹窗关闭后重置表单
 const handleClosed = () => {
+  // 重置创建模式
+  createMode.value = 'manual'
+
   // 重置表单数据
   Object.keys(form).forEach(key => {
     if (key === 'mainDistributionType') {
@@ -294,7 +595,12 @@ const handleClosed = () => {
       form[key] = ''
     }
   })
-  
+
+  // 重置文件导入相关状态
+  fileList.value = []
+  importPreview.value = []
+  importForm.associatedTaskId = ''
+
   // 清除表单验证状态
   formRef.value?.clearValidate()
 }
@@ -303,6 +609,99 @@ const handleClosed = () => {
 <style scoped>
 .create-base-info-dialog {
   --el-dialog-padding-primary: 20px;
+}
+
+/* Tab样式 */
+.create-mode-tabs {
+  margin-bottom: 16px;
+}
+
+.create-mode-tabs :deep(.el-tabs__header) {
+  margin-bottom: 20px;
+}
+
+/* 文件导入区域样式 */
+.import-section {
+  padding: 16px 0;
+}
+
+.upload-area {
+  margin-bottom: 20px;
+}
+
+.upload-content {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.upload-icon {
+  font-size: 40px;
+  color: var(--el-color-primary);
+  margin-bottom: 16px;
+}
+
+.upload-text {
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+  margin-bottom: 8px;
+}
+
+.upload-tip {
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+}
+
+/* 模板区域样式 */
+.template-section {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: var(--el-fill-color-lighter);
+  border-radius: 8px;
+}
+
+.template-info {
+  margin-bottom: 12px;
+}
+
+.template-info p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+}
+
+.template-format {
+  margin-top: 16px;
+}
+
+.template-format h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+}
+
+.template-format ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.template-format li {
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
+}
+
+/* 预览区域样式 */
+.preview-section {
+  margin-top: 24px;
+}
+
+.preview-summary {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: var(--el-color-info-light-9);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--el-text-color-regular);
 }
 
 .form-section {

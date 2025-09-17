@@ -35,85 +35,158 @@
         </div>
       </div>
 
-      <!-- 价格信息输入表单 -->
-      <el-form
-        ref="formRef"
-        :model="form"
-        :rules="rules"
-        label-width="120px"
-        label-position="left"
-        class="price-form"
-      >
-        <div class="form-section">
-          <div class="section-title">
-            <el-icon><Money /></el-icon>
-            <span>价格信息</span>
+      <!-- 价格信息Tab页面 -->
+      <el-tabs v-model="activeTab" class="price-tabs">
+        <!-- 新建价格Tab -->
+        <el-tab-pane label="新建价格" name="create">
+          <el-form
+            ref="formRef"
+            :model="form"
+            :rules="rules"
+            label-width="120px"
+            label-position="left"
+            class="price-form"
+          >
+            <div class="form-section">
+              <div class="section-title">
+                <el-icon><Money /></el-icon>
+                <span>价格信息</span>
+              </div>
+
+              <!-- 季度选择 -->
+              <el-form-item label="季度" prop="quarter" required>
+                <el-select
+                  v-model="form.quarter"
+                  placeholder="请选择季度"
+                  clearable
+                  style="width: 100%"
+                >
+                  <el-option label="2024年第一季度" value="2024Q1" />
+                  <el-option label="2024年第二季度" value="2024Q2" />
+                  <el-option label="2024年第三季度" value="2024Q3" />
+                  <el-option label="2024年第四季度" value="2024Q4" />
+                  <el-option label="2025年第一季度" value="2025Q1" />
+                  <el-option label="2025年第二季度" value="2025Q2" />
+                  <el-option label="2025年第三季度" value="2025Q3" />
+                  <el-option label="2025年第四季度" value="2025Q4" />
+                </el-select>
+                <div class="form-tip">选择价格对应的结算季度</div>
+              </el-form-item>
+
+              <!-- 含税价 -->
+              <el-form-item label="含税价" prop="taxPrice" required>
+                <el-input-number
+                  v-model="form.taxPrice"
+                  :min="0"
+                  :precision="2"
+                  :step="0.01"
+                  style="width: 100%"
+                  placeholder="请输入含税价"
+                  controls-position="right"
+                />
+                <div class="form-tip">单位：元，精确到分</div>
+              </el-form-item>
+
+              <!-- 不含税价 -->
+              <el-form-item label="不含税价" prop="taxExcludedPrice">
+                <el-input-number
+                  v-model="form.taxExcludedPrice"
+                  :min="0"
+                  :precision="2"
+                  :step="0.01"
+                  style="width: 100%"
+                  placeholder="请输入不含税价（选填）"
+                  controls-position="right"
+                />
+                <div class="form-tip">单位：元，选填项，精确到分</div>
+              </el-form-item>
+
+              <!-- 税率 -->
+              <el-form-item label="税率" prop="taxRate">
+                <el-input-number
+                  v-model="form.taxRate"
+                  :min="0"
+                  :max="1"
+                  :precision="4"
+                  :step="0.0001"
+                  style="width: 100%"
+                  placeholder="请输入税率（选填）"
+                  controls-position="right"
+                />
+                <div class="form-tip">范围：0-1，如0.13表示13%税率</div>
+              </el-form-item>
+            </div>
+          </el-form>
+        </el-tab-pane>
+
+        <!-- 选择现有价格Tab -->
+        <el-tab-pane label="选择现有价格" name="select">
+          <div class="existing-price-section">
+            <!-- 季度筛选 -->
+            <el-form-item label="选择季度" class="quarter-filter">
+              <el-select
+                v-model="selectedQuarter"
+                placeholder="请选择有价格的季度"
+                clearable
+                style="width: 100%"
+                @change="handleQuarterChange"
+                :loading="loadingQuarters"
+              >
+                <el-option
+                  v-for="quarter in availableQuarters"
+                  :key="quarter"
+                  :label="getQuarterLabel(quarter)"
+                  :value="quarter"
+                />
+              </el-select>
+              <div class="form-tip">只显示该物资有价格的季度</div>
+            </el-form-item>
+
+            <!-- 价格列表 -->
+            <div class="price-list" v-if="selectedQuarter && existingPrices.length > 0">
+              <div class="price-list-header">
+                <span>可用价格列表</span>
+              </div>
+              <el-radio-group v-model="selectedPriceId" class="price-options">
+                <el-radio
+                  v-for="price in existingPrices"
+                  :key="price.id"
+                  :label="price.id"
+                  class="price-option"
+                >
+                  <div class="price-info-card">
+                    <div class="price-value">
+                      <span class="price-amount">￥{{ formatPrice(price.taxPrice) }}</span>
+                      <span class="price-type">含税价</span>
+                    </div>
+                    <div class="price-details">
+                      <div v-if="price.taxExcludedPrice" class="detail-item">
+                        不含税价：￥{{ formatPrice(price.taxExcludedPrice) }}
+                      </div>
+                      <div v-if="price.unit" class="detail-item">
+                        单位：{{ price.unit }}
+                      </div>
+                      <div class="detail-item">
+                        季度：{{ getQuarterLabel(price.quarter) }}
+                      </div>
+                    </div>
+                  </div>
+                </el-radio>
+              </el-radio-group>
+            </div>
+
+            <!-- 无价格提示 -->
+            <div v-else-if="selectedQuarter && existingPrices.length === 0" class="no-price-tip">
+              <el-empty description="该季度暂无价格数据" :image-size="80" />
+            </div>
+
+            <!-- 未选择季度提示 -->
+            <div v-else-if="!selectedQuarter" class="select-quarter-tip">
+              <el-empty description="请先选择季度" :image-size="80" />
+            </div>
           </div>
-
-          <!-- 季度选择 -->
-          <el-form-item label="季度" prop="quarter" required>
-            <el-select
-              v-model="form.quarter"
-              placeholder="请选择季度"
-              clearable
-              style="width: 100%"
-            >
-              <el-option label="2024年第一季度" value="2024Q1" />
-              <el-option label="2024年第二季度" value="2024Q2" />
-              <el-option label="2024年第三季度" value="2024Q3" />
-              <el-option label="2024年第四季度" value="2024Q4" />
-              <el-option label="2025年第一季度" value="2025Q1" />
-              <el-option label="2025年第二季度" value="2025Q2" />
-              <el-option label="2025年第三季度" value="2025Q3" />
-              <el-option label="2025年第四季度" value="2025Q4" />
-            </el-select>
-            <div class="form-tip">选择价格对应的结算季度</div>
-          </el-form-item>
-
-          <!-- 含税价 -->
-          <el-form-item label="含税价" prop="taxPrice" required>
-            <el-input-number
-              v-model="form.taxPrice"
-              :min="0"
-              :precision="2"
-              :step="0.01"
-              style="width: 100%"
-              placeholder="请输入含税价"
-              controls-position="right"
-            />
-            <div class="form-tip">单位：元，精确到分</div>
-          </el-form-item>
-
-          <!-- 不含税价 -->
-          <el-form-item label="不含税价" prop="taxExcludedPrice">
-            <el-input-number
-              v-model="form.taxExcludedPrice"
-              :min="0"
-              :precision="2"
-              :step="0.01"
-              style="width: 100%"
-              placeholder="请输入不含税价（选填）"
-              controls-position="right"
-            />
-            <div class="form-tip">单位：元，选填项，精确到分</div>
-          </el-form-item>
-
-          <!-- 税率 -->
-          <el-form-item label="税率" prop="taxRate">
-            <el-input-number
-              v-model="form.taxRate"
-              :min="0"
-              :max="1"
-              :precision="4"
-              :step="0.0001"
-              style="width: 100%"
-              placeholder="请输入税率（选填）"
-              controls-position="right"
-            />
-            <div class="form-tip">范围：0-1，如0.13表示13%税率</div>
-          </el-form-item>
-        </div>
-      </el-form>
+        </el-tab-pane>
+      </el-tabs>
     </div>
 
     <!-- 对话框底部操作按钮 -->
@@ -166,6 +239,11 @@ const props = defineProps({
   taskId: {
     type: [String, Number],
     default: ''
+  },
+  // 当前季度（自动带入）
+  currentQuarter: {
+    type: String,
+    default: ''
   }
 })
 
@@ -175,6 +253,17 @@ const emits = defineEmits(['update:modelValue', 'success', 'cancel'])
 // ===== 响应式数据 =====
 const formRef = ref(null)
 const submitting = ref(false)
+
+// Tab相关状态
+const activeTab = ref('create')
+
+// 选择现有价格Tab相关状态
+const availableQuarters = ref([])
+const selectedQuarter = ref('')
+const existingPrices = ref([])
+const selectedPriceId = ref(null)
+const loadingQuarters = ref(false)
+const loadingPrices = ref(false)
 
 // 对话框显示状态
 const dialogVisible = computed({
@@ -246,6 +335,8 @@ watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     nextTick(() => {
       resetForm()
+      // 加载可用季度
+      loadAvailableQuarters()
     })
   }
 })
@@ -256,15 +347,24 @@ watch(() => props.modelValue, (newVal) => {
  * 重置表单数据
  */
 const resetForm = () => {
-  console.log('【AddPriceDialog】重置表单数据')
+  console.log('【AddPriceDialog】重置表单数据，当前季度:', props.currentQuarter)
 
-  // 清空表单
+  // 重置Tab到新建价格
+  activeTab.value = 'create'
+
+  // 清空表单，但自动设置季度
   Object.assign(form, {
-    quarter: '',
+    quarter: props.currentQuarter || '',
     taxPrice: null,
     taxExcludedPrice: null,
     taxRate: null
   })
+
+  // 清空选择现有价格Tab的状态
+  selectedQuarter.value = ''
+  existingPrices.value = []
+  selectedPriceId.value = null
+  availableQuarters.value = []
 
   // 清除验证状态
   if (formRef.value) {
@@ -354,8 +454,21 @@ const buildRequestParams = () => {
  * 处理表单提交
  */
 const handleSubmit = async () => {
-  console.log('【AddPriceDialog】开始提交价格信息')
+  console.log('【AddPriceDialog】开始提交价格信息，当前Tab:', activeTab.value)
 
+  if (activeTab.value === 'create') {
+    // 新建价格逻辑
+    await handleCreatePrice()
+  } else if (activeTab.value === 'select') {
+    // 选择现有价格逻辑
+    await handleSelectExistingPrice()
+  }
+}
+
+/**
+ * 处理新建价格
+ */
+const handleCreatePrice = async () => {
   // 检查基础物资ID
   if (!materialInfo.value.id) {
     ElMessage.error('物资基础信息不完整，无法创建价格')
@@ -404,6 +517,152 @@ const handleSubmit = async () => {
 
   } finally {
     submitting.value = false
+  }
+}
+
+/**
+ * 处理选择现有价格
+ */
+const handleSelectExistingPrice = async () => {
+  if (!selectedPriceId.value) {
+    ElMessage.warning('请选择一个价格')
+    return
+  }
+
+  submitting.value = true
+
+  try {
+    // 找到选中的价格
+    const selectedPrice = existingPrices.value.find(p => p.id === selectedPriceId.value)
+    if (!selectedPrice) {
+      ElMessage.error('选中的价格不存在')
+      return
+    }
+
+    console.log('【AddPriceDialog】使用现有价格:', selectedPrice)
+
+    // 成功提示
+    ElMessage.success('价格选择成功！')
+
+    // 关闭对话框
+    dialogVisible.value = false
+
+    // 通知父组件使用选中的价格（不创建新价格）
+    emits('success', {
+      materialInfo: materialInfo.value,
+      selectedPrice: selectedPrice,
+      isExistingPrice: true
+    })
+
+  } catch (error) {
+    console.error('【AddPriceDialog】选择价格失败:', error)
+    ElMessage.error('价格选择失败，请重试')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// ===== 选择现有价格Tab相关方法 =====
+
+/**
+ * 获取季度标签
+ */
+const getQuarterLabel = (quarter) => {
+  const quarterMap = {
+    '2024Q1': '2024年第一季度',
+    '2024Q2': '2024年第二季度',
+    '2024Q3': '2024年第三季度',
+    '2024Q4': '2024年第四季度',
+    '2025Q1': '2025年第一季度',
+    '2025Q2': '2025年第二季度',
+    '2025Q3': '2025年第三季度',
+    '2025Q4': '2025年第四季度'
+  }
+  return quarterMap[quarter] || quarter
+}
+
+/**
+ * 格式化价格显示
+ */
+const formatPrice = (price) => {
+  if (price == null || price === undefined) return '0.00'
+  return parseFloat(price).toFixed(2)
+}
+
+/**
+ * 处理季度选择变化
+ */
+const handleQuarterChange = async (quarter) => {
+  console.log('【AddPriceDialog】季度选择变化:', quarter)
+  selectedPriceId.value = null
+  existingPrices.value = []
+
+  if (quarter && materialInfo.value.id) {
+    await loadExistingPrices(quarter)
+  }
+}
+
+/**
+ * 加载指定季度的现有价格
+ */
+const loadExistingPrices = async (quarter) => {
+  loadingPrices.value = true
+  try {
+    console.log('【AddPriceDialog】加载现有价格，物资ID:', materialInfo.value.id, '季度:', quarter)
+
+    // 这里需要调用API获取现有价格，暂时模拟数据
+    // const response = await temporaryDataService.getMaterialPricesByQuarter(materialInfo.value.id, quarter)
+
+    // 模拟数据
+    existingPrices.value = [
+      {
+        id: 1,
+        taxPrice: 100.50,
+        taxExcludedPrice: 88.94,
+        quarter: quarter,
+        unit: '元/个'
+      },
+      {
+        id: 2,
+        taxPrice: 99.80,
+        taxExcludedPrice: null,
+        quarter: quarter,
+        unit: '元/个'
+      }
+    ]
+
+    console.log('【AddPriceDialog】加载到价格列表:', existingPrices.value)
+  } catch (error) {
+    console.error('【AddPriceDialog】加载现有价格失败:', error)
+    ElMessage.error('加载价格数据失败')
+    existingPrices.value = []
+  } finally {
+    loadingPrices.value = false
+  }
+}
+
+/**
+ * 加载可用季度
+ */
+const loadAvailableQuarters = async () => {
+  if (!materialInfo.value.id) return
+
+  loadingQuarters.value = true
+  try {
+    console.log('【AddPriceDialog】加载可用季度，物资ID:', materialInfo.value.id)
+
+    // 这里需要调用API获取有价格的季度，暂时模拟数据
+    // const response = await temporaryDataService.getMaterialAvailableQuarters(materialInfo.value.id)
+
+    // 模拟数据
+    availableQuarters.value = ['2024Q3', '2024Q4', '2025Q1']
+
+    console.log('【AddPriceDialog】加载到可用季度:', availableQuarters.value)
+  } catch (error) {
+    console.error('【AddPriceDialog】加载可用季度失败:', error)
+    availableQuarters.value = []
+  } finally {
+    loadingQuarters.value = false
   }
 }
 </script>
@@ -521,6 +780,105 @@ const handleSubmit = async () => {
   border-color: rgba(100, 150, 255, 0.2);
 }
 
+/* Tab样式 */
+.price-tabs {
+  margin-top: 16px;
+}
+
+.price-tabs :deep(.el-tabs__header) {
+  margin-bottom: 20px;
+}
+
+.price-tabs :deep(.el-tab-pane) {
+  min-height: 300px;
+}
+
+/* 选择现有价格Tab样式 */
+.existing-price-section {
+  padding: 16px 0;
+}
+
+.quarter-filter {
+  margin-bottom: 20px;
+}
+
+.price-list {
+  margin-top: 16px;
+}
+
+.price-list-header {
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--theme-text-primary, #333);
+  font-size: 14px;
+}
+
+.price-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.price-option :deep(.el-radio__label) {
+  width: 100%;
+  padding: 0;
+  margin-left: 12px;
+}
+
+.price-info-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 8px;
+  background: var(--theme-card-bg, #f8f9fa);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  width: 100%;
+}
+
+.price-info-card:hover {
+  border-color: var(--theme-primary, #409EFF);
+  background: var(--theme-primary-light, rgba(64, 158, 255, 0.1));
+}
+
+.price-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.price-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--theme-text-primary, #333);
+}
+
+.price-type {
+  font-size: 12px;
+  color: var(--theme-text-secondary, #666);
+  margin-top: 2px;
+}
+
+.price-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.detail-item {
+  font-size: 12px;
+  color: var(--theme-text-secondary, #666);
+}
+
+.no-price-tip,
+.select-quarter-tip {
+  padding: 40px 0;
+  text-align: center;
+}
+
 /* 响应式适配 */
 @media (max-width: 768px) {
   .add-price-dialog :deep(.el-dialog) {
@@ -536,6 +894,17 @@ const handleSubmit = async () => {
 
   .info-row .label {
     min-width: auto;
+  }
+
+  .price-info-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .price-details {
+    align-items: flex-start;
+    align-self: stretch;
   }
 }
 </style>

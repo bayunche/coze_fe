@@ -182,6 +182,7 @@
       v-model="showAddPriceDialog"
       :row-data="addPriceRow"
       :task-id="taskId"
+      :current-quarter="currentQuarter"
       @success="handlePriceAddSuccess"
       @cancel="handlePriceAddCancel"
     />
@@ -272,6 +273,9 @@ const currentSelectionRow = ref(null)
 // 新增价格弹窗状态（新增功能，不影响现有状态）
 const showAddPriceDialog = ref(false)
 const addPriceRow = ref(null)
+
+// 当前任务的季度信息（用于新增价格时自动带入）
+const currentQuarter = ref('')
 
 // 搜索和筛选参数
 const searchKeyword = ref('')
@@ -484,23 +488,30 @@ const fetchData = async () => {
       if (response && response.data) {
         // 获取数据并初始化每行数据，转换为双行结构
         const rawData = response.data.content || []
+
+        // 尝试从第一条数据中获取任务季度信息
+        if (rawData.length > 0 && rawData[0].quarter) {
+          currentQuarter.value = rawData[0].quarter
+          console.log('【季度信息】从任务数据中获取到季度:', currentQuarter.value)
+        }
+
         materialData.value = rawData.flatMap((item, index) => {
           const initialized = initializeRowData(item)
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
-          
+
           // 数据初始化完成
-          
+
           // 如果不是最后一项，添加分隔行
           if (index < rawData.length - 1) {
-            const separatorRow = { 
-              rowType: 'separator', 
+            const separatorRow = {
+              rowType: 'separator',
               rowKey: `${initialized.taskDataId || initialized.id}-separator`,
               id: `separator-${initialized.taskDataId || initialized.id}`
             }
             return [dataRow, actionRow, separatorRow]
           }
-          
+
           return [dataRow, actionRow]
         })
         statistics.value = response.data.statistics || {}
@@ -514,22 +525,28 @@ const fetchData = async () => {
       })
 
       if (response && response.content) {
+        // 尝试从第一条数据中获取任务季度信息
+        if (response.content.length > 0 && response.content[0].quarter) {
+          currentQuarter.value = response.content[0].quarter
+          console.log('【季度信息】从简单查询接口获取到季度:', currentQuarter.value)
+        }
+
         // 初始化简单查询接口的数据，转换为双行结构
         materialData.value = response.content.flatMap((item, index) => {
           const initialized = initializeRowData(item)
           const dataRow = { ...initialized, rowType: 'data', rowKey: `${initialized.taskDataId || initialized.id}-data` }
           const actionRow = { ...initialized, rowType: 'action', rowKey: `${initialized.taskDataId || initialized.id}-action` }
-          
+
           // 如果不是最后一项，添加分隔行
           if (index < response.content.length - 1) {
-            const separatorRow = { 
-              rowType: 'separator', 
+            const separatorRow = {
+              rowType: 'separator',
               rowKey: `${initialized.taskDataId || initialized.id}-separator`,
               id: `separator-${initialized.taskDataId || initialized.id}`
             }
             return [dataRow, actionRow, separatorRow]
           }
-          
+
           return [dataRow, actionRow]
         })
         // 注意：total现在从matchingStats计算而来，不再从response设置
