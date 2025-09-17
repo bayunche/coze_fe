@@ -7,6 +7,11 @@ const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'root',
+      redirect: '/smart-brain'
+    },
+    {
+      path: '/welcome',
       name: 'welcome',
       component: WelcomePage
     },
@@ -20,6 +25,16 @@ const router = createRouter({
       path: '/smart-brain',
       name: 'smart-brain',
       component: () => import('../views/smart-brain')
+    },
+    // 项目管理页面
+    {
+      path: '/project-management',
+      name: 'project-management',
+      component: () => import('../views/project-management'),
+      meta: {
+        title: '项目管理',
+        breadcrumb: ['项目管理']
+      }
     },
     // 智能大脑任务列表页面
     {
@@ -94,7 +109,11 @@ const router = createRouter({
       path: '/project-detail/:projectId',
       name: 'project-detail',
       component: () => import('../views/project-detail'),
-      props: true // 允许组件通过 props 接收路由参数
+      props: true,
+      meta: {
+        title: '项目详情',
+        breadcrumb: ['项目管理', '项目详情']
+      }
     },
     {
       path: '/supplier-material-detail/:taskId/:detailId',
@@ -131,9 +150,20 @@ const router = createRouter({
       name: 'material-detail',
       component: () => import('../views/material-detail'),
       props: true,
-      meta: { 
+      meta: {
         title: '物资解析详情',
         breadcrumb: ['智能大脑', '解析结果', '详情']
+      }
+    },
+    // 合同解析详情页面
+    {
+      path: '/contract-detail/:taskId',
+      name: 'contract-detail',
+      component: () => import('../views/material-detail'), // 复用物资详情页面组件
+      props: true,
+      meta: {
+        title: '合同解析详情',
+        breadcrumb: ['项目管理', '项目详情', '合同解析详情']
       }
     },
     {

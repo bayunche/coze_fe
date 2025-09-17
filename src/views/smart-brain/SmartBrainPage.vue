@@ -37,37 +37,148 @@
         </el-card>
       </div>
 
-      <!-- 智能体监控区 -->
-      <div class="agents-section">
-        <h2 class="section-title">智能体监控</h2>
-        <div class="agents-grid">
+      <!-- 项目监控区 -->
+      <div class="projects-section">
+        <div class="section-header">
+          <h2 class="section-title">项目监控</h2>
+          <div class="section-actions">
+            <el-button
+              @click="goToProjectManagement"
+              type="primary"
+              size="small"
+            >
+              查看所有项目
+            </el-button>
+            <el-button
+              @click="refreshProjects"
+              :loading="projectLoading"
+              size="small"
+            >
+              刷新数据
+            </el-button>
+          </div>
+        </div>
+
+        <!-- 项目卡片网格 -->
+        <div class="projects-grid" v-loading="projectLoading">
+          <!-- 空状态 -->
+          <div v-if="projectsWithStats.length === 0 && !projectLoading" class="empty-state">
+            <div class="empty-icon">📊</div>
+            <div class="empty-text">暂无项目数据</div>
+            <el-button @click="refreshProjects" type="primary" size="small">
+              重新加载
+            </el-button>
+          </div>
+
+          <!-- 项目卡片 -->
           <el-card
-            v-for="agent in smartAgents"
-            :key="agent.id"
-            class="agent-card"
+            v-for="project in projectsWithStats"
+            :key="project.projectId"
+            class="project-card"
             shadow="hover"
-            @click="openAgentDialog(agent)"
+            @click="openProjectDetail(project)"
           >
             <template #header>
-              <div class="agent-header">
-                <span class="agent-name">{{ agent.name }}</span>
-                <el-tag type="success" size="small">在线</el-tag>
+              <div class="project-header">
+                <div class="project-info">
+                  <h3 class="project-name">{{ project.projectName }}</h3>
+                  <p class="project-code">{{ project.projectCode }}</p>
+                </div>
+                <div class="project-status">
+                  <el-tag
+                    :type="getProjectStatusType(project.status)"
+                    size="small"
+                  >
+                    {{ getProjectStatusText(project.status) }}
+                  </el-tag>
+                </div>
               </div>
             </template>
 
-            <div class="agent-stats">
-              <div class="stat-item">
-                <span class="stat-value">{{ agent.tasks.completed }}</span>
-                <span class="stat-label">已完成</span>
+            <div class="project-content">
+              <!-- 任务统计 -->
+              <div class="task-stats">
+                <div class="stat-row">
+                  <div class="stat-item contract-stat">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-details">
+                      <div class="stat-value">{{ project.contractTasks }}</div>
+                      <div class="stat-label">合同解析</div>
+                    </div>
+                  </div>
+                  <div class="stat-item supplier-stat">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-details">
+                      <div class="stat-value">{{ project.supplierMaterialTasks }}</div>
+                      <div class="stat-label">乙供物资</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="stat-row">
+                  <div class="stat-item owner-stat">
+                    <div class="stat-icon">🏗️</div>
+                    <div class="stat-details">
+                      <div class="stat-value">{{ project.ownerMaterialTasks }}</div>
+                      <div class="stat-label">甲供物资</div>
+                    </div>
+                  </div>
+                  <div class="stat-item total-stat">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-details">
+                      <div class="stat-value">{{ project.totalTasks }}</div>
+                      <div class="stat-label">总任务</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div class="stat-item">
-                <span class="stat-value">{{ agent.tasks.inProgress }}</span>
-                <span class="stat-label">进行中</span>
+
+              <!-- 进度条 -->
+              <div class="progress-section">
+                <div class="progress-header">
+                  <span class="progress-label">完成进度</span>
+                  <span class="progress-percentage">{{ project.progressPercentage }}%</span>
+                </div>
+                <el-progress
+                  :percentage="project.progressPercentage"
+                  :stroke-width="6"
+                  :show-text="false"
+                  :color="getProgressColor(project.progressPercentage)"
+                />
               </div>
-              <div class="stat-item">
-                <span class="stat-value">{{ agent.tasks.total }}</span>
-                <span class="stat-label">总任务</span>
+
+              <!-- 状态指示 -->
+              <div class="status-indicators">
+                <div class="status-item completed">
+                  <el-icon><Check /></el-icon>
+                  <span>{{ project.completedTasks }} 已完成</span>
+                </div>
+                <div class="status-item in-progress">
+                  <el-icon><Clock /></el-icon>
+                  <span>{{ project.inProgressTasks }} 进行中</span>
+                </div>
+                <div class="status-item failed" v-if="project.failedTasks > 0">
+                  <el-icon><Close /></el-icon>
+                  <span>{{ project.failedTasks }} 失败</span>
+                </div>
               </div>
+            </div>
+
+            <!-- 卡片操作 -->
+            <div class="project-actions">
+              <el-button
+                type="primary"
+                size="small"
+                @click.stop="openProjectDetail(project)"
+              >
+                查看详情
+              </el-button>
+              <el-button
+                type="default"
+                size="small"
+                @click.stop="goToProjectManagement"
+              >
+                项目管理
+              </el-button>
             </div>
           </el-card>
         </div>
@@ -144,9 +255,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkflowStore } from '@/stores/workflow'
+import { useProjectStore } from '@/stores/project'
 import DialogManager from '@/components/home/DialogManager'
 import OverviewStatsDialog from '@/components/home/OverviewStatsDialog'
 import TodoSection from '@/components/todo/TodoSection.vue'
+import { Check, Clock, Close } from '@element-plus/icons-vue'
 
 import {
   OVERVIEW_CARD_CONFIG,
@@ -163,6 +276,7 @@ import {
 const router = useRouter()
 const authStore = useAuthStore()
 const workflowStore = useWorkflowStore()
+const projectStore = useProjectStore()
 
 // 创建路由导航函数
 const navigateToFeature = createRouteNavigator(router)
@@ -172,10 +286,16 @@ const statsDialogVisible = ref(false)
 const currentStatsDialogType = ref('total')
 const currentStatsData = ref([])
 
+// 项目相关状态
+const projectLoading = ref(false)
+
 // 计算属性
 const smartAgents = computed(() => workflowStore.smartAgents)
 const overviewData = computed(() => calculateOverviewData(smartAgents.value))
 const userRoleTag = computed(() => getUserRoleTag(authStore.isAdmin))
+
+// 项目相关计算属性
+const projectsWithStats = computed(() => projectStore.projectsWithStats)
 
 // 可用功能列表（仅显示可用功能）
 const availableFeatures = computed(() => {
@@ -196,20 +316,72 @@ const goToHome = () => {
   router.push('/home')
 }
 
-const openAgentDialog = (agent) => {
-  // 根据智能体类型跳转到对应的任务列表页面
-  const routeMap = {
-    'contractParsing': '/smart-brain/contract-tasks',
-    'supplierMaterialParsing': '/smart-brain/supplier-material-tasks',
-    'ownerSuppliedMaterialParsing': '/smart-brain/owner-material-tasks'
+// 项目相关方法
+const refreshProjects = async () => {
+  try {
+    projectLoading.value = true
+    await projectStore.fetchProjects({}, true)
+  } catch (error) {
+    console.error('刷新项目数据失败:', error)
+  } finally {
+    projectLoading.value = false
   }
-  
-  const targetRoute = routeMap[agent.id]
-  if (targetRoute) {
-    router.push(targetRoute)
-  } else {
-    console.warn('未找到对应的路由:', agent.id)
+}
+
+const openProjectDetail = (project) => {
+  console.log('打开项目详情:', project)
+  // 跳转到项目详情页
+  router.push(`/project-detail/${project.projectId || project.projectCode}`)
+}
+
+const goToProjectManagement = () => {
+  console.log('跳转到项目管理页面')
+  // 跳转到项目管理页面
+  router.push('/project-management')
+}
+
+// 项目状态相关工具函数
+const getProjectStatusType = (status) => {
+  switch (status?.toUpperCase()) {
+    case 'ACTIVE':
+    case 'RUNNING':
+      return 'success'
+    case 'COMPLETED':
+      return 'info'
+    case 'PAUSED':
+      return 'warning'
+    case 'FAILED':
+    case 'ERROR':
+      return 'danger'
+    default:
+      return 'info'
   }
+}
+
+const getProjectStatusText = (status) => {
+  switch (status?.toUpperCase()) {
+    case 'ACTIVE':
+      return '进行中'
+    case 'RUNNING':
+      return '运行中'
+    case 'COMPLETED':
+      return '已完成'
+    case 'PAUSED':
+      return '已暂停'
+    case 'FAILED':
+      return '失败'
+    case 'ERROR':
+      return '错误'
+    default:
+      return '未知状态'
+  }
+}
+
+const getProgressColor = (percentage) => {
+  if (percentage >= 90) return '#67c23a'
+  if (percentage >= 70) return '#409eff'
+  if (percentage >= 50) return '#e6a23c'
+  return '#f56c6c'
 }
 
 /**
@@ -242,7 +414,11 @@ const handleStatsRefresh = (dialogType) => {
 // 页面初始化
 const initializePage = async () => {
   try {
-    await workflowStore.executeSmartBrain()
+    // 同时加载工作流数据和项目数据
+    await Promise.all([
+      workflowStore.executeSmartBrain(),
+      refreshProjects()
+    ])
   } catch (error) {
     console.error('初始化智能大脑数据失败:', error)
   }
@@ -359,63 +535,224 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
-.agents-section {
+/* 项目监控区 */
+.projects-section {
   margin-bottom: 40px;
 }
 
-.agents-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
 
-.agent-card {
+.section-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.project-card {
   border: 1px solid var(--theme-card-border);
   border-radius: 12px;
   background: var(--theme-card-bg);
   cursor: pointer;
   transition: all 0.3s ease;
+  overflow: hidden;
 }
 
-.agent-card:hover {
+.project-card:hover {
   transform: translateY(-5px);
   box-shadow: var(--theme-card-hover-shadow);
   border-color: var(--theme-primary);
 }
 
-.agent-header {
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0;
+}
+
+.project-info {
+  flex: 1;
+}
+
+.project-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+}
+
+.project-code {
+  font-size: 14px;
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+
+.project-status {
+  flex-shrink: 0;
+}
+
+.project-content {
+  padding: 0;
+}
+
+.task-stats {
+  margin-bottom: 20px;
+}
+
+.stat-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.stat-row:last-child {
+  margin-bottom: 0;
+}
+
+.stat-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: var(--theme-bg-light, #f8f9fa);
+  border-radius: 8px;
+  min-height: 60px;
+}
+
+.stat-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.stat-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--theme-text-primary);
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--theme-text-secondary);
+  line-height: 1.2;
+}
+
+/* 不同类型任务的颜色主题 */
+.contract-stat {
+  background: linear-gradient(135deg, rgba(64, 158, 255, 0.1) 0%, rgba(64, 158, 255, 0.05) 100%);
+  border: 1px solid rgba(64, 158, 255, 0.2);
+}
+
+.supplier-stat {
+  background: linear-gradient(135deg, rgba(103, 194, 58, 0.1) 0%, rgba(103, 194, 58, 0.05) 100%);
+  border: 1px solid rgba(103, 194, 58, 0.2);
+}
+
+.owner-stat {
+  background: linear-gradient(135deg, rgba(245, 108, 108, 0.1) 0%, rgba(245, 108, 108, 0.05) 100%);
+  border: 1px solid rgba(245, 108, 108, 0.2);
+}
+
+.total-stat {
+  background: linear-gradient(135deg, rgba(230, 162, 60, 0.1) 0%, rgba(230, 162, 60, 0.05) 100%);
+  border: 1px solid rgba(230, 162, 60, 0.2);
+}
+
+.progress-section {
+  margin-bottom: 20px;
+}
+
+.progress-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 8px;
 }
 
-.agent-name {
+.progress-label {
+  font-size: 14px;
+  color: var(--theme-text-secondary);
+}
+
+.progress-percentage {
+  font-size: 14px;
   font-weight: 600;
   color: var(--theme-text-primary);
 }
 
-.agent-stats {
+.status-indicators {
   display: flex;
-  justify-content: space-around;
-  text-align: center;
-  padding: 16px 0;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
 }
 
-.stat-item {
+.status-item {
   display: flex;
-  flex-direction: column;
-}
-
-.stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: var(--theme-primary);
-}
-
-.stat-label {
-  font-size: 13px;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
   color: var(--theme-text-secondary);
-  margin-top: 4px;
+}
+
+.status-item.completed {
+  color: var(--el-color-success);
+}
+
+.status-item.in-progress {
+  color: var(--el-color-primary);
+}
+
+.status-item.failed {
+  color: var(--el-color-danger);
+}
+
+.project-actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px 20px;
+  background: var(--theme-bg-light, #f8f9fa);
+  border-top: 1px solid var(--theme-border-light);
+  margin: 0 -20px -20px -20px;
+}
+
+.project-actions .el-button {
+  flex: 1;
+}
+
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--theme-text-secondary);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 16px;
+  margin-bottom: 20px;
 }
 
 .management-section {
@@ -540,7 +877,7 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .agents-grid {
+  .projects-grid {
     grid-template-columns: 1fr;
   }
 
