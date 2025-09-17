@@ -59,10 +59,10 @@
           </div>
         </div>
 
-        <!-- 项目卡片网格 -->
-        <div class="projects-grid" v-loading="projectLoading">
+        <!-- 项目列表 -->
+        <div class="projects-list" v-loading="projectLoading">
           <!-- 空状态 -->
-          <div v-if="projectsWithStats.length === 0 && !projectLoading" class="empty-state">
+          <div v-if="topThreeProjects.length === 0 && !projectLoading" class="empty-state">
             <div class="empty-icon">📊</div>
             <div class="empty-text">暂无项目数据</div>
             <el-button @click="refreshProjects" type="primary" size="small">
@@ -70,117 +70,77 @@
             </el-button>
           </div>
 
-          <!-- 项目卡片 -->
-          <el-card
-            v-for="project in projectsWithStats"
+          <!-- 项目列表项 -->
+          <div
+            v-for="project in topThreeProjects"
             :key="project.projectId"
-            class="project-card"
-            shadow="hover"
+            class="project-item"
             @click="openProjectDetail(project)"
           >
-            <template #header>
-              <div class="project-header">
-                <div class="project-info">
+            <div class="project-main">
+              <div class="project-info">
+                <div class="project-header">
                   <h3 class="project-name">{{ project.projectName }}</h3>
-                  <p class="project-code">{{ project.projectCode }}</p>
-                </div>
-                <div class="project-status">
                   <el-tag
                     :type="getProjectStatusType(project.status)"
                     size="small"
+                    class="project-status"
                   >
                     {{ getProjectStatusText(project.status) }}
                   </el-tag>
                 </div>
-              </div>
-            </template>
-
-            <div class="project-content">
-              <!-- 任务统计 -->
-              <div class="task-stats">
-                <div class="stat-row">
-                  <div class="stat-item contract-stat">
-                    <div class="stat-icon">📋</div>
-                    <div class="stat-details">
-                      <div class="stat-value">{{ project.contractTasks }}</div>
-                      <div class="stat-label">合同解析</div>
-                    </div>
-                  </div>
-                  <div class="stat-item supplier-stat">
-                    <div class="stat-icon">📦</div>
-                    <div class="stat-details">
-                      <div class="stat-value">{{ project.supplierMaterialTasks }}</div>
-                      <div class="stat-label">乙供物资</div>
-                    </div>
-                  </div>
-                </div>
-                <div class="stat-row">
-                  <div class="stat-item owner-stat">
-                    <div class="stat-icon">🏗️</div>
-                    <div class="stat-details">
-                      <div class="stat-value">{{ project.ownerMaterialTasks }}</div>
-                      <div class="stat-label">甲供物资</div>
-                    </div>
-                  </div>
-                  <div class="stat-item total-stat">
-                    <div class="stat-icon">🎯</div>
-                    <div class="stat-details">
-                      <div class="stat-value">{{ project.totalTasks }}</div>
-                      <div class="stat-label">总任务</div>
-                    </div>
-                  </div>
-                </div>
+                <p class="project-code">{{ project.projectCode }}</p>
               </div>
 
-              <!-- 进度条 -->
-              <div class="progress-section">
-                <div class="progress-header">
-                  <span class="progress-label">完成进度</span>
-                  <span class="progress-percentage">{{ project.progressPercentage }}%</span>
-                </div>
-                <el-progress
-                  :percentage="project.progressPercentage"
-                  :stroke-width="6"
-                  :show-text="false"
-                  :color="getProgressColor(project.progressPercentage)"
-                />
-              </div>
-
-              <!-- 状态指示 -->
-              <div class="status-indicators">
-                <div class="status-item completed">
-                  <el-icon><Check /></el-icon>
-                  <span>{{ project.completedTasks }} 已完成</span>
-                </div>
-                <div class="status-item in-progress">
-                  <el-icon><Clock /></el-icon>
-                  <span>{{ project.inProgressTasks }} 进行中</span>
-                </div>
-                <div class="status-item failed" v-if="project.failedTasks > 0">
-                  <el-icon><Close /></el-icon>
-                  <span>{{ project.failedTasks }} 失败</span>
+              <div class="project-stats">
+                <div class="stats-grid">
+                  <div class="stat-item">
+                    <span class="stat-icon">📋</span>
+                    <span class="stat-count">{{ project.contractTasks }}</span>
+                    <span class="stat-label">合同</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-icon">📦</span>
+                    <span class="stat-count">{{ project.supplierMaterialTasks }}</span>
+                    <span class="stat-label">乙供</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="stat-icon">🏗️</span>
+                    <span class="stat-count">{{ project.ownerMaterialTasks }}</span>
+                    <span class="stat-label">甲供</span>
+                  </div>
+                  <div class="stat-item total">
+                    <span class="stat-icon">🎯</span>
+                    <span class="stat-count">{{ project.totalTasks }}</span>
+                    <span class="stat-label">总数</span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- 卡片操作 -->
+            <div class="project-progress">
+              <div class="progress-header">
+                <span class="progress-label">进度</span>
+                <span class="progress-percentage">{{ project.progressPercentage }}%</span>
+              </div>
+              <el-progress
+                :percentage="project.progressPercentage"
+                :stroke-width="4"
+                :show-text="false"
+                :color="getProgressColor(project.progressPercentage)"
+              />
+            </div>
+
             <div class="project-actions">
               <el-button
-                type="primary"
                 size="small"
+                type="primary"
                 @click.stop="openProjectDetail(project)"
               >
                 查看详情
               </el-button>
-              <el-button
-                type="default"
-                size="small"
-                @click.stop="goToProjectManagement"
-              >
-                项目管理
-              </el-button>
             </div>
-          </el-card>
+          </div>
         </div>
       </div>
 
@@ -296,6 +256,11 @@ const userRoleTag = computed(() => getUserRoleTag(authStore.isAdmin))
 
 // 项目相关计算属性
 const projectsWithStats = computed(() => projectStore.projectsWithStats)
+
+// 只显示前三个项目
+const topThreeProjects = computed(() => {
+  return projectsWithStats.value.slice(0, 3)
+})
 
 // 可用功能列表（仅显示可用功能）
 const availableFeatures = computed(() => {
@@ -552,36 +517,49 @@ onMounted(() => {
   gap: 12px;
 }
 
-.projects-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+/* 项目列表样式 */
+.projects-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.project-item {
+  display: flex;
+  align-items: center;
+  padding: 20px;
+  background: var(--theme-card-bg);
+  border: 1px solid var(--theme-card-border);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
   gap: 24px;
 }
 
-.project-card {
-  border: 1px solid var(--theme-card-border);
-  border-radius: 12px;
-  background: var(--theme-card-bg);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  overflow: hidden;
-}
-
-.project-card:hover {
-  transform: translateY(-5px);
+.project-item:hover {
+  transform: translateY(-2px);
   box-shadow: var(--theme-card-hover-shadow);
   border-color: var(--theme-primary);
+}
+
+.project-main {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  flex: 1;
+}
+
+/* 项目信息区域 */
+.project-info {
+  min-width: 200px;
 }
 
 .project-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  padding: 0;
-}
-
-.project-info {
-  flex: 1;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 12px;
 }
 
 .project-name {
@@ -877,12 +855,135 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .projects-grid {
-    grid-template-columns: 1fr;
+  .projects-list {
+    gap: 12px;
+  }
+
+  .project-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .project-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .project-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .management-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* 新增项目列表相关样式 */
+.project-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+  margin: 0;
+  flex: 1;
+}
+
+.project-code {
+  font-size: 12px;
+  color: var(--theme-text-secondary);
+  margin: 0;
+}
+
+.project-status {
+  flex-shrink: 0;
+}
+
+/* 项目统计样式 */
+.project-stats {
+  flex: 1;
+  max-width: 300px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--theme-bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--theme-card-border);
+  transition: all 0.3s ease;
+}
+
+.stat-item:hover {
+  background: var(--theme-bg-hover);
+  border-color: var(--theme-primary);
+}
+
+.stat-item.total {
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(79, 70, 229, 0.05));
+  border-color: var(--theme-primary);
+}
+
+.stat-icon {
+  font-size: 16px;
+}
+
+.stat-count {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--theme-text-primary);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--theme-text-secondary);
+}
+
+/* 项目进度样式 */
+.project-progress {
+  min-width: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progress-label {
+  font-size: 12px;
+  color: var(--theme-text-secondary);
+}
+
+.progress-percentage {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-text-primary);
+}
+
+/* 项目操作样式 */
+.project-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>
