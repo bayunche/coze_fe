@@ -3,7 +3,14 @@
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">乙供物资审批管理</h1>
-        <p class="page-desc">管理员审批乙供物资解析结果</p>
+        <div class="task-info" v-if="taskInfo">
+          <p class="page-desc">
+            项目名称：{{ taskInfo.projectName || '未知项目' }} |
+            项目编号：{{ taskInfo.projectCode || '未知编号' }} |
+            任务ID：{{ currentTaskId }}
+          </p>
+        </div>
+        <p class="page-desc" v-else>管理员审批乙供物资解析结果</p>
       </div>
       <div class="header-right">
         <el-button @click="refreshData" :loading="loading" type="primary">
@@ -208,6 +215,7 @@ const currentFilterType = ref(3) // 默认查全部
 const tableData = ref([])
 const selectedItems = ref([])
 const tableRef = ref()
+const taskInfo = ref(null) // 任务信息
 
 // 统计数据
 const statisticsData = reactive({
@@ -296,10 +304,29 @@ const loadStatistics = async () => {
   }
 }
 
+const loadTaskInfo = async () => {
+  try {
+    if (!currentTaskId.value) return
+
+    const info = await supplierMaterialService.getTaskInfo(currentTaskId.value)
+    taskInfo.value = info
+
+    console.log('【任务信息】已加载:', taskInfo.value)
+  } catch (error) {
+    console.error('【错误】加载任务信息失败:', error)
+    // 设置默认值
+    taskInfo.value = {
+      projectName: '未知项目',
+      projectCode: '未知编号'
+    }
+  }
+}
+
 const refreshData = async () => {
   await Promise.all([
     loadData(),
-    loadStatistics()
+    loadStatistics(),
+    loadTaskInfo()
   ])
   ElMessage.success('数据刷新成功')
 }
@@ -333,8 +360,11 @@ const handleCurrentChange = (newPage) => {
 }
 
 const handleViewDetail = (row) => {
-  // 跳转到详情页
-  router.push(`/supplier-material-detail/${row.taskId}/${row.taskDetailId}`)
+  // 跳转到详情页（审批模式 - 只读）
+  router.push({
+    path: `/supplier-material-detail/${row.taskId}/${row.taskDetailId}`,
+    query: { mode: 'approval' } // 添加审批模式标识
+  })
 }
 
 const handleApprove = (row) => {

@@ -11,7 +11,7 @@
         </div>
         <div class="guide-step">
           <span class="step-number">2.</span>
-          <span class="step-text">将所有有问题的数据处理完毕后再进行生成报告操作</span>
+          <span class="step-text">处理完成后，点击右上角的"提交审批"按钮提交审核</span>
         </div>
       </div>
     </div>

@@ -12,7 +12,12 @@
           {{ BUTTON_CONFIG.BACK.text }}
         </el-button>
         <div :class="CSS_CLASSES.TITLE_SECTION">
-          <h1 class="page-title">乙供物资解析结果确认</h1>
+          <h1 class="page-title">
+            {{ isApprovalMode ? '乙供物资审批查看' : '乙供物资解析结果确认' }}
+            <el-tag v-if="isApprovalMode" type="warning" size="small" style="margin-left: 8px">
+              只读模式
+            </el-tag>
+          </h1>
           <p class="page-subtitle">任务ID: {{ taskId }} | 详情ID: {{ detailId }}</p>
         </div>
       </div>
@@ -27,7 +32,7 @@
           生成解析报告
         </el-button>
         <el-button
-          v-if="showApprovalButton"
+          v-if="showApprovalButton && !isApprovalMode"
           @click="handleSubmitApproval"
           :icon="Check"
           type="success"
@@ -130,6 +135,7 @@
           :loading="tableLoading"
           :batch-confirming="batchConfirming"
           :pending-count="pendingCount"
+          :readonly="isApprovalMode"
           @quick-confirm="handleQuickConfirm"
           @view-options="handleViewOptions"
           @batch-confirm="handleBatchConfirm"
@@ -152,14 +158,7 @@
         <!-- 页面底部操作按钮 -->
         <div class="page-footer">
           <el-button @click="handleBack">关闭</el-button>
-          <el-button
-            v-if="shouldShowSaveButton"
-            type="primary"
-            @click="handleSaveResults"
-            :loading="saving"
-          >
-            检查确认状态
-          </el-button>
+          <!-- 移除检查确认状态按钮，用户处理完成后请点击右上角的提交审批按钮 -->
         </div>
       </div>
     </div>
@@ -205,7 +204,7 @@ const props = defineProps({
 })
 import { ArrowLeft, Refresh, Search, DataAnalysis, SuccessFilled, CircleCloseFilled, WarnTriangleFilled, Document, Minus, ArrowDown, ArrowUp, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import MaterialPriceSelectionDialog from '@/components/common/MaterialPriceSelectionDialog'
 import ReportGenerationDialog from '@/components/common/ReportGenerationDialog.vue'
 import AddPriceDialog from '@/components/supplier-material/AddPriceDialog.vue'
@@ -237,15 +236,21 @@ const detailId = computed(() => {
 
 // 导航函数和Store
 const router = useRouter()
+const route = useRoute()
 const { goBack } = useNavigation()
 const supplierMaterialStore = useSupplierMaterialStore()
+
+// 检查是否为审批模式（只读模式）
+const isApprovalMode = computed(() => {
+  return route.query.mode === 'approval'
+})
 
 // 响应式数据
 const pageLoading = ref(false)
 const tableLoading = ref(false)
 const refreshLoading = ref(false)
 const batchConfirming = ref(false)
-const saving = ref(false)
+// const saving = ref(false) // 移除检查确认状态功能相关变量
 const reportGenerating = ref(false)
 
 // 报告生成Dialog相关状态
@@ -294,11 +299,11 @@ const hasModifiedData = computed(() => {
 })
 
 // 计算是否应该显示保存按钮（有未确认的数据或有修改过的数据）
-const shouldShowSaveButton = computed(() => {
-  const hasUnconfirmed = materialData.value.some((item) => item.confirmResult !== 1)
-  const hasModified = hasModifiedData.value
-  return hasUnconfirmed || hasModified
-})
+// const shouldShowSaveButton = computed(() => {
+//   const hasUnconfirmed = materialData.value.some((item) => item.confirmResult !== 1)
+//   const hasModified = hasModifiedData.value
+//   return hasUnconfirmed || hasModified
+// }) // 移除检查确认状态功能相关计算属性
 
 const pendingCount = computed(() => {
   return materialData.value.filter((item) => item.confirmResult !== 1).length
@@ -2438,38 +2443,7 @@ const initializeRowData = (row) => {
   return reactiveRow
 }
 
-// 检查确认状态
-const handleSaveResults = async () => {
-  try {
-    saving.value = true
-    
-    // 调用API查询未确认的数据数量
-    const unconfirmedCount = await MaterialService.getUnconfirmedCount(taskId.value)
-    
-    if (unconfirmedCount > 0) {
-      // 如果还有未确认的数据，提示用户
-      await ElMessageBox.alert(
-        `还有 ${unconfirmedCount} 条数据未确认，请先确认所有数据后再保存。`,
-        '提示',
-        {
-          confirmButtonText: '知道了',
-          type: 'warning'
-        }
-      )
-    } else {
-      // 所有数据都已确认，显示成功消息
-      ElMessage.success('所有数据已确认，可以进行下一步操作')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('检查未确认数据失败:', error)
-      const errorMsg = error?.response?.data?.message || error?.response?.data?.msg || error?.message || '检查失败'
-      ElMessage.error(errorMsg)
-    }
-  } finally {
-    saving.value = false
-  }
-}
+// 移除检查确认状态功能 - 用户处理完成后直接点击右上角提交审批按钮
 
 // 新增：返回按钮处理
 const handleBack = () => {

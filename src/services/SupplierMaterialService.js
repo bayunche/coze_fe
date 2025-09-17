@@ -595,6 +595,29 @@ class SupplierMaterialService {
     // 使用新的扩展统计接口
     return this.getTaskMaterialMatchingStats(taskId)
   }
+
+  /**
+   * 获取任务基本信息（包含项目信息）
+   * @param {String} taskId - 任务ID
+   * @returns {Promise<Object>} 任务信息
+   */
+  async getTaskInfo(taskId) {
+    try {
+      console.log('【调用】获取任务基本信息，taskId:', taskId)
+
+      if (!taskId) {
+        throw new Error('taskId参数不能为空')
+      }
+
+      const response = await request.get(`/api/tasks/${taskId}/info`)
+
+      console.log('【响应】任务基本信息:', response)
+      return response.data || response
+    } catch (error) {
+      console.error('【错误】获取任务基本信息失败:', error)
+      throw error
+    }
+  }
 }
 
 // 创建单例实例

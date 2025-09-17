@@ -31,6 +31,29 @@
         </template>
       </el-table-column>
 
+      <!-- 原因与解释列 -->
+      <el-table-column label="原因与解释" width="280">
+        <template #default="{ row }">
+          <div v-if="row.rowType === 'data' && shouldShowReasonInfo(row)" class="reason-card">
+            <div class="reason-header">
+              <el-tag
+                :type="getReasonTagType(row)"
+                size="small"
+                :effect="getReasonTagEffect(row)"
+                class="reason-tag">
+                <el-icon class="tag-icon">
+                  <component :is="getReasonIcon(row)" />
+                </el-icon>
+                {{ getReasonShortText(row) }}
+              </el-tag>
+            </div>
+            <div v-if="getReasonExplanation(row)" class="reason-explanation">
+              {{ getReasonExplanation(row) }}
+            </div>
+          </div>
+        </template>
+      </el-table-column>
+
       <!-- 价格匹配状态列 -->
       <el-table-column
         v-if="columnConfig.showPriceMatchStatus"
@@ -104,29 +127,6 @@
               <el-icon v-if="hasMaterialNameDifference(row) && row.matchedType !== 0" class="text-red-500">
                 <Close />
               </el-icon>
-            </div>
-          </div>
-        </template>
-      </el-table-column>
-
-      <!-- 原因与解释列 -->
-      <el-table-column label="原因与解释" width="280">
-        <template #default="{ row }">
-          <div v-if="row.rowType === 'data' && shouldShowReasonInfo(row)" class="reason-card">
-            <div class="reason-header">
-              <el-tag
-                :type="getReasonTagType(row)"
-                size="small"
-                :effect="getReasonTagEffect(row)"
-                class="reason-tag">
-                <el-icon class="tag-icon">
-                  <component :is="getReasonIcon(row)" />
-                </el-icon>
-                {{ getReasonShortText(row) }}
-              </el-tag>
-            </div>
-            <div v-if="getReasonExplanation(row)" class="reason-explanation">
-              {{ getReasonExplanation(row) }}
             </div>
           </div>
         </template>
