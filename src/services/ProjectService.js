@@ -143,7 +143,7 @@ class ProjectService {
         throw new Error('项目ID不能为空')
       }
 
-      const response = await request.get(`/api/projects/${projectId}`)
+      const response = await request.get(`/projects/${projectId}`)
 
       console.log('【响应】项目详情:', response)
       return response.data || response
@@ -183,7 +183,7 @@ class ProjectService {
         queryParams.taskType = taskType
       }
 
-      const response = await request.get(`/api/projects/${projectId}/tasks`, {
+      const response = await request.get(`/projects/${projectId}/tasks`, {
         params: queryParams
       })
 
@@ -236,7 +236,7 @@ class ProjectService {
     try {
       console.log('【调用】获取项目统计信息')
 
-      const response = await request.get('/api/projects/stats')
+      const response = await request.get('/projects/stats')
 
       console.log('【响应】项目统计信息:', response)
 
@@ -270,7 +270,7 @@ class ProjectService {
         throw new Error('项目ID不能为空')
       }
 
-      const response = await request.get(`/api/projects/${projectId}/task-stats`)
+      const response = await request.get(`/projects/${projectId}/task-stats`)
 
       console.log('【响应】项目任务统计:', response)
       return response.data || response
