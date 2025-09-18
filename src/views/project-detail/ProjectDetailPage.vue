@@ -44,7 +44,7 @@
     </div>
 
     <!-- 按行分栏任务展示 -->
-    <div class="tasks-container" v-loading="loading">
+    <div class="tasks-container">
       <!-- 合同解析任务 -->
       <div class="task-row">
         <div class="row-header">
@@ -52,77 +52,67 @@
             <el-icon class="row-icon">
               <Document />
             </el-icon>
-            合同解析任务
+            合同解析任务详情列表
           </h3>
           <div class="row-stats">
-            <el-badge :value="contractTasks.length" class="task-count-badge" />
+            <el-badge :value="contractTasksPagination.total" class="task-count-badge" />
           </div>
         </div>
 
-        <div class="task-list" v-loading="contractTasksLoading">
-          <el-table
-            :data="contractTasks"
-            style="width: 100%"
-            height="300"
-            @row-click="(row) => handleTaskClick(row, 'contract')"
-            class="task-table"
-          >
-            <el-table-column prop="id" label="任务ID" width="150" show-overflow-tooltip>
+        <div class="task-detail-content" v-loading="contractTasksLoading">
+          <el-table :data="contractTasks" style="width: 100%">
+            <!-- 序号 -->
+            <el-table-column type="index" prop="" label="序号" width="60"></el-table-column>
+            <el-table-column prop="fileName" label="文件名称"></el-table-column>
+            <el-table-column prop="projectCode" label="项目编号" width="150">
               <template #default="{ row }">
-                {{ row.id ? row.id.slice(-8) : '-' }}
+                {{ row.projectInfo?.projectCode || '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="taskStatus" label="状态" width="100" align="center">
+            <el-table-column prop="projectName" label="项目名称" width="200">
               <template #default="{ row }">
-                <el-tag
-                  :type="getTaskStatusType(row.taskStatus)"
-                  size="small"
-                >
-                  {{ getTaskStatusText(row.taskStatus) }}
-                </el-tag>
+                {{ row.projectInfo?.projectName || '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="fileCount" label="文件数" width="100" align="center">
+            <el-table-column prop="startTime" label="开始时间">
               <template #default="{ row }">
-                {{ row.fileCount || 0 }}
-                <span v-if="row.fileErrorCount > 0" class="error-count">
-                  ({{ row.fileErrorCount }}错误)
-                </span>
+                {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
               </template>
             </el-table-column>
-            <el-table-column prop="createdTime" label="创建时间" width="150">
+            <el-table-column prop="endTime" label="结束时间">
               <template #default="{ row }">
-                {{ formatDateTime(row.createdTime) }}
+                {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
               </template>
             </el-table-column>
-            <el-table-column prop="endTime" label="完成时间" width="150">
+            <el-table-column prop="taskDetailStatus" label="任务解析状态">
               <template #default="{ row }">
-                {{ formatDateTime(row.endTime) }}
+                {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200" align="center">
+            <el-table-column prop="errorReason" label="失败原因">
               <template #default="{ row }">
-                <el-button
-                  size="small"
-                  type="primary"
-                  plain
-                  @click.stop="handleTaskClick(row, 'contract')"
-                >
-                  查看详情
-                </el-button>
-                <el-button
-                  v-if="row.taskStatus === 2"
-                  size="small"
-                  type="success"
-                  plain
-                  @click.stop="handleDownload(row)"
-                >
-                  下载结果
-                </el-button>
+                {{ row.errorReason || '无' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作">
+              <template #default="{ row }">
+                <el-button type="text" @click="handleViewContractDetail(row)">查看详情</el-button>
+                <el-button type="text" @click="handleDownloadFile(row)">查看源文件</el-button>
               </template>
             </el-table-column>
           </el-table>
-          <el-empty v-if="contractTasks.length === 0" description="暂无合同解析任务" />
+          <el-pagination
+            @size-change="handleContractSizeChange"
+            @current-change="handleContractCurrentChange"
+            :current-page="contractTasksPagination.currentPage"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="contractTasksPagination.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="contractTasksPagination.total"
+            background
+            style="margin-top: 20px; text-align: right"
+          >
+          </el-pagination>
         </div>
       </div>
 
@@ -133,77 +123,82 @@
             <el-icon class="row-icon">
               <Box />
             </el-icon>
-            乙供物资任务
+            乙供物资解析任务详情列表
           </h3>
           <div class="row-stats">
-            <el-badge :value="supplierMaterialTasks.length" class="task-count-badge" />
+            <el-badge :value="supplierMaterialTasksPagination.total" class="task-count-badge" />
           </div>
         </div>
 
-        <div class="task-list" v-loading="supplierMaterialTasksLoading">
-          <el-table
-            :data="supplierMaterialTasks"
-            style="width: 100%"
-            height="300"
-            @row-click="(row) => handleTaskClick(row, 'supplier_material')"
-            class="task-table"
-          >
-            <el-table-column prop="id" label="任务ID" width="150" show-overflow-tooltip>
+        <div class="task-detail-content" v-loading="supplierMaterialTasksLoading">
+          <el-table :data="supplierMaterialTasks" style="width: 100%">
+            <el-table-column type="index" label="序号" width="60"></el-table-column>
+            <el-table-column prop="fileName" label="文件名称"></el-table-column>
+            <el-table-column prop="startTime" label="开始时间" width="140">
               <template #default="{ row }">
-                {{ row.id ? row.id.slice(-8) : '-' }}
+                {{ formatStartTime(row.startTime) }}
               </template>
             </el-table-column>
-            <el-table-column prop="taskStatus" label="状态" width="100" align="center">
+            <el-table-column prop="endTime" label="结束时间" width="140">
               <template #default="{ row }">
-                <el-tag
-                  :type="getTaskStatusType(row.taskStatus)"
-                  size="small"
-                >
-                  {{ getTaskStatusText(row.taskStatus) }}
-                </el-tag>
+                {{ formatEndTime(row.endTime) }}
               </template>
             </el-table-column>
-            <el-table-column prop="fileCount" label="文件数" width="100" align="center">
+            <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
               <template #default="{ row }">
-                {{ row.fileCount || 0 }}
-                <span v-if="row.fileErrorCount > 0" class="error-count">
-                  ({{ row.fileErrorCount }}错误)
-                </span>
+                {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
               </template>
             </el-table-column>
-            <el-table-column prop="createdTime" label="创建时间" width="150">
+            <el-table-column prop="errorReason" label="失败原因">
               <template #default="{ row }">
-                {{ formatDateTime(row.createdTime) }}
+                {{ formatErrorReason(row.errorReason) }}
               </template>
             </el-table-column>
-            <el-table-column prop="endTime" label="完成时间" width="150">
+            <el-table-column label="操作" width="300" fixed="right">
               <template #default="{ row }">
-                {{ formatDateTime(row.endTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="200" align="center">
-              <template #default="{ row }">
-                <el-button
-                  size="small"
-                  type="primary"
-                  plain
-                  @click.stop="handleTaskClick(row, 'supplier_material')"
-                >
-                  查看详情
-                </el-button>
-                <el-button
-                  v-if="row.taskStatus === 2"
-                  size="small"
-                  type="success"
-                  plain
-                  @click.stop="handleDownload(row)"
-                >
-                  下载结果
-                </el-button>
+                <div class="action-buttons-container">
+                  <el-button
+                    v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+                    type="text"
+                    size="small"
+                    @click="() => handleViewSupplierMaterialDetail(row)"
+                    class="action-btn"
+                  >
+                    查看详情
+                  </el-button>
+                  <el-button
+                    type="text"
+                    size="small"
+                    @click="() => handleDownloadFile(row)"
+                    class="action-btn"
+                  >
+                    查看源文件
+                  </el-button>
+                  <el-button
+                    type="primary"
+                    size="small"
+                    @click="() => handleConfirmResults(row)"
+                    :disabled="row.taskDetailStatus !== '2'"
+                    class="action-btn confirm-btn"
+                  >
+                    确认解析结果
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
-          <el-empty v-if="supplierMaterialTasks.length === 0" description="暂无乙供物资任务" />
+          <el-pagination
+            @size-change="handleSupplierMaterialSizeChange"
+            @current-change="handleSupplierMaterialCurrentChange"
+            :current-page="supplierMaterialTasksPagination.currentPage"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="supplierMaterialTasksPagination.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="supplierMaterialTasksPagination.total"
+            background
+            style="margin-top: 20px; text-align: right"
+          >
+          </el-pagination>
         </div>
       </div>
 
@@ -214,80 +209,93 @@
             <el-icon class="row-icon">
               <Goods />
             </el-icon>
-            甲供物资任务
+            甲供物资解析任务详情列表
           </h3>
           <div class="row-stats">
-            <el-badge :value="ownerMaterialTasks.length" class="task-count-badge" />
+            <el-badge :value="ownerMaterialTasksPagination.total" class="task-count-badge" />
           </div>
         </div>
 
-        <div class="task-list" v-loading="ownerMaterialTasksLoading">
-          <el-table
-            :data="ownerMaterialTasks"
-            style="width: 100%"
-            height="300"
-            @row-click="(row) => handleTaskClick(row, 'owner_material')"
-            class="task-table"
-          >
-            <el-table-column prop="id" label="任务ID" width="150" show-overflow-tooltip>
+        <div class="task-detail-content" v-loading="ownerMaterialTasksLoading">
+          <el-table :data="ownerMaterialTasks" style="width: 100%">
+            <el-table-column type="index" label="序号" width="60"></el-table-column>
+            <el-table-column prop="fileName" label="文件名称"></el-table-column>
+            <el-table-column prop="projectCode" label="项目编号" width="150">
               <template #default="{ row }">
-                {{ row.id ? row.id.slice(-8) : '-' }}
+                {{ row.projectInfo?.projectCode || '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="taskStatus" label="状态" width="100" align="center">
+            <el-table-column prop="projectName" label="项目名称" width="200">
               <template #default="{ row }">
-                <el-tag
-                  :type="getTaskStatusType(row.taskStatus)"
-                  size="small"
-                >
-                  {{ getTaskStatusText(row.taskStatus) }}
-                </el-tag>
+                {{ row.projectInfo?.projectName || '-' }}
               </template>
             </el-table-column>
-            <el-table-column prop="fileCount" label="文件数" width="100" align="center">
+            <el-table-column prop="startTime" label="开始时间" width="140">
               <template #default="{ row }">
-                {{ row.fileCount || 0 }}
-                <span v-if="row.fileErrorCount > 0" class="error-count">
-                  ({{ row.fileErrorCount }}错误)
-                </span>
+                {{ formatStartTime(row.startTime) }}
               </template>
             </el-table-column>
-            <el-table-column prop="createdTime" label="创建时间" width="150">
+            <el-table-column prop="endTime" label="结束时间" width="140">
               <template #default="{ row }">
-                {{ formatDateTime(row.createdTime) }}
+                {{ formatEndTime(row.endTime) }}
               </template>
             </el-table-column>
-            <el-table-column prop="endTime" label="完成时间" width="150">
+            <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
               <template #default="{ row }">
-                {{ formatDateTime(row.endTime) }}
+                {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200" align="center">
+            <el-table-column prop="errorReason" label="失败原因">
               <template #default="{ row }">
-                <el-button
-                  size="small"
-                  type="primary"
-                  plain
-                  @click.stop="handleTaskClick(row, 'owner_material')"
-                >
-                  查看详情
-                </el-button>
-                <el-button
-                  v-if="row.taskStatus === 2"
-                  size="small"
-                  type="success"
-                  plain
-                  @click.stop="handleDownload(row)"
-                >
-                  下载结果
-                </el-button>
+                {{ formatErrorReason(row.errorReason) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="220" fixed="right">
+              <template #default="{ row }">
+                <div class="action-buttons-container">
+                  <el-button
+                    v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+                    type="text"
+                    size="small"
+                    @click="() => handleViewOwnerMaterialDetail(row)"
+                    class="action-btn"
+                  >
+                    查看详情
+                  </el-button>
+                  <el-button
+                    type="text"
+                    size="small"
+                    @click="() => handleDownloadFile(row)"
+                    class="action-btn"
+                  >
+                    查看源文件
+                  </el-button>
+                </div>
               </template>
             </el-table-column>
           </el-table>
-          <el-empty v-if="ownerMaterialTasks.length === 0" description="暂无甲供物资任务" />
+          <el-pagination
+            @size-change="handleOwnerMaterialSizeChange"
+            @current-change="handleOwnerMaterialCurrentChange"
+            :current-page="ownerMaterialTasksPagination.currentPage"
+            :page-sizes="[10, 20, 50, 100]"
+            :page-size="ownerMaterialTasksPagination.pageSize"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="ownerMaterialTasksPagination.total"
+            background
+            style="margin-top: 20px; text-align: right"
+          >
+          </el-pagination>
         </div>
       </div>
     </div>
+
+    <!-- 乙供物资解析结果确认对话框 -->
+    <SupplierMaterialConfirmDialog
+      :show="showConfirmDialog"
+      :task-id="confirmTaskId"
+      @update:show="showConfirmDialog = $event"
+    />
   </div>
 </template>
 
@@ -301,19 +309,23 @@ import {
   Download,
   Document,
   Box,
-  Goods,
-  Clock,
-  Check,
-  Folder
+  Goods
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
-// 导入项目状态管理
+// 导入服务和状态管理
 import { useProjectStore } from '@/stores/project.js'
+import smartBrainService from '@/services/SmartBrainService.js'
+import { downloadSourceFile } from '@/utils/fileDownload.js'
+import { useParsingResultStore } from '@/stores/parsingResult'
+
+// 导入确认对话框组件
+import SupplierMaterialConfirmDialog from '@/components/home/SupplierMaterialConfirmDialog/SupplierMaterialConfirmDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 const projectStore = useProjectStore()
+const parsingResultStore = useParsingResultStore()
 
 // 从项目store中获取数据
 const {
@@ -321,15 +333,38 @@ const {
 } = storeToRefs(projectStore)
 
 // 响应式数据
-const loading = ref(false)
 const exportLoading = ref(false)
 const contractTasksLoading = ref(false)
 const supplierMaterialTasksLoading = ref(false)
 const ownerMaterialTasksLoading = ref(false)
 
+// 任务详情数据
 const contractTasks = ref([])
 const supplierMaterialTasks = ref([])
 const ownerMaterialTasks = ref([])
+
+// 分页数据
+const contractTasksPagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
+})
+
+const supplierMaterialTasksPagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
+})
+
+const ownerMaterialTasksPagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
+})
+
+// 确认对话框状态
+const showConfirmDialog = ref(false)
+const confirmTaskId = ref(null)
 
 // 计算属性
 const projectStatistics = computed(() => {
@@ -368,183 +403,183 @@ const projectStatistics = computed(() => {
 })
 
 // 方法定义
-const loadProjectTasks = async () => {
-  try {
-    loading.value = true
+// 加载项目信息
+const loadProjectInfo = async () => {
+  const projectId = route.params.projectId
 
-    const projectId = route.params.projectId
-
-    // 从项目列表缓存中获取项目基本信息
-    const cachedProject = projectStore.getProjectById(projectId)
-    if (cachedProject) {
-      currentProject.value = cachedProject
-    } else {
-      // 如果缓存中没有，设置基本信息
-      currentProject.value = {
-        projectId: projectId,
-        projectName: `项目 ${projectId}`,
-        projectCode: projectId,
-        totalTasks: 0,
-        contractTasks: 0,
-        supplierMaterialTasks: 0,
-        ownerMaterialTasks: 0,
-        completedTasks: 0,
-        inProgressTasks: 0,
-        failedTasks: 0
-      }
+  // 从项目列表缓存中获取项目基本信息
+  const cachedProject = projectStore.getProjectById(projectId)
+  if (cachedProject) {
+    currentProject.value = cachedProject
+  } else {
+    // 如果缓存中没有，设置基本信息
+    currentProject.value = {
+      projectId: projectId,
+      projectName: `项目 ${projectId}`,
+      projectCode: projectId,
+      totalTasks: 0,
+      contractTasks: 0,
+      supplierMaterialTasks: 0,
+      ownerMaterialTasks: 0,
+      completedTasks: 0,
+      inProgressTasks: 0,
+      failedTasks: 0
     }
-
-    // 加载各类型任务
-    await Promise.all([
-      loadContractTasks(projectId),
-      loadSupplierMaterialTasks(projectId),
-      loadOwnerMaterialTasks(projectId)
-    ])
-
-    // 从任务数据中获取项目信息（如果缓存中没有的话）
-    if (!cachedProject) {
-      extractProjectInfoFromTasks()
-    }
-
-    // 根据任务数据更新项目统计
-    updateProjectStatistics()
-
-  } catch (error) {
-    console.error('加载项目任务失败:', error)
-    ElMessage.error('加载项目任务失败')
-  } finally {
-    loading.value = false
   }
 }
 
-const loadContractTasks = async (projectId) => {
-  try {
-    contractTasksLoading.value = true
+// 获取合同解析任务详情列表
+const fetchContractTaskDetails = async () => {
+  if (!route.params.projectId) return
 
-    // 使用智能体任务API查询合同任务
-    const response = await projectStore.getAgentTasks({
+  contractTasksLoading.value = true
+  try {
+    // 首先从智能体任务API获取合同任务
+    const tasksResponse = await projectStore.getAgentTasks({
       agentLabels: 'contract',
-      projectId: projectId,
+      projectId: route.params.projectId,
       page: 0,
       size: 100
     })
-    contractTasks.value = response.content || []
-    return response
 
+    if (tasksResponse.content && tasksResponse.content.length > 0) {
+      // 如果有任务，获取第一个任务的详情
+      const firstTask = tasksResponse.content[0]
+      const params = {
+        page: contractTasksPagination.value.currentPage - 1,
+        size: contractTasksPagination.value.pageSize
+      }
+
+      const result = await smartBrainService.getTaskDetailsList(firstTask.id, params)
+
+      if (result && result.content && Array.isArray(result.content)) {
+        contractTasks.value = result.content
+        contractTasksPagination.value.total = result.totalElements || 0
+      } else {
+        contractTasks.value = []
+        contractTasksPagination.value.total = 0
+      }
+    } else {
+      contractTasks.value = []
+      contractTasksPagination.value.total = 0
+    }
   } catch (error) {
-    console.error('加载合同任务失败:', error)
+    console.error('获取合同解析任务详情列表失败:', error)
+    ElMessage.error('获取合同解析任务详情列表失败')
     contractTasks.value = []
-    return { content: [] }
+    contractTasksPagination.value.total = 0
   } finally {
     contractTasksLoading.value = false
   }
 }
 
-const loadSupplierMaterialTasks = async (projectId) => {
-  try {
-    supplierMaterialTasksLoading.value = true
+// 获取乙供物资解析任务详情列表
+const fetchSupplierMaterialTaskDetails = async () => {
+  if (!route.params.projectId) return
 
-    // 使用智能体任务API查询乙供物资任务
-    const response = await projectStore.getAgentTasks({
+  supplierMaterialTasksLoading.value = true
+  try {
+    const tasksResponse = await projectStore.getAgentTasks({
       agentLabels: 'y_material',
-      projectId: projectId,
+      projectId: route.params.projectId,
       page: 0,
       size: 100
     })
-    supplierMaterialTasks.value = response.content || []
-    return response
 
+    if (tasksResponse.content && tasksResponse.content.length > 0) {
+      const firstTask = tasksResponse.content[0]
+      const params = {
+        page: supplierMaterialTasksPagination.value.currentPage - 1,
+        size: supplierMaterialTasksPagination.value.pageSize
+      }
+
+      const result = await smartBrainService.getTaskDetailsList(firstTask.id, params)
+
+      if (result && result.content && Array.isArray(result.content)) {
+        supplierMaterialTasks.value = result.content
+        supplierMaterialTasksPagination.value.total = result.totalElements || 0
+      } else {
+        supplierMaterialTasks.value = []
+        supplierMaterialTasksPagination.value.total = 0
+      }
+    } else {
+      supplierMaterialTasks.value = []
+      supplierMaterialTasksPagination.value.total = 0
+    }
   } catch (error) {
-    console.error('加载乙供物资任务失败:', error)
+    console.error('获取乙供物资解析任务详情列表失败:', error)
+    ElMessage.error('获取乙供物资解析任务详情列表失败')
     supplierMaterialTasks.value = []
-    return { content: [] }
+    supplierMaterialTasksPagination.value.total = 0
   } finally {
     supplierMaterialTasksLoading.value = false
   }
 }
 
-const loadOwnerMaterialTasks = async (projectId) => {
-  try {
-    ownerMaterialTasksLoading.value = true
+// 获取甲供物资解析任务详情列表
+const fetchOwnerMaterialTaskDetails = async () => {
+  if (!route.params.projectId) return
 
-    // 使用智能体任务API查询甲供物资任务
-    const response = await projectStore.getAgentTasks({
+  ownerMaterialTasksLoading.value = true
+  try {
+    const tasksResponse = await projectStore.getAgentTasks({
       agentLabels: 'j_material',
-      projectId: projectId,
+      projectId: route.params.projectId,
       page: 0,
       size: 100
     })
-    ownerMaterialTasks.value = response.content || []
-    return response
 
+    if (tasksResponse.content && tasksResponse.content.length > 0) {
+      const firstTask = tasksResponse.content[0]
+      const params = {
+        page: ownerMaterialTasksPagination.value.currentPage - 1,
+        size: ownerMaterialTasksPagination.value.pageSize
+      }
+
+      const result = await smartBrainService.getTaskDetailsList(firstTask.id, params)
+
+      if (result && result.content && Array.isArray(result.content)) {
+        ownerMaterialTasks.value = result.content
+        ownerMaterialTasksPagination.value.total = result.totalElements || 0
+      } else {
+        ownerMaterialTasks.value = []
+        ownerMaterialTasksPagination.value.total = 0
+      }
+    } else {
+      ownerMaterialTasks.value = []
+      ownerMaterialTasksPagination.value.total = 0
+    }
   } catch (error) {
-    console.error('加载甲供物资任务失败:', error)
+    console.error('获取甲供物资解析任务详情列表失败:', error)
+    ElMessage.error('获取甲供物资解析任务详情列表失败')
     ownerMaterialTasks.value = []
-    return { content: [] }
+    ownerMaterialTasksPagination.value.total = 0
   } finally {
     ownerMaterialTasksLoading.value = false
   }
 }
 
-// 从任务数据中提取项目信息
-const extractProjectInfoFromTasks = () => {
-  if (!currentProject.value) return
-
-  const allTasks = [
-    ...contractTasks.value,
-    ...supplierMaterialTasks.value,
-    ...ownerMaterialTasks.value
-  ]
-
-  // 从第一个任务中获取项目信息
-  if (allTasks.length > 0) {
-    const firstTask = allTasks[0]
-    if (firstTask.projectInfo) {
-      currentProject.value.projectName = firstTask.projectInfo.projectName || currentProject.value.projectName
-      currentProject.value.projectCode = firstTask.projectInfo.projectCode || currentProject.value.projectCode
-      currentProject.value.engineeringName = firstTask.projectInfo.engineeringName
-      currentProject.value.engineeringCode = firstTask.projectInfo.engineeringCode
-      currentProject.value.contractCode = firstTask.projectInfo.contractCode
-      currentProject.value.contractName = firstTask.projectInfo.contractName
-    }
-  }
+// 初始化加载所有数据
+const loadAllData = async () => {
+  await loadProjectInfo()
+  await Promise.all([
+    fetchContractTaskDetails(),
+    fetchSupplierMaterialTaskDetails(),
+    fetchOwnerMaterialTaskDetails()
+  ])
+  updateProjectStatistics()
 }
 
-// 根据任务数据更新项目统计
+// 更新项目统计信息
 const updateProjectStatistics = () => {
   if (!currentProject.value) return
 
-  const allTasks = [
-    ...contractTasks.value,
-    ...supplierMaterialTasks.value,
-    ...ownerMaterialTasks.value
-  ]
-
-  // 统计各种状态的任务数量
-  let completedCount = 0
-  let inProgressCount = 0
-  let failedCount = 0
-
-  allTasks.forEach(task => {
-    if (task.taskStatus === 2) {
-      completedCount++
-    } else if (task.taskStatus === 1) {
-      inProgressCount++
-    } else if (task.taskStatus === 3) {
-      failedCount++
-    }
-  })
-
-  // 更新项目统计
-  currentProject.value.totalTasks = allTasks.length
-  currentProject.value.contractTasks = contractTasks.value.length
-  currentProject.value.supplierMaterialTasks = supplierMaterialTasks.value.length
-  currentProject.value.ownerMaterialTasks = ownerMaterialTasks.value.length
-  currentProject.value.completedTasks = completedCount
-  currentProject.value.inProgressTasks = inProgressCount
-  currentProject.value.failedTasks = failedCount
-
-  console.log('【项目详情】更新项目统计:', currentProject.value)
+  currentProject.value.contractTasks = contractTasksPagination.value.total
+  currentProject.value.supplierMaterialTasks = supplierMaterialTasksPagination.value.total
+  currentProject.value.ownerMaterialTasks = ownerMaterialTasksPagination.value.total
+  currentProject.value.totalTasks = contractTasksPagination.value.total +
+                                    supplierMaterialTasksPagination.value.total +
+                                    ownerMaterialTasksPagination.value.total
 }
 
 const goBack = () => {
@@ -552,7 +587,7 @@ const goBack = () => {
 }
 
 const handleRefresh = async () => {
-  await loadProjectTasks()
+  await loadAllData()
   ElMessage.success('数据刷新成功')
 }
 
@@ -577,92 +612,185 @@ const handleExportAll = async () => {
   }
 }
 
-const handleTaskClick = (task, taskType) => {
-  console.log('点击任务:', task, taskType)
-
-  // 根据任务类型跳转到对应的详情页面
-  switch (taskType) {
-    case 'contract':
-      // 跳转到合同解析详情页
-      router.push(`/contract-detail/${task.id}`)
-      break
-    case 'supplier_material':
-      // 跳转到乙供物资详情页
-      router.push(`/material-detail/${task.id}`)
-      break
-    case 'owner_material':
-      // 跳转到甲供物资详情页
-      router.push(`/owner-material-detail/${task.id}`)
-      break
-    default:
-      console.warn('未知任务类型:', taskType)
+// 合同解析任务操作
+const handleViewContractDetail = async (row) => {
+  if (row.taskDetailStatus !== 2 && row.taskDetailStatus !== 3) {
+    ElMessage.warning('只有处理完成或已确认的任务才能查看解析结果详情')
+    return
   }
-}
-
-const handleDownload = async (task) => {
-  try {
-    console.log('下载任务结果:', task)
-
-    // 这里实现下载逻辑
-    // 根据任务类型和任务ID调用相应的下载API
-    ElMessage.success('开始下载任务结果...')
-
-    // TODO: 实现实际的下载逻辑
-    // 可能需要调用不同的API获取下载链接或直接下载文件
-
-  } catch (error) {
-    console.error('下载失败:', error)
-    ElMessage.error('下载失败，请重试')
-  }
-}
-
-// 工具方法
-const formatDateTime = (dateString) => {
-  if (!dateString) return '-'
 
   try {
-    const date = new Date(dateString)
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+    // 从智能体任务获取主任务ID
+    const tasksResponse = await projectStore.getAgentTasks({
+      agentLabels: 'contract',
+      projectId: route.params.projectId,
+      page: 0,
+      size: 1
     })
+
+    if (tasksResponse.content && tasksResponse.content.length > 0) {
+      const mainTaskId = tasksResponse.content[0].id
+
+      await parsingResultStore.viewResultDetail({
+        isSupplierMaterial: false,
+        specificTaskId: mainTaskId,
+        taskDetailId: row.id || row.taskDetailId
+      })
+    }
   } catch (error) {
-    return dateString
+    console.error('查看合同解析结果详情失败:', error)
+    ElMessage.error('查看解析结果详情失败')
   }
 }
 
-const getTaskStatusType = (taskStatus) => {
-  // taskStatus: 1-运行中, 2-已完成, 3-失败, 0-待处理
-  const statusMap = {
-    2: 'success',  // 已完成
-    1: 'warning',  // 运行中
-    3: 'danger',   // 失败
-    0: 'info'      // 待处理
+// 乙供物资解析任务操作
+const handleViewSupplierMaterialDetail = (row) => {
+  const detailId = row.id || row.taskDetailId || row.detailId || row.uuid || row.Id
+
+  if (!detailId) {
+    ElMessage.error('缺少详情ID，无法跳转到详情页面')
+    return
   }
-  return statusMap[taskStatus] || 'info'
+
+  // 获取主任务ID
+  projectStore.getAgentTasks({
+    agentLabels: 'y_material',
+    projectId: route.params.projectId,
+    page: 0,
+    size: 1
+  }).then(response => {
+    if (response.content && response.content.length > 0) {
+      const taskId = response.content[0].id
+      router.push({
+        name: 'supplier-material-detail',
+        params: {
+          taskId: taskId,
+          detailId: detailId
+        }
+      })
+    }
+  })
 }
 
-const getTaskStatusText = (taskStatus) => {
-  // taskStatus: 1-运行中, 2-已完成, 3-失败, 0-待处理
-  const statusMap = {
-    2: '已完成',
-    1: '运行中',
-    3: '失败',
-    0: '待处理'
+// 甲供物资解析任务操作
+const handleViewOwnerMaterialDetail = (row) => {
+  // 获取主任务ID
+  projectStore.getAgentTasks({
+    agentLabels: 'j_material',
+    projectId: route.params.projectId,
+    page: 0,
+    size: 1
+  }).then(response => {
+    if (response.content && response.content.length > 0) {
+      const taskId = response.content[0].id
+      router.push(`/owner-material-detail/${taskId}`)
+    }
+  })
+}
+
+// 下载文件
+const handleDownloadFile = (row) => {
+  if (row.fileUrl) {
+    downloadSourceFile(row)
+  } else {
+    ElMessage.warning('该记录没有关联的文件')
   }
-  return statusMap[taskStatus] || '未知'
+}
+
+// 确认解析结果
+const handleConfirmResults = (row) => {
+  // 获取主任务ID
+  projectStore.getAgentTasks({
+    agentLabels: 'y_material',
+    projectId: route.params.projectId,
+    page: 0,
+    size: 1
+  }).then(response => {
+    if (response.content && response.content.length > 0) {
+      confirmTaskId.value = response.content[0].id
+      showConfirmDialog.value = true
+    }
+  })
+}
+
+// 格式化任务详情状态
+const formatTaskDetailStatus = (status, errorReason) => {
+  if (errorReason && Number(status) === -1) {
+    return '解析失败'
+  }
+
+  const statusMap = {
+    '0': '排队中',
+    '1': '处理中',
+    '2': '处理完成',
+    '3': '已确认',
+    '-1': '错误中断'
+  }
+  return statusMap[status] || '未知状态'
+}
+
+// 格式化时间
+const formatTime = (time, defaultText) => {
+  return time ? new Date(time).toLocaleString() : defaultText
+}
+
+const formatStartTime = (startTime) => {
+  return formatTime(startTime, '未开始')
+}
+
+const formatEndTime = (endTime) => {
+  return formatTime(endTime, '未结束')
+}
+
+const formatErrorReason = (errorReason) => {
+  return errorReason || '无'
+}
+
+// 分页事件处理
+// 合同任务分页
+const handleContractSizeChange = (val) => {
+  contractTasksPagination.value.pageSize = val
+  contractTasksPagination.value.currentPage = 1
+  fetchContractTaskDetails()
+}
+
+const handleContractCurrentChange = (val) => {
+  contractTasksPagination.value.currentPage = val
+  fetchContractTaskDetails()
+}
+
+// 乙供物资任务分页
+const handleSupplierMaterialSizeChange = (val) => {
+  supplierMaterialTasksPagination.value.pageSize = val
+  supplierMaterialTasksPagination.value.currentPage = 1
+  fetchSupplierMaterialTaskDetails()
+}
+
+const handleSupplierMaterialCurrentChange = (val) => {
+  supplierMaterialTasksPagination.value.currentPage = val
+  fetchSupplierMaterialTaskDetails()
+}
+
+// 甲供物资任务分页
+const handleOwnerMaterialSizeChange = (val) => {
+  ownerMaterialTasksPagination.value.pageSize = val
+  ownerMaterialTasksPagination.value.currentPage = 1
+  fetchOwnerMaterialTaskDetails()
+}
+
+const handleOwnerMaterialCurrentChange = (val) => {
+  ownerMaterialTasksPagination.value.currentPage = val
+  fetchOwnerMaterialTaskDetails()
 }
 
 // 生命周期
 onMounted(async () => {
-  await loadProjectTasks()
+  await loadAllData()
 })
 </script>
 
 <style scoped>
+/* 基础样式 */
 .project-detail-page {
   background: var(--theme-bg-primary);
   min-height: 100vh;
@@ -802,12 +930,11 @@ onMounted(async () => {
   -webkit-text-fill-color: transparent;
 }
 
-/* 按行分栏任务容器 */
+/* 任务容器 */
 .tasks-container {
   display: flex;
   flex-direction: column;
   gap: 24px;
-  min-height: calc(100vh - 300px);
 }
 
 /* 任务行 */
@@ -854,23 +981,48 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.task-list {
-  flex: 1;
+/* 任务详情内容区域 */
+.task-detail-content {
   padding: 20px;
-  overflow-x: auto;
-  overflow-y: hidden;
 }
 
-/* 任务表格样式 */
-.task-table {
-  border-radius: 8px;
-  overflow: hidden;
+/* 操作按钮容器样式 - 确保按钮并排展示 */
+.action-buttons-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  min-width: 280px;
 }
 
-.task-table .error-count {
-  color: #f56c6c;
-  font-weight: 600;
-  margin-left: 4px;
+/* 操作按钮样式 */
+.action-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin: 0 !important;
+  padding: 4px 8px;
+  font-size: 12px;
+  min-width: auto;
+}
+
+/* 确认按钮特殊样式 */
+.confirm-btn {
+  background: #67c23a;
+  border-color: #67c23a;
+  color: white;
+}
+
+.confirm-btn:hover:not(:disabled) {
+  background: #5daf34;
+  border-color: #5daf34;
+}
+
+.confirm-btn:disabled {
+  background: #c0c4cc;
+  border-color: #c0c4cc;
+  color: #ffffff;
+  cursor: not-allowed;
 }
 
 /* Element Plus 组件样式覆盖 */
@@ -889,6 +1041,77 @@ onMounted(async () => {
 :deep(.el-button--primary) {
   background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-light));
   border: none;
+}
+
+:deep(.el-button--text) {
+  padding: 4px 8px;
+  min-height: auto;
+  font-size: 12px;
+  color: #409eff;
+}
+
+:deep(.el-button--text:hover) {
+  color: #66b1ff;
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+:deep(.el-table) {
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+:deep(.el-table th) {
+  background: #f8f9fa !important;
+  color: #495057;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+:deep(.el-table td) {
+  border-bottom: 1px solid #eee;
+  padding: 12px 0;
+}
+
+:deep(.el-table tr:hover > td) {
+  background: #f8f9ff !important;
+}
+
+:deep(.el-table .el-table__cell) {
+  padding: 8px 0;
+}
+
+/* 专门针对操作列的样式 */
+:deep(.el-table__body .el-table__row .el-table__cell:last-child) {
+  min-width: 280px;
+  width: auto;
+}
+
+/* 确保操作列内容不会溢出 */
+:deep(.el-table__body .el-table__row .el-table__cell:last-child .cell) {
+  overflow: visible;
+  text-overflow: initial;
+  white-space: nowrap;
+}
+
+:deep(.el-pagination) {
+  margin-top: 24px;
+  text-align: right;
+}
+
+:deep(.el-pagination .btn-next),
+:deep(.el-pagination .btn-prev) {
+  background: white;
+  color: #666;
+}
+
+:deep(.el-pagination .el-pager li.active) {
+  background: #667eea;
+  color: white;
+}
+
+:deep(.el-pagination .el-pager li:hover) {
+  color: #667eea;
 }
 
 :deep(.el-card) {
@@ -932,22 +1155,6 @@ onMounted(async () => {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
   }
-
-}
-
-@media (max-width: 1200px) {
-  .tasks-container {
-    gap: 20px;
-  }
-
-  .task-row {
-    max-height: 400px;
-  }
-
-  .task-list {
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
 }
 
 @media (max-width: 768px) {
@@ -972,77 +1179,19 @@ onMounted(async () => {
     gap: 12px;
   }
 
-  .stat-content {
-    gap: 12px;
-    padding: 16px;
+  .action-buttons-container {
+    flex-wrap: wrap;
+    min-width: 200px;
+    gap: 4px;
   }
 
-  .stat-icon {
-    width: 48px;
-    height: 48px;
+  .action-btn {
+    font-size: 11px;
+    padding: 3px 6px;
   }
 
-  .stat-value {
-    font-size: 20px;
+  :deep(.el-table__body .el-table__row .el-table__cell:last-child) {
+    min-width: 220px;
   }
-
-  .tasks-container {
-    gap: 16px;
-  }
-
-  .row-header {
-    padding: 16px 20px;
-  }
-
-  .row-title {
-    font-size: 16px;
-  }
-
-  .task-list {
-    padding: 16px;
-    overflow-x: auto;
-    overflow-y: hidden;
-  }
-
-}
-
-@media (max-width: 480px) {
-  .project-detail-page {
-    padding: 12px;
-  }
-
-  .page-header {
-    padding: 16px;
-  }
-
-  .page-title {
-    font-size: 24px;
-  }
-
-  .project-stats {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .stat-content {
-    padding: 12px;
-  }
-
-  .tasks-container {
-    gap: 12px;
-  }
-
-  .row-header {
-    padding: 12px 16px;
-  }
-
-  .row-title {
-    font-size: 15px;
-  }
-
-  .task-list {
-    padding: 12px;
-  }
-
 }
 </style>
