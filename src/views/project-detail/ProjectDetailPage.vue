@@ -60,47 +60,49 @@
         </div>
 
         <div class="task-detail-content" v-loading="contractTasksLoading">
-          <el-table :data="contractTasks" style="width: 100%">
-            <!-- 序号 -->
-            <el-table-column type="index" prop="" label="序号" width="60"></el-table-column>
-            <el-table-column prop="fileName" label="文件名称"></el-table-column>
-            <el-table-column prop="projectCode" label="项目编号" width="150">
-              <template #default="{ row }">
-                {{ row.projectInfo?.projectCode || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="projectName" label="项目名称" width="200">
-              <template #default="{ row }">
-                {{ row.projectInfo?.projectName || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="startTime" label="开始时间">
-              <template #default="{ row }">
-                {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="endTime" label="结束时间">
-              <template #default="{ row }">
-                {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="taskDetailStatus" label="任务解析状态">
-              <template #default="{ row }">
-                {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="errorReason" label="失败原因">
-              <template #default="{ row }">
-                {{ row.errorReason || '无' }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作">
-              <template #default="{ row }">
-                <el-button type="text" @click="handleViewContractDetail(row)">查看详情</el-button>
-                <el-button type="text" @click="handleDownloadFile(row)">查看源文件</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-container">
+            <el-table :data="contractTasks" style="width: 100%">
+              <!-- 序号 -->
+              <el-table-column type="index" prop="" label="序号" width="60"></el-table-column>
+              <el-table-column prop="fileName" label="文件名称"></el-table-column>
+              <el-table-column prop="projectCode" label="项目编号" width="150">
+                <template #default="{ row }">
+                  {{ row.projectInfo?.projectCode || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="projectName" label="项目名称" width="200">
+                <template #default="{ row }">
+                  {{ row.projectInfo?.projectName || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="startTime" label="开始时间">
+                <template #default="{ row }">
+                  {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="endTime" label="结束时间">
+                <template #default="{ row }">
+                  {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="taskDetailStatus" label="任务解析状态">
+                <template #default="{ row }">
+                  {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="errorReason" label="失败原因">
+                <template #default="{ row }">
+                  {{ row.errorReason || '无' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作">
+                <template #default="{ row }">
+                  <el-button type="text" @click="handleViewContractDetail(row)">查看详情</el-button>
+                  <el-button type="text" @click="handleDownloadFile(row)">查看源文件</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
           <el-pagination
             @size-change="handleContractSizeChange"
             @current-change="handleContractCurrentChange"
@@ -131,62 +133,64 @@
         </div>
 
         <div class="task-detail-content" v-loading="supplierMaterialTasksLoading">
-          <el-table :data="supplierMaterialTasks" style="width: 100%">
-            <el-table-column type="index" label="序号" width="60"></el-table-column>
-            <el-table-column prop="fileName" label="文件名称"></el-table-column>
-            <el-table-column prop="startTime" label="开始时间" width="140">
-              <template #default="{ row }">
-                {{ formatStartTime(row.startTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="endTime" label="结束时间" width="140">
-              <template #default="{ row }">
-                {{ formatEndTime(row.endTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
-              <template #default="{ row }">
-                {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="errorReason" label="失败原因">
-              <template #default="{ row }">
-                {{ formatErrorReason(row.errorReason) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="300" fixed="right">
-              <template #default="{ row }">
-                <div class="action-buttons-container">
-                  <el-button
-                    v-if="!(row.errorReason && row.taskDetailStatus == -1)"
-                    type="text"
-                    size="small"
-                    @click="() => handleViewSupplierMaterialDetail(row)"
-                    class="action-btn"
-                  >
-                    查看详情
-                  </el-button>
-                  <el-button
-                    type="text"
-                    size="small"
-                    @click="() => handleDownloadFile(row)"
-                    class="action-btn"
-                  >
-                    查看源文件
-                  </el-button>
-                  <el-button
-                    type="primary"
-                    size="small"
-                    @click="() => handleConfirmResults(row)"
-                    :disabled="row.taskDetailStatus !== '2'"
-                    class="action-btn confirm-btn"
-                  >
-                    确认解析结果
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-container">
+            <el-table :data="supplierMaterialTasks" style="width: 100%">
+              <el-table-column type="index" label="序号" width="60"></el-table-column>
+              <el-table-column prop="fileName" label="文件名称"></el-table-column>
+              <el-table-column prop="startTime" label="开始时间" width="140">
+                <template #default="{ row }">
+                  {{ formatStartTime(row.startTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="endTime" label="结束时间" width="140">
+                <template #default="{ row }">
+                  {{ formatEndTime(row.endTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
+                <template #default="{ row }">
+                  {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="errorReason" label="失败原因">
+                <template #default="{ row }">
+                  {{ formatErrorReason(row.errorReason) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="300" fixed="right">
+                <template #default="{ row }">
+                  <div class="action-buttons-container">
+                    <el-button
+                      v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+                      type="text"
+                      size="small"
+                      @click="() => handleViewSupplierMaterialDetail(row)"
+                      class="action-btn"
+                    >
+                      查看详情
+                    </el-button>
+                    <el-button
+                      type="text"
+                      size="small"
+                      @click="() => handleDownloadFile(row)"
+                      class="action-btn"
+                    >
+                      查看源文件
+                    </el-button>
+                    <el-button
+                      type="primary"
+                      size="small"
+                      @click="() => handleConfirmResults(row)"
+                      :disabled="row.taskDetailStatus !== '2'"
+                      class="action-btn confirm-btn"
+                    >
+                      确认解析结果
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
           <el-pagination
             @size-change="handleSupplierMaterialSizeChange"
             @current-change="handleSupplierMaterialCurrentChange"
@@ -217,63 +221,65 @@
         </div>
 
         <div class="task-detail-content" v-loading="ownerMaterialTasksLoading">
-          <el-table :data="ownerMaterialTasks" style="width: 100%">
-            <el-table-column type="index" label="序号" width="60"></el-table-column>
-            <el-table-column prop="fileName" label="文件名称"></el-table-column>
-            <el-table-column prop="projectCode" label="项目编号" width="150">
-              <template #default="{ row }">
-                {{ row.projectInfo?.projectCode || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="projectName" label="项目名称" width="200">
-              <template #default="{ row }">
-                {{ row.projectInfo?.projectName || '-' }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="startTime" label="开始时间" width="140">
-              <template #default="{ row }">
-                {{ formatStartTime(row.startTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="endTime" label="结束时间" width="140">
-              <template #default="{ row }">
-                {{ formatEndTime(row.endTime) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
-              <template #default="{ row }">
-                {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
-              </template>
-            </el-table-column>
-            <el-table-column prop="errorReason" label="失败原因">
-              <template #default="{ row }">
-                {{ formatErrorReason(row.errorReason) }}
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="220" fixed="right">
-              <template #default="{ row }">
-                <div class="action-buttons-container">
-                  <el-button
-                    v-if="!(row.errorReason && row.taskDetailStatus == -1)"
-                    type="text"
-                    size="small"
-                    @click="() => handleViewOwnerMaterialDetail(row)"
-                    class="action-btn"
-                  >
-                    查看详情
-                  </el-button>
-                  <el-button
-                    type="text"
-                    size="small"
-                    @click="() => handleDownloadFile(row)"
-                    class="action-btn"
-                  >
-                    查看源文件
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
-          </el-table>
+          <div class="table-container">
+            <el-table :data="ownerMaterialTasks" style="width: 100%">
+              <el-table-column type="index" label="序号" width="60"></el-table-column>
+              <el-table-column prop="fileName" label="文件名称"></el-table-column>
+              <el-table-column prop="projectCode" label="项目编号" width="150">
+                <template #default="{ row }">
+                  {{ row.projectInfo?.projectCode || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="projectName" label="项目名称" width="200">
+                <template #default="{ row }">
+                  {{ row.projectInfo?.projectName || '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="startTime" label="开始时间" width="140">
+                <template #default="{ row }">
+                  {{ formatStartTime(row.startTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="endTime" label="结束时间" width="140">
+                <template #default="{ row }">
+                  {{ formatEndTime(row.endTime) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
+                <template #default="{ row }">
+                  {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="errorReason" label="失败原因">
+                <template #default="{ row }">
+                  {{ formatErrorReason(row.errorReason) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="220" fixed="right">
+                <template #default="{ row }">
+                  <div class="action-buttons-container">
+                    <el-button
+                      v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+                      type="text"
+                      size="small"
+                      @click="() => handleViewOwnerMaterialDetail(row)"
+                      class="action-btn"
+                    >
+                      查看详情
+                    </el-button>
+                    <el-button
+                      type="text"
+                      size="small"
+                      @click="() => handleDownloadFile(row)"
+                      class="action-btn"
+                    >
+                      查看源文件
+                    </el-button>
+                  </div>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
           <el-pagination
             @size-change="handleOwnerMaterialSizeChange"
             @current-change="handleOwnerMaterialCurrentChange"
@@ -309,7 +315,10 @@ import {
   Download,
   Document,
   Box,
-  Goods
+  Goods,
+  List,
+  CircleCheck,
+  Loading
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
@@ -375,29 +384,22 @@ const projectStatistics = computed(() => {
       key: 'totalTasks',
       label: '任务总数',
       value: currentProject.value.totalTasks || 0,
-      icon: 'List',
+      icon: List,
       color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     },
     {
       key: 'completedTasks',
       label: '已完成',
       value: currentProject.value.completedTasks || 0,
-      icon: 'CircleCheck',
+      icon: CircleCheck,
       color: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)'
     },
     {
       key: 'inProgressTasks',
       label: '进行中',
       value: currentProject.value.inProgressTasks || 0,
-      icon: 'Loading',
+      icon: Loading,
       color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)'
-    },
-    {
-      key: 'contractTasks',
-      label: '合同任务',
-      value: currentProject.value.contractTasks || 0,
-      icon: 'Document',
-      color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)'
     }
   ]
 })
@@ -673,6 +675,7 @@ const handleViewSupplierMaterialDetail = (row) => {
 }
 
 // 甲供物资解析任务操作
+// eslint-disable-next-line no-unused-vars
 const handleViewOwnerMaterialDetail = (row) => {
   // 获取主任务ID
   projectStore.getAgentTasks({
@@ -698,6 +701,7 @@ const handleDownloadFile = (row) => {
 }
 
 // 确认解析结果
+// eslint-disable-next-line no-unused-vars
 const handleConfirmResults = (row) => {
   // 获取主任务ID
   projectStore.getAgentTasks({
@@ -984,6 +988,15 @@ onMounted(async () => {
 /* 任务详情内容区域 */
 .task-detail-content {
   padding: 20px;
+}
+
+/* 表格容器 - 固定高度，相当于10条数据的显示空间 */
+.table-container {
+  height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--theme-border-secondary);
+  border-radius: 8px;
+  background: var(--theme-card-bg);
 }
 
 /* 操作按钮容器样式 - 确保按钮并排展示 */
