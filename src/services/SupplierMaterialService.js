@@ -57,7 +57,7 @@ class SupplierMaterialService {
   async queryMaterials(params) {
     try {
       console.log('【调用】乙供物资复杂查询接口，参数:', params)
-      
+
       const response = await request.post('/materials/partyb/query', {
         taskId: params.taskId,
         taskDetailId: params.taskDetailId,
@@ -73,6 +73,40 @@ class SupplierMaterialService {
       return response
     } catch (error) {
       console.error('【错误】乙供物资复杂查询失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 乙供物资复杂查询接口 V2 (基于v1.3.3新状态定义逻辑)
+   * @param {Object} params - 查询参数
+   * @param {String} params.taskId - 任务ID（必填）
+   * @param {Number} params.page - 页码（从0开始）
+   * @param {Number} params.size - 每页大小
+   * @param {String} params.keyword - 搜索关键词，支持物资名称、规格型号、单位模糊搜索
+   * @param {Number} params.confirmResult - 确认结果筛选（0：未确认，1：已确认）
+   * @param {Number} params.matchedType - 匹配类型筛选（0：无匹配，1：精确匹配，2：相似匹配，3：历史匹配，4：人工匹配）
+   * @param {Number} params.materialMatchingStatus - 物资匹配状态筛选（1：精确匹配，2：信息待确认，3：物资信息待处理）
+   * @returns {Promise<Object>} 查询结果
+   */
+  async queryMaterialsV2(params) {
+    try {
+      console.log('【调用】乙供物资复杂查询接口V2，参数:', params)
+
+      const response = await request.post('/materials/partyb/queryV2', {
+        taskId: params.taskId,
+        page: params.page || 0,
+        size: params.size || 10,
+        keyword: params.keyword || '',
+        confirmResult: params.confirmResult,
+        matchedType: params.matchedType,
+        materialMatchingStatus: params.materialMatchingStatus
+      })
+
+      console.log('【响应】乙供物资复杂查询V2结果:', response)
+      return response
+    } catch (error) {
+      console.error('【错误】乙供物资复杂查询V2失败:', error)
       throw error
     }
   }
@@ -150,7 +184,7 @@ class SupplierMaterialService {
   async getMaterialMatchingStats(taskId) {
     try {
       console.log('【调用】乙供物资匹配统计接口，taskId:', taskId)
-      
+
       // 参数验证
       if (!taskId) {
         throw new Error('taskId参数不能为空')
@@ -162,6 +196,30 @@ class SupplierMaterialService {
       return response.data || response
     } catch (error) {
       console.error('【错误】获取乙供物资匹配统计失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 获取乙供物资匹配统计信息 V2 (基于v1.3.3新状态定义逻辑)
+   * @param {String} taskId - 任务ID（必填）
+   * @returns {Promise<Object>} 统计信息
+   */
+  async getMaterialMatchingStatsV2(taskId) {
+    try {
+      console.log('【调用】乙供物资匹配统计接口V2，taskId:', taskId)
+
+      // 参数验证
+      if (!taskId) {
+        throw new Error('taskId参数不能为空')
+      }
+
+      const response = await request.get(`/materials/partyb/getMaterialMatchingStatsV2?taskId=${taskId}`)
+
+      console.log('【响应】乙供物资匹配统计V2结果:', response)
+      return response.data || response
+    } catch (error) {
+      console.error('【错误】获取乙供物资匹配统计V2失败:', error)
       throw error
     }
   }

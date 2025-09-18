@@ -219,7 +219,6 @@ import { useProjectStore } from '@/stores/project'
 import DialogManager from '@/components/home/DialogManager'
 import OverviewStatsDialog from '@/components/home/OverviewStatsDialog'
 import TodoSection from '@/components/todo/TodoSection.vue'
-import { Check, Clock, Close } from '@element-plus/icons-vue'
 
 import {
   OVERVIEW_CARD_CONFIG,

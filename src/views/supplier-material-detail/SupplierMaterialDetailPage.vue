@@ -94,11 +94,11 @@
           </div>
           <div class="card-content">
             <div class="card-number">{{ matchedCount }}</div>
-            <div class="card-label">已智能匹配数（点击查看已智能匹配的）</div>
+            <div class="card-label">精确匹配数（完全匹配通过，价格合理）</div>
           </div>
         </div>
-  <div 
-          class="overview-card price-mismatch-card" 
+  <div
+          class="overview-card price-mismatch-card"
           @click="handleOverviewCardClick('priceMismatch')"
           :class="{ active: activeOverviewType === 'priceMismatch' }"
         >
@@ -107,11 +107,11 @@
           </div>
           <div class="card-content">
             <div class="card-number">{{ priceMismatchCount }}</div>
-            <div class="card-label">价格有问题（价格不一致的，需要调整结算书数据）</div>
+            <div class="card-label">信息待确认数（需要人工确认或价格调整）</div>
           </div>
         </div>
-        <div 
-          class="overview-card unmatched-card" 
+        <div
+          class="overview-card unmatched-card"
           @click="handleOverviewCardClick('unmatched')"
           :class="{ active: activeOverviewType === 'unmatched' }"
         >
@@ -120,7 +120,7 @@
           </div>
           <div class="card-content">
             <div class="card-number">{{ unmatchedCount }}</div>
-            <div class="card-label">未匹配到物资数（需手动处理）</div>
+            <div class="card-label">物资信息待处理数（需要补充物资信息或确认匹配）</div>
           </div>
         </div>
 
@@ -282,17 +282,18 @@ const searchKeyword = ref('')
 const queryParams = ref({
   confirmResult: undefined,
   matchedType: undefined,
-  matchingStatus: undefined
+  materialMatchingStatus: undefined // v2 API 使用 materialMatchingStatus 替代 matchingStatus
 })
 const statistics = ref(null)
 const useComplexQuery = ref(true) // 是否使用复杂查询接口
+const useV2Api = ref(true) // 是否使用 v2 API
 
-// 总览卡片统计数据 - 来自后端接口
+// 总览卡片统计数据 - 来自后端接口 (v1.3.3新状态定义)
 const matchingStats = ref({
   totalMaterials: 0,
-  exactMatchCount: 0,
-  unmatchedPriceCount: 0,
-  pendingMatchCount: 0
+  exactMatchCount: 0,              // 精确匹配数量
+  infoPendingConfirmationCount: 0, // 信息待确认数量
+  materialInfoPendingCount: 0      // 物资信息待处理数量
 })
 
 // 计算确认统计
@@ -337,20 +338,29 @@ const currentTableType = computed(() => {
   }
 })
 
-// 基于后端统计接口的计算属性
+// 基于后端统计接口的计算属性 (v1.3.3新状态定义)
 const matchedCount = computed(() => {
-  // 精确匹配且价格匹配的数量
+  // 精确匹配数量 (完全匹配通过，表格价格≤数据库价格)
   return matchingStats.value.exactMatchCount
 })
 
-const unmatchedCount = computed(() => {
-  // 待匹配的数量（包含相似匹配、历史匹配、人工匹配、无匹配）
-  return matchingStats.value.pendingMatchCount
+const infoPendingCount = computed(() => {
+  // 信息待确认数量 (表格价格>数据库价格，或已确认的相似/历史匹配)
+  return matchingStats.value.infoPendingConfirmationCount
 })
 
+const materialPendingCount = computed(() => {
+  // 物资信息待处理数量 (物资未找到、相似匹配未确认)
+  return matchingStats.value.materialInfoPendingCount
+})
+
+// 保持向后兼容，映射到旧的名称以避免破坏现有逻辑
 const priceMismatchCount = computed(() => {
-  // 精确匹配但价格未匹配的数量
-  return matchingStats.value.unmatchedPriceCount
+  return infoPendingCount.value
+})
+
+const unmatchedCount = computed(() => {
+  return materialPendingCount.value
 })
 
 // 物资总数计算属性
@@ -365,8 +375,12 @@ const fetchMatchingStats = async () => {
   if (!taskId.value) return
 
   try {
-    console.log('【调用】获取乙供物资匹配统计，taskId:', taskId.value)
-    const response = await supplierMaterialService.getMaterialMatchingStats(taskId.value)
+    console.log('【调用】获取乙供物资匹配统计，taskId:', taskId.value, 'useV2Api:', useV2Api.value)
+
+    // 根据 useV2Api 标志决定使用哪个 API
+    const response = useV2Api.value
+      ? await supplierMaterialService.getMaterialMatchingStatsV2(taskId.value)
+      : await supplierMaterialService.getMaterialMatchingStats(taskId.value)
 
     // 【调试】打印原始API返回结果
     console.log('【调试】原始API返回结果:', JSON.stringify(response, null, 2))
@@ -456,8 +470,14 @@ const fetchData = async () => {
         params.matchedType = queryParams.value.matchedType
       }
 
-      if (queryParams.value.matchingStatus !== undefined) {
-        params.matchingStatus = queryParams.value.matchingStatus
+      // v2 API 使用 materialMatchingStatus 参数
+      if (queryParams.value.materialMatchingStatus !== undefined) {
+        if (useV2Api.value) {
+          params.materialMatchingStatus = queryParams.value.materialMatchingStatus
+        } else {
+          // 向后兼容，如果使用v1 API，仍然使用原参数名
+          params.matchingStatus = queryParams.value.materialMatchingStatus
+        }
       }
 
       console.log('【数据查询】使用复杂查询参数:', params)
@@ -466,7 +486,10 @@ const fetchData = async () => {
         queryParams: queryParams.value
       })
       
-      response = await querySupplierMaterialsComplex(params)
+      // 根据 useV2Api 标志决定使用哪个 API
+      response = useV2Api.value
+        ? await supplierMaterialService.queryMaterialsV2(params)
+        : await querySupplierMaterialsComplex(params)
       
       console.log('【数据查询】返回结果总数:', response?.data?.content?.length || 0)
       console.log('【数据查询】返回结果总元素数:', response?.data?.totalElements || 0)
@@ -632,39 +655,42 @@ const handleOverviewCardClick = (type) => {
     queryParams.value = {
       confirmResult: undefined,
       matchedType: undefined,
-      matchingStatus: undefined
+      materialMatchingStatus: undefined
     }
   } else {
     activeOverviewType.value = type
-    
-    // 清空所有筛选参数，只保留 matchingStatus
+
+    // 清空所有筛选参数，只保留 materialMatchingStatus
     queryParams.value = {
       confirmResult: undefined,
       matchedType: undefined,
-      matchingStatus: undefined
+      materialMatchingStatus: undefined
     }
-    
+
     // 根据卡片类型设置筛选条件
-    // 仅使用新的 matchingStatus 参数进行筛选
+    // 使用 v1.3.3 新的 materialMatchingStatus 参数进行筛选
     switch (type) {
       case 'total':
         // 显示全部，不设置筛选条件
         console.log('【卡片筛选】选择全部数据')
         break
       case 'matched':
-        // 使用 matchingStatus = 1: 精确匹配且价格匹配
-        queryParams.value.matchingStatus = 1
-        break
-      case 'unmatched':
-        // 使用 matchingStatus = 3: 待处理匹配（包括相似匹配、历史匹配、人工匹配、无匹配）
-        queryParams.value.matchingStatus = 3
+        // 使用 materialMatchingStatus = 1: 精确匹配（完全匹配通过，表格价格≤数据库价格）
+        queryParams.value.materialMatchingStatus = 1
+        console.log('【卡片筛选】选择精确匹配数据')
         break
       case 'priceMismatch':
-        // 使用 matchingStatus = 2: 精确匹配但价格未匹配
-        queryParams.value.matchingStatus = 2
+        // 使用 materialMatchingStatus = 2: 信息待确认（表格价格>数据库价格，或已确认的相似/历史匹配）
+        queryParams.value.materialMatchingStatus = 2
+        console.log('【卡片筛选】选择信息待确认数据')
+        break
+      case 'unmatched':
+        // 使用 materialMatchingStatus = 3: 物资信息待处理（物资未找到、相似匹配未确认）
+        queryParams.value.materialMatchingStatus = 3
+        console.log('【卡片筛选】选择物资信息待处理数据')
         break
     }
-    
+
   }
   
   currentPage.value = 1

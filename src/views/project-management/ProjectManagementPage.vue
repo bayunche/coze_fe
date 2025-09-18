@@ -30,7 +30,9 @@
     <div class="stats-cards">
       <el-card class="stat-card">
         <div class="stat-content">
-          <div class="stat-icon total-projects">📊</div>
+          <div class="stat-icon total-projects">
+            <el-icon :size="32"><FolderOpened /></el-icon>
+          </div>
           <div class="stat-info">
             <div class="stat-value">{{ totalProjects }}</div>
             <div class="stat-label">总项目数</div>
@@ -39,7 +41,9 @@
       </el-card>
       <el-card class="stat-card">
         <div class="stat-content">
-          <div class="stat-icon active-projects">🟢</div>
+          <div class="stat-icon active-projects">
+            <el-icon :size="32"><Loading /></el-icon>
+          </div>
           <div class="stat-info">
             <div class="stat-value">{{ activeProjectsCount }}</div>
             <div class="stat-label">进行中项目</div>
@@ -48,7 +52,9 @@
       </el-card>
       <el-card class="stat-card">
         <div class="stat-content">
-          <div class="stat-icon completed-projects">✅</div>
+          <div class="stat-icon completed-projects">
+            <el-icon :size="32"><CircleCheck /></el-icon>
+          </div>
           <div class="stat-info">
             <div class="stat-value">{{ completedProjectsCount }}</div>
             <div class="stat-label">已完成项目</div>
@@ -57,7 +63,9 @@
       </el-card>
       <el-card class="stat-card">
         <div class="stat-content">
-          <div class="stat-icon total-tasks">🎯</div>
+          <div class="stat-icon total-tasks">
+            <el-icon :size="32"><List /></el-icon>
+          </div>
           <div class="stat-info">
             <div class="stat-value">{{ totalTasksCount }}</div>
             <div class="stat-label">总任务数</div>
@@ -218,6 +226,7 @@
               <el-button
                 type="primary"
                 size="small"
+                :icon="View"
                 @click="viewProjectDetail(row)"
               >
                 查看详情
@@ -229,12 +238,15 @@
                 <template #dropdown>
                   <el-dropdown-menu>
                     <el-dropdown-item :command="{ action: 'export', row }">
+                      <el-icon><Download /></el-icon>
                       导出项目数据
                     </el-dropdown-item>
                     <el-dropdown-item :command="{ action: 'tasks', row }">
+                      <el-icon><List /></el-icon>
                       查看任务列表
                     </el-dropdown-item>
                     <el-dropdown-item :command="{ action: 'statistics', row }">
+                      <el-icon><DataAnalysis /></el-icon>
                       查看统计报表
                     </el-dropdown-item>
                   </el-dropdown-menu>
@@ -271,16 +283,16 @@ import {
   Refresh,
   Download,
   Search,
-  ArrowDown
+  ArrowDown,
+  View,
+  List,
+  DataAnalysis,
+  FolderOpened,
+  Loading,
+  CircleCheck
 } from '@element-plus/icons-vue'
 
-// 导入常量和工具函数
-import {
-  PROJECT_STATUS_OPTIONS,
-  SORT_OPTIONS,
-  DEFAULT_PAGINATION,
-  PROJECT_STATUS_MAP
-} from './constants.js'
+// 导入工具函数
 import {
   formatDateTime,
   formatProjectStatus,
@@ -436,11 +448,12 @@ const handleAction = ({ action, row }) => {
     case 'view':
       viewProjectDetail(row)
       break
-    case 'export':
+    case 'export': {
       const csvContent = exportProjectsToCSV([row])
       downloadCSV(csvContent, `${row.projectName}-数据.csv`)
       ElMessage.success('导出成功')
       break
+    }
     default:
       console.warn('未知操作:', action)
   }

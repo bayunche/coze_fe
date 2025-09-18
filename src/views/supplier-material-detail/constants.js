@@ -103,7 +103,51 @@ export const MATCH_TYPE_MAP = {
   0: '无匹配',
   1: '精确匹配',
   2: '相似匹配',
-  3: '人工匹配'
+  3: '历史匹配',
+  4: '人工匹配'
+}
+
+/**
+ * 物资匹配状态定义 V2 (v1.3.3新状态定义逻辑)
+ */
+export const MATERIAL_STATUS_V2 = {
+  EXACT_MATCH: 1,        // 精确匹配
+  INFO_PENDING: 2,       // 信息待确认
+  MATERIAL_PENDING: 3    // 物资信息待处理
+}
+
+/**
+ * 物资匹配状态映射 V2
+ */
+export const MATERIAL_STATUS_V2_MAP = {
+  [MATERIAL_STATUS_V2.EXACT_MATCH]: {
+    label: '精确匹配',
+    description: '完全匹配通过，表格价格≤数据库价格',
+    type: 'success',
+    color: '#67C23A'
+  },
+  [MATERIAL_STATUS_V2.INFO_PENDING]: {
+    label: '信息待确认',
+    description: '表格价格>数据库价格，或已确认的相似/历史匹配',
+    type: 'warning',
+    color: '#E6A23C'
+  },
+  [MATERIAL_STATUS_V2.MATERIAL_PENDING]: {
+    label: '物资信息待处理',
+    description: '物资未找到、相似匹配未确认',
+    type: 'danger',
+    color: '#F56C6C'
+  }
+}
+
+/**
+ * 表格类型定义 V2
+ */
+export const TABLE_TYPES_V2 = {
+  ALL: 'all',
+  EXACT_MATCH: 'exactMatch',      // 精确匹配
+  INFO_PENDING: 'infoPending',    // 信息待确认
+  MATERIAL_PENDING: 'materialPending'  // 物资信息待处理
 }
 
 /**
