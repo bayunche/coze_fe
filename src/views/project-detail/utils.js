@@ -3,84 +3,275 @@
 import { ElMessage } from 'element-plus'
 
 /**
- * 获取项目详情Mock数据
+ * 获取合同解析任务Mock数据（符合智能体任务API格式）
  * @param {string} projectId - 项目ID
- * @returns {Object} 项目详情数据
+ * @returns {Object} 智能体任务API响应格式的数据
  */
-export const getProjectDetailMockData = (projectId) => {
+export const getContractTasksMockData = (projectId) => {
   const baseDate = new Date()
-  
+
   return {
-    // 项目基础信息
-    projectId: projectId || 'PRJ2024001',
-    projectCode: `CODE-${projectId || 'PRJ2024001'}`,
-    projectName: `${projectId || 'PRJ2024001'} 智能大厦建设项目`,
-    projectType: '建筑工程',
-    startDate: new Date(baseDate.getTime() - 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date(baseDate.getTime() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    budget: 15000000, // 1500万
-    
-    // 合同信息 - 支持一个项目对应多个合同（一对多）
-    contracts: [
+    content: [
       {
-        contractId: `CONTRACT-001`,
-        contractCode: `CONT-2024-001`,
-        contractName: `智慧园区综合开发总承包合同`,
-        contractType: '施工总承包',
-        partyA: '某地产开发有限公司',
-        partyB: '某建筑工程有限公司',
-        contractAmount: 32000000, // 合同金额
-        signDate: new Date(baseDate.getTime() - 200 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        description: '项目主体建设总承包合同'
+        id: "contract_task_001",
+        businessDomain: "CONTRACT",
+        agentInfoId: "contract_agent_001",
+        fileErrorCount: 0,
+        fileCount: 3,
+        fileDoneCount: 3,
+        taskStatus: 2, // 2表示已完成
+        priority: "1",
+        uploadTime: new Date(baseDate.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        startTime: new Date(baseDate.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(baseDate.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        errorReason: null,
+        createdBy: "system",
+        createdTime: new Date(baseDate.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedBy: "system",
+        updatedTime: new Date(baseDate.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+        approvalStatus: 1,
+        approvalResult: 1,
+        selectedQuarter: "2024Q4",
+        projectInfo: {
+          id: parseInt(projectId) || 1,
+          projectName: "智能大厦建设项目",
+          projectCode: projectId || "PRJ2024001",
+          engineeringName: "智能大厦综合工程",
+          engineeringCode: "ENG-2024-001",
+          contractCode: "CONT-2024-001",
+          contractName: "智慧园区综合开发总承包合同"
+        }
       },
       {
-        contractId: `CONTRACT-002`,
-        contractCode: `CONT-2024-008`,
-        contractName: `专业设备采购安装合同`,
-        contractType: '采购安装合同',
-        partyA: '某地产开发有限公司',
-        partyB: '设备供应安装有限公司',
-        contractAmount: 15000000, // 合同金额
-        signDate: new Date(baseDate.getTime() - 150 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        description: '专业设备采购和安装服务合同'
-      },
-      {
-        contractId: `CONTRACT-003`,
-        contractCode: `CONT-2024-015`,
-        contractName: `智能化系统集成合同`,
-        contractType: '系统集成合同',
-        partyA: '某地产开发有限公司',
-        partyB: '智能化系统有限公司',
-        contractAmount: 8500000, // 合同金额
-        signDate: new Date(baseDate.getTime() - 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        description: '楼宇智能化系统集成合同'
-      },
-      {
-        contractId: `CONTRACT-004`,
-        contractCode: `CONT-2024-022`,
-        contractName: `景观绿化工程合同`,
-        contractType: '绿化工程合同',
-        partyA: '某地产开发有限公司',
-        partyB: '园林绿化有限公司',
-        contractAmount: 3200000, // 合同金额
-        signDate: new Date(baseDate.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        description: '项目周边景观绿化工程合同'
+        id: "contract_task_002",
+        businessDomain: "CONTRACT",
+        agentInfoId: "contract_agent_002",
+        fileErrorCount: 0,
+        fileCount: 2,
+        fileDoneCount: 2,
+        taskStatus: 2,
+        priority: "2",
+        uploadTime: new Date(baseDate.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        startTime: new Date(baseDate.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(baseDate.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        errorReason: null,
+        createdBy: "user001",
+        createdTime: new Date(baseDate.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedBy: "system",
+        updatedTime: new Date(baseDate.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        approvalStatus: 1,
+        approvalResult: 1,
+        selectedQuarter: "2024Q4",
+        projectInfo: {
+          id: parseInt(projectId) || 1,
+          projectName: "智能大厦建设项目",
+          projectCode: projectId || "PRJ2024001",
+          engineeringName: "智能大厦综合工程",
+          engineeringCode: "ENG-2024-001",
+          contractCode: "CONT-2024-008",
+          contractName: "专业设备采购安装合同"
+        }
       }
     ],
-    
-    // 统计信息
-    ownerMaterialStats: {
-      totalCount: 8,
-      matchedCount: 6,
-      unmatchedCount: 2,
-      matchRate: 75
+    pageable: {
+      pageNumber: 0,
+      pageSize: 10,
+      sort: { sorted: false, unsorted: true, empty: true },
+      offset: 0,
+      paged: true,
+      unpaged: false
     },
-    supplierMaterialStats: {
-      totalCount: 12,
-      matchedCount: 6,
-      unmatchedCount: 6,
-      matchRate: 50
-    }
+    last: true,
+    totalElements: 2,
+    totalPages: 1,
+    size: 10,
+    number: 0,
+    sort: { sorted: false, unsorted: true, empty: true },
+    first: true,
+    numberOfElements: 2,
+    empty: false
+  }
+}
+
+/**
+ * 获取乙供物资任务Mock数据（符合智能体任务API格式）
+ * @param {string} projectId - 项目ID
+ * @returns {Object} 智能体任务API响应格式的数据
+ */
+export const getSupplierMaterialTasksMockData = (projectId) => {
+  const baseDate = new Date()
+
+  return {
+    content: [
+      {
+        id: "y_material_task_001",
+        businessDomain: "Y_MATERIAL",
+        agentInfoId: "y_material_agent_001",
+        fileErrorCount: 0,
+        fileCount: 5,
+        fileDoneCount: 5,
+        taskStatus: 2,
+        priority: "1",
+        uploadTime: new Date(baseDate.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        startTime: new Date(baseDate.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(baseDate.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        errorReason: null,
+        createdBy: "user002",
+        createdTime: new Date(baseDate.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedBy: "system",
+        updatedTime: new Date(baseDate.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+        approvalStatus: 1,
+        approvalResult: 1,
+        selectedQuarter: "2024Q4",
+        projectInfo: {
+          id: parseInt(projectId) || 1,
+          projectName: "智能大厦建设项目",
+          projectCode: projectId || "PRJ2024001",
+          engineeringName: "智能大厦综合工程",
+          engineeringCode: "ENG-2024-001",
+          contractCode: "CONT-2024-001",
+          contractName: "智慧园区综合开发总承包合同"
+        }
+      },
+      {
+        id: "y_material_task_002",
+        businessDomain: "Y_MATERIAL",
+        agentInfoId: "y_material_agent_002",
+        fileErrorCount: 1,
+        fileCount: 4,
+        fileDoneCount: 3,
+        taskStatus: 1, // 1表示运行中
+        priority: "2",
+        uploadTime: new Date(baseDate.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        startTime: new Date(baseDate.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: null,
+        errorReason: "部分文件格式不正确",
+        createdBy: "user003",
+        createdTime: new Date(baseDate.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedBy: "system",
+        updatedTime: new Date(baseDate.getTime() - 1 * 60 * 60 * 1000).toISOString(),
+        approvalStatus: 0,
+        approvalResult: 0,
+        selectedQuarter: "2024Q4",
+        projectInfo: {
+          id: parseInt(projectId) || 1,
+          projectName: "智能大厦建设项目",
+          projectCode: projectId || "PRJ2024001",
+          engineeringName: "智能大厦综合工程",
+          engineeringCode: "ENG-2024-001",
+          contractCode: "CONT-2024-008",
+          contractName: "专业设备采购安装合同"
+        }
+      }
+    ],
+    pageable: {
+      pageNumber: 0,
+      pageSize: 10,
+      sort: { sorted: false, unsorted: true, empty: true },
+      offset: 0,
+      paged: true,
+      unpaged: false
+    },
+    last: true,
+    totalElements: 2,
+    totalPages: 1,
+    size: 10,
+    number: 0,
+    sort: { sorted: false, unsorted: true, empty: true },
+    first: true,
+    numberOfElements: 2,
+    empty: false
+  }
+}
+
+/**
+ * 获取甲供物资任务Mock数据（符合智能体任务API格式）
+ * @param {string} projectId - 项目ID
+ * @returns {Object} 智能体任务API响应格式的数据
+ */
+export const getOwnerMaterialTasksMockData = (projectId) => {
+  const baseDate = new Date()
+
+  return {
+    content: [
+      {
+        id: "j_material_task_001",
+        businessDomain: "J_MATERIAL",
+        agentInfoId: "j_material_agent_001",
+        fileErrorCount: 0,
+        fileCount: 8,
+        fileDoneCount: 8,
+        taskStatus: 2,
+        priority: "1",
+        uploadTime: new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        startTime: new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(baseDate.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        errorReason: null,
+        createdBy: "user004",
+        createdTime: new Date(baseDate.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedBy: "system",
+        updatedTime: new Date(baseDate.getTime() - 6 * 24 * 60 * 60 * 1000).toISOString(),
+        approvalStatus: 1,
+        approvalResult: 1,
+        selectedQuarter: "2024Q4",
+        projectInfo: {
+          id: parseInt(projectId) || 1,
+          projectName: "智能大厦建设项目",
+          projectCode: projectId || "PRJ2024001",
+          engineeringName: "智能大厦综合工程",
+          engineeringCode: "ENG-2024-001",
+          contractCode: "CONT-2024-001",
+          contractName: "智慧园区综合开发总承包合同"
+        }
+      },
+      {
+        id: "j_material_task_002",
+        businessDomain: "J_MATERIAL",
+        agentInfoId: "j_material_agent_002",
+        fileErrorCount: 2,
+        fileCount: 6,
+        fileDoneCount: 4,
+        taskStatus: 3, // 3表示失败
+        priority: "3",
+        uploadTime: new Date(baseDate.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        startTime: new Date(baseDate.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        endTime: new Date(baseDate.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        errorReason: "数据解析失败，文件损坏",
+        createdBy: "user005",
+        createdTime: new Date(baseDate.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+        updatedBy: "system",
+        updatedTime: new Date(baseDate.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        approvalStatus: 0,
+        approvalResult: 0,
+        selectedQuarter: "2024Q4",
+        projectInfo: {
+          id: parseInt(projectId) || 1,
+          projectName: "智能大厦建设项目",
+          projectCode: projectId || "PRJ2024001",
+          engineeringName: "智能大厦综合工程",
+          engineeringCode: "ENG-2024-001",
+          contractCode: "CONT-2024-015",
+          contractName: "智能化系统集成合同"
+        }
+      }
+    ],
+    pageable: {
+      pageNumber: 0,
+      pageSize: 10,
+      sort: { sorted: false, unsorted: true, empty: true },
+      offset: 0,
+      paged: true,
+      unpaged: false
+    },
+    last: true,
+    totalElements: 2,
+    totalPages: 1,
+    size: 10,
+    number: 0,
+    sort: { sorted: false, unsorted: true, empty: true },
+    first: true,
+    numberOfElements: 2,
+    empty: false
   }
 }
 

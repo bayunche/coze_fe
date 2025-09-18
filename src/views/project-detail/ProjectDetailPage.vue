@@ -67,21 +67,21 @@
               :key="task.taskId"
               class="task-card"
               :class="{
-                'status-completed': task.status === 'COMPLETED',
-                'status-running': task.status === 'RUNNING',
-                'status-failed': task.status === 'FAILED'
+                'status-completed': task.taskStatus === 2,
+                'status-running': task.taskStatus === 1,
+                'status-failed': task.taskStatus === 3
               }"
               @click="handleTaskClick(task, 'contract')"
             >
               <div class="task-content">
                 <div class="task-header">
-                  <div class="task-title">{{ task.title || `合同解析任务 ${task.taskId.slice(-6)}` }}</div>
+                  <div class="task-title">{{ task.title || `合同解析任务 ${task.id.slice(-6)}` }}</div>
                   <el-tag
-                    :type="getTaskStatusType(task.status)"
+                    :type="getTaskStatusType(task.taskStatus)"
                     size="small"
                     class="task-status"
                   >
-                    {{ getTaskStatusText(task.status) }}
+                    {{ getTaskStatusText(task.taskStatus) }}
                   </el-tag>
                 </div>
 
@@ -89,17 +89,20 @@
                   <div class="task-meta">
                     <span class="meta-item">
                       <el-icon><Clock /></el-icon>
-                      {{ formatDateTime(task.createTime) }}
+                      {{ formatDateTime(task.createdTime) }}
                     </span>
-                    <span class="meta-item" v-if="task.finishTime">
+                    <span class="meta-item" v-if="task.endTime">
                       <el-icon><Check /></el-icon>
-                      {{ formatDateTime(task.finishTime) }}
+                      {{ formatDateTime(task.endTime) }}
                     </span>
                   </div>
 
-                  <div class="task-files" v-if="task.files && task.files.length > 0">
+                  <div class="task-files" v-if="task.fileCount && task.fileCount > 0">
                     <el-icon><Folder /></el-icon>
-                    {{ task.files.length }} 个文件
+                    {{ task.fileCount }} 个文件
+                    <span v-if="task.fileErrorCount > 0" class="error-count">
+                      ({{ task.fileErrorCount }} 个错误)
+                    </span>
                   </div>
                 </div>
 
@@ -108,7 +111,7 @@
                     查看详情
                   </el-button>
                   <el-button
-                    v-if="task.status === 'COMPLETED'"
+                    v-if="task.taskStatus === 2"
                     size="small"
                     type="success"
                     plain
@@ -144,15 +147,15 @@
               :key="task.taskId"
               class="task-card"
               :class="{
-                'status-completed': task.status === 'COMPLETED',
-                'status-running': task.status === 'RUNNING',
-                'status-failed': task.status === 'FAILED'
+                'status-completed': task.taskStatus === 2,
+                'status-running': task.taskStatus === 1,
+                'status-failed': task.taskStatus === 3
               }"
               @click="handleTaskClick(task, 'supplier_material')"
             >
               <div class="task-content">
                 <div class="task-header">
-                  <div class="task-title">{{ task.title || `乙供物资任务 ${task.taskId.slice(-6)}` }}</div>
+                  <div class="task-title">{{ task.title || `乙供物资任务 ${task.id.slice(-6)}` }}</div>
                   <el-tag
                     :type="getTaskStatusType(task.status)"
                     size="small"
@@ -221,15 +224,15 @@
               :key="task.taskId"
               class="task-card"
               :class="{
-                'status-completed': task.status === 'COMPLETED',
-                'status-running': task.status === 'RUNNING',
-                'status-failed': task.status === 'FAILED'
+                'status-completed': task.taskStatus === 2,
+                'status-running': task.taskStatus === 1,
+                'status-failed': task.taskStatus === 3
               }"
               @click="handleTaskClick(task, 'owner_material')"
             >
               <div class="task-content">
                 <div class="task-header">
-                  <div class="task-title">{{ task.title || `甲供物资任务 ${task.taskId.slice(-6)}` }}</div>
+                  <div class="task-title">{{ task.title || `甲供物资任务 ${task.id.slice(-6)}` }}</div>
                   <el-tag
                     :type="getTaskStatusType(task.status)"
                     size="small"
@@ -362,11 +365,24 @@ const loadProjectTasks = async () => {
 
     const projectId = route.params.projectId
 
-    // 获取项目详情
-    await projectStore.fetchProjectDetail(projectId)
-
-    if (!currentProject.value) {
-      throw new Error('项目数据未找到')
+    // 从项目列表缓存中获取项目基本信息
+    const cachedProject = projectStore.getProjectById(projectId)
+    if (cachedProject) {
+      currentProject.value = cachedProject
+    } else {
+      // 如果缓存中没有，设置基本信息
+      currentProject.value = {
+        projectId: projectId,
+        projectName: `项目 ${projectId}`,
+        projectCode: projectId,
+        totalTasks: 0,
+        contractTasks: 0,
+        supplierMaterialTasks: 0,
+        ownerMaterialTasks: 0,
+        completedTasks: 0,
+        inProgressTasks: 0,
+        failedTasks: 0
+      }
     }
 
     // 加载各类型任务
@@ -375,6 +391,14 @@ const loadProjectTasks = async () => {
       loadSupplierMaterialTasks(projectId),
       loadOwnerMaterialTasks(projectId)
     ])
+
+    // 从任务数据中获取项目信息（如果缓存中没有的话）
+    if (!cachedProject) {
+      extractProjectInfoFromTasks()
+    }
+
+    // 根据任务数据更新项目统计
+    updateProjectStatistics()
 
   } catch (error) {
     console.error('加载项目任务失败:', error)
@@ -396,9 +420,12 @@ const loadContractTasks = async (projectId) => {
       size: 100
     })
     contractTasks.value = response.content || []
+    return response
 
   } catch (error) {
     console.error('加载合同任务失败:', error)
+    contractTasks.value = []
+    return { content: [] }
   } finally {
     contractTasksLoading.value = false
   }
@@ -416,9 +443,12 @@ const loadSupplierMaterialTasks = async (projectId) => {
       size: 100
     })
     supplierMaterialTasks.value = response.content || []
+    return response
 
   } catch (error) {
     console.error('加载乙供物资任务失败:', error)
+    supplierMaterialTasks.value = []
+    return { content: [] }
   } finally {
     supplierMaterialTasksLoading.value = false
   }
@@ -436,12 +466,76 @@ const loadOwnerMaterialTasks = async (projectId) => {
       size: 100
     })
     ownerMaterialTasks.value = response.content || []
+    return response
 
   } catch (error) {
     console.error('加载甲供物资任务失败:', error)
+    ownerMaterialTasks.value = []
+    return { content: [] }
   } finally {
     ownerMaterialTasksLoading.value = false
   }
+}
+
+// 从任务数据中提取项目信息
+const extractProjectInfoFromTasks = () => {
+  if (!currentProject.value) return
+
+  const allTasks = [
+    ...contractTasks.value,
+    ...supplierMaterialTasks.value,
+    ...ownerMaterialTasks.value
+  ]
+
+  // 从第一个任务中获取项目信息
+  if (allTasks.length > 0) {
+    const firstTask = allTasks[0]
+    if (firstTask.projectInfo) {
+      currentProject.value.projectName = firstTask.projectInfo.projectName || currentProject.value.projectName
+      currentProject.value.projectCode = firstTask.projectInfo.projectCode || currentProject.value.projectCode
+      currentProject.value.engineeringName = firstTask.projectInfo.engineeringName
+      currentProject.value.engineeringCode = firstTask.projectInfo.engineeringCode
+      currentProject.value.contractCode = firstTask.projectInfo.contractCode
+      currentProject.value.contractName = firstTask.projectInfo.contractName
+    }
+  }
+}
+
+// 根据任务数据更新项目统计
+const updateProjectStatistics = () => {
+  if (!currentProject.value) return
+
+  const allTasks = [
+    ...contractTasks.value,
+    ...supplierMaterialTasks.value,
+    ...ownerMaterialTasks.value
+  ]
+
+  // 统计各种状态的任务数量
+  let completedCount = 0
+  let inProgressCount = 0
+  let failedCount = 0
+
+  allTasks.forEach(task => {
+    if (task.taskStatus === 2) {
+      completedCount++
+    } else if (task.taskStatus === 1) {
+      inProgressCount++
+    } else if (task.taskStatus === 3) {
+      failedCount++
+    }
+  })
+
+  // 更新项目统计
+  currentProject.value.totalTasks = allTasks.length
+  currentProject.value.contractTasks = contractTasks.value.length
+  currentProject.value.supplierMaterialTasks = supplierMaterialTasks.value.length
+  currentProject.value.ownerMaterialTasks = ownerMaterialTasks.value.length
+  currentProject.value.completedTasks = completedCount
+  currentProject.value.inProgressTasks = inProgressCount
+  currentProject.value.failedTasks = failedCount
+
+  console.log('【项目详情】更新项目统计:', currentProject.value)
 }
 
 const goBack = () => {
@@ -481,15 +575,15 @@ const handleTaskClick = (task, taskType) => {
   switch (taskType) {
     case 'contract':
       // 跳转到合同解析详情页
-      router.push(`/contract-detail/${task.taskId}`)
+      router.push(`/contract-detail/${task.id}`)
       break
     case 'supplier_material':
       // 跳转到乙供物资详情页
-      router.push(`/material-detail/${task.taskId}`)
+      router.push(`/material-detail/${task.id}`)
       break
     case 'owner_material':
       // 跳转到甲供物资详情页
-      router.push(`/owner-material-detail/${task.taskId}`)
+      router.push(`/owner-material-detail/${task.id}`)
       break
     default:
       console.warn('未知任务类型:', taskType)
@@ -514,24 +608,26 @@ const formatDateTime = (dateString) => {
   }
 }
 
-const getTaskStatusType = (status) => {
+const getTaskStatusType = (taskStatus) => {
+  // taskStatus: 1-运行中, 2-已完成, 3-失败, 0-待处理
   const statusMap = {
-    'COMPLETED': 'success',
-    'RUNNING': 'warning',
-    'FAILED': 'danger',
-    'PENDING': 'info'
+    2: 'success',  // 已完成
+    1: 'warning',  // 运行中
+    3: 'danger',   // 失败
+    0: 'info'      // 待处理
   }
-  return statusMap[status] || 'info'
+  return statusMap[taskStatus] || 'info'
 }
 
-const getTaskStatusText = (status) => {
+const getTaskStatusText = (taskStatus) => {
+  // taskStatus: 1-运行中, 2-已完成, 3-失败, 0-待处理
   const statusMap = {
-    'COMPLETED': '已完成',
-    'RUNNING': '运行中',
-    'FAILED': '失败',
-    'PENDING': '待处理'
+    2: '已完成',
+    1: '运行中',
+    3: '失败',
+    0: '待处理'
   }
-  return statusMap[status] || status
+  return statusMap[taskStatus] || '未知'
 }
 
 // 生命周期
@@ -833,6 +929,11 @@ onMounted(async () => {
   gap: 6px;
   font-size: 12px;
   color: var(--theme-text-secondary);
+}
+
+.task-files .error-count {
+  color: #f56c6c;
+  font-weight: 600;
 }
 
 .task-actions {
