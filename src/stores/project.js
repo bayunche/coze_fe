@@ -319,6 +319,22 @@ export const useProjectStore = defineStore('project', () => {
   }
 
   /**
+   * 获取智能体任务
+   * @param {Object} params - 查询参数
+   */
+  const getAgentTasks = async (params) => {
+    try {
+      console.log('【Project Store】获取智能体任务:', params)
+
+      const response = await ProjectService.getAgentTasks(params)
+      return response
+    } catch (err) {
+      console.error('【Project Store】获取智能体任务失败:', err)
+      throw err
+    }
+  }
+
+  /**
    * 刷新所有数据
    */
   const refreshAll = async () => {
@@ -350,6 +366,7 @@ export const useProjectStore = defineStore('project', () => {
     fetchProjectDetail,
     fetchProjectTasks,
     fetchProjectStats,
+    getAgentTasks,
     setSearchKeyword,
     setStatusFilter,
     setCurrentProject,

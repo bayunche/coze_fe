@@ -43,18 +43,18 @@
       </el-card>
     </div>
 
-    <!-- 三栏任务展示 -->
+    <!-- 按行分栏任务展示 -->
     <div class="tasks-container" v-loading="loading">
       <!-- 合同解析任务 -->
-      <div class="task-column">
-        <div class="column-header">
-          <h3 class="column-title">
-            <el-icon class="column-icon">
+      <div class="task-row">
+        <div class="row-header">
+          <h3 class="row-title">
+            <el-icon class="row-icon">
               <Document />
             </el-icon>
             合同解析任务
           </h3>
-          <div class="column-stats">
+          <div class="row-stats">
             <el-badge :value="contractTasks.length" class="task-count-badge" />
           </div>
         </div>
@@ -123,15 +123,15 @@
       </div>
 
       <!-- 乙供物资任务 -->
-      <div class="task-column">
-        <div class="column-header">
-          <h3 class="column-title">
-            <el-icon class="column-icon">
+      <div class="task-row">
+        <div class="row-header">
+          <h3 class="row-title">
+            <el-icon class="row-icon">
               <Box />
             </el-icon>
             乙供物资任务
           </h3>
-          <div class="column-stats">
+          <div class="row-stats">
             <el-badge :value="supplierMaterialTasks.length" class="task-count-badge" />
           </div>
         </div>
@@ -200,15 +200,15 @@
       </div>
 
       <!-- 甲供物资任务 -->
-      <div class="task-column">
-        <div class="column-header">
-          <h3 class="column-title">
-            <el-icon class="column-icon">
+      <div class="task-row">
+        <div class="row-header">
+          <h3 class="row-title">
+            <el-icon class="row-icon">
               <Goods />
             </el-icon>
             甲供物资任务
           </h3>
-          <div class="column-stats">
+          <div class="row-stats">
             <el-badge :value="ownerMaterialTasks.length" class="task-count-badge" />
           </div>
         </div>
@@ -388,7 +388,13 @@ const loadContractTasks = async (projectId) => {
   try {
     contractTasksLoading.value = true
 
-    const response = await projectStore.fetchProjectTasks(projectId, 'contract')
+    // 使用智能体任务API查询合同任务
+    const response = await projectStore.getAgentTasks({
+      agentLabels: 'contract',
+      projectId: projectId,
+      page: 0,
+      size: 100
+    })
     contractTasks.value = response.content || []
 
   } catch (error) {
@@ -402,7 +408,13 @@ const loadSupplierMaterialTasks = async (projectId) => {
   try {
     supplierMaterialTasksLoading.value = true
 
-    const response = await projectStore.fetchProjectTasks(projectId, 'supplier_material')
+    // 使用智能体任务API查询乙供物资任务
+    const response = await projectStore.getAgentTasks({
+      agentLabels: 'y_material',
+      projectId: projectId,
+      page: 0,
+      size: 100
+    })
     supplierMaterialTasks.value = response.content || []
 
   } catch (error) {
@@ -416,7 +428,13 @@ const loadOwnerMaterialTasks = async (projectId) => {
   try {
     ownerMaterialTasksLoading.value = true
 
-    const response = await projectStore.fetchProjectTasks(projectId, 'owner_material')
+    // 使用智能体任务API查询甲供物资任务
+    const response = await projectStore.getAgentTasks({
+      agentLabels: 'j_material',
+      projectId: projectId,
+      page: 0,
+      size: 100
+    })
     ownerMaterialTasks.value = response.content || []
 
   } catch (error) {
@@ -662,16 +680,16 @@ onMounted(async () => {
   -webkit-text-fill-color: transparent;
 }
 
-/* 三栏任务容器 */
+/* 按行分栏任务容器 */
 .tasks-container {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 24px;
   min-height: calc(100vh - 300px);
 }
 
-/* 任务列 */
-.task-column {
+/* 任务行 */
+.task-row {
   background: var(--theme-card-bg);
   border-radius: 12px;
   border: 1px solid var(--theme-card-border);
@@ -680,7 +698,7 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-.column-header {
+.row-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -689,7 +707,7 @@ onMounted(async () => {
   border-bottom: 2px solid var(--theme-border-secondary);
 }
 
-.column-title {
+.row-title {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -699,12 +717,12 @@ onMounted(async () => {
   margin: 0;
 }
 
-.column-icon {
+.row-icon {
   font-size: 20px;
   color: var(--theme-primary);
 }
 
-.column-stats {
+.row-stats {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -717,14 +735,15 @@ onMounted(async () => {
 .task-list {
   flex: 1;
   padding: 20px;
-  overflow-y: auto;
-  max-height: calc(100vh - 400px);
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .task-cards {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 16px;
+  padding-bottom: 10px;
 }
 
 /* 任务卡片 */
@@ -734,6 +753,9 @@ onMounted(async () => {
   transition: all 0.3s ease;
   cursor: pointer;
   position: relative;
+  min-width: 280px;
+  max-width: 320px;
+  flex-shrink: 0;
 }
 
 .task-card:hover {
@@ -877,7 +899,6 @@ onMounted(async () => {
 /* 响应式设计 */
 @media (max-width: 1400px) {
   .tasks-container {
-    grid-template-columns: repeat(3, 1fr);
     gap: 20px;
   }
 
@@ -885,20 +906,30 @@ onMounted(async () => {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
   }
+
+  .task-card {
+    min-width: 260px;
+    max-width: 300px;
+  }
 }
 
 @media (max-width: 1200px) {
   .tasks-container {
-    grid-template-columns: 1fr;
     gap: 20px;
   }
 
-  .task-column {
-    max-height: 600px;
+  .task-row {
+    max-height: 400px;
   }
 
   .task-list {
-    max-height: 500px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .task-card {
+    min-width: 240px;
+    max-width: 280px;
   }
 }
 
@@ -942,17 +973,23 @@ onMounted(async () => {
     gap: 16px;
   }
 
-  .column-header {
+  .row-header {
     padding: 16px 20px;
   }
 
-  .column-title {
+  .row-title {
     font-size: 16px;
   }
 
   .task-list {
     padding: 16px;
-    max-height: 400px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .task-card {
+    min-width: 220px;
+    max-width: 260px;
   }
 
   .task-cards {
@@ -1002,11 +1039,11 @@ onMounted(async () => {
     gap: 12px;
   }
 
-  .column-header {
+  .row-header {
     padding: 12px 16px;
   }
 
-  .column-title {
+  .row-title {
     font-size: 15px;
   }
 
