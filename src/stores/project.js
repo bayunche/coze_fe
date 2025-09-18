@@ -71,28 +71,51 @@ export const useProjectStore = defineStore('project', () => {
         ...params
       }
 
-      // 调用API获取项目列表
-      // 目前使用从任务数据转换的方式，后续可以替换为真正的项目API
-      const projectData = await ProjectService.getProjectsFromTasks()
+      console.log('【Project Store】开始获取项目列表，参数:', queryParams)
 
-      if (Array.isArray(projectData)) {
-        projects.value = projectData
+      // 调用新的项目信息查询API
+      const response = await ProjectService.searchProjectsWithTaskStats(queryParams)
 
-        // 模拟分页信息
+      if (response && Array.isArray(response.content)) {
+        projects.value = response.content
+
+        // 更新分页信息
+        pagination.value = {
+          page: response.number || 0,
+          size: response.size || 20,
+          totalElements: response.totalElements || 0,
+          totalPages: response.totalPages || 0,
+          first: response.first !== undefined ? response.first : true,
+          last: response.last !== undefined ? response.last : true
+        }
+
+        console.log('【Project Store】项目列表加载完成:', projects.value.length, '个项目，总计:', pagination.value.totalElements)
+      } else {
+        console.warn('【Project Store】项目列表响应格式异常:', response)
+        projects.value = []
         pagination.value = {
           page: 0,
-          size: projectData.length,
-          totalElements: projectData.length,
-          totalPages: 1,
+          size: 20,
+          totalElements: 0,
+          totalPages: 0,
           first: true,
           last: true
         }
       }
-
-      console.log('【Project Store】项目列表加载完成:', projects.value.length, '个项目')
     } catch (err) {
       error.value = err.message || '获取项目列表失败'
       console.error('【Project Store】获取项目列表失败:', err)
+
+      // 失败时清空数据
+      projects.value = []
+      pagination.value = {
+        page: 0,
+        size: 20,
+        totalElements: 0,
+        totalPages: 0,
+        first: true,
+        last: true
+      }
     } finally {
       loading.value = false
     }

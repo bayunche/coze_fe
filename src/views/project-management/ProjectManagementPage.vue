@@ -82,7 +82,8 @@
           placeholder="搜索项目名称、项目编号..."
           clearable
           style="width: 300px"
-          @input="handleSearch"
+          @input="handleSearchInput"
+          @clear="handleSearch"
         >
           <template #prefix>
             <el-icon><Search /></el-icon>
@@ -109,7 +110,7 @@
     <!-- 项目表格 -->
     <el-card class="table-card" shadow="never">
       <el-table
-        :data="paginatedProjects"
+        :data="projects"
         v-loading="loading"
         style="width: 100%"
         :default-sort="{ prop: 'createTime', order: 'descending' }"
@@ -263,7 +264,7 @@
           v-model:current-page="pagination.currentPage"
           v-model:page-size="pagination.pageSize"
           :page-sizes="[10, 20, 50, 100]"
-          :total="filteredProjects.length"
+          :total="projectStore.pagination.totalElements"
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSizeChange"
           @current-change="handlePageChange"
@@ -297,7 +298,8 @@ import {
   formatDateTime,
   formatProjectStatus,
   exportProjectsToCSV,
-  downloadCSV
+  downloadCSV,
+  debounce
 } from './utils.js'
 
 const router = useRouter()
@@ -318,7 +320,7 @@ const pagination = ref({
 
 // 计算属性
 const projects = computed(() => projectStore.projects)
-const totalProjects = computed(() => projects.value.length)
+const totalProjects = computed(() => projectStore.pagination.totalElements)
 
 const activeProjectsCount = computed(() =>
   projects.value.filter(p => p.status === 'ACTIVE' || p.status === 'RUNNING').length
@@ -332,52 +334,16 @@ const totalTasksCount = computed(() =>
   projects.value.reduce((total, project) => total + project.totalTasks, 0)
 )
 
-// 筛选后的项目
-const filteredProjects = computed(() => {
-  let result = [...projects.value]
-
-  // 关键词搜索
-  if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase()
-    result = result.filter(project =>
-      project.projectName?.toLowerCase().includes(keyword) ||
-      project.projectCode?.toLowerCase().includes(keyword) ||
-      project.description?.toLowerCase().includes(keyword)
-    )
-  }
-
-  // 状态筛选
-  if (statusFilter.value) {
-    result = result.filter(project => project.status === statusFilter.value)
-  }
-
-  // 排序
-  result.sort((a, b) => {
-    const aVal = a[sortField.value]
-    const bVal = b[sortField.value]
-
-    if (sortOrder.value === 'desc') {
-      return bVal > aVal ? 1 : bVal < aVal ? -1 : 0
-    } else {
-      return aVal > bVal ? 1 : aVal < bVal ? -1 : 0
-    }
-  })
-
-  return result
-})
-
-// 分页后的项目
-const paginatedProjects = computed(() => {
-  const start = (pagination.value.currentPage - 1) * pagination.value.pageSize
-  const end = start + pagination.value.pageSize
-  return filteredProjects.value.slice(start, end)
-})
-
 // 方法
 const refreshData = async () => {
   try {
     loading.value = true
-    await projectStore.fetchProjects({}, true)
+    await projectStore.fetchProjects({
+      page: pagination.value.currentPage - 1, // API使用0-based分页
+      size: pagination.value.pageSize,
+      keyword: searchKeyword.value,
+      status: statusFilter.value
+    }, true)
     ElMessage.success('数据刷新成功')
   } catch (error) {
     console.error('刷新数据失败:', error)
@@ -387,32 +353,64 @@ const refreshData = async () => {
   }
 }
 
-const handleSearch = () => {
+const handleSearch = async () => {
   pagination.value.currentPage = 1
+  await fetchProjects()
 }
 
-const handleStatusFilter = () => {
-  pagination.value.currentPage = 1
+// 防抖搜索处理
+const debouncedSearch = debounce(handleSearch, 300)
+
+const handleSearchInput = () => {
+  debouncedSearch()
 }
 
-const resetFilters = () => {
+const handleStatusFilter = async () => {
+  pagination.value.currentPage = 1
+  await fetchProjects()
+}
+
+const resetFilters = async () => {
   searchKeyword.value = ''
   statusFilter.value = ''
   pagination.value.currentPage = 1
+  await fetchProjects()
 }
 
 const handleSortChange = ({ prop, order }) => {
   sortField.value = prop
   sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
+  // TODO: 后续可以支持服务端排序
+  console.log('排序变更:', prop, order)
 }
 
-const handleSizeChange = (size) => {
+const handleSizeChange = async (size) => {
   pagination.value.pageSize = size
   pagination.value.currentPage = 1
+  await fetchProjects()
 }
 
-const handlePageChange = (page) => {
+const handlePageChange = async (page) => {
   pagination.value.currentPage = page
+  await fetchProjects()
+}
+
+// 封装获取项目列表的方法
+const fetchProjects = async () => {
+  try {
+    loading.value = true
+    await projectStore.fetchProjects({
+      page: pagination.value.currentPage - 1, // API使用0-based分页
+      size: pagination.value.pageSize,
+      keyword: searchKeyword.value,
+      status: statusFilter.value
+    })
+  } catch (error) {
+    console.error('获取项目列表失败:', error)
+    ElMessage.error('获取项目列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const getProgressPercentage = (project) => {
@@ -461,7 +459,7 @@ const handleAction = ({ action, row }) => {
 
 const exportData = async () => {
   try {
-    const csvContent = exportProjectsToCSV(filteredProjects.value)
+    const csvContent = exportProjectsToCSV(projects.value)
     downloadCSV(csvContent, 'projects.csv')
     ElMessage.success('导出成功')
   } catch (error) {
@@ -476,9 +474,7 @@ const goBack = () => {
 
 // 生命周期
 onMounted(async () => {
-  if (projects.value.length === 0) {
-    await refreshData()
-  }
+  await fetchProjects()
 })
 </script>
 

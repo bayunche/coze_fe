@@ -62,7 +62,7 @@ export const MANAGEMENT_FEATURES = {
     icon: MANAGEMENT_ICONS.DATA_MANAGEMENT,
     title: '项目数据管理',
     description: '管理项目相关的数据信息',
-    route: '/project-data-management',
+    route: '/project-management',
     available: true
   },
   TEMPORARY_DATA_MANAGEMENT: {
