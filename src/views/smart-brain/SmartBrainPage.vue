@@ -95,22 +95,18 @@
               <div class="project-stats">
                 <div class="stats-grid">
                   <div class="stat-item">
-                    <span class="stat-icon">📋</span>
                     <span class="stat-count">{{ project.contractTasks }}</span>
                     <span class="stat-label">合同</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-icon">📦</span>
                     <span class="stat-count">{{ project.supplierMaterialTasks }}</span>
                     <span class="stat-label">乙供</span>
                   </div>
                   <div class="stat-item">
-                    <span class="stat-icon">🏗️</span>
                     <span class="stat-count">{{ project.ownerMaterialTasks }}</span>
                     <span class="stat-label">甲供</span>
                   </div>
                   <div class="stat-item total">
-                    <span class="stat-icon">🎯</span>
                     <span class="stat-count">{{ project.totalTasks }}</span>
                     <span class="stat-label">总数</span>
                   </div>
