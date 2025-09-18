@@ -79,7 +79,7 @@ class ProjectService {
         throw new Error('智能体标签不能为空')
       }
 
-      const response = await request.get('/api/smart-brain/agents/tasks', {
+      const response = await request.get('smart-brain/agents/tasks', {
         params: {
           agentLabels: params.agentLabels,
           projectId: params.projectId,
