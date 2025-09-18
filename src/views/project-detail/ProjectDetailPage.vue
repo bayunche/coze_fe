@@ -60,68 +60,69 @@
         </div>
 
         <div class="task-list" v-loading="contractTasksLoading">
+          <el-table
+            :data="contractTasks"
+            style="width: 100%"
+            height="300"
+            @row-click="(row) => handleTaskClick(row, 'contract')"
+            class="task-table"
+          >
+            <el-table-column prop="id" label="任务ID" width="150" show-overflow-tooltip>
+              <template #default="{ row }">
+                {{ row.id ? row.id.slice(-8) : '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="taskStatus" label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag
+                  :type="getTaskStatusType(row.taskStatus)"
+                  size="small"
+                >
+                  {{ getTaskStatusText(row.taskStatus) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileCount" label="文件数" width="100" align="center">
+              <template #default="{ row }">
+                {{ row.fileCount || 0 }}
+                <span v-if="row.fileErrorCount > 0" class="error-count">
+                  ({{ row.fileErrorCount }}错误)
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdTime" label="创建时间" width="150">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="endTime" label="完成时间" width="150">
+              <template #default="{ row }">
+                {{ formatDateTime(row.endTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" align="center">
+              <template #default="{ row }">
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  @click.stop="handleTaskClick(row, 'contract')"
+                >
+                  查看详情
+                </el-button>
+                <el-button
+                  v-if="row.taskStatus === 2"
+                  size="small"
+                  type="success"
+                  plain
+                  @click.stop="handleDownload(row)"
+                >
+                  下载结果
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
           <el-empty v-if="contractTasks.length === 0" description="暂无合同解析任务" />
-          <div v-else class="task-cards">
-            <el-card
-              v-for="task in contractTasks"
-              :key="task.taskId"
-              class="task-card"
-              :class="{
-                'status-completed': task.taskStatus === 2,
-                'status-running': task.taskStatus === 1,
-                'status-failed': task.taskStatus === 3
-              }"
-              @click="handleTaskClick(task, 'contract')"
-            >
-              <div class="task-content">
-                <div class="task-header">
-                  <div class="task-title">{{ task.title || `合同解析任务 ${task.id.slice(-6)}` }}</div>
-                  <el-tag
-                    :type="getTaskStatusType(task.taskStatus)"
-                    size="small"
-                    class="task-status"
-                  >
-                    {{ getTaskStatusText(task.taskStatus) }}
-                  </el-tag>
-                </div>
-
-                <div class="task-info">
-                  <div class="task-meta">
-                    <span class="meta-item">
-                      <el-icon><Clock /></el-icon>
-                      {{ formatDateTime(task.createdTime) }}
-                    </span>
-                    <span class="meta-item" v-if="task.endTime">
-                      <el-icon><Check /></el-icon>
-                      {{ formatDateTime(task.endTime) }}
-                    </span>
-                  </div>
-
-                  <div class="task-files" v-if="task.fileCount && task.fileCount > 0">
-                    <el-icon><Folder /></el-icon>
-                    {{ task.fileCount }} 个文件
-                    <span v-if="task.fileErrorCount > 0" class="error-count">
-                      ({{ task.fileErrorCount }} 个错误)
-                    </span>
-                  </div>
-                </div>
-
-                <div class="task-actions">
-                  <el-button size="small" type="primary" plain>
-                    查看详情
-                  </el-button>
-                  <el-button
-                    v-if="task.taskStatus === 2"
-                    size="small"
-                    type="success"
-                    plain
-                  >
-                    下载结果
-                  </el-button>
-                </div>
-              </div>
-            </el-card>
-          </div>
         </div>
       </div>
 
@@ -140,65 +141,69 @@
         </div>
 
         <div class="task-list" v-loading="supplierMaterialTasksLoading">
+          <el-table
+            :data="supplierMaterialTasks"
+            style="width: 100%"
+            height="300"
+            @row-click="(row) => handleTaskClick(row, 'supplier_material')"
+            class="task-table"
+          >
+            <el-table-column prop="id" label="任务ID" width="150" show-overflow-tooltip>
+              <template #default="{ row }">
+                {{ row.id ? row.id.slice(-8) : '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="taskStatus" label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag
+                  :type="getTaskStatusType(row.taskStatus)"
+                  size="small"
+                >
+                  {{ getTaskStatusText(row.taskStatus) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileCount" label="文件数" width="100" align="center">
+              <template #default="{ row }">
+                {{ row.fileCount || 0 }}
+                <span v-if="row.fileErrorCount > 0" class="error-count">
+                  ({{ row.fileErrorCount }}错误)
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdTime" label="创建时间" width="150">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="endTime" label="完成时间" width="150">
+              <template #default="{ row }">
+                {{ formatDateTime(row.endTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" align="center">
+              <template #default="{ row }">
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  @click.stop="handleTaskClick(row, 'supplier_material')"
+                >
+                  查看详情
+                </el-button>
+                <el-button
+                  v-if="row.taskStatus === 2"
+                  size="small"
+                  type="success"
+                  plain
+                  @click.stop="handleDownload(row)"
+                >
+                  下载结果
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
           <el-empty v-if="supplierMaterialTasks.length === 0" description="暂无乙供物资任务" />
-          <div v-else class="task-cards">
-            <el-card
-              v-for="task in supplierMaterialTasks"
-              :key="task.taskId"
-              class="task-card"
-              :class="{
-                'status-completed': task.taskStatus === 2,
-                'status-running': task.taskStatus === 1,
-                'status-failed': task.taskStatus === 3
-              }"
-              @click="handleTaskClick(task, 'supplier_material')"
-            >
-              <div class="task-content">
-                <div class="task-header">
-                  <div class="task-title">{{ task.title || `乙供物资任务 ${task.id.slice(-6)}` }}</div>
-                  <el-tag
-                    :type="getTaskStatusType(task.status)"
-                    size="small"
-                    class="task-status"
-                  >
-                    {{ getTaskStatusText(task.status) }}
-                  </el-tag>
-                </div>
-
-                <div class="task-info">
-                  <div class="task-meta">
-                    <span class="meta-item">
-                      <el-icon><Clock /></el-icon>
-                      {{ formatDateTime(task.createTime) }}
-                    </span>
-                    <span class="meta-item" v-if="task.finishTime">
-                      <el-icon><Check /></el-icon>
-                      {{ formatDateTime(task.finishTime) }}
-                    </span>
-                  </div>
-
-                  <div class="task-files" v-if="task.files && task.files.length > 0">
-                    <el-icon><Folder /></el-icon>
-                    {{ task.files.length }} 个文件
-                  </div>
-                </div>
-
-                <div class="task-actions">
-                  <el-button size="small" type="primary" plain>
-                    查看详情
-                  </el-button>
-                  <el-button
-                    v-if="task.status === 'COMPLETED'"
-                    size="small"
-                    type="success"
-                    plain
-                  >
-                    下载结果
-                  </el-button>
-                </div>
-              </div>
-            </el-card>
-          </div>
         </div>
       </div>
 
@@ -217,65 +222,69 @@
         </div>
 
         <div class="task-list" v-loading="ownerMaterialTasksLoading">
+          <el-table
+            :data="ownerMaterialTasks"
+            style="width: 100%"
+            height="300"
+            @row-click="(row) => handleTaskClick(row, 'owner_material')"
+            class="task-table"
+          >
+            <el-table-column prop="id" label="任务ID" width="150" show-overflow-tooltip>
+              <template #default="{ row }">
+                {{ row.id ? row.id.slice(-8) : '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="taskStatus" label="状态" width="100" align="center">
+              <template #default="{ row }">
+                <el-tag
+                  :type="getTaskStatusType(row.taskStatus)"
+                  size="small"
+                >
+                  {{ getTaskStatusText(row.taskStatus) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="fileCount" label="文件数" width="100" align="center">
+              <template #default="{ row }">
+                {{ row.fileCount || 0 }}
+                <span v-if="row.fileErrorCount > 0" class="error-count">
+                  ({{ row.fileErrorCount }}错误)
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createdTime" label="创建时间" width="150">
+              <template #default="{ row }">
+                {{ formatDateTime(row.createdTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="endTime" label="完成时间" width="150">
+              <template #default="{ row }">
+                {{ formatDateTime(row.endTime) }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="200" align="center">
+              <template #default="{ row }">
+                <el-button
+                  size="small"
+                  type="primary"
+                  plain
+                  @click.stop="handleTaskClick(row, 'owner_material')"
+                >
+                  查看详情
+                </el-button>
+                <el-button
+                  v-if="row.taskStatus === 2"
+                  size="small"
+                  type="success"
+                  plain
+                  @click.stop="handleDownload(row)"
+                >
+                  下载结果
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
           <el-empty v-if="ownerMaterialTasks.length === 0" description="暂无甲供物资任务" />
-          <div v-else class="task-cards">
-            <el-card
-              v-for="task in ownerMaterialTasks"
-              :key="task.taskId"
-              class="task-card"
-              :class="{
-                'status-completed': task.taskStatus === 2,
-                'status-running': task.taskStatus === 1,
-                'status-failed': task.taskStatus === 3
-              }"
-              @click="handleTaskClick(task, 'owner_material')"
-            >
-              <div class="task-content">
-                <div class="task-header">
-                  <div class="task-title">{{ task.title || `甲供物资任务 ${task.id.slice(-6)}` }}</div>
-                  <el-tag
-                    :type="getTaskStatusType(task.status)"
-                    size="small"
-                    class="task-status"
-                  >
-                    {{ getTaskStatusText(task.status) }}
-                  </el-tag>
-                </div>
-
-                <div class="task-info">
-                  <div class="task-meta">
-                    <span class="meta-item">
-                      <el-icon><Clock /></el-icon>
-                      {{ formatDateTime(task.createTime) }}
-                    </span>
-                    <span class="meta-item" v-if="task.finishTime">
-                      <el-icon><Check /></el-icon>
-                      {{ formatDateTime(task.finishTime) }}
-                    </span>
-                  </div>
-
-                  <div class="task-files" v-if="task.files && task.files.length > 0">
-                    <el-icon><Folder /></el-icon>
-                    {{ task.files.length }} 个文件
-                  </div>
-                </div>
-
-                <div class="task-actions">
-                  <el-button size="small" type="primary" plain>
-                    查看详情
-                  </el-button>
-                  <el-button
-                    v-if="task.status === 'COMPLETED'"
-                    size="small"
-                    type="success"
-                    plain
-                  >
-                    下载结果
-                  </el-button>
-                </div>
-              </div>
-            </el-card>
-          </div>
         </div>
       </div>
     </div>
@@ -590,6 +599,23 @@ const handleTaskClick = (task, taskType) => {
   }
 }
 
+const handleDownload = async (task) => {
+  try {
+    console.log('下载任务结果:', task)
+
+    // 这里实现下载逻辑
+    // 根据任务类型和任务ID调用相应的下载API
+    ElMessage.success('开始下载任务结果...')
+
+    // TODO: 实现实际的下载逻辑
+    // 可能需要调用不同的API获取下载链接或直接下载文件
+
+  } catch (error) {
+    console.error('下载失败:', error)
+    ElMessage.error('下载失败，请重试')
+  }
+}
+
 // 工具方法
 const formatDateTime = (dateString) => {
   if (!dateString) return '-'
@@ -835,117 +861,16 @@ onMounted(async () => {
   overflow-y: hidden;
 }
 
-.task-cards {
-  display: flex;
-  flex-direction: row;
-  gap: 16px;
-  padding-bottom: 10px;
-}
-
-/* 任务卡片 */
-.task-card {
-  border: 1px solid var(--theme-card-border);
+/* 任务表格样式 */
+.task-table {
   border-radius: 8px;
-  transition: all 0.3s ease;
-  cursor: pointer;
-  position: relative;
-  min-width: 280px;
-  max-width: 320px;
-  flex-shrink: 0;
-}
-
-.task-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--theme-card-hover-shadow);
-  border-color: var(--theme-primary);
-}
-
-/* 任务状态样式 */
-.task-card.status-completed {
-  border-left: 4px solid #67c23a;
-}
-
-.task-card.status-running {
-  border-left: 4px solid #e6a23c;
-}
-
-.task-card.status-failed {
-  border-left: 4px solid #f56c6c;
-}
-
-.task-content {
-  padding: 16px;
-}
-
-.task-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.task-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--theme-text-primary);
-  flex: 1;
-  margin-right: 8px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.task-status {
-  font-size: 12px;
-  border-radius: 4px;
-}
-
-.task-info {
-  margin-bottom: 16px;
-}
-
-.task-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-
-.meta-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--theme-text-secondary);
-}
-
-.meta-item .el-icon {
-  font-size: 14px;
-}
-
-.task-files {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--theme-text-secondary);
-}
-
-.task-files .error-count {
+.task-table .error-count {
   color: #f56c6c;
   font-weight: 600;
-}
-
-.task-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.task-actions .el-button {
-  font-size: 12px;
-  padding: 6px 12px;
-  border-radius: 6px;
+  margin-left: 4px;
 }
 
 /* Element Plus 组件样式覆盖 */
@@ -1008,10 +933,6 @@ onMounted(async () => {
     gap: 16px;
   }
 
-  .task-card {
-    min-width: 260px;
-    max-width: 300px;
-  }
 }
 
 @media (max-width: 1200px) {
@@ -1026,11 +947,6 @@ onMounted(async () => {
   .task-list {
     overflow-x: auto;
     overflow-y: hidden;
-  }
-
-  .task-card {
-    min-width: 240px;
-    max-width: 280px;
   }
 }
 
@@ -1088,30 +1004,6 @@ onMounted(async () => {
     overflow-y: hidden;
   }
 
-  .task-card {
-    min-width: 220px;
-    max-width: 260px;
-  }
-
-  .task-cards {
-    gap: 12px;
-  }
-
-  .task-content {
-    padding: 12px;
-  }
-
-  .task-title {
-    font-size: 13px;
-  }
-
-  .meta-item {
-    font-size: 11px;
-  }
-
-  .task-files {
-    font-size: 11px;
-  }
 }
 
 @media (max-width: 480px) {
@@ -1152,14 +1044,5 @@ onMounted(async () => {
     padding: 12px;
   }
 
-  .task-actions {
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .task-actions .el-button {
-    width: 100%;
-    justify-content: center;
-  }
 }
 </style>
