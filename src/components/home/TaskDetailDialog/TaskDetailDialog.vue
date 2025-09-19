@@ -69,8 +69,9 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import smartBrainService from '@/services/SmartBrainService.js'
 import { TASK_DETAIL_STATUS_MAP, DEFAULT_VALUES } from './constants.js'
-import { downloadSourceFile } from '@/utils/fileDownload.js'
+// import { downloadSourceFile } from '@/utils/fileDownload.js' // 已替换为TaskFileService
 import { useParsingResultStore } from '@/stores/parsingResult'
+import TaskFileService from '@/services/TaskFileService.js'
 const props = defineProps({
   show: {
     type: Boolean,
@@ -183,16 +184,29 @@ const handleViewDetail = async (row) => {
 }
 
 /**
- * 处理查看源文件按钮点击
+ * 处理查看源文件按钮点击 - 使用新的任务文件下载接口
  * @param {Object} row - 表格行数据
  */
-const downloadFile = (row) => {
+const downloadFile = async (row) => {
+  console.log('【调试】任务详情对话框下载文件请求，行数据:', row)
 
-  if (row.fileUrl) {
-    // 使用 window.open 在新标签页中打开文件链接
-    downloadSourceFile(row)
-  } else {
-    ElMessage.warning('该记录没有关联的文件')
+  if (!row.id) {
+    console.warn('【警告】无法下载文件，缺少任务ID:', row)
+    ElMessage.warning('无法下载文件，缺少任务ID')
+    return
+  }
+
+  try {
+    console.log('【调试】使用任务ID下载文件:', row.id)
+    ElMessage.info('正在准备下载文件...')
+
+    // 使用新的任务文件下载服务
+    await TaskFileService.downloadTaskFiles(row.id)
+
+    ElMessage.success('文件下载已开始')
+  } catch (error) {
+    console.error('【错误】下载文件失败:', error)
+    ElMessage.error('下载文件失败，请稍后重试')
   }
 }
 

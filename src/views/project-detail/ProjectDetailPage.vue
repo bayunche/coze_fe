@@ -370,8 +370,9 @@ import { ElMessage } from 'element-plus'
 
 // 导入服务和状态管理
 import { useProjectStore } from '@/stores/project.js'
-import { downloadSourceFile } from '@/utils/fileDownload.js'
+// import { downloadSourceFile } from '@/utils/fileDownload.js' // 已替换为TaskFileService
 import { useParsingResultStore } from '@/stores/parsingResult'
+import TaskFileService from '@/services/TaskFileService.js'
 
 
 const router = useRouter()
@@ -712,36 +713,27 @@ const handleViewOwnerMaterialDetail = (row) => {
   })
 }
 
-// 下载文件
-const handleDownloadFile = (row) => {
+// 下载文件 - 使用新的任务文件下载接口
+const handleDownloadFile = async (row) => {
   console.log('【调试】下载文件请求，行数据:', row)
 
-  // 检查是否有文件路径相关字段
-  const hasFilePath = row.fileUrl || row.filePath || row.path || row.sourceFilePath
+  if (!row.id) {
+    console.warn('【警告】无法下载文件，缺少任务ID:', row)
+    ElMessage.warning('无法下载文件，缺少任务ID')
+    return
+  }
 
-  if (hasFilePath) {
-    downloadSourceFile(row)
-  } else if (row.id) {
-    // 如果没有直接的文件路径，但有任务ID，尝试通过任务ID下载
-    console.log('【调试】尝试通过任务ID下载文件:', row.id)
-    ElMessage.info('正在尝试获取文件下载链接...')
+  try {
+    console.log('【调试】使用任务ID下载文件:', row.id)
+    ElMessage.info('正在准备下载文件...')
 
-    // 构建基于任务ID的下载URL
-    const baseUrl = import.meta.env.VITE_APP_BASE_API || '/api'
-    const downloadUrl = `${baseUrl}/smart-brain/agents/tasks/${row.id}/files/download`
+    // 使用新的任务文件下载服务
+    await TaskFileService.downloadTaskFiles(row.id)
 
-    console.log('【调试】构建的下载URL:', downloadUrl)
-    window.open(downloadUrl, '_blank')
-  } else {
-    console.warn('【警告】无法获取文件下载信息，缺少必要的字段:', {
-      hasFileUrl: !!row.fileUrl,
-      hasFilePath: !!row.filePath,
-      hasPath: !!row.path,
-      hasSourceFilePath: !!row.sourceFilePath,
-      hasTaskId: !!row.id,
-      rowKeys: Object.keys(row)
-    })
-    ElMessage.warning('该记录没有关联的文件或缺少下载信息')
+    ElMessage.success('文件下载已开始')
+  } catch (error) {
+    console.error('【错误】下载文件失败:', error)
+    ElMessage.error('下载文件失败，请稍后重试')
   }
 }
 
