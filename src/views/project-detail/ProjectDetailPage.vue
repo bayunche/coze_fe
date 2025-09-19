@@ -63,8 +63,8 @@
           <div class="table-container">
             <el-table :data="contractTasks" style="width: 100%">
               <!-- 序号 -->
-              <el-table-column type="index" prop="" label="序号" width="60"></el-table-column>
-              <el-table-column prop="fileName" label="文件名称"></el-table-column>
+              <el-table-column type="index" label="序号" width="60"></el-table-column>
+              <el-table-column prop="id" label="任务ID" width="120"></el-table-column>
               <el-table-column prop="projectCode" label="项目编号" width="150">
                 <template #default="{ row }">
                   {{ row.projectInfo?.projectCode || '-' }}
@@ -75,27 +75,44 @@
                   {{ row.projectInfo?.projectName || '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="startTime" label="开始时间">
+              <el-table-column prop="fileCount" label="文件数量" width="100">
+                <template #default="{ row }">
+                  {{ row.fileCount || 0 }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="fileDoneCount" label="完成文件数" width="100">
+                <template #default="{ row }">
+                  {{ row.fileDoneCount || 0 }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="uploadTime" label="上传时间" width="160">
+                <template #default="{ row }">
+                  {{ row.uploadTime ? new Date(row.uploadTime).toLocaleString() : '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="startTime" label="开始时间" width="160">
                 <template #default="{ row }">
                   {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="endTime" label="结束时间">
+              <el-table-column prop="endTime" label="结束时间" width="160">
                 <template #default="{ row }">
                   {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="taskDetailStatus" label="任务解析状态">
+              <el-table-column prop="taskStatus" label="任务状态" width="120">
                 <template #default="{ row }">
-                  {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
+                  <el-tag :type="getTaskStatusType(row.taskStatus)">
+                    {{ getTaskStatusText(row.taskStatus) }}
+                  </el-tag>
                 </template>
               </el-table-column>
-              <el-table-column prop="errorReason" label="失败原因">
+              <el-table-column prop="errorReason" label="失败原因" width="200">
                 <template #default="{ row }">
-                  {{ row.errorReason || '无' }}
+                  {{ row.errorReason || '-' }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作">
+              <el-table-column label="操作" width="200" fixed="right">
                 <template #default="{ row }">
                   <el-button type="text" @click="handleViewContractDetail(row)">查看详情</el-button>
                   <el-button type="text" @click="handleDownloadFile(row)">查看源文件</el-button>
@@ -136,32 +153,59 @@
           <div class="table-container">
             <el-table :data="supplierMaterialTasks" style="width: 100%">
               <el-table-column type="index" label="序号" width="60"></el-table-column>
-              <el-table-column prop="fileName" label="文件名称"></el-table-column>
-              <el-table-column prop="startTime" label="开始时间" width="140">
+              <el-table-column prop="id" label="任务ID" width="120"></el-table-column>
+              <el-table-column prop="projectCode" label="项目编号" width="150">
                 <template #default="{ row }">
-                  {{ formatStartTime(row.startTime) }}
+                  {{ row.projectInfo?.projectCode || '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="endTime" label="结束时间" width="140">
+              <el-table-column prop="projectName" label="项目名称" width="200">
                 <template #default="{ row }">
-                  {{ formatEndTime(row.endTime) }}
+                  {{ row.projectInfo?.projectName || '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
+              <el-table-column prop="fileCount" label="文件数量" width="100">
                 <template #default="{ row }">
-                  {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
+                  {{ row.fileCount || 0 }}
                 </template>
               </el-table-column>
-              <el-table-column prop="errorReason" label="失败原因">
+              <el-table-column prop="fileDoneCount" label="完成文件数" width="100">
                 <template #default="{ row }">
-                  {{ formatErrorReason(row.errorReason) }}
+                  {{ row.fileDoneCount || 0 }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="uploadTime" label="上传时间" width="160">
+                <template #default="{ row }">
+                  {{ row.uploadTime ? new Date(row.uploadTime).toLocaleString() : '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="startTime" label="开始时间" width="160">
+                <template #default="{ row }">
+                  {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="endTime" label="结束时间" width="160">
+                <template #default="{ row }">
+                  {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="taskStatus" label="任务状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="getTaskStatusType(row.taskStatus)">
+                    {{ getTaskStatusText(row.taskStatus) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="errorReason" label="失败原因" width="200">
+                <template #default="{ row }">
+                  {{ row.errorReason || '-' }}
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="300" fixed="right">
                 <template #default="{ row }">
                   <div class="action-buttons-container">
                     <el-button
-                      v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+                      v-if="!(row.errorReason && row.taskStatus == -1)"
                       type="text"
                       size="small"
                       @click="() => handleViewSupplierMaterialDetail(row)"
@@ -181,7 +225,7 @@
                       type="primary"
                       size="small"
                       @click="() => handleConfirmResults(row)"
-                      :disabled="row.taskDetailStatus !== '2'"
+                      :disabled="row.taskStatus !== 2"
                       class="action-btn confirm-btn"
                     >
                       确认解析结果
@@ -224,7 +268,7 @@
           <div class="table-container">
             <el-table :data="ownerMaterialTasks" style="width: 100%">
               <el-table-column type="index" label="序号" width="60"></el-table-column>
-              <el-table-column prop="fileName" label="文件名称"></el-table-column>
+              <el-table-column prop="id" label="任务ID" width="120"></el-table-column>
               <el-table-column prop="projectCode" label="项目编号" width="150">
                 <template #default="{ row }">
                   {{ row.projectInfo?.projectCode || '-' }}
@@ -235,31 +279,48 @@
                   {{ row.projectInfo?.projectName || '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="startTime" label="开始时间" width="140">
+              <el-table-column prop="fileCount" label="文件数量" width="100">
                 <template #default="{ row }">
-                  {{ formatStartTime(row.startTime) }}
+                  {{ row.fileCount || 0 }}
                 </template>
               </el-table-column>
-              <el-table-column prop="endTime" label="结束时间" width="140">
+              <el-table-column prop="fileDoneCount" label="完成文件数" width="100">
                 <template #default="{ row }">
-                  {{ formatEndTime(row.endTime) }}
+                  {{ row.fileDoneCount || 0 }}
                 </template>
               </el-table-column>
-              <el-table-column prop="taskDetailStatus" label="任务解析状态" width="120">
+              <el-table-column prop="uploadTime" label="上传时间" width="160">
                 <template #default="{ row }">
-                  {{ formatTaskDetailStatus(row.taskDetailStatus, row.errorReason) }}
+                  {{ row.uploadTime ? new Date(row.uploadTime).toLocaleString() : '-' }}
                 </template>
               </el-table-column>
-              <el-table-column prop="errorReason" label="失败原因">
+              <el-table-column prop="startTime" label="开始时间" width="160">
                 <template #default="{ row }">
-                  {{ formatErrorReason(row.errorReason) }}
+                  {{ row.startTime ? new Date(row.startTime).toLocaleString() : '未开始' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="endTime" label="结束时间" width="160">
+                <template #default="{ row }">
+                  {{ row.endTime ? new Date(row.endTime).toLocaleString() : '未结束' }}
+                </template>
+              </el-table-column>
+              <el-table-column prop="taskStatus" label="任务状态" width="120">
+                <template #default="{ row }">
+                  <el-tag :type="getTaskStatusType(row.taskStatus)">
+                    {{ getTaskStatusText(row.taskStatus) }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="errorReason" label="失败原因" width="200">
+                <template #default="{ row }">
+                  {{ row.errorReason || '-' }}
                 </template>
               </el-table-column>
               <el-table-column label="操作" width="220" fixed="right">
                 <template #default="{ row }">
                   <div class="action-buttons-container">
                     <el-button
-                      v-if="!(row.errorReason && row.taskDetailStatus == -1)"
+                      v-if="!(row.errorReason && row.taskStatus == -1)"
                       type="text"
                       size="small"
                       @click="() => handleViewOwnerMaterialDetail(row)"
@@ -598,7 +659,7 @@ const handleExportAll = async () => {
 
 // 合同解析任务操作
 const handleViewContractDetail = async (row) => {
-  if (row.taskDetailStatus !== 2 && row.taskDetailStatus !== 3) {
+  if (row.taskStatus !== 2 && row.taskStatus !== 3) {
     ElMessage.warning('只有处理完成或已确认的任务才能查看解析结果详情')
     return
   }
@@ -699,37 +760,29 @@ const handleConfirmResults = (row) => {
   })
 }
 
-// 格式化任务详情状态
-const formatTaskDetailStatus = (status, errorReason) => {
-  if (errorReason && Number(status) === -1) {
-    return '解析失败'
-  }
 
+// 根据API文档的taskStatus字段获取任务状态文本
+const getTaskStatusText = (taskStatus) => {
   const statusMap = {
-    '0': '排队中',
-    '1': '处理中',
-    '2': '处理完成',
-    '3': '已确认',
+    0: '排队中',
+    1: '处理中',
+    2: '处理完成',
+    3: '已确认',
     '-1': '错误中断'
   }
-  return statusMap[status] || '未知状态'
+  return statusMap[taskStatus] || '未知状态'
 }
 
-// 格式化时间
-const formatTime = (time, defaultText) => {
-  return time ? new Date(time).toLocaleString() : defaultText
-}
-
-const formatStartTime = (startTime) => {
-  return formatTime(startTime, '未开始')
-}
-
-const formatEndTime = (endTime) => {
-  return formatTime(endTime, '未结束')
-}
-
-const formatErrorReason = (errorReason) => {
-  return errorReason || '无'
+// 根据API文档的taskStatus字段获取Element Plus标签类型
+const getTaskStatusType = (taskStatus) => {
+  const typeMap = {
+    0: 'info',      // 排队中 - 信息色
+    1: 'warning',   // 处理中 - 警告色
+    2: 'success',   // 处理完成 - 成功色
+    3: 'success',   // 已确认 - 成功色
+    '-1': 'danger'  // 错误中断 - 危险色
+  }
+  return typeMap[taskStatus] || 'info'
 }
 
 // 分页事件处理
