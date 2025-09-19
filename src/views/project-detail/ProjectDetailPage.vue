@@ -679,7 +679,7 @@ const handleViewContractDetail = async (row) => {
       await parsingResultStore.viewResultDetail({
         isSupplierMaterial: false,
         specificTaskId: mainTaskId,
-        taskDetailId: row.id || row.taskDetailId
+        taskDetailId: row.id
       })
     }
   } catch (error) {
@@ -690,10 +690,8 @@ const handleViewContractDetail = async (row) => {
 
 // 乙供物资解析任务操作
 const handleViewSupplierMaterialDetail = (row) => {
-  const detailId = row.id || row.taskDetailId || row.detailId || row.uuid || row.Id
-
-  if (!detailId) {
-    ElMessage.error('缺少详情ID，无法跳转到详情页面')
+  if (!row.id) {
+    ElMessage.error('缺少任务ID，无法跳转到详情页面')
     return
   }
 
@@ -710,7 +708,7 @@ const handleViewSupplierMaterialDetail = (row) => {
         name: 'supplier-material-detail',
         params: {
           taskId: taskId,
-          detailId: detailId
+          detailId: row.id
         }
       })
     }
@@ -736,10 +734,34 @@ const handleViewOwnerMaterialDetail = (row) => {
 
 // 下载文件
 const handleDownloadFile = (row) => {
-  if (row.fileUrl) {
+  console.log('【调试】下载文件请求，行数据:', row)
+
+  // 检查是否有文件路径相关字段
+  const hasFilePath = row.fileUrl || row.filePath || row.path || row.sourceFilePath
+
+  if (hasFilePath) {
     downloadSourceFile(row)
+  } else if (row.id) {
+    // 如果没有直接的文件路径，但有任务ID，尝试通过任务ID下载
+    console.log('【调试】尝试通过任务ID下载文件:', row.id)
+    ElMessage.info('正在尝试获取文件下载链接...')
+
+    // 构建基于任务ID的下载URL
+    const baseUrl = import.meta.env.VITE_APP_BASE_API || '/api'
+    const downloadUrl = `${baseUrl}/smart-brain/agents/tasks/${row.id}/files/download`
+
+    console.log('【调试】构建的下载URL:', downloadUrl)
+    window.open(downloadUrl, '_blank')
   } else {
-    ElMessage.warning('该记录没有关联的文件')
+    console.warn('【警告】无法获取文件下载信息，缺少必要的字段:', {
+      hasFileUrl: !!row.fileUrl,
+      hasFilePath: !!row.filePath,
+      hasPath: !!row.path,
+      hasSourceFilePath: !!row.sourceFilePath,
+      hasTaskId: !!row.id,
+      rowKeys: Object.keys(row)
+    })
+    ElMessage.warning('该记录没有关联的文件或缺少下载信息')
   }
 }
 
