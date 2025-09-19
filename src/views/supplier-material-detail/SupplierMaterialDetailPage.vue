@@ -386,39 +386,34 @@ const fetchMatchingStats = async () => {
     console.log('【调试】原始API返回结果:', JSON.stringify(response, null, 2))
     console.log('【调试】response的所有字段名:', Object.keys(response || {}))
 
-    // 更新统计数据 - 添加调试信息来识别字段映射问题
+    // 更新统计数据 - 使用新的正确字段名
     matchingStats.value = {
       totalMaterials: response.totalMaterials || response.total || response.totalCount || 0,
       exactMatchCount: response.exactMatchCount || response.matched || response.matchedCount || 0,
-      unmatchedPriceCount: response.unmatchedPriceCount || response.priceMismatch || response.priceMismatchCount || 0,
-      pendingMatchCount: response.pendingMatchCount || response.unmatched || response.unmatchedCount || response.pending || 0
+      infoPendingConfirmationCount: response.infoPendingConfirmationCount || 0,
+      materialInfoPendingCount: response.materialInfoPendingCount || 0
     }
-
     // 添加详细的字段值调试
     console.log('【调试】API返回字段对应关系:')
     console.log('  response.exactMatchCount:', response.exactMatchCount)
-    console.log('  response.unmatchedPriceCount:', response.unmatchedPriceCount)
-    console.log('  response.pendingMatchCount:', response.pendingMatchCount)
-    console.log('  response.matched:', response.matched)
-    console.log('  response.priceMismatch:', response.priceMismatch)
-    console.log('  response.unmatched:', response.unmatched)
+    console.log('  response.infoPendingConfirmationCount:', response.infoPendingConfirmationCount)
+    console.log('  response.materialInfoPendingCount:', response.materialInfoPendingCount)
 
     console.log('【响应】统计数据已更新:', matchingStats.value)
     console.log('【调试】映射后的统计数据详情:')
     console.log('  totalMaterials (总数):', matchingStats.value.totalMaterials)
     console.log('  exactMatchCount (已匹配):', matchingStats.value.exactMatchCount)
-    console.log('  unmatchedPriceCount (价格不匹配):', matchingStats.value.unmatchedPriceCount)
-    console.log('  pendingMatchCount (未匹配):', matchingStats.value.pendingMatchCount)
+    console.log('  infoPendingConfirmationCount (信息待确认):', matchingStats.value.infoPendingConfirmationCount)
+    console.log('  materialInfoPendingCount (物资信息待处理):', matchingStats.value.materialInfoPendingCount)
   } catch (error) {
     console.error('【错误】获取匹配统计失败:', error)
     // 失败时保持默认值，不影响页面其他功能
     matchingStats.value = {
       totalMaterials: 0,
       exactMatchCount: 0,
-      unmatchedPriceCount: 0,
-      pendingMatchCount: 0
-    }
-  }
+      infoPendingConfirmationCount: 0,
+      materialInfoPendingCount: 0
+    }  }
 }
 
 /**
@@ -4621,3 +4616,4 @@ provide('parentMethods', {
   padding: 0 8px !important;
 }
 </style>
+

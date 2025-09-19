@@ -324,7 +324,6 @@ import { ElMessage } from 'element-plus'
 
 // 导入服务和状态管理
 import { useProjectStore } from '@/stores/project.js'
-import smartBrainService from '@/services/SmartBrainService.js'
 import { downloadSourceFile } from '@/utils/fileDownload.js'
 import { useParsingResultStore } from '@/stores/parsingResult'
 
@@ -436,37 +435,30 @@ const fetchContractTaskDetails = async () => {
 
   contractTasksLoading.value = true
   try {
-    // 首先从智能体任务API获取合同任务
+    console.log('【调试】获取合同解析任务，项目ID:', route.params.projectId)
+
+    // 直接从智能体任务API获取合同任务，支持分页
     const tasksResponse = await projectStore.getAgentTasks({
       agentLabels: 'contract',
       projectId: route.params.projectId,
-      page: 0,
-      size: 100
+      page: contractTasksPagination.value.currentPage - 1, // 后端从0开始
+      size: contractTasksPagination.value.pageSize
     })
 
-    if (tasksResponse.content && tasksResponse.content.length > 0) {
-      // 如果有任务，获取第一个任务的详情
-      const firstTask = tasksResponse.content[0]
-      const params = {
-        page: contractTasksPagination.value.currentPage - 1,
-        size: contractTasksPagination.value.pageSize
-      }
+    console.log('【调试】合同任务API响应:', tasksResponse)
 
-      const result = await smartBrainService.getTaskDetailsList(firstTask.id, params)
+    if (tasksResponse && tasksResponse.content && Array.isArray(tasksResponse.content)) {
+      contractTasks.value = tasksResponse.content
+      contractTasksPagination.value.total = tasksResponse.totalElements || 0
 
-      if (result && result.content && Array.isArray(result.content)) {
-        contractTasks.value = result.content
-        contractTasksPagination.value.total = result.totalElements || 0
-      } else {
-        contractTasks.value = []
-        contractTasksPagination.value.total = 0
-      }
+      console.log('【成功】合同任务数据加载完成，共', contractTasks.value.length, '条，总计', contractTasksPagination.value.total, '条')
     } else {
       contractTasks.value = []
       contractTasksPagination.value.total = 0
+      console.log('【警告】合同任务API返回空数据或格式异常')
     }
   } catch (error) {
-    console.error('获取合同解析任务详情列表失败:', error)
+    console.error('【错误】获取合同解析任务详情列表失败:', error)
     ElMessage.error('获取合同解析任务详情列表失败')
     contractTasks.value = []
     contractTasksPagination.value.total = 0
@@ -481,35 +473,30 @@ const fetchSupplierMaterialTaskDetails = async () => {
 
   supplierMaterialTasksLoading.value = true
   try {
+    console.log('【调试】获取乙供物资解析任务，项目ID:', route.params.projectId)
+
+    // 直接从智能体任务API获取乙供物资任务，支持分页
     const tasksResponse = await projectStore.getAgentTasks({
       agentLabels: 'y_material',
       projectId: route.params.projectId,
-      page: 0,
-      size: 100
+      page: supplierMaterialTasksPagination.value.currentPage - 1, // 后端从0开始
+      size: supplierMaterialTasksPagination.value.pageSize
     })
 
-    if (tasksResponse.content && tasksResponse.content.length > 0) {
-      const firstTask = tasksResponse.content[0]
-      const params = {
-        page: supplierMaterialTasksPagination.value.currentPage - 1,
-        size: supplierMaterialTasksPagination.value.pageSize
-      }
+    console.log('【调试】乙供物资任务API响应:', tasksResponse)
 
-      const result = await smartBrainService.getTaskDetailsList(firstTask.id, params)
+    if (tasksResponse && tasksResponse.content && Array.isArray(tasksResponse.content)) {
+      supplierMaterialTasks.value = tasksResponse.content
+      supplierMaterialTasksPagination.value.total = tasksResponse.totalElements || 0
 
-      if (result && result.content && Array.isArray(result.content)) {
-        supplierMaterialTasks.value = result.content
-        supplierMaterialTasksPagination.value.total = result.totalElements || 0
-      } else {
-        supplierMaterialTasks.value = []
-        supplierMaterialTasksPagination.value.total = 0
-      }
+      console.log('【成功】乙供物资任务数据加载完成，共', supplierMaterialTasks.value.length, '条，总计', supplierMaterialTasksPagination.value.total, '条')
     } else {
       supplierMaterialTasks.value = []
       supplierMaterialTasksPagination.value.total = 0
+      console.log('【警告】乙供物资任务API返回空数据或格式异常')
     }
   } catch (error) {
-    console.error('获取乙供物资解析任务详情列表失败:', error)
+    console.error('【错误】获取乙供物资解析任务详情列表失败:', error)
     ElMessage.error('获取乙供物资解析任务详情列表失败')
     supplierMaterialTasks.value = []
     supplierMaterialTasksPagination.value.total = 0
@@ -524,35 +511,30 @@ const fetchOwnerMaterialTaskDetails = async () => {
 
   ownerMaterialTasksLoading.value = true
   try {
+    console.log('【调试】获取甲供物资解析任务，项目ID:', route.params.projectId)
+
+    // 直接从智能体任务API获取甲供物资任务，支持分页
     const tasksResponse = await projectStore.getAgentTasks({
       agentLabels: 'j_material',
       projectId: route.params.projectId,
-      page: 0,
-      size: 100
+      page: ownerMaterialTasksPagination.value.currentPage - 1, // 后端从0开始
+      size: ownerMaterialTasksPagination.value.pageSize
     })
 
-    if (tasksResponse.content && tasksResponse.content.length > 0) {
-      const firstTask = tasksResponse.content[0]
-      const params = {
-        page: ownerMaterialTasksPagination.value.currentPage - 1,
-        size: ownerMaterialTasksPagination.value.pageSize
-      }
+    console.log('【调试】甲供物资任务API响应:', tasksResponse)
 
-      const result = await smartBrainService.getTaskDetailsList(firstTask.id, params)
+    if (tasksResponse && tasksResponse.content && Array.isArray(tasksResponse.content)) {
+      ownerMaterialTasks.value = tasksResponse.content
+      ownerMaterialTasksPagination.value.total = tasksResponse.totalElements || 0
 
-      if (result && result.content && Array.isArray(result.content)) {
-        ownerMaterialTasks.value = result.content
-        ownerMaterialTasksPagination.value.total = result.totalElements || 0
-      } else {
-        ownerMaterialTasks.value = []
-        ownerMaterialTasksPagination.value.total = 0
-      }
+      console.log('【成功】甲供物资任务数据加载完成，共', ownerMaterialTasks.value.length, '条，总计', ownerMaterialTasksPagination.value.total, '条')
     } else {
       ownerMaterialTasks.value = []
       ownerMaterialTasksPagination.value.total = 0
+      console.log('【警告】甲供物资任务API返回空数据或格式异常')
     }
   } catch (error) {
-    console.error('获取甲供物资解析任务详情列表失败:', error)
+    console.error('【错误】获取甲供物资解析任务详情列表失败:', error)
     ElMessage.error('获取甲供物资解析任务详情列表失败')
     ownerMaterialTasks.value = []
     ownerMaterialTasksPagination.value.total = 0
