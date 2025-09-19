@@ -298,8 +298,10 @@ const matchingStats = ref({
 
 // 计算确认统计
 
-// 计算是否有修改过的数据
+// 优化：减少不必要的重绘次数
+
 const hasModifiedData = computed(() => {
+  // 直接计算，避免computed中的副作用
   return materialData.value.some((item) => item.isUserModified === true)
 })
 
@@ -311,6 +313,7 @@ const hasModifiedData = computed(() => {
 // }) // 移除检查确认状态功能相关计算属性
 
 const pendingCount = computed(() => {
+  // 直接计算，避免computed中的副作用
   return materialData.value.filter((item) => item.confirmResult !== 1).length
 })
 
@@ -534,6 +537,7 @@ const fetchData = async () => {
         })
         statistics.value = response.data.statistics || {}
         // 注意：total现在从matchingStats计算而来，不再从response设置
+
       }
     } else {
       // 使用简单查询接口（后备方案）
@@ -567,6 +571,7 @@ const fetchData = async () => {
 
           return [dataRow, actionRow]
         })
+
         // 注意：total现在从matchingStats计算而来，不再从response设置
         statistics.value = null
       }
@@ -2018,6 +2023,7 @@ const handleMaterialPriceSelection = async (selection) => {
         materialData.value[itemIndex].selectedBaseDataId = materialBaseInfo.id
         materialData.value[itemIndex].selectedPriceId = priceInfo.id
         materialData.value[itemIndex].isUserModified = true
+
         
         // 设置 selectedMaterial 对象（用于单位等信息的显示）
         const newSelectedMaterial = {
@@ -2079,8 +2085,8 @@ const handleMaterialPriceSelection = async (selection) => {
       }
     })
 
-    // 强制触发Vue响应式更新
-    materialData.value = [...materialData.value]
+    // 优化：使用nextTick避免强制响应式更新导致的闪烁
+    // materialData.value = [...materialData.value] // 已注释，避免不必要的重绘
 
     console.log('【调试】物资选择完成:', {
       confirmedBaseName: confirmBaseName,
@@ -2858,13 +2864,7 @@ provide('parentMethods', {
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-.back-btn:hover {
-  color: var(--theme-primary);
-  background: rgba(var(--theme-primary-rgb), 0.1);
-  border-color: rgba(var(--theme-primary-rgb), 0.3);
-  transform: translateY(-1px);
-  box-shadow: var(--theme-shadow-sm);
-}
+/* .back-btn:hover - 已移除hover效果以提升性能 */
 
 .title-section h1 {
   margin: 0;
@@ -2958,15 +2958,9 @@ provide('parentMethods', {
   transition: opacity 0.3s ease;
 }
 
-.overview-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--theme-card-hover-shadow);
-  border-color: var(--theme-primary-light);
-}
+/* .overview-card:hover - 已移除hover效果以提升性能 */
 
-.overview-card:hover::before {
-  opacity: 1;
-}
+/* .overview-card:hover::before - 已移除hover效果以提升性能 */
 
 .overview-card.active {
   border-color: var(--theme-primary);
@@ -3058,11 +3052,7 @@ provide('parentMethods', {
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-.search-input :deep(.el-input__wrapper:hover) {
-  border-color: var(--theme-primary-light);
-  box-shadow: var(--theme-shadow-md);
-  transform: translateY(-1px);
-}
+/* .search-input :deep(.el-input__wrapper:hover) - 已移除hover效果以提升性能 */
 
 .search-input :deep(.el-input__wrapper.is-focus) {
   border-color: var(--theme-input-focus-border);
@@ -3099,11 +3089,7 @@ provide('parentMethods', {
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
-.filter-select :deep(.el-select__wrapper:hover) {
-  border-color: var(--theme-primary-light);
-  box-shadow: var(--theme-shadow-md);
-  transform: translateY(-1px);
-}
+/* .filter-select :deep(.el-select__wrapper:hover) - 已移除hover效果以提升性能 */
 
 .filter-select :deep(.el-select__wrapper.is-focused) {
   border-color: var(--theme-input-focus-border);
@@ -3161,6 +3147,7 @@ provide('parentMethods', {
   border-radius: 12px 12px 0 0;
 }
 
+/* .stat-card:hover - 已移除hover效果以提升性能
 .stat-card:hover {
   transform: translateY(-4px) scale(1.02);
   box-shadow: var(--theme-card-hover-shadow);
@@ -3170,6 +3157,7 @@ provide('parentMethods', {
 .stat-card:hover::before {
   transform: scaleX(1);
 }
+*/
 
 .stat-value {
   font-size: 28px;
@@ -3330,11 +3318,13 @@ provide('parentMethods', {
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
+/* :deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell) {
   background: var(--theme-table-hover-bg) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   transform: scale(1.001);
 }
+*/
 
 :deep(.el-table__fixed-right) {
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
@@ -3380,17 +3370,19 @@ provide('parentMethods', {
               0 1px 3px rgba(34, 197, 94, 0.1) !important;
 }
 
+/* :deep(.el-table .confirmed-row:hover .el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table .confirmed-row:hover .el-table__cell) {
-  background: linear-gradient(135deg, 
-    rgba(34, 197, 94, 0.18) 0%, 
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.18) 0%,
     rgba(34, 197, 94, 0.10) 50%,
     rgba(34, 197, 94, 0.05) 100%) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15),
               0 4px 12px rgba(34, 197, 94, 0.2) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   transition: all 0.3s ease !important;
   transform: scale(1.001) !important;
 }
+*/
 
 :deep(.el-table .pending-row .el-table__cell) {
   background: linear-gradient(135deg, 
@@ -3403,17 +3395,19 @@ provide('parentMethods', {
               0 1px 3px rgba(245, 158, 11, 0.1) !important;
 }
 
+/* :deep(.el-table .pending-row:hover .el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table .pending-row:hover .el-table__cell) {
-  background: linear-gradient(135deg, 
-    rgba(245, 158, 11, 0.15) 0%, 
+  background: linear-gradient(135deg,
+    rgba(245, 158, 11, 0.15) 0%,
     rgba(245, 158, 11, 0.08) 50%,
     rgba(245, 158, 11, 0.04) 100%) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15),
               0 4px 12px rgba(245, 158, 11, 0.15) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   transition: all 0.3s ease !important;
   transform: scale(1.001) !important;
 }
+*/
 
 /* 无匹配行样式增强 */
 :deep(.el-table .no-match-row .el-table__cell) {
@@ -3428,17 +3422,19 @@ provide('parentMethods', {
   animation: pulse-glow 3s infinite ease-in-out;
 }
 
+/* :deep(.el-table .no-match-row:hover .el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table .no-match-row:hover .el-table__cell) {
-  background: linear-gradient(135deg, 
-    rgba(239, 68, 68, 0.18) 0%, 
+  background: linear-gradient(135deg,
+    rgba(239, 68, 68, 0.18) 0%,
     rgba(239, 68, 68, 0.10) 50%,
     rgba(239, 68, 68, 0.05) 100%) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15),
               0 4px 12px rgba(239, 68, 68, 0.25) !important;
   backdrop-filter: var(--theme-backdrop-blur, none);
   transition: all 0.3s ease !important;
   transform: scale(1.001) !important;
 }
+*/
 
 /* 无匹配行的脉冲动画增强 */
 @keyframes pulse-glow {
@@ -3491,11 +3487,13 @@ provide('parentMethods', {
   border-right: 2px solid rgba(239, 68, 68, 0.15) !important;
 }
 
+/* :deep(.action-row:hover > td.el-table__cell) - 已移除hover效果以提升性能
 :deep(.action-row:hover > td.el-table__cell) {
   background: var(--theme-table-hover-bg) !important;
   transform: scale(1.001);
   transition: all 0.3s ease !important;
 }
+*/
 
 /* 增强分组整体视觉效果 */
 :deep(.el-table__body tr) {
@@ -3503,28 +3501,35 @@ provide('parentMethods', {
 }
 
 /* 分组悬停效果 - 当悬停在某一行时，高亮整个分组 */
+/* :deep(.el-table__body tr:hover) - 已移除hover效果以提升性能
 :deep(.el-table__body tr:hover) {
   z-index: 10 !important;
   position: relative !important;
 }
+*/
 
 /* 数据行和对应操作行的联动悬停效果 */
+/* :deep(.el-table__body tr.confirmed-row:hover + tr.action-row td.el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table__body tr.confirmed-row:hover + tr.action-row td.el-table__cell),
 :deep(.el-table__body tr.action-row:hover td.el-table__cell) {
-  background: linear-gradient(135deg, 
-    rgba(34, 197, 94, 0.08) 0%, 
+  background: linear-gradient(135deg,
+    rgba(34, 197, 94, 0.08) 0%,
     rgba(34, 197, 94, 0.04) 100%) !important;
   box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15) !important;
 }
+*/
 
+/* :deep(.el-table__body tr.pending-row:hover + tr.action-row td.el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table__body tr.pending-row:hover + tr.action-row td.el-table__cell),
 :deep(.el-table__body tr.pending-row + tr.action-row:hover td.el-table__cell) {
-  background: linear-gradient(135deg, 
-    rgba(245, 158, 11, 0.08) 0%, 
+  background: linear-gradient(135deg,
+    rgba(245, 158, 11, 0.08) 0%,
     rgba(245, 158, 11, 0.04) 100%) !important;
   box-shadow: 0 2px 8px rgba(245, 158, 11, 0.12) !important;
 }
+*/
 
+/* :deep(.el-table__body tr.no-match-row:hover + tr.action-row td.el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table__body tr.no-match-row:hover + tr.action-row td.el-table__cell),
 :deep(.el-table__body tr.no-match-row + tr.action-row:hover td.el-table__cell) {
   background: linear-gradient(135deg,
@@ -3532,6 +3537,7 @@ provide('parentMethods', {
     rgba(239, 68, 68, 0.04) 100%) !important;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.15) !important;
 }
+*/
 
 /* 规格型号不一致行的红色标记样式 - 使用多重选择器确保样式穿透 */
 :deep(.el-table .el-table__row.spec-mismatch-row .el-table__cell),
@@ -3546,6 +3552,7 @@ provide('parentMethods', {
   box-shadow: 0 1px 4px rgba(239, 68, 68, 0.1) !important;
 }
 
+/* :deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table .el-table__row.spec-mismatch-row:hover .el-table__cell),
 :deep(.el-table .spec-mismatch-row:hover .el-table__cell),
 :deep(.spec-mismatch-row:hover .el-table__cell),
@@ -3556,6 +3563,7 @@ provide('parentMethods', {
     rgba(239, 68, 68, 0.06) 100%) !important;
   box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2) !important;
 }
+*/
 
 /* 数据行和操作行内容样式 */
 .data-cell {
@@ -3744,10 +3752,12 @@ provide('parentMethods', {
 }
 
 /* 悬停效果 */
+/* .operation-group .el-button:hover - 已移除hover效果以提升性能
 .operation-group .el-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+*/
 
 .operation-group .el-button:active {
   transform: translateY(0);
@@ -3770,12 +3780,14 @@ provide('parentMethods', {
   font-weight: 500;
 }
 
+/* .operation-group.price-not-found .primary-action:hover - 已移除hover效果以提升性能
 .operation-group.price-not-found .primary-action:hover {
   background: linear-gradient(135deg, #059669, #047857);
   border-color: #059669;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
+*/
 
 /* 价格显示样式 */
 .price-details {
@@ -3873,11 +3885,13 @@ provide('parentMethods', {
   color: white;
 }
 
+/* :deep(.el-button--primary:hover) - 已移除hover效果以提升性能
 :deep(.el-button--primary:hover) {
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 6px 20px rgba(var(--theme-primary-rgb), 0.4);
   background: linear-gradient(135deg, var(--theme-primary-light), var(--theme-primary));
 }
+*/
 
 :deep(.el-button--success) {
   background: linear-gradient(135deg, var(--theme-success), rgba(var(--theme-success-rgb), 0.8));
@@ -3885,11 +3899,13 @@ provide('parentMethods', {
   color: white;
 }
 
+/* :deep(.el-button--success:hover) - 已移除hover效果以提升性能
 :deep(.el-button--success:hover) {
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 6px 20px rgba(var(--theme-success-rgb), 0.4);
   background: linear-gradient(135deg, rgba(var(--theme-success-rgb), 0.9), var(--theme-success));
 }
+*/
 
 :deep(.el-button--default) {
   background: var(--theme-card-bg);
@@ -3897,6 +3913,7 @@ provide('parentMethods', {
   color: var(--theme-text-primary);
 }
 
+/* :deep(.el-button--default:hover) - 已移除hover效果以提升性能
 :deep(.el-button--default:hover) {
   color: var(--theme-primary);
   border-color: var(--theme-primary);
@@ -3904,17 +3921,20 @@ provide('parentMethods', {
   transform: translateY(-1px) scale(1.02);
   box-shadow: var(--theme-shadow-md);
 }
+*/
 
 :deep(.el-button--text) {
   color: var(--theme-primary);
   background: transparent;
 }
 
+/* :deep(.el-button--text:hover) - 已移除hover效果以提升性能
 :deep(.el-button--text:hover) {
   background: rgba(var(--theme-primary-rgb), 0.1);
   transform: scale(1.05);
   border-radius: 6px;
 }
+*/
 
 /* 分页样式 - 优化主题适配 */
 :deep(.el-pagination) {
@@ -3936,6 +3956,7 @@ provide('parentMethods', {
   backdrop-filter: var(--theme-backdrop-blur, none);
 }
 
+/* :deep(.el-pagination.is-background .el-pager li:hover) - 已移除hover效果以提升性能
 :deep(.el-pagination.is-background .el-pager li:hover) {
   color: var(--theme-primary);
   border-color: var(--theme-primary);
@@ -3943,6 +3964,7 @@ provide('parentMethods', {
   transform: translateY(-1px) scale(1.05);
   box-shadow: var(--theme-shadow-sm);
 }
+*/
 
 :deep(.el-pagination.is-background .el-pager li.is-active) {
   background: linear-gradient(135deg, var(--theme-primary), var(--theme-primary-light));
@@ -3999,13 +4021,17 @@ provide('parentMethods', {
   }
 
   /* 简化悬停效果 */
+  /* .stat-card:hover - 已移除hover效果以提升性能
   .stat-card:hover {
     transform: translateY(-2px) !important;
   }
+  */
 
+  /* :deep(.el-button:hover) - 已移除hover效果以提升性能
   :deep(.el-button:hover) {
     transform: none !important;
   }
+  */
 }
 
 @media (max-width: 768px) {
@@ -4298,9 +4324,11 @@ provide('parentMethods', {
   transition: background 0.3s ease;
 }
 
+/* :deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover) - 已移除hover效果以提升性能
 :deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover) {
   background: rgba(var(--theme-primary-rgb), 0.5);
 }
+*/
 
 /* 全局滚动条样式 */
 ::-webkit-scrollbar {
@@ -4319,10 +4347,12 @@ provide('parentMethods', {
   transition: all 0.3s ease;
 }
 
+/* ::-webkit-scrollbar-thumb:hover - 已移除hover效果以提升性能
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--theme-primary-rgb), 0.5);
   transform: scale(1.1);
 }
+*/
 
 /* 页面过渡动画 - 增强动画效果 */
 .fade-enter-active,
@@ -4343,6 +4373,7 @@ provide('parentMethods', {
 }
 
 /* 统计卡片鼠标悬停增强效果 */
+/* .stat-card:hover .stat-label - 已移除hover效果以提升性能
 .stat-card:hover .stat-label {
   opacity: 1;
   color: var(--theme-primary);
@@ -4351,6 +4382,7 @@ provide('parentMethods', {
 .stat-card:hover .stat-value {
   transform: scale(1.05);
 }
+*/
 
 /* 页面底部操作按钮区域 */
 .page-footer {
@@ -4593,11 +4625,13 @@ provide('parentMethods', {
     rgba(245, 158, 11, 0.02) 100%) !important;
 }
 
+/* :deep(.el-table .price-comparison-row:hover .el-table__cell) - 已移除hover效果以提升性能
 :deep(.el-table .price-comparison-row:hover .el-table__cell) {
   background: linear-gradient(135deg,
     rgba(245, 158, 11, 0.08) 0%,
     rgba(245, 158, 11, 0.04) 100%) !important;
 }
+*/
 
 /* 确保价格文本在所有状态下都有正确的样式 */
 :deep(.price-info .price-text),

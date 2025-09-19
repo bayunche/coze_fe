@@ -221,15 +221,6 @@
                     >
                       查看源文件
                     </el-button>
-                    <el-button
-                      type="primary"
-                      size="small"
-                      @click="() => handleConfirmResults(row)"
-                      :disabled="row.taskStatus !== 2"
-                      class="action-btn confirm-btn"
-                    >
-                      确认解析结果
-                    </el-button>
                   </div>
                 </template>
               </el-table-column>
@@ -357,12 +348,6 @@
       </div>
     </div>
 
-    <!-- 乙供物资解析结果确认对话框 -->
-    <SupplierMaterialConfirmDialog
-      :show="showConfirmDialog"
-      :task-id="confirmTaskId"
-      @update:show="showConfirmDialog = $event"
-    />
   </div>
 </template>
 
@@ -388,8 +373,6 @@ import { useProjectStore } from '@/stores/project.js'
 import { downloadSourceFile } from '@/utils/fileDownload.js'
 import { useParsingResultStore } from '@/stores/parsingResult'
 
-// 导入确认对话框组件
-import SupplierMaterialConfirmDialog from '@/components/home/SupplierMaterialConfirmDialog/SupplierMaterialConfirmDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -431,9 +414,6 @@ const ownerMaterialTasksPagination = ref({
   total: 0
 })
 
-// 确认对话框状态
-const showConfirmDialog = ref(false)
-const confirmTaskId = ref(null)
 
 // 计算属性
 const projectStatistics = computed(() => {
@@ -765,22 +745,6 @@ const handleDownloadFile = (row) => {
   }
 }
 
-// 确认解析结果
-// eslint-disable-next-line no-unused-vars
-const handleConfirmResults = (row) => {
-  // 获取主任务ID
-  projectStore.getAgentTasks({
-    agentLabels: 'y_material',
-    projectId: route.params.projectId,
-    page: 0,
-    size: 1
-  }).then(response => {
-    if (response.content && response.content.length > 0) {
-      confirmTaskId.value = response.content[0].id
-      showConfirmDialog.value = true
-    }
-  })
-}
 
 
 // 根据API文档的taskStatus字段获取任务状态文本
